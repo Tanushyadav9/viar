@@ -36,6 +36,7 @@ export interface Course {
   originalPriceUsd: number;
   isPublished: boolean;
   featured: boolean;
+  isComingSoon?: boolean;
   badge?: string;
   instructor: {
     name: string;
@@ -51,6 +52,17 @@ export interface Course {
   whatYouWillLearn: string[];
   modules: CourseModule[];
   faqs: { question: string; answer: string }[];
+}
+
+export interface Testimonial {
+  id: string;
+  name: string;
+  location: string;
+  role: string;
+  content: string;
+  rating: number;
+  highlight: string;
+  isInternational?: boolean;
 }
 
 export type CohortStatus = 'UPCOMING' | 'ENROLLING' | 'IN_PROGRESS' | 'COMPLETED';

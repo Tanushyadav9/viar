@@ -57,23 +57,32 @@ export default function CoursesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
           {filteredCourses.map((course) => {
             const isFlagship = course.slug === 'what-is-astrology';
+            const isComingSoon = course.isComingSoon;
+
             return (
               <div
                 key={course.id}
                 className={`cosmic-card rounded-2xl p-8 border flex flex-col justify-between transition ${
-                  isFlagship ? 'border-amber-500/50 bg-[#111827]/80 ring-1 ring-amber-500/30' : 'border-white/10'
+                  isFlagship
+                    ? 'border-amber-500/50 bg-[#111827]/80 ring-1 ring-amber-500/30'
+                    : isComingSoon
+                    ? 'border-purple-500/30 bg-[#0d101a]/90 opacity-95'
+                    : 'border-white/10'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between gap-4 mb-4">
+                    {/* PLACEHOLDER: Additional catalog placeholder status */}
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-bold ${
                         isFlagship
                           ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : isComingSoon
+                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
                           : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                       }`}
                     >
-                      {course.badge || course.level}
+                      {isComingSoon ? 'Coming Soon' : course.badge || course.level}
                     </span>
                     <span className="text-xs text-slate-400 flex items-center gap-1.5 font-medium">
                       <Clock className="w-3.5 h-3.5 text-amber-400" />
@@ -103,7 +112,9 @@ export default function CoursesPage() {
 
                 <div className="pt-6 border-t border-white/10 flex items-center justify-between">
                   <div>
-                    <span className="text-xs text-slate-400 block font-medium">Tuition (One-Time)</span>
+                    <span className="text-xs text-slate-400 block font-medium">
+                      {isComingSoon ? 'Expected Tuition' : 'Tuition (One-Time)'}
+                    </span>
                     <div className="flex items-baseline gap-2">
                       <span className="text-2xl font-black text-white">₹{course.priceInr.toLocaleString()}</span>
                       <span className="text-xs text-slate-500 line-through">₹{course.originalPriceInr.toLocaleString()}</span>
@@ -111,17 +122,27 @@ export default function CoursesPage() {
                     </div>
                   </div>
 
-                  <Link
-                    href={`/courses/${course.slug}`}
-                    className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-                      isFlagship
-                        ? 'gold-button shadow-md shadow-amber-500/20'
-                        : 'bg-white/10 hover:bg-white/15 text-white border border-white/10'
-                    }`}
-                  >
-                    <span>View Curriculum</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
+                  {isComingSoon ? (
+                    /* PLACEHOLDER: Not yet open for enrollment */
+                    <button
+                      disabled
+                      className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 text-purple-300/70 border border-purple-500/20 cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      <span>Coming Soon</span>
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/courses/${course.slug}`}
+                      className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                        isFlagship
+                          ? 'gold-button shadow-md shadow-amber-500/20'
+                          : 'bg-white/10 hover:bg-white/15 text-white border border-white/10'
+                      }`}
+                    >
+                      <span>View Curriculum</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  )}
                 </div>
               </div>
             );

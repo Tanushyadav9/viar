@@ -113,6 +113,7 @@ export default function CourseDetailPage() {
             </div>
 
             {/* Instructor Quick Card */}
+            {/* PLACEHOLDER: replace with real instructor info */}
             <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center gap-4">
               <img
                 src={course.instructor.avatarUrl}
@@ -123,7 +124,7 @@ export default function CourseDetailPage() {
                 <h4 className="text-sm font-bold text-white">{course.instructor.name}</h4>
                 <p className="text-xs text-amber-300">{course.instructor.title}</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  22+ years experience • Founder of{' '}
+                  Over [X] years experience • Founder of{' '}
                   <a
                     href="https://aapkaastro.com"
                     target="_blank"
@@ -132,6 +133,7 @@ export default function CourseDetailPage() {
                   >
                     Aapka Astro <ExternalLink className="w-2.5 h-2.5 inline" />
                   </a>
+                  {' '}• 26,000+ followers
                 </p>
               </div>
             </div>
@@ -229,12 +231,22 @@ export default function CourseDetailPage() {
               )}
 
               {/* Checkout CTA */}
-              <Link
-                href={`/checkout/${cohort?.id || 'cohort-wia-batch-1'}?currency=${currency}`}
-                className="gold-button w-full py-3.5 rounded-xl text-center font-bold text-sm shadow-xl shadow-amber-500/20 block"
-              >
-                Enroll Now • Instant Access
-              </Link>
+              {course.isComingSoon ? (
+                /* PLACEHOLDER: Additional catalog placeholder, not yet open for enrollment */
+                <button
+                  disabled
+                  className="w-full py-3.5 rounded-xl text-center font-bold text-sm bg-white/10 text-purple-300/70 border border-purple-500/30 cursor-not-allowed block"
+                >
+                  Coming Soon • Enrollment Opens Soon
+                </button>
+              ) : (
+                <Link
+                  href={`/checkout/${cohort?.id || 'cohort-wia-batch-1'}?currency=${currency}`}
+                  className="gold-button w-full py-3.5 rounded-xl text-center font-bold text-sm shadow-xl shadow-amber-500/20 block"
+                >
+                  Enroll Now • Instant Access
+                </Link>
+              )}
 
               <div className="mt-4 space-y-1.5 text-[11px] text-slate-400 text-center">
                 <p className="flex items-center justify-center gap-1">
@@ -258,8 +270,9 @@ export default function CourseDetailPage() {
               <h2 className="text-3xl font-black text-white mt-1">
                 The 18-Class Master Curriculum
               </h2>
+              {/* PLACEHOLDER: 3-week block structure */}
               <p className="text-sm text-slate-400 mt-2">
-                Divided into 5 progressive modules from cosmic geometry to practical Kundali analysis.
+                Divided into 3 progressive blocks (18 classes) over 9 weeks from cosmic fundamentals to real chart synthesis.
               </p>
             </div>
 

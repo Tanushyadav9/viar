@@ -53,8 +53,9 @@ export default function Footer() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-white">Aapka Astro Pedigree</h4>
+              {/* PLACEHOLDER: replace with real content */}
               <p className="text-xs text-slate-400 mt-0.5">
-                Taught directly by Acharya Dr. Hemant Vashishta, founder of aapkaastro.com.
+                Taught directly by Acharya [ASTROLOGER NAME], founder of aapkaastro.com.
               </p>
             </div>
           </div>
@@ -145,15 +146,45 @@ export default function Footer() {
           </div>
 
           <div>
-            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">Academy Ethics</h5>
-            <ul className="space-y-2.5 text-sm">
-              <li className="text-xs text-slate-400 leading-relaxed">
-                We practice strictly non-fatalistic, empowering Vedic astrology grounded in cosmic mathematics and psychological wisdom.
+            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">Connect & Social</h5>
+            {/* PLACEHOLDER: replace with real social handles later */}
+            <ul className="space-y-2.5 text-xs text-slate-400">
+              <li>
+                <a
+                  href="https://youtube.com/@aapkaastro_official"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-amber-400 transition flex items-center gap-1.5"
+                >
+                  <span>YouTube Channel</span>
+                  <span className="text-[10px] text-amber-500/80">(Placeholder)</span>
+                </a>
               </li>
-              <li className="pt-2">
-                <span className="inline-block px-2.5 py-1 rounded bg-amber-500/10 text-amber-300 text-xs font-medium border border-amber-500/20">
-                  Batch 01 Enrolling Now
-                </span>
+              <li>
+                <a
+                  href="https://instagram.com/aapkaastro_official"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-amber-400 transition flex items-center gap-1.5"
+                >
+                  <span>Instagram</span>
+                  <span className="text-[10px] text-amber-500/80">(Placeholder)</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://facebook.com/aapkaastro_official"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-amber-400 transition flex items-center gap-1.5"
+                >
+                  <span>Facebook Page</span>
+                  <span className="text-[10px] text-amber-500/80">(Placeholder)</span>
+                </a>
+              </li>
+              <li className="pt-2 text-[11px] text-slate-500 italic">
+                {/* Note: Real social handles will be provided later */}
+                Real handles to be plugged in upon launch
               </li>
             </ul>
           </div>

@@ -15,11 +15,13 @@ import {
   ArrowRight,
   BookOpen,
   ExternalLink,
-  Flame
+  Flame,
+  Star
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort } from '@/lib/types';
 import { formatInTimezone, getUserLocalTimezone } from '@/lib/timezones';
+import { PLACEHOLDER_TESTIMONIALS } from '@/lib/data';
 
 export default function HomePage() {
   const [course, setCourse] = useState<Course | null>(null);
@@ -48,13 +50,14 @@ export default function HomePage() {
     <div className="cosmic-bg min-h-screen">
       
       {/* Top Notification Banner */}
+      {/* PLACEHOLDER: replace with real content */}
       <div className="bg-gradient-to-r from-amber-600/20 via-amber-500/30 to-amber-600/20 border-b border-amber-500/30 py-2.5 px-4 text-center">
         <p className="text-xs md:text-sm text-amber-200 font-medium flex items-center justify-center gap-2 flex-wrap">
           <span className="flex h-2 w-2 relative">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
           </span>
-          <span className="font-bold text-amber-300">Cohort 01 Enrolling:</span> Flagship 9-Week Batch Starts October 3, 2026. Only {cohort ? cohort.maxSeats - cohort.enrolledCount : 18} seats remaining!
+          <span className="font-bold text-amber-300">Cohort Enrolling:</span> {cohort?.batchName || 'Batch — Starting [Month Year]'} (Capacity: {cohort?.maxSeats || 50} students). Only {cohort ? cohort.maxSeats - cohort.enrolledCount : 12} seats remaining!
           <Link href="/courses/what-is-astrology" className="underline font-bold text-white hover:text-amber-100 ml-1">
             Claim Your Seat &rarr;
           </Link>
@@ -81,9 +84,10 @@ export default function HomePage() {
             </h1>
 
             {/* Subtitle */}
+            {/* PLACEHOLDER: replace with real instructor bio */}
             <p className="text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed mb-10 font-normal">
-              A comprehensive online education platform run by <strong className="text-amber-300">Acharya Dr. Hemant Vashishta</strong> (founder of <a href="https://aapkaastro.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Aapka Astro</a>). 
-              18 live cohort classes, HD recording archives, automated timezone sync, and a verifiable final certification.
+              A comprehensive online education platform run by <strong className="text-amber-300">Acharya [ASTROLOGER NAME]</strong> (founder of <a href="https://aapkaastro.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Aapka Astro</a>). 
+              With over [X] years of experience in Vedic astrology, Vastu Shastra, and gemstone science, trusted by a growing community of over 26,000 followers.
             </p>
 
             {/* CTA Group */}
@@ -238,52 +242,52 @@ export default function HomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
               
               <div className="lg:col-span-7">
+                {/* PLACEHOLDER: replace with real title */}
                 <h3 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight mb-4">
-                  What is Astrology: The Foundational Immersion
+                  What is Astrology — Foundations of Vedic Astrology
                 </h3>
+                {/* PLACEHOLDER: replace with real format details */}
                 <p className="text-lg text-amber-300/90 font-medium mb-6">
-                  18 Live Classes • 2 Classes Per Week • 9-Week Live Batch • Final Test & Certificate
+                  18 Live Classes • 2 Per Week • 9 Weeks (~60–90 mins each) • Final Graded Quiz & Certificate
                 </p>
                 <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-8">
-                  Decode the profound science of light (Jyotish). Over 9 rigorous weeks, you will master the 12 signs, 9 grahas, 12 houses, planetary aspects, and the 5-step framework to read any North or South Indian birth chart with clinical precision.
+                  A structured 9-week immersion arranged into three progressive blocks. Move with confidence from foundational astronomical mechanics to reading complete birth charts and deciphering life themes.
                 </p>
 
-                {/* Modules quick preview */}
+                {/* Structure: roughly 3-week blocks */}
+                {/* PLACEHOLDER: replace with real block structure */}
                 <div className="space-y-3 mb-8">
-                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
+                  <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold flex items-center justify-center">1</span>
-                      <span className="text-sm font-semibold text-white">Module 1: Cosmic Geometry & Panchanga (Classes 1–4)</span>
+                      <span className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold flex items-center justify-center">1</span>
+                      <div>
+                        <span className="text-sm font-semibold text-white">Weeks 1–3: History & Fundamentals of Astrology</span>
+                        <p className="text-[11px] text-slate-400">Cosmology, Karma model, Zodiac belt, and Panchanga</p>
+                      </div>
                     </div>
-                    <span className="text-xs text-slate-400 font-medium">4 Classes</span>
+                    <span className="text-xs text-amber-300 font-medium">Classes 1–6</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
+
+                  <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold flex items-center justify-center">2</span>
-                      <span className="text-sm font-semibold text-white">Module 2: The 12 Signs (Rashis) & Elements (Classes 5–8)</span>
+                      <span className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold flex items-center justify-center">2</span>
+                      <div>
+                        <span className="text-sm font-semibold text-white">Weeks 4–6: Reading a Birth Chart</span>
+                        <p className="text-[11px] text-slate-400">North & South Indian Kundalis, Lagna, and 12 Rashis</p>
+                      </div>
                     </div>
-                    <span className="text-xs text-slate-400 font-medium">4 Classes</span>
+                    <span className="text-xs text-amber-300 font-medium">Classes 7–12</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
+
+                  <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold flex items-center justify-center">3</span>
-                      <span className="text-sm font-semibold text-white">Module 3: The 9 Grahas & Planetary Dignities (Classes 9–12)</span>
+                      <span className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold flex items-center justify-center">3</span>
+                      <div>
+                        <span className="text-sm font-semibold text-white">Weeks 7–9: Planets, Houses & Basic Predictions</span>
+                        <p className="text-[11px] text-slate-400">9 Grahas, 12 Bhavas, 5-Step Synthesis & Final Graded Quiz</p>
+                      </div>
                     </div>
-                    <span className="text-xs text-slate-400 font-medium">4 Classes</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold flex items-center justify-center">4</span>
-                      <span className="text-sm font-semibold text-white">Module 4: The 12 Houses of Human Life (Classes 13–15)</span>
-                    </div>
-                    <span className="text-xs text-slate-400 font-medium">3 Classes</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold flex items-center justify-center">5</span>
-                      <span className="text-sm font-semibold text-white">Module 5: 5-Step Chart Synthesis & Exam Prep (Classes 16–18)</span>
-                    </div>
-                    <span className="text-xs text-slate-400 font-medium">3 Classes</span>
+                    <span className="text-xs text-amber-300 font-medium">Classes 13–18</span>
                   </div>
                 </div>
 
@@ -310,22 +314,31 @@ export default function HomePage() {
                   
                   <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-6">
                     <div>
+                      {/* PLACEHOLDER: Tuition is admin-editable */}
                       <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">One-Time Tuition</p>
                       <div className="flex items-baseline gap-2 mt-1">
-                        <span className="text-3xl sm:text-4xl font-black text-white">₹14,999</span>
-                        <span className="text-sm text-slate-500 line-through">₹24,999</span>
-                        <span className="text-xs font-bold text-amber-400">/ $199 USD</span>
+                        <span className="text-3xl sm:text-4xl font-black text-white">₹4,999</span>
+                        <span className="text-sm text-slate-500 line-through">₹9,999</span>
+                        <span className="text-xs font-bold text-amber-400">/ $69 USD</span>
                       </div>
                     </div>
                     <span className="px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
-                      40% OFF Launch
+                      50% OFF Launch
                     </span>
                   </div>
 
                   <div className="space-y-4 mb-8">
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                      <span className="text-sm text-slate-300">18 Live interactive 90-minute classes on Zoom</span>
+                      <span className="text-sm text-slate-300">18 Live interactive classes (~60–90 mins each)</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                      <span className="text-sm text-slate-300">Final assessment: 20-question graded quiz with certificate</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                      <span className="text-sm text-slate-300">Capacity capped at 50 students per cohort</span>
                     </div>
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
@@ -337,7 +350,8 @@ export default function HomePage() {
                     </div>
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                      <span className="text-sm text-slate-300">Direct chart review with Acharya Dr. Hemant</span>
+                      {/* PLACEHOLDER: replace with real instructor name */}
+                      <span className="text-sm text-slate-300">Direct chart review with Acharya [ASTROLOGER NAME]</span>
                     </div>
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
@@ -368,6 +382,7 @@ export default function HomePage() {
       </section>
 
       {/* Instructor / Lineage Section */}
+      {/* PLACEHOLDER: replace with real content */}
       <section className="py-20 bg-[#090d16] border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
@@ -378,7 +393,7 @@ export default function HomePage() {
                 <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-2xl overflow-hidden border-2 border-amber-500/40 shadow-2xl mx-auto">
                   <img
                     src="https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=600&auto=format&fit=crop"
-                    alt="Acharya Dr. Hemant Vashishta"
+                    alt="Acharya [ASTROLOGER NAME]"
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -390,18 +405,21 @@ export default function HomePage() {
 
             <div className="lg:col-span-7">
               <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Master Instructor & Lineage</span>
+              {/* PLACEHOLDER: replace with real instructor name */}
               <h3 className="text-3xl sm:text-4xl font-extrabold text-white mt-2 mb-4">
-                Acharya Dr. Hemant Vashishta
+                Acharya [ASTROLOGER NAME]
               </h3>
+              {/* PLACEHOLDER: replace with real experience stats */}
               <p className="text-sm font-semibold text-amber-300 mb-6">
-                Over 22 Years of Jyotish Practice • 35,000+ Consultations • Founder of Aapka Astro
+                Founder, Aapka Astro • Vedic Astrology, Vastu Shastra & Gemstone Science • 26,000+ Followers
               </p>
+              {/* PLACEHOLDER: reuse consistent bio language */}
               <div className="space-y-4 text-slate-300 text-sm leading-relaxed">
                 <p>
-                  &quot;Astrology is not about helpless superstition or fatalistic fortune-telling. It is the sacred mathematical science of cosmic resonance — understanding how planetary frequencies harmonize with human psychology and karmic timing.&quot;
+                  &quot;Acharya [ASTROLOGER NAME], with over [X] years of experience in Vedic astrology, Vastu Shastra, and gemstone science, trusted by a growing community of over 26,000 followers.&quot;
                 </p>
                 <p>
-                  Having served thousands of clients across India, North America, Europe, and the Middle East through his consultation platform <a href="https://aapkaastro.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline font-semibold">Aapka Astro (aapkaastro.com)</a>, Acharya Dr. Hemant created <strong>Viar.in</strong> to train the next generation of genuine astrological practitioners.
+                  Having served thousands of clients across India, North America, Europe, and the Middle East through his consultation platform <a href="https://aapkaastro.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline font-semibold">Aapka Astro (aapkaastro.com)</a>, Acharya [ASTROLOGER NAME] created <strong>Viar.in</strong> to systematically train serious students through deep cohort immersions.
                 </p>
               </div>
 
@@ -454,20 +472,21 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             
-            {/* Course 1 Card */}
-            <div className="cosmic-card p-8 rounded-2xl border border-amber-500/30 flex flex-col justify-between">
+            {/* Flagship Course Card */}
+            {/* PLACEHOLDER: replace with real content */}
+            <div className="cosmic-card p-8 rounded-2xl border border-amber-500/40 bg-[#111827]/80 ring-1 ring-amber-500/30 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between gap-4 mb-4">
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    Flagship Course
+                    Flagship Cohort
                   </span>
                   <span className="text-xs text-slate-400">18 Classes • 9 Weeks</span>
                 </div>
                 <h4 className="text-2xl font-bold text-white mb-2">
-                  What is Astrology: The Complete Foundational Immersion
+                  What is Astrology — Foundations of Vedic Astrology
                 </h4>
                 <p className="text-sm text-slate-300 mb-6">
-                  The complete entry point. Master signs, planets, houses, chart layouts, and the 5-step clinical reading method.
+                  Learn the sacred science of Jyotish from first principles to real chart readings across 3 cohesive blocks.
                 </p>
                 <div className="space-y-2 mb-6 text-xs text-slate-300">
                   <div className="flex items-center gap-2">
@@ -476,14 +495,14 @@ export default function HomePage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Final test with verifiable certificate of completion</span>
+                    <span>Final 20-question graded quiz with verifiable certificate</span>
                   </div>
                 </div>
               </div>
               <div className="pt-6 border-t border-white/10 flex items-center justify-between">
                 <div>
                   <span className="text-xs text-slate-400 block">Tuition</span>
-                  <span className="text-lg font-bold text-white">₹14,999 <span className="text-xs text-amber-400">/ $199</span></span>
+                  <span className="text-lg font-bold text-white">₹4,999 <span className="text-xs text-amber-400">/ $69 USD</span></span>
                 </div>
                 <Link
                   href="/courses/what-is-astrology"
@@ -494,46 +513,190 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Course 2 Card */}
-            <div className="cosmic-card p-8 rounded-2xl border border-white/10 flex flex-col justify-between">
+            {/* PLACEHOLDER: Additional catalog placeholder */}
+            <div className="cosmic-card p-8 rounded-2xl border border-purple-500/30 bg-[#0d101a]/90 opacity-95 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between gap-4 mb-4">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                    Intermediate Cohort
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                    Coming Soon
                   </span>
-                  <span className="text-xs text-slate-400">16 Classes • 8 Weeks</span>
+                  <span className="text-xs text-slate-400">12 Classes • 6 Weeks</span>
                 </div>
                 <h4 className="text-2xl font-bold text-white mb-2">
-                  Predictive Astrology: Vimshottari Dasha & Transits
+                  Vastu Shastra for Your Home
                 </h4>
                 <p className="text-sm text-slate-300 mb-6">
-                  Master the clockwork of timing events. Pinpoint marriage, career promotions, relocations, and health milestones.
+                  Harmonize living spaces with cosmic directional energies, 8 compass deities, and non-demolition remedies.
                 </p>
                 <div className="space-y-2 mb-6 text-xs text-slate-300">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-400" />
-                    <span>Vimshottari Dasha down to Pratyantara cycles</span>
+                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                    <span>Vastu Purusha Mandala layout calculation</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-400" />
-                    <span>Jupiter & Saturn double-transit trigger rules</span>
+                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                    <span>Practical spatial alignment for health and peace</span>
                   </div>
                 </div>
               </div>
               <div className="pt-6 border-t border-white/10 flex items-center justify-between">
                 <div>
-                  <span className="text-xs text-slate-400 block">Tuition</span>
-                  <span className="text-lg font-bold text-white">₹18,999 <span className="text-xs text-indigo-400">/ $249</span></span>
+                  <span className="text-xs text-slate-400 block">Expected Tuition</span>
+                  <span className="text-lg font-bold text-white">₹5,999 <span className="text-xs text-purple-400">/ $79 USD</span></span>
                 </div>
-                <Link
-                  href="/courses"
-                  className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition"
+                {/* PLACEHOLDER: Not yet open for enrollment */}
+                <button
+                  disabled
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 text-purple-300/70 border border-purple-500/20 cursor-not-allowed"
                 >
-                  Learn More
-                </Link>
+                  Coming Soon
+                </button>
               </div>
             </div>
 
+            {/* PLACEHOLDER: Additional catalog placeholder */}
+            <div className="cosmic-card p-8 rounded-2xl border border-purple-500/30 bg-[#0d101a]/90 opacity-95 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                    Coming Soon
+                  </span>
+                  <span className="text-xs text-slate-400">8 Classes • 4 Weeks</span>
+                </div>
+                <h4 className="text-2xl font-bold text-white mb-2">
+                  Gemstone Science 101
+                </h4>
+                <p className="text-sm text-slate-300 mb-6">
+                  The physics and metaphysics of Vedic Ratna therapy. Mineralogy, light refraction, and safe chart-based prescription rules.
+                </p>
+                <div className="space-y-2 mb-6 text-xs text-slate-300">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                    <span>The 9 Navaratnas & planetary frequencies</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                    <span>Natural vs treated gemstone identification</span>
+                  </div>
+                </div>
+              </div>
+              <div className="pt-6 border-t border-white/10 flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-slate-400 block">Expected Tuition</span>
+                  <span className="text-lg font-bold text-white">₹3,999 <span className="text-xs text-purple-400">/ $55 USD</span></span>
+                </div>
+                {/* PLACEHOLDER: Not yet open for enrollment */}
+                <button
+                  disabled
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 text-purple-300/70 border border-purple-500/20 cursor-not-allowed"
+                >
+                  Coming Soon
+                </button>
+              </div>
+            </div>
+
+            {/* PLACEHOLDER: Additional catalog placeholder */}
+            <div className="cosmic-card p-8 rounded-2xl border border-purple-500/30 bg-[#0d101a]/90 opacity-95 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                    Coming Soon
+                  </span>
+                  <span className="text-xs text-slate-400">8 Classes • 4 Weeks</span>
+                </div>
+                <h4 className="text-2xl font-bold text-white mb-2">
+                  Numerology Basics
+                </h4>
+                <p className="text-sm text-slate-300 mb-6">
+                  Decode destiny and life purpose through numerical vibrations. Moolank, Bhagyank, and personal year forecasting.
+                </p>
+                <div className="space-y-2 mb-6 text-xs text-slate-300">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                    <span>Psychic & Destiny number alignment</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                    <span>Name vibration tuning for career & relationships</span>
+                  </div>
+                </div>
+              </div>
+              <div className="pt-6 border-t border-white/10 flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-slate-400 block">Expected Tuition</span>
+                  <span className="text-lg font-bold text-white">₹3,499 <span className="text-xs text-purple-400">/ $49 USD</span></span>
+                </div>
+                {/* PLACEHOLDER: Not yet open for enrollment */}
+                <button
+                  disabled
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 text-purple-300/70 border border-purple-500/20 cursor-not-allowed"
+                >
+                  Coming Soon
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      {/* Student Testimonials Section */}
+      {/* PLACEHOLDER: replace with real student testimonials */}
+      <section className="py-20 bg-[#090d16] border-t border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Student Experiences</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mt-2 mb-4">
+              Trusted by Students Across India & Worldwide
+            </h2>
+            <p className="text-slate-400 text-sm sm:text-base">
+              {/* PLACEHOLDER: replace with real content */}
+              Read authentic feedback from working professionals, educators, and global learners who study with Acharya [ASTROLOGER NAME].
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {PLACEHOLDER_TESTIMONIALS.map((test) => (
+              <div
+                key={test.id}
+                className="cosmic-card p-6 rounded-2xl border border-white/10 flex flex-col justify-between hover:border-amber-500/30 transition relative"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-1">
+                      {[...Array(test.rating)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                      ))}
+                    </div>
+                    {test.isInternational && (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30 flex items-center gap-1">
+                        <Globe className="w-3 h-3" />
+                        International
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-sm font-semibold text-amber-200 mb-2">
+                    &ldquo;{test.highlight}&rdquo;
+                  </p>
+                  <p className="text-xs text-slate-300 leading-relaxed mb-6">
+                    {test.content.replace('/* PLACEHOLDER */ ', '')}
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xs font-bold text-white">{test.name}</h3>
+                    <p className="text-[11px] text-slate-400">{test.role}</p>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    {test.location}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
 
         </div>
@@ -585,14 +748,15 @@ export default function HomePage() {
           <h2 className="text-3xl sm:text-5xl font-black text-white mb-4">
             Begin Your Sacred Journey in Jyotish
           </h2>
+          {/* PLACEHOLDER: replace with real content */}
           <p className="text-slate-300 max-w-xl mx-auto text-base mb-8">
-            Seats in Cohort 01 of &quot;What is Astrology&quot; are strictly capped at 60 students to ensure personal interaction with Acharya Dr. Hemant.
+            Seats in the upcoming cohort of &quot;What is Astrology&quot; are strictly capped at 50 students to ensure personal interaction with Acharya [ASTROLOGER NAME].
           </p>
           <Link
             href="/courses/what-is-astrology"
             className="gold-button inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-bold shadow-2xl shadow-amber-500/30"
           >
-            <span>Enroll in Cohort 01 Today</span>
+            <span>Enroll in Cohort Today</span>
             <ArrowRight className="w-5 h-5" />
           </Link>
         </div>

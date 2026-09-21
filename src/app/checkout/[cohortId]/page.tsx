@@ -71,7 +71,8 @@ function CheckoutContent() {
     setIsProcessing(true);
 
     const provider = getPaymentProvider(currency);
-    const price = currency === 'INR' ? (course?.priceInr || 14999) : (course?.priceUsd || 199);
+    /* PLACEHOLDER: replace with real content (admin-editable) */
+    const price = currency === 'INR' ? (course?.priceInr || 4999) : (course?.priceUsd || 69);
 
     provider.createOrder({
       cohortId: cohort?.id || 'cohort-wia-batch-1',

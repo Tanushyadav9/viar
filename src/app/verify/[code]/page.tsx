@@ -145,8 +145,9 @@ export default function PublicVerifyCertificatePage() {
             </div>
 
             <div className="text-center">
-              <div className="font-serif italic text-xl text-amber-400 mb-1">
-                Acharya Dr. Hemant
+              {/* PLACEHOLDER: replace with real content */}
+              <div className="font-serif italic text-lg text-amber-400 mb-1">
+                {cert.instructorName}
               </div>
               <div className="w-32 h-[1px] bg-amber-500/40 mx-auto mb-1"></div>
               <p className="text-[11px] font-bold text-white">{cert.instructorName}</p>

@@ -892,12 +892,13 @@ function StudentDashboardContent() {
                     </div>
 
                     <div className="text-center">
-                      <div className="font-serif italic text-lg text-amber-400 mb-1">
-                        Acharya Dr. Hemant
+                      {/* PLACEHOLDER: replace with real content */}
+                      <div className="font-serif italic text-base text-amber-400 mb-1">
+                        {certificate.instructorName}
                       </div>
                       <div className="w-32 h-[1px] bg-amber-500/40 mx-auto mb-1"></div>
-                      <p className="text-[11px] font-bold text-white">Acharya Dr. Hemant Vashishta</p>
-                      <p className="text-[10px] text-slate-400">Founder, Aapka Astro</p>
+                      <p className="text-[11px] font-bold text-white">{certificate.instructorName}</p>
+                      <p className="text-[10px] text-slate-400">{certificate.instructorTitle}</p>
                     </div>
 
                     <div className="text-right">

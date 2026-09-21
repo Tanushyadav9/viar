@@ -42,8 +42,9 @@ export default function CertificateSearchPage() {
         <h1 className="text-3xl sm:text-4xl font-black text-white mb-4">
           Verify an Astrology Certificate
         </h1>
+        {/* PLACEHOLDER: replace with real content */}
         <p className="text-sm text-slate-300 max-w-xl mx-auto leading-relaxed mb-8">
-          Every graduate of Viar.in academy receives a cryptographic, tamper-proof credential signed by Acharya Dr. Hemant Vashishta. Enter the certificate code below to authenticate.
+          Every graduate of Viar.in academy receives a cryptographic, tamper-proof credential signed by Acharya [ASTROLOGER NAME]. Enter the certificate code below to authenticate.
         </p>
 
         {errorMsg && (

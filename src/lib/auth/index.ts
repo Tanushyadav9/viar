@@ -130,7 +130,8 @@ class DefaultAuthProvider implements AuthProvider {
     const isAdmin = email.toLowerCase().includes('admin');
     const user: AuthUser = {
       id: `usr_email_${Date.now()}`,
-      name: isAdmin ? 'Acharya Dr. Hemant Vashishta' : email.split('@')[0],
+      /* PLACEHOLDER: replace with real instructor name */
+      name: isAdmin ? 'Acharya [ASTROLOGER NAME]' : email.split('@')[0],
       email: email,
       role: isAdmin ? 'ADMIN' : 'STUDENT',
       timezone: ViarStore.getTimezone(),

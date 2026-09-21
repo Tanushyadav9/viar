@@ -182,10 +182,11 @@ export default function AdminPortalPage() {
       featured: false,
       badge: 'New Cohort',
       instructor: {
-        name: 'Acharya Dr. Hemant Vashishta',
+        /* PLACEHOLDER: replace with real content */
+        name: 'Acharya [ASTROLOGER NAME]',
         title: 'Founder, Aapka Astro',
-        bio: 'Master Astrologer with 22+ years of experience.',
-        experienceYears: 22,
+        bio: 'Acharya [ASTROLOGER NAME], with over [X] years of experience in Vedic astrology, Vastu Shastra, and gemstone science, trusted by a growing community of over 26,000 followers.',
+        experienceYears: 15,
         studentsTaught: 4800,
         avatarUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=400&auto=format&fit=crop',
         aapkaAstroUrl: 'https://aapkaastro.com',
@@ -229,7 +230,8 @@ export default function AdminPortalPage() {
                 Admin Console
               </span>
               <span className="text-slate-500">•</span>
-              <span className="text-xs text-slate-400">Acharya Dr. Hemant Vashishta</span>
+              {/* PLACEHOLDER: replace with real instructor name */}
+              <span className="text-xs text-slate-400">Acharya [ASTROLOGER NAME]</span>
             </div>
             <h1 className="text-3xl font-black text-white mt-1">
               Viar.in Academy Management

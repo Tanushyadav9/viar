@@ -177,8 +177,9 @@ export const ViarStore = {
         studentName: submission.studentName,
         studentEmail: submission.studentEmail,
         courseId: test.courseId,
-        courseTitle: 'What is Astrology: Foundational Immersion',
-        cohortBatchName: 'Autumn 2026 Batch (Cohort 01)',
+        /* PLACEHOLDER: replace with real content */
+        courseTitle: 'What is Astrology — Foundations of Vedic Astrology',
+        cohortBatchName: 'Batch — Starting [Month Year]',
         issueDate: new Date().toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'long',
@@ -186,7 +187,8 @@ export const ViarStore = {
         }),
         scorePercentage,
         grade,
-        instructorName: 'Acharya Dr. Hemant Vashishta',
+        /* PLACEHOLDER: replace with real content */
+        instructorName: 'Acharya [ASTROLOGER NAME]',
         instructorTitle: 'Founder, Aapka Astro & Master Astrologer',
         verificationUrl: `${typeof window !== 'undefined' ? window.location.origin : 'https://viar.in'}/verify/${verificationCode}`,
       };
