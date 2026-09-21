@@ -10,15 +10,19 @@ import {
   GraduationCap, 
   ExternalLink,
   ChevronDown,
-  Clock
+  Clock,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { COMMON_TIMEZONES, getUserLocalTimezone } from '@/lib/timezones';
 import { User } from '@/lib/types';
 import AuthModal from './AuthModal';
+import { useTheme } from './ThemeProvider';
 
 export default function Navbar() {
   const pathname = usePathname();
+  const { theme, toggleTheme } = useTheme();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [selectedTz, setSelectedTz] = useState<string>('Asia/Kolkata');
   const [isTzOpen, setIsTzOpen] = useState(false);
@@ -152,9 +156,23 @@ export default function Navbar() {
           </nav>
         </div>
 
-        {/* Right Controls: Timezone, Role Toggle, Dashboard CTA */}
+        {/* Right Controls: Theme Toggle, Timezone, Role Toggle, Dashboard CTA */}
         <div className="flex items-center space-x-3">
           
+          {/* Theme Toggle (Light / Dark Mode) */}
+          <button
+            onClick={toggleTheme}
+            className="flex items-center justify-center p-2 rounded-lg text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition group"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-amber-400 group-hover:rotate-45 transition-transform duration-300" />
+            ) : (
+              <Moon className="w-4 h-4 text-amber-500 group-hover:-rotate-12 transition-transform duration-300" />
+            )}
+          </button>
+
           {/* Timezone Selector dropdown */}
           <div className="relative">
             <button

@@ -10,17 +10,32 @@
   --gold-primary: #d4af37;
   --gold-glow: rgba(212, 175, 55, 0.25);
   --border-subtle: rgba(255, 255, 255, 0.08);
+  --text-main: #f8fafc;
 }
 
+/* --------------------------------------------------------------------------
+ * Base Elements & Typography
+ * -------------------------------------------------------------------------- */
 body {
   color: #e2e8f0;
   background-color: #07090e;
   font-family: var(--font-sans);
   overflow-x: hidden;
   min-height: 100vh;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* Cosmic subtle starfield background */
+/* --------------------------------------------------------------------------
+ * Dark Mode Theme (Default & .dark)
+ * -------------------------------------------------------------------------- */
+.dark body,
+html.dark body {
+  background-color: #07090e;
+  color: #e2e8f0;
+}
+
+.dark .cosmic-bg,
+html.dark .cosmic-bg,
 .cosmic-bg {
   background-color: #07090e;
   background-image: 
@@ -29,8 +44,198 @@ body {
     radial-gradient(circle at 50% 85%, rgba(217, 119, 6, 0.03) 0%, transparent 50%);
 }
 
+.dark .cosmic-card,
+html.dark .cosmic-card,
+.cosmic-card {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.dark .cosmic-card:hover,
+html.dark .cosmic-card:hover,
+.cosmic-card:hover {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+/* --------------------------------------------------------------------------
+ * Light Mode Theme (.light, html[data-theme="light"])
+ * -------------------------------------------------------------------------- */
+html.light,
+html[data-theme="light"],
+body.light {
+  color-scheme: light;
+}
+
+html.light body,
+html[data-theme="light"] body {
+  background-color: #fbfbf9;
+  color: #0f172a;
+}
+
+html.light .cosmic-bg,
+html[data-theme="light"] .cosmic-bg {
+  background-color: #faf9f5;
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(217, 119, 6, 0.07) 0%, transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.05) 0%, transparent 45%),
+    radial-gradient(circle at 50% 85%, rgba(245, 158, 11, 0.06) 0%, transparent 50%);
+}
+
+html.light header,
+html[data-theme="light"] header {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(226, 232, 240, 0.9) !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
+}
+
+html.light .cosmic-card,
+html[data-theme="light"] .cosmic-card {
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+html.light .cosmic-card:hover,
+html[data-theme="light"] .cosmic-card:hover {
+  border-color: rgba(217, 119, 6, 0.4) !important;
+  box-shadow: 0 10px 25px -4px rgba(217, 119, 6, 0.1) !important;
+}
+
+/* Light mode text contrast overrides */
+html.light .text-white,
+html[data-theme="light"] .text-white {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-100,
+html[data-theme="light"] .text-slate-100 {
+  color: #1e293b !important;
+}
+
+html.light .text-slate-200,
+html[data-theme="light"] .text-slate-200 {
+  color: #334155 !important;
+}
+
+html.light .text-slate-300,
+html[data-theme="light"] .text-slate-300 {
+  color: #475569 !important;
+}
+
+html.light .text-slate-400,
+html[data-theme="light"] .text-slate-400 {
+  color: #64748b !important;
+}
+
+html.light .text-amber-200,
+html.light .text-amber-200\/90,
+html[data-theme="light"] .text-amber-200,
+html[data-theme="light"] .text-amber-200\/90 {
+  color: #b45309 !important;
+}
+
+html.light .text-amber-300,
+html[data-theme="light"] .text-amber-300 {
+  color: #b45309 !important;
+}
+
+html.light .text-amber-400,
+html[data-theme="light"] .text-amber-400 {
+  color: #d97706 !important;
+}
+
+/* Light mode backgrounds & surfaces */
+html.light .bg-white\/5,
+html.light .bg-white\/\[0\.04\],
+html.light .bg-white\/\[0\.03\],
+html.light .bg-white\/\[0\.02\],
+html[data-theme="light"] .bg-white\/5,
+html[data-theme="light"] .bg-white\/\[0\.04\],
+html[data-theme="light"] .bg-white\/\[0\.03\],
+html[data-theme="light"] .bg-white\/\[0\.02\] {
+  background-color: rgba(241, 245, 249, 0.85) !important;
+}
+
+html.light .hover\:bg-white\/10:hover,
+html[data-theme="light"] .hover\:bg-white\/10:hover {
+  background-color: rgba(226, 232, 240, 0.9) !important;
+}
+
+html.light .border-white\/10,
+html.light .border-white\/5,
+html[data-theme="light"] .border-white\/10,
+html[data-theme="light"] .border-white\/5 {
+  border-color: rgba(226, 232, 240, 0.85) !important;
+}
+
+html.light .bg-\[\#07090e\],
+html.light .bg-\[\#090d16\],
+html.light .bg-\[\#0d131f\],
+html.light .bg-\[\#111827\],
+html.light .bg-\[\#0f172a\],
+html[data-theme="light"] .bg-\[\#07090e\],
+html[data-theme="light"] .bg-\[\#090d16\],
+html[data-theme="light"] .bg-\[\#0d131f\],
+html[data-theme="light"] .bg-\[\#111827\],
+html[data-theme="light"] .bg-\[\#0f172a\] {
+  background-color: #ffffff !important;
+  border-color: rgba(226, 232, 240, 0.9) !important;
+}
+
+html.light .from-\[\#111827\],
+html[data-theme="light"] .from-\[\#111827\] {
+  --tw-gradient-from: #ffffff !important;
+}
+
+html.light .to-\[\#090d16\],
+html.light .to-\[\#0d131f\],
+html[data-theme="light"] .to-\[\#090d16\],
+html[data-theme="light"] .to-\[\#0d131f\] {
+  --tw-gradient-to: #f8fafc !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+/* Light mode inputs, textareas, selects */
+html.light input,
+html.light textarea,
+html.light select,
+html[data-theme="light"] input,
+html[data-theme="light"] textarea,
+html[data-theme="light"] select {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder,
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Modal backgrounds */
+html.light .bg-black\/80,
+html.light .bg-black\/70,
+html[data-theme="light"] .bg-black\/80,
+html[data-theme="light"] .bg-black\/70 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+}
+
+/* --------------------------------------------------------------------------
+ * Brand Buttons & Accent Styles
+ * -------------------------------------------------------------------------- */
 .gold-gradient-text {
   background: linear-gradient(135deg, #fef08a 0%, #f59e0b 50%, #b45309 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+html.light .gold-gradient-text,
+html[data-theme="light"] .gold-gradient-text {
+  background: linear-gradient(135deg, #b45309 0%, #d97706 50%, #78350f 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -42,9 +247,13 @@ body {
 
 .gold-button {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: #090d16;
-  font-weight: 600;
+  color: #090d16 !important;
+  font-weight: 700;
   transition: all 0.2s ease;
+}
+
+.gold-button * {
+  color: #090d16 !important;
 }
 
 .gold-button:hover {
@@ -53,17 +262,9 @@ body {
   transform: translateY(-1px);
 }
 
-.cosmic-card {
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.cosmic-card:hover {
-  border-color: rgba(245, 158, 11, 0.25);
-}
-
-/* Custom smooth scrollbar */
+/* --------------------------------------------------------------------------
+ * Custom Scrollbar
+ * -------------------------------------------------------------------------- */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -80,6 +281,21 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #334155;
+}
+
+html.light ::-webkit-scrollbar-track,
+html[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+html.light ::-webkit-scrollbar-thumb,
+html[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+html.light ::-webkit-scrollbar-thumb:hover,
+html[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 @keyframes pulse-subtle {
