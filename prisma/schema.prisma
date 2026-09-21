@@ -10,16 +10,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ------------------------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------------------------
+
 enum UserRole {
   STUDENT
-  ADMIN
   INSTRUCTOR
+  ADMIN
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  COMING_SOON
 }
 
 enum CohortStatus {
   UPCOMING
-  ENROLLING
-  IN_PROGRESS
+  ACTIVE
   COMPLETED
 }
 
@@ -34,212 +43,350 @@ enum ClassStatus {
   COMPLETED
 }
 
-model User {
-  id          String     @id @default(cuid())
-  clerkId     String?    @unique
-  name        String
-  email       String?    @unique
-  phone       String?    @unique
-  role        UserRole   @default(STUDENT)
-  timezone    String     @default("Asia/Kolkata")
-  avatarUrl   String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  enrollments   Enrollment[]
-  submissions   TestSubmission[]
-  certificates  Certificate[]
+enum PaymentProvider {
+  RAZORPAY
+  STRIPE
 }
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// ------------------------------------------------------------------------------
+// 1. USER
+// Role: student / instructor / admin, name, email, phone, country, created_at
+// ------------------------------------------------------------------------------
+
+model User {
+  id              String            @id @default(cuid())
+  role            UserRole          @default(STUDENT)
+  name            String
+  email           String?           @unique
+  phone           String?           @unique
+  country         String?           @default("IN")
+  timezone        String            @default("Asia/Kolkata")
+  avatarUrl       String?           @map("avatar_url")
+  clerkId         String?           @unique @map("clerk_id")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  enrollments     Enrollment[]
+  sessionProgress SessionProgress[]
+  quizAttempts    QuizAttempt[]
+  certificates    Certificate[]
+  payments        Payment[]
+  testimonials    Testimonial[]
+
+  @@index([role])
+  @@index([createdAt])
+  @@map("users")
+}
+
+// ------------------------------------------------------------------------------
+// 2. COURSE
+// Title, slug, description, syllabus_json, category, thumbnail_url, status: draft/published/coming_soon
+// ------------------------------------------------------------------------------
 
 model Course {
-  id                   String    @id @default(cuid())
-  slug                 String    @unique
-  title                String
-  tagline              String
-  subtitle             String
-  description          String    @db.Text
-  level                String    @default("Beginner")
-  durationWeeks        Int
-  totalClasses         Int
-  classesPerWeek       Int       @default(2)
-  priceInr             Int
-  priceUsd             Int
-  originalPriceInr     Int
-  originalPriceUsd     Int
-  isPublished          Boolean   @default(true)
-  featured             Boolean   @default(false)
-  badge                String?
-  
-  // Instructor Details
-  instructorName       String
-  instructorTitle      String
-  instructorBio        String    @db.Text
-  instructorAvatarUrl  String
-  instructorAapkaAstroUrl String @default("https://aapkaastro.com")
-  
-  // Curricular details stored as JSON or relational
-  highlights           String[]
-  prerequisites        String[]
-  whatYouWillLearn     String[]
-  
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  id               String         @id @default(cuid())
+  title            String
+  slug             String         @unique
+  description      String         @db.Text
+  syllabusJson     Json?          @map("syllabus_json")
+  category         String         @default("Vedic Astrology")
+  thumbnailUrl     String?        @map("thumbnail_url")
+  status           CourseStatus   @default(PUBLISHED)
 
-  cohorts              Cohort[]
+  // Tuition & Pricing details
+  priceInr         Int            @default(4999) @map("price_inr")
+  priceUsd         Int            @default(69) @map("price_usd")
+  originalPriceInr Int            @default(9999) @map("original_price_inr")
+  originalPriceUsd Int            @default(139) @map("original_price_usd")
+
+  // Curricular helpers
+  durationWeeks    Int            @default(9) @map("duration_weeks")
+  totalClasses     Int            @default(18) @map("total_classes")
+  classesPerWeek   Int            @default(2) @map("classes_per_week")
+
+  // Instructor metadata
+  // PLACEHOLDER: replace with real instructor name
+  instructorName   String         @default("Acharya [ASTROLOGER NAME]") @map("instructor_name")
+  // PLACEHOLDER: replace with real instructor bio
+  instructorBio    String?        @db.Text @map("instructor_bio")
+
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  cohorts          Cohort[]
+  quizzes          Quiz[]
+  testimonials     Testimonial[]
+
+  @@index([slug])
+  @@index([status])
+  @@map("courses")
 }
+
+// ------------------------------------------------------------------------------
+// 3. COHORT
+// Course_id, batch_name, start_date, capacity, status: upcoming/active/completed
+// ------------------------------------------------------------------------------
 
 model Cohort {
-  id                   String         @id @default(cuid())
-  courseId             String
-  course               Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  batchNumber          Int
-  batchName            String
-  startDate            DateTime
-  endDate              DateTime
-  scheduleDescription  String
-  maxSeats             Int            @default(60)
-  enrolledCount        Int            @default(0)
-  status               CohortStatus   @default(ENROLLING)
-  enrollmentDeadline   DateTime?
-  
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
+  id                  String         @id @default(cuid())
+  courseId            String         @map("course_id")
+  course              Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  batchName           String         @map("batch_name")
+  startDate           DateTime       @map("start_date")
+  endDate             DateTime?      @map("end_date")
+  capacity            Int            @default(50)
+  enrolledCount       Int            @default(0) @map("enrolled_count")
+  status              CohortStatus   @default(UPCOMING)
+  scheduleDescription String?        @map("schedule_description")
 
-  classes              ScheduledClass[]
-  enrollments          Enrollment[]
-  finalTests           FinalTest[]
-  testSubmissions      TestSubmission[]
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  classSessions       ClassSession[]
+  enrollments         Enrollment[]
+  quizAttempts        QuizAttempt[]
+  certificates        Certificate[]
+  payments            Payment[]
+
+  @@index([courseId])
+  @@index([status])
+  @@index([startDate])
+  @@map("cohorts")
 }
 
-model ScheduledClass {
-  id                 String           @id @default(cuid())
-  cohortId           String
-  cohort             Cohort           @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  classNumber        Int
-  moduleNumber       Int
-  title              String
-  subtitle           String?
-  description        String           @db.Text
-  scheduledStartTime DateTime
-  durationMinutes    Int              @default(90)
-  meetingPlatform    MeetingPlatform  @default(ZOOM)
-  joinUrl            String
-  meetingId          String?
-  passcode           String?
-  status             ClassStatus      @default(UPCOMING)
+// ------------------------------------------------------------------------------
+// 4. CLASS SESSION
+// Cohort_id, session_number, title, scheduled_at (store in UTC, render per-user timezone),
+// join_link, recording_url, recording_uploaded_at
+// ------------------------------------------------------------------------------
 
-  recording          ClassRecording?
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+model ClassSession {
+  id                  String            @id @default(cuid())
+  cohortId            String            @map("cohort_id")
+  cohort              Cohort            @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  sessionNumber       Int               @map("session_number")
+  title               String
+  description         String?           @db.Text
+  scheduledAt         DateTime          @map("scheduled_at") // stored in UTC; rendered per user timezone
+  durationMinutes     Int               @default(90) @map("duration_minutes")
+  meetingPlatform     MeetingPlatform   @default(ZOOM) @map("meeting_platform")
+  joinLink            String?           @map("join_link")
+  meetingId           String?           @map("meeting_id")
+  passcode            String?
+  recordingUrl        String?           @map("recording_url")
+  recordingUploadedAt DateTime?         @map("recording_uploaded_at")
+  notesMarkdown       String?           @db.Text @map("notes_markdown")
+  status              ClassStatus       @default(UPCOMING)
 
-  @@index([cohortId, classNumber])
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  sessionProgress     SessionProgress[]
+
+  @@unique([cohortId, sessionNumber])
+  @@index([cohortId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("class_sessions")
 }
 
-model ClassRecording {
-  id                 String           @id @default(cuid())
-  classId            String           @unique
-  scheduledClass     ScheduledClass   @relation(fields: [classId], references: [id], onDelete: Cascade)
-  videoId            String?          // Cloudflare Stream / Mux Asset ID
-  videoUrl           String           // Playback / Embed URL
-  provider           String           @default("CLOUDFLARE") // CLOUDFLARE | MUX | DIRECT
-  durationMinutes    Int
-  recordedDate       DateTime         @default(now())
-  notesMarkdown      String           @db.Text
-  keyTakeaways       String[]
-  resourcesJson      String?          @db.Text
-
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-}
-
-model FinalTest {
-  id                 String           @id @default(cuid())
-  cohortId           String
-  cohort             Cohort           @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  courseId           String
-  title              String
-  description        String           @db.Text
-  passingPercentage  Int              @default(70)
-  durationMinutes    Int              @default(45)
-  totalQuestions     Int              @default(20)
-
-  questions          TestQuestion[]
-  submissions        TestSubmission[]
-
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-}
-
-model TestQuestion {
-  id                 String           @id @default(cuid())
-  testId             String
-  finalTest          FinalTest        @relation(fields: [testId], references: [id], onDelete: Cascade)
-  questionNumber     Int
-  topic              String
-  question           String           @db.Text
-  options            String[]
-  correctOptionIndex Int
-  explanation        String           @db.Text
-
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-
-  @@index([testId, questionNumber])
-}
-
-model TestSubmission {
-  id                 String           @id @default(cuid())
-  testId             String
-  finalTest          FinalTest        @relation(fields: [testId], references: [id], onDelete: Cascade)
-  cohortId           String
-  cohort             Cohort           @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  studentId          String
-  student            User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  studentName        String
-  studentEmail       String
-  answersJson        String           @db.Text
-  score              Int
-  totalQuestions     Int
-  scorePercentage    Int
-  isPassed           Boolean
-  submittedAt        DateTime         @default(now())
-  certificateId      String?
-}
-
-model Certificate {
-  id                 String           @id @default(cuid())
-  verificationCode   String           @unique // e.g. VIAR-2026-WIA-9842
-  studentId          String
-  student            User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  studentName        String
-  studentEmail       String
-  courseId           String
-  courseTitle        String
-  cohortBatchName    String
-  issueDate          String
-  scorePercentage    Int
-  grade              String           // Distinction | Merit | Pass
-  instructorName     String
-  instructorTitle    String
-  verificationUrl    String
-
-  createdAt          DateTime         @default(now())
-}
+// ------------------------------------------------------------------------------
+// 5. ENROLLMENT
+// User_id, cohort_id, payment_id, enrolled_at, amount_paid, currency
+// ------------------------------------------------------------------------------
 
 model Enrollment {
-  id                 String           @id @default(cuid())
-  studentId          String
-  student            User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  studentName        String
-  studentEmail       String
-  courseId           String
-  cohortId           String
-  cohort             Cohort           @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  enrolledAt         DateTime         @default(now())
-  paymentStatus      String           @default("PAID")
-  paymentAmount      Int
-  currency           String           @default("INR") // INR | USD
-  paymentMethod      String
-  paymentId          String
-  provider           String           @default("RAZORPAY") // RAZORPAY | STRIPE | MANUAL
+  id             String      @id @default(cuid())
+  userId         String      @map("user_id")
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cohortId       String      @map("cohort_id")
+  cohort         Cohort      @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  paymentId      String?     @map("payment_id")
+  payment        Payment?    @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  enrolledAt     DateTime    @default(now()) @map("enrolled_at")
+  amountPaid     Int         @map("amount_paid")
+  currency       String      @default("INR")
+  status         String      @default("ACTIVE") // ACTIVE | CANCELLED | REFUNDED
+
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  @@unique([userId, cohortId])
+  @@index([userId])
+  @@index([cohortId])
+  @@index([paymentId])
+  @@map("enrollments")
+}
+
+// ------------------------------------------------------------------------------
+// 6. SESSION PROGRESS
+// User_id, class_session_id, watched_at — used for simple completion checklist, not a strict attendance gate
+// ------------------------------------------------------------------------------
+
+model SessionProgress {
+  id             String        @id @default(cuid())
+  userId         String        @map("user_id")
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classSessionId String        @map("class_session_id")
+  classSession   ClassSession  @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
+  watchedAt      DateTime      @default(now()) @map("watched_at")
+
+  @@unique([userId, classSessionId])
+  @@index([userId])
+  @@index([classSessionId])
+  @@index([watchedAt])
+  @@map("session_progress")
+}
+
+// ------------------------------------------------------------------------------
+// 7. QUIZ
+// Course_id, questions_json
+// ------------------------------------------------------------------------------
+
+model Quiz {
+  id                String         @id @default(cuid())
+  courseId          String         @map("course_id")
+  course            Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title             String         @default("Certification Assessment")
+  questionsJson     Json           @map("questions_json")
+  passingPercentage Int            @default(70) @map("passing_percentage")
+  durationMinutes   Int            @default(45) @map("duration_minutes")
+
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  attempts          QuizAttempt[]
+
+  @@index([courseId])
+  @@map("quizzes")
+}
+
+// ------------------------------------------------------------------------------
+// 8. QUIZ ATTEMPT
+// User_id, cohort_id, score, passed boolean, attempted_at
+// ------------------------------------------------------------------------------
+
+model QuizAttempt {
+  id              String      @id @default(cuid())
+  userId          String      @map("user_id")
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cohortId        String      @map("cohort_id")
+  cohort          Cohort      @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  quizId          String?     @map("quiz_id")
+  quiz            Quiz?       @relation(fields: [quizId], references: [id], onDelete: SetNull)
+  score           Int
+  totalQuestions  Int         @default(20) @map("total_questions")
+  scorePercentage Int         @map("score_percentage")
+  passed          Boolean
+  answersJson     Json?       @map("answers_json")
+  attemptedAt     DateTime    @default(now()) @map("attempted_at")
+
+  @@index([userId])
+  @@index([cohortId])
+  @@index([quizId])
+  @@index([passed])
+  @@index([attemptedAt])
+  @@map("quiz_attempts")
+}
+
+// ------------------------------------------------------------------------------
+// 9. CERTIFICATE
+// User_id, cohort_id, certificate_number, issued_at, verify_slug
+// ------------------------------------------------------------------------------
+
+model Certificate {
+  id                String      @id @default(cuid())
+  userId            String      @map("user_id")
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cohortId          String      @map("cohort_id")
+  cohort            Cohort      @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  certificateNumber String      @unique @map("certificate_number")
+  verifySlug        String      @unique @map("verify_slug")
+  issuedAt          DateTime    @default(now()) @map("issued_at")
+
+  // Certificate metadata
+  grade             String?     // Distinction | Merit | Pass
+  scorePercentage   Int?        @map("score_percentage")
+  // PLACEHOLDER: replace with real instructor name
+  instructorName    String      @default("Acharya [ASTROLOGER NAME]") @map("instructor_name")
+
+  createdAt         DateTime    @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([cohortId])
+  @@index([certificateNumber])
+  @@index([verifySlug])
+  @@index([issuedAt])
+  @@map("certificates")
+}
+
+// ------------------------------------------------------------------------------
+// 10. PAYMENT
+// User_id, cohort_id, provider: razorpay/stripe, provider_reference, amount, currency, status
+// ------------------------------------------------------------------------------
+
+model Payment {
+  id                String          @id @default(cuid())
+  userId            String          @map("user_id")
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cohortId          String          @map("cohort_id")
+  cohort            Cohort          @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  provider          PaymentProvider
+  providerReference String          @map("provider_reference") // Razorpay payment_id / Stripe PaymentIntent ID
+  amount            Int             // stored in lowest currency denomination or base unit
+  currency          String          @default("INR") // INR | USD
+  status            PaymentStatus   @default(PENDING)
+
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  enrollments       Enrollment[]
+
+  @@index([userId])
+  @@index([cohortId])
+  @@index([status])
+  @@index([providerReference])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+// ------------------------------------------------------------------------------
+// 11. TESTIMONIAL
+// User_id nullable for placeholder content, course_id, rating, comment, published boolean
+// ------------------------------------------------------------------------------
+
+model Testimonial {
+  id               String       @id @default(cuid())
+  userId           String?      @map("user_id") // nullable for initial placeholder reviews
+  user             User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  courseId         String       @map("course_id")
+  course           Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  authorName       String       @map("author_name")
+  authorLocation   String?      @map("author_location") // e.g. "Bengaluru, India" or "London, UK"
+  authorAvatarUrl  String?      @map("author_avatar_url")
+  rating           Int          @default(5)
+  comment          String       @db.Text
+  published        Boolean      @default(true)
+
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  @@index([courseId])
+  @@index([published])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("testimonials")
 }
