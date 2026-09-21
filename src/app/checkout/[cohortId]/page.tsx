@@ -15,13 +15,17 @@ import {
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort } from '@/lib/types';
 import { formatInTimezone, getUserLocalTimezone } from '@/lib/timezones';
+import { isStripeEnabled, getPaymentProvider } from '@/lib/payments';
 
 function CheckoutContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
   const cohortId = params?.cohortId as string;
-  const initialCurrency = (searchParams?.get('currency') as 'INR' | 'USD') || 'INR';
+  const stripeActive = isStripeEnabled();
+  
+  // If Stripe is not enabled, default strictly to INR & Razorpay
+  const initialCurrency = stripeActive ? ((searchParams?.get('currency') as 'INR' | 'USD') || 'INR') : 'INR';
 
   const [cohort, setCohort] = useState<Cohort | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
@@ -66,11 +70,19 @@ function CheckoutContent() {
     setErrorMsg('');
     setIsProcessing(true);
 
-    // Simulate gateway checkout modal / processing
-    setTimeout(() => {
-      const price = currency === 'INR' ? (course?.priceInr || 14999) : (course?.priceUsd || 199);
-      const paymentMethod = paymentGateway === 'RAZORPAY' ? 'UPI / Netbanking (Razorpay)' : 'International Card (Stripe)';
+    const provider = getPaymentProvider(currency);
+    const price = currency === 'INR' ? (course?.priceInr || 14999) : (course?.priceUsd || 199);
 
+    provider.createOrder({
+      cohortId: cohort?.id || 'cohort-wia-batch-1',
+      courseId: course?.id || 'course-what-is-astrology',
+      studentName: fullName,
+      studentEmail: email,
+      studentPhone: phone,
+      amount: price,
+      currency,
+    }).then((order) => {
+      // Complete enrollment with order details
       ViarStore.createEnrollment({
         studentName: fullName,
         studentEmail: email,
@@ -78,13 +90,15 @@ function CheckoutContent() {
         cohortId: cohort?.id || 'cohort-wia-batch-1',
         amount: price,
         currency,
-        paymentMethod,
+        paymentMethod: `${provider.name} (${order.orderId})`,
       });
 
       setIsProcessing(false);
-      // Redirect straight to student dashboard with success param
       router.push('/dashboard?enrolled=true');
-    }, 1200);
+    }).catch((err) => {
+      setErrorMsg(`Payment error: ${err.message || 'Could not initiate order'}`);
+      setIsProcessing(false);
+    });
   };
 
   if (!course || !cohort) {
@@ -138,7 +152,7 @@ function CheckoutContent() {
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
                   1. Choose Currency & Region
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => handleCurrencyChange('INR')}
@@ -149,27 +163,40 @@ function CheckoutContent() {
                     }`}
                   >
                     <div>
-                      <p className="text-sm">₹ INR (India)</p>
-                      <p className="text-[11px] text-slate-400">UPI, Netbanking, Cards</p>
+                      <p className="text-sm">₹ INR (India & Global)</p>
+                      <p className="text-[11px] text-slate-400">UPI, Netbanking, All Cards (Razorpay)</p>
                     </div>
                     <span className="text-base font-extrabold text-amber-400">₹{course.priceInr.toLocaleString()}</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleCurrencyChange('USD')}
-                    className={`p-3.5 rounded-xl border text-left transition flex items-center justify-between ${
-                      currency === 'USD'
-                        ? 'border-amber-500 bg-amber-500/10 text-white font-bold'
-                        : 'border-white/10 bg-white/[0.02] text-slate-300 hover:bg-white/5'
-                    }`}
-                  >
-                    <div>
-                      <p className="text-sm">$ USD (Global)</p>
-                      <p className="text-[11px] text-slate-400">International Cards</p>
+                  {stripeActive ? (
+                    <button
+                      type="button"
+                      onClick={() => handleCurrencyChange('USD')}
+                      className={`p-3.5 rounded-xl border text-left transition flex items-center justify-between ${
+                        currency === 'USD'
+                          ? 'border-amber-500 bg-amber-500/10 text-white font-bold'
+                          : 'border-white/10 bg-white/[0.02] text-slate-300 hover:bg-white/5'
+                      }`}
+                    >
+                      <div>
+                        <p className="text-sm">$ USD (International)</p>
+                        <p className="text-[11px] text-slate-400">International Cards (Stripe)</p>
+                      </div>
+                      <span className="text-base font-extrabold text-amber-400">${course.priceUsd}</span>
+                    </button>
+                  ) : (
+                    <div className="p-3.5 rounded-xl border border-white/5 bg-white/[0.01] flex items-center justify-between opacity-80">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-slate-300 font-semibold">$ USD (Stripe)</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">Registration Pending</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-0.5">International cards supported via Razorpay above</p>
+                      </div>
+                      <span className="text-xs text-slate-500 font-mono">${course.priceUsd}</span>
                     </div>
-                    <span className="text-base font-extrabold text-amber-400">${course.priceUsd}</span>
-                  </button>
+                  )}
                 </div>
               </div>
 
@@ -228,10 +255,10 @@ function CheckoutContent() {
                       <CreditCard className="w-5 h-5 text-amber-400" />
                       <div>
                         <p className="text-sm font-bold text-white">
-                          {currency === 'INR' ? 'Razorpay Secure Checkout' : 'Stripe Global Checkout'}
+                          {paymentGateway === 'RAZORPAY' ? 'Razorpay Secure Checkout (India)' : 'Stripe Global Checkout'}
                         </p>
                         <p className="text-xs text-slate-400">
-                          {currency === 'INR'
+                          {paymentGateway === 'RAZORPAY'
                             ? 'Instant UPI (GPay, PhonePe, Paytm), Netbanking, Debit & Credit'
                             : 'Visa, Mastercard, Amex, Apple Pay'}
                         </p>

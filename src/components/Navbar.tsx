@@ -15,6 +15,7 @@ import {
 import { ViarStore } from '@/lib/store';
 import { COMMON_TIMEZONES, getUserLocalTimezone } from '@/lib/timezones';
 import { User } from '@/lib/types';
+import AuthModal from './AuthModal';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -22,6 +23,7 @@ export default function Navbar() {
   const [selectedTz, setSelectedTz] = useState<string>('Asia/Kolkata');
   const [isTzOpen, setIsTzOpen] = useState(false);
   const [isRoleOpen, setIsRoleOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -233,6 +235,13 @@ export default function Navbar() {
             )}
           </div>
 
+          <button
+            onClick={() => setIsAuthModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition"
+          >
+            Sign In
+          </button>
+
           {/* Navigation CTA */}
           {isAdmin ? (
             <Link
@@ -254,6 +263,14 @@ export default function Navbar() {
 
         </div>
       </div>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={() => {
+          setCurrentUser(ViarStore.getCurrentUser());
+        }}
+      />
     </header>
   );
 }
