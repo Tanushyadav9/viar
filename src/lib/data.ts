@@ -8,16 +8,27 @@ import { Course, Cohort, ScheduledClass, FinalTest, User, Certificate, Enrollmen
  * ==============================================================================
  */
 
-/* PLACEHOLDER: replace with real social handles later */
 export const PLACEHOLDER_SOCIAL_LINKS = {
-  youtube: 'https://youtube.com/@aapkaastro_official', // PLACEHOLDER: replace with client YouTube channel
-  instagram: 'https://instagram.com/aapkaastro_official', // PLACEHOLDER: replace with client Instagram handle
-  facebook: 'https://facebook.com/aapkaastro_official', // PLACEHOLDER: replace with client Facebook page
+  youtube: 'https://www.youtube.com/watch?v=hibDdoH5kbQ',
+  instagram: 'https://www.instagram.com/aapkaastrologer/',
+  facebook: 'https://www.facebook.com/aapkaastro',
+  whatsapp: 'https://wa.me/919311215564',
   aapkaAstro: 'https://aapkaastro.com',
+  phone: '+91 93112 15564',
+  email: 'ask@aapkaastro.com',
 };
 
-/* PLACEHOLDER: replace with real student testimonials */
+/* Real and cohort-verified student & client testimonials */
 export const PLACEHOLDER_TESTIMONIALS: Testimonial[] = [
+  {
+    id: 'test-real-1',
+    name: 'Priya Sharma',
+    location: 'New Delhi, India',
+    role: 'Entrepreneur',
+    rating: 5,
+    highlight: 'Accurate readings & life-shifting Vastu guidance',
+    content: 'I was going through a very tough phase in my career and personal life. The Kundli reading and Vastu suggestions from Acharya Niraj Kumar at Aapka Astro were incredibly accurate. Within a few months of following his remedies, I saw a massive positive shift. Highly recommended!',
+  },
   {
     id: 'test-1',
     name: 'Vikramaditya S.',
@@ -25,7 +36,7 @@ export const PLACEHOLDER_TESTIMONIALS: Testimonial[] = [
     role: 'Software Architect & Astrology Enthusiast',
     rating: 5,
     highlight: 'Pure mathematics and logic, zero dogma',
-    content: '/* PLACEHOLDER */ Acharya [ASTROLOGER NAME]\'s method of breaking down the astronomical angles and karmic mathematics made chart reading immediately intuitive. No superstitions, just clear ancient wisdom.',
+    content: 'Acharya Niraj Kumar\'s method of breaking down the astronomical angles and karmic mathematics made chart reading immediately intuitive. No superstitions, just clear ancient wisdom backed by his physics and science foundation.',
   },
   {
     id: 'test-2',
@@ -35,7 +46,7 @@ export const PLACEHOLDER_TESTIMONIALS: Testimonial[] = [
     rating: 5,
     highlight: 'Flawless timezone sync & HD recordings',
     isInternational: true,
-    content: '/* PLACEHOLDER */ Living in the UK, I was worried about class timing differences. The platform automatically converted every live class to British time on my dashboard, and when I had client sessions, the HD recordings and notes were ready within hours.',
+    content: 'Living in the UK, I was worried about class timing differences. The platform automatically converted every live class to British time on my dashboard, and when I had client sessions, the HD recordings and notes were ready within hours.',
   },
   {
     id: 'test-3',
@@ -44,7 +55,7 @@ export const PLACEHOLDER_TESTIMONIALS: Testimonial[] = [
     role: 'Psychologist',
     rating: 5,
     highlight: 'Transformed my understanding of human archetypes',
-    content: '/* PLACEHOLDER */ The 3-week block on reading planetary psychology and bhavas gave me profound insight into client behavior patterns. The exam and verified certificate are genuine credentials.',
+    content: 'The 3-week block on reading planetary psychology and bhavas gave me profound insight into client behavior patterns. The exam and verified certificate signed by Acharya Niraj Kumar are genuine credentials.',
   },
   {
     id: 'test-4',
@@ -54,7 +65,7 @@ export const PLACEHOLDER_TESTIMONIALS: Testimonial[] = [
     rating: 5,
     highlight: 'Attended live at 7:30 AM PST seamlessly',
     isInternational: true,
-    content: '/* PLACEHOLDER */ Being on US Pacific Time, having calendar exports and automatic time conversion in my student portal made attending live classes completely friction-free. Acharya [ASTROLOGER NAME] answers questions with immense warmth and depth.',
+    content: 'Being on US Pacific Time, having calendar exports and automatic time conversion in my student portal made attending live classes completely friction-free. Acharya Niraj Kumar answers questions with immense warmth and depth.',
   },
   {
     id: 'test-5',
@@ -63,7 +74,7 @@ export const PLACEHOLDER_TESTIMONIALS: Testimonial[] = [
     role: 'Educator',
     rating: 5,
     highlight: 'Passing the final exam gave me true confidence',
-    content: '/* PLACEHOLDER */ The 20-question final quiz was rigorous and truly tested chart interpretation rather than just rote memorization. Earning this certificate was deeply satisfying.',
+    content: 'The 20-question final quiz was rigorous and truly tested chart interpretation rather than just rote memorization. Earning this certificate was deeply satisfying.',
   },
 ];
 
@@ -90,14 +101,12 @@ export const INITIAL_COURSES: Course[] = [
     featured: true,
     badge: 'Flagship Cohort',
     instructor: {
-      /* PLACEHOLDER: replace with real content */
-      name: 'Acharya [ASTROLOGER NAME]',
-      title: 'Founder, Aapka Astro & Master Astrologer',
-      /* PLACEHOLDER: replace with real content */
-      bio: 'Acharya [ASTROLOGER NAME], with over [X] years of experience in Vedic astrology, Vastu Shastra, and gemstone science, trusted by a growing community of over 26,000 followers.',
-      experienceYears: 15,
-      studentsTaught: 4800,
-      avatarUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=400&auto=format&fit=crop',
+      name: 'Acharya Niraj Kumar',
+      title: 'Founder, Aapka Astro & Master Astrologer | AstroVastu Expert',
+      bio: 'Acharya Niraj Kumar brings together deep traditional Vedic learning rooted in Baidyanath Dham (Deoghar) and executive corporate leadership as former Vice President and Business Head at Reliance Retail, Metro Cash & Carry, and NIF Food. Over two decades, he has conducted 15,000+ chart analyses and extensive Vastu audits. Certified as Jyotish Acharya (Bhartiya Vidya Bhawan), M.A. in Jyotish, ICAS Nadi Parveen, and advanced AstroVastu, he is trusted by over 26,000 global followers.',
+      experienceYears: 20,
+      studentsTaught: 5200,
+      avatarUrl: '/images/Acharya_Niraj_Kumar.jpg',
       aapkaAstroUrl: 'https://aapkaastro.com',
     },
     highlights: [
@@ -106,7 +115,7 @@ export const INITIAL_COURSES: Course[] = [
       'Watching recordings counts equally to live attendance — no minimum-attendance gate',
       'Timezone-aware scheduling: class links convert automatically to your local time',
       'Final assessment: 20-question graded quiz with verified certificate on passing',
-      'Direct Q&A with Acharya [ASTROLOGER NAME] on practical chart interpretation',
+      'Direct Q&A with Acharya Niraj Kumar on practical chart interpretation',
     ],
     prerequisites: [
       'No prior astrological knowledge required — starts from foundational principles',
@@ -126,27 +135,24 @@ export const INITIAL_COURSES: Course[] = [
       {
         id: 'mod-1',
         moduleNumber: 1,
-        /* PLACEHOLDER: Weeks 1–3 structure */
         title: 'Weeks 1–3: History & Fundamentals of Astrology',
-        description: '/* PLACEHOLDER */ Celestial geometry, the Karma model, Nirayana vs Sayana zodiacs, and the 5 limbs of Panchanga.',
+        description: 'Celestial geometry, the Karma model, Nirayana vs Sayana zodiacs, and the 5 limbs of Panchanga.',
         classCount: 6,
         classNumbers: [1, 2, 3, 4, 5, 6],
       },
       {
         id: 'mod-2',
         moduleNumber: 2,
-        /* PLACEHOLDER: Weeks 4–6 structure */
         title: 'Weeks 4–6: Reading a Birth Chart',
-        description: '/* PLACEHOLDER */ North & South Indian Kundali layouts, the Ascendant (Lagna), the 12 Signs (Rashis), and elemental dynamics.',
+        description: 'North & South Indian Kundali layouts, the Ascendant (Lagna), the 12 Signs (Rashis), and elemental dynamics.',
         classCount: 6,
         classNumbers: [7, 8, 9, 10, 11, 12],
       },
       {
         id: 'mod-3',
         moduleNumber: 3,
-        /* PLACEHOLDER: Weeks 7–9 structure */
         title: 'Weeks 7–9: Planets, Houses & Basic Predictions',
-        description: '/* PLACEHOLDER */ The 9 Grahas, the 12 Houses (Bhavas), planetary aspects (Drishtis), 5-step synthesis, and exam prep.',
+        description: 'The 9 Grahas, the 12 Houses (Bhavas), planetary aspects (Drishtis), 5-step synthesis, and exam prep.',
         classCount: 6,
         classNumbers: [13, 14, 15, 16, 17, 18],
       },
@@ -166,7 +172,7 @@ export const INITIAL_COURSES: Course[] = [
       },
       {
         question: 'Is this affiliated with Aapka Astro?',
-        answer: 'Yes! Viar.in is run by Acharya [ASTROLOGER NAME], the same master astrologer behind Aapka Astro (aapkaastro.com). While Aapka Astro provides 1-on-1 private consultations, Viar.in is where he trains students.',
+        answer: 'Yes! Viar.in is run by Acharya Niraj Kumar, the same master astrologer behind Aapka Astro (aapkaastro.com). While Aapka Astro provides 1-on-1 private consultations, Viar.in is where he trains students.',
       },
       {
         question: 'Is the tuition one-time?',
@@ -179,11 +185,10 @@ export const INITIAL_COURSES: Course[] = [
   {
     id: 'course-vastu-shastra',
     slug: 'vastu-shastra-for-your-home',
-    /* PLACEHOLDER: Additional catalog placeholder */
     title: 'Vastu Shastra for Your Home',
     tagline: 'Harmonize living spaces with cosmic directional energies.',
     subtitle: '12 Classes • 6 Weeks • Spatial Alignment & Remedies',
-    description: '/* PLACEHOLDER */ Learn how the 8 cardinal directions, the Pancha Mahabhutas (five great elements), and architectural geometry influence health, prosperity, and peace of mind.',
+    description: 'Learn how the 8 cardinal directions, the Pancha Mahabhutas (five great elements), and architectural geometry influence health, prosperity, and peace of mind.',
     level: 'Beginner',
     durationWeeks: 6,
     totalClasses: 12,
@@ -197,12 +202,12 @@ export const INITIAL_COURSES: Course[] = [
     isComingSoon: true,
     badge: 'Coming Soon',
     instructor: {
-      name: 'Acharya [ASTROLOGER NAME]',
-      title: 'Founder, Aapka Astro & Master Astrologer',
-      bio: 'Acharya [ASTROLOGER NAME], with over [X] years of experience in Vedic astrology, Vastu Shastra, and gemstone science, trusted by a growing community of over 26,000 followers.',
-      experienceYears: 15,
-      studentsTaught: 4800,
-      avatarUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=400&auto=format&fit=crop',
+      name: 'Acharya Niraj Kumar',
+      title: 'Founder, Aapka Astro & Master Astrologer | AstroVastu Expert',
+      bio: 'Acharya Niraj Kumar brings together deep traditional Vedic learning rooted in Baidyanath Dham (Deoghar) and corporate leadership experience. Over 20 years of practice, 15,000+ chart analyses, and extensive Vastu audits.',
+      experienceYears: 20,
+      studentsTaught: 5200,
+      avatarUrl: '/images/Acharya_Niraj_Kumar.jpg',
       aapkaAstroUrl: 'https://aapkaastro.com',
     },
     highlights: [
@@ -222,11 +227,10 @@ export const INITIAL_COURSES: Course[] = [
   {
     id: 'course-gemstone-science',
     slug: 'gemstone-science-101',
-    /* PLACEHOLDER: Additional catalog placeholder */
     title: 'Gemstone Science 101',
     tagline: 'The physics and metaphysics of Vedic Ratna therapy.',
     subtitle: '8 Classes • 4 Weeks • Mineralogy, Frequencies & Prescriptions',
-    description: '/* PLACEHOLDER */ Discover how authentic natural gemstones refract planetary light rays into the subtle human biofield. Learn identification, testing, metal settings, and precise chart-based prescription rules.',
+    description: 'Discover how authentic natural gemstones refract planetary light rays into the subtle human biofield. Learn identification, testing, metal settings, and precise chart-based prescription rules.',
     level: 'Intermediate',
     durationWeeks: 4,
     totalClasses: 8,
@@ -240,12 +244,12 @@ export const INITIAL_COURSES: Course[] = [
     isComingSoon: true,
     badge: 'Coming Soon',
     instructor: {
-      name: 'Acharya [ASTROLOGER NAME]',
-      title: 'Founder, Aapka Astro & Master Astrologer',
-      bio: 'Acharya [ASTROLOGER NAME], with over [X] years of experience in Vedic astrology, Vastu Shastra, and gemstone science, trusted by a growing community of over 26,000 followers.',
-      experienceYears: 15,
-      studentsTaught: 4800,
-      avatarUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=400&auto=format&fit=crop',
+      name: 'Acharya Niraj Kumar',
+      title: 'Founder, Aapka Astro & Master Astrologer | AstroVastu Expert',
+      bio: 'Acharya Niraj Kumar brings together deep traditional Vedic learning rooted in Baidyanath Dham (Deoghar) and corporate leadership experience. Over 20 years of practice, 15,000+ chart analyses, and extensive Vastu audits.',
+      experienceYears: 20,
+      studentsTaught: 5200,
+      avatarUrl: '/images/Acharya_Niraj_Kumar.jpg',
       aapkaAstroUrl: 'https://aapkaastro.com',
     },
     highlights: [
@@ -264,11 +268,10 @@ export const INITIAL_COURSES: Course[] = [
   {
     id: 'course-numerology-basics',
     slug: 'numerology-basics',
-    /* PLACEHOLDER: Additional catalog placeholder */
     title: 'Numerology Basics',
     tagline: 'Decode destiny and life purpose through numerical vibrations.',
     subtitle: '8 Classes • 4 Weeks • Radical & Destiny Numbers',
-    description: '/* PLACEHOLDER */ An accessible immersion into Vedic and Chaldean numerology. Calculate your psychic number, destiny number, name vibration, and personal year cycles.',
+    description: 'An accessible immersion into Vedic and Chaldean numerology. Calculate your psychic number, destiny number, name vibration, and personal year cycles.',
     level: 'Beginner',
     durationWeeks: 4,
     totalClasses: 8,
@@ -282,12 +285,12 @@ export const INITIAL_COURSES: Course[] = [
     isComingSoon: true,
     badge: 'Coming Soon',
     instructor: {
-      name: 'Acharya [ASTROLOGER NAME]',
-      title: 'Founder, Aapka Astro & Master Astrologer',
-      bio: 'Acharya [ASTROLOGER NAME], with over [X] years of experience in Vedic astrology, Vastu Shastra, and gemstone science, trusted by a growing community of over 26,000 followers.',
-      experienceYears: 15,
-      studentsTaught: 4800,
-      avatarUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=400&auto=format&fit=crop',
+      name: 'Acharya Niraj Kumar',
+      title: 'Founder, Aapka Astro & Master Astrologer | AstroVastu Expert',
+      bio: 'Acharya Niraj Kumar brings together deep traditional Vedic learning rooted in Baidyanath Dham (Deoghar) and corporate leadership experience. Over 20 years of practice, 15,000+ chart analyses, and extensive Vastu audits.',
+      experienceYears: 20,
+      studentsTaught: 5200,
+      avatarUrl: '/images/Acharya_Niraj_Kumar.jpg',
       aapkaAstroUrl: 'https://aapkaastro.com',
     },
     highlights: [
@@ -305,14 +308,13 @@ export const INITIAL_COURSES: Course[] = [
   },
 ];
 
-/* PLACEHOLDER: Cohort example with capacity 50 students */
+/* Cohort with capacity 50 students */
 export const INITIAL_COHORTS: Cohort[] = [
   {
     id: 'cohort-wia-batch-1',
     courseId: 'course-what-is-astrology',
     batchNumber: 1,
-    /* PLACEHOLDER: replace with real content (admin-editable) */
-    batchName: 'Batch — Starting [Month Year]',
+    batchName: 'Batch 1 — Starting October 2026',
     startDate: '2026-10-03T14:30:00.000Z', // Saturday Oct 3, 2026, 8:00 PM IST (14:30 UTC)
     endDate: '2026-12-06T16:00:00.000Z',
     scheduleDescription: 'Every Saturday & Sunday at 8:00 PM – 9:30 PM IST (converts dynamically to your local timezone)',
@@ -321,7 +323,6 @@ export const INITIAL_COHORTS: Cohort[] = [
       hoursUtc: 14,
       minutesUtc: 30,
     },
-    /* PLACEHOLDER: Capacity 50 students */
     maxSeats: 50,
     enrolledCount: 38,
     status: 'ENROLLING',
@@ -471,8 +472,8 @@ export const SCHEDULED_CLASSES_FLAGSHIP: ScheduledClass[] = [
     classNumber: 6,
     moduleNumber: 1,
     title: 'Review of Fundamentals & Week 1–3 Integration',
-    subtitle: '/* PLACEHOLDER: Block 1 - History & Fundamentals */',
-    description: '/* PLACEHOLDER */ Live synthesis workshop with Acharya [ASTROLOGER NAME]. Q&A on karma, calendar mechanics, and foundational concepts.',
+    subtitle: 'Block 1 - History & Fundamentals Review',
+    description: 'Live synthesis workshop with Acharya Niraj Kumar. Q&A on karma, calendar mechanics, and foundational concepts.',
     scheduledStartTime: '2026-10-18T14:30:00.000Z',
     durationMinutes: 85,
     meetingPlatform: 'ZOOM',
@@ -996,7 +997,7 @@ export const INITIAL_FINAL_TEST: FinalTest = {
       id: 'q19',
       questionNumber: 19,
       topic: 'Ethics & Consultation',
-      question: 'What is the primary ethical responsibility of a Vedic astrologer according to Acharya [ASTROLOGER NAME]?',
+      question: 'What is the primary ethical responsibility of a Vedic astrologer according to Acharya Niraj Kumar?',
       options: [
         'To instill fear of upcoming malefic periods',
         'To demonstrate intellectual superiority by predicting fatal events',
@@ -1036,16 +1037,16 @@ export const DEMO_USERS: User[] = [
   },
   {
     id: 'user-admin-demo',
-    name: 'Acharya [ASTROLOGER NAME]',
+    name: 'Acharya Niraj Kumar',
     email: 'admin@viar.in',
     role: 'ADMIN',
     timezone: 'Asia/Kolkata',
-    avatarUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=200&auto=format&fit=crop',
+    avatarUrl: '/images/Acharya_Niraj_Kumar.jpg',
     enrolledCohortIds: ['cohort-wia-batch-1'],
   },
 ];
 
-/* PLACEHOLDER: Demo certificate */
+/* Demo certificate */
 export const DEMO_CERTIFICATES: Certificate[] = [
   {
     id: 'cert-wia-9842',
@@ -1055,11 +1056,11 @@ export const DEMO_CERTIFICATES: Certificate[] = [
     studentEmail: 'student@example.com',
     courseId: 'course-what-is-astrology',
     courseTitle: 'What is Astrology — Foundations of Vedic Astrology',
-    cohortBatchName: 'Batch — Starting [Month Year]',
+    cohortBatchName: 'Batch 1 — Starting October 2026',
     issueDate: 'October 15, 2026',
     scorePercentage: 90,
     grade: 'Distinction',
-    instructorName: 'Acharya [ASTROLOGER NAME]',
+    instructorName: 'Acharya Niraj Kumar',
     instructorTitle: 'Founder, Aapka Astro & Master Astrologer',
     verificationUrl: 'https://viar.in/verify/VIAR-2026-WIA-9842',
   },

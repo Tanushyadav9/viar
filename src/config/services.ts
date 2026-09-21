@@ -12,6 +12,10 @@ export interface SisterService {
   description: string;
   ctaText: string;
   badge: string;
+  logo?: string;
+  phone?: string;
+  email?: string;
+  whatsappUrl?: string;
 }
 
 export const SISTER_SERVICES: Record<'aapkaAstro' | 'dowConsulting', SisterService> = {
@@ -21,9 +25,13 @@ export const SISTER_SERVICES: Record<'aapkaAstro' | 'dowConsulting', SisterServi
     url: 'https://aapkaastro.com',
     tagline: '1-on-1 Personal Astrology & Vastu Consultations',
     description:
-      'Private birth chart readings, Kundli matching, Prashna Jyotish, and residential Vastu audits directly with Acharya [ASTROLOGER NAME].',
+      'Private birth chart readings, Kundli matching, Prashna Jyotish, and residential Vastu audits directly with Acharya Niraj Kumar.',
     ctaText: 'Book Personal Consultation',
     badge: 'Sister Platform',
+    logo: '/images/aapkaastro-logo.png',
+    phone: '+91 93112 15564',
+    email: 'ask@aapkaastro.com',
+    whatsappUrl: 'https://wa.me/919311215564',
   },
   dowConsulting: {
     name: 'DOW Consulting',

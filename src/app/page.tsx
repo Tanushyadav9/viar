@@ -59,7 +59,7 @@ export default function HomePage() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
           </span>
-          <span className="font-bold text-amber-300">Cohort Enrolling:</span> {cohort?.batchName || 'Batch — Starting [Month Year]'} (Capacity: {cohort?.maxSeats || 50} students). Only {cohort ? cohort.maxSeats - cohort.enrolledCount : 12} seats remaining!
+          <span className="font-bold text-amber-300">Cohort Enrolling:</span> {cohort?.batchName || 'Batch 1 — Starting October 2026'} (Capacity: {cohort?.maxSeats || 50} students). Only {cohort ? cohort.maxSeats - cohort.enrolledCount : 12} seats remaining!
           <Link href="/courses/what-is-astrology" className="underline font-bold text-white hover:text-amber-100 ml-1">
             Claim Your Seat &rarr;
           </Link>
@@ -86,10 +86,9 @@ export default function HomePage() {
             </h1>
 
             {/* Subtitle */}
-            {/* PLACEHOLDER: replace with real instructor bio */}
             <p className="text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed mb-10 font-normal">
-              A comprehensive online education platform run by <strong className="text-amber-300">Acharya [ASTROLOGER NAME]</strong> (founder of <a href="https://aapkaastro.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Aapka Astro</a>). 
-              With over [X] years of experience in Vedic astrology, Vastu Shastra, and gemstone science, trusted by a growing community of over 26,000 followers.
+              A comprehensive online education platform run by <strong className="text-amber-300">Acharya Niraj Kumar</strong> (founder of <a href="https://aapkaastro.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Aapka Astro</a>). 
+              Blending traditional learning from Baidyanath Dham (Deoghar) with 20+ years of senior executive leadership, over 15,000 chart analyses, and a trusted global community of 26,000+ followers.
             </p>
 
             {/* CTA Group */}
@@ -352,8 +351,7 @@ export default function HomePage() {
                     </div>
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                      {/* PLACEHOLDER: replace with real instructor name */}
-                      <span className="text-sm text-slate-300">Direct chart review with Acharya [ASTROLOGER NAME]</span>
+                      <span className="text-sm text-slate-300">Direct chart review with Acharya Niraj Kumar</span>
                     </div>
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
@@ -384,7 +382,6 @@ export default function HomePage() {
       </section>
 
       {/* Instructor / Lineage Section */}
-      {/* PLACEHOLDER: replace with real content */}
       <section className="py-20 bg-[#090d16] border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
@@ -392,13 +389,13 @@ export default function HomePage() {
             
             <div className="lg:col-span-5 text-center lg:text-left">
               <div className="relative inline-block">
-                <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-2xl overflow-hidden border-2 border-amber-500/40 shadow-2xl mx-auto relative">
+                <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-2xl overflow-hidden border-2 border-amber-500/40 shadow-2xl mx-auto relative group">
                   <Image
-                    src="https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=600&auto=format&fit=crop"
-                    alt="Acharya [ASTROLOGER NAME]"
+                    src="/images/Acharya_Niraj_Kumar.jpg"
+                    alt="Acharya Niraj Kumar"
                     fill
                     sizes="(max-width: 640px) 224px, 256px"
-                    className="object-cover"
+                    className="object-cover transition duration-500 group-hover:scale-105"
                   />
                 </div>
                 <div className="absolute -bottom-4 -right-2 bg-[#0f172a] border border-amber-400/40 px-3.5 py-1.5 rounded-xl shadow-xl">
@@ -409,21 +406,18 @@ export default function HomePage() {
 
             <div className="lg:col-span-7">
               <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Master Instructor & Lineage</span>
-              {/* PLACEHOLDER: replace with real instructor name */}
               <h3 className="text-3xl sm:text-4xl font-extrabold text-white mt-2 mb-4">
-                Acharya [ASTROLOGER NAME]
+                Acharya Niraj Kumar
               </h3>
-              {/* PLACEHOLDER: replace with real experience stats */}
               <p className="text-sm font-semibold text-amber-300 mb-6">
-                Founder, Aapka Astro • Vedic Astrology, Vastu Shastra & Gemstone Science • 26,000+ Followers
+                Founder, Aapka Astro • Jyotish Acharya (Bhartiya Vidya Bhawan) • AstroVastu Expert • 26,000+ Followers
               </p>
-              {/* PLACEHOLDER: reuse consistent bio language */}
               <div className="space-y-4 text-slate-300 text-sm leading-relaxed">
                 <p>
-                  &quot;Acharya [ASTROLOGER NAME], with over [X] years of experience in Vedic astrology, Vastu Shastra, and gemstone science, trusted by a growing community of over 26,000 followers.&quot;
+                  Acharya Niraj Kumar brings together deep traditional Vedic learning and rare real-world corporate insight. Raised in the spiritually rich ecosystem of Baidyanath Dham, Deoghar, and trained under Late Guru Shri B. B. Tiwari, his practice spans over two decades and more than 15,000 personal chart interpretations.
                 </p>
                 <p>
-                  Having served thousands of clients across India, North America, Europe, and the Middle East through his consultation platform <a href="https://aapkaastro.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline font-semibold">Aapka Astro (aapkaastro.com)</a>, Acharya [ASTROLOGER NAME] created <strong>Viar.in</strong> to systematically train serious students through deep cohort immersions.
+                  Having served clients worldwide through <a href="https://aapkaastro.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline font-semibold">Aapka Astro (aapkaastro.com)</a> and holding past executive roles as Vice President and Business Head at Reliance Retail and Metro Cash & Carry, Acharya created <strong>Viar.in</strong> to systematically train serious learners in authentic Jyotish without superstition.
                 </p>
               </div>
 
@@ -656,8 +650,7 @@ export default function HomePage() {
               Trusted by Students Across India & Worldwide
             </h2>
             <p className="text-slate-400 text-sm sm:text-base">
-              {/* PLACEHOLDER: replace with real content */}
-              Read authentic feedback from working professionals, educators, and global learners who study with Acharya [ASTROLOGER NAME].
+              Read authentic feedback from working professionals, educators, and global learners who study with Acharya Niraj Kumar.
             </p>
           </div>
 
@@ -707,7 +700,6 @@ export default function HomePage() {
       </section>
 
       {/* YouTube Preview Embed Section */}
-      {/* PLACEHOLDER: replace with real YouTube embed */}
       <section className="py-20 bg-[#090d16] border-t border-white/10">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-red-500/10 border border-red-500/25 text-red-300 text-xs font-semibold uppercase tracking-wider mb-4">
@@ -718,13 +710,13 @@ export default function HomePage() {
             Experience the Teaching Method
           </h2>
           <p className="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed mb-8">
-            Watch a preview excerpt from Class 1 of <em>&ldquo;What is Astrology&rdquo;</em> with <strong className="text-amber-300">Acharya [ASTROLOGER NAME]</strong> as he explains how celestial geometry translates into human consciousness.
+            Watch an introduction and lecture excerpt with <strong className="text-amber-300">Acharya Niraj Kumar</strong> as he explains how celestial geometry translates into human consciousness.
           </p>
 
           <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/30 shadow-2xl bg-black aspect-video max-w-4xl mx-auto">
             <iframe
-              src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0"
-              title="Viar.in Masterclass Preview"
+              src="https://www.youtube-nocookie.com/embed/hibDdoH5kbQ?si=1fp_acyv9bs01pLm"
+              title="Aapka Astro & Viar.in Masterclass Preview"
               loading="lazy"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
@@ -733,15 +725,14 @@ export default function HomePage() {
           </div>
 
           <p className="text-xs text-slate-400 mt-4 flex items-center justify-center gap-2">
-            <span>Official YouTube Channel:</span>
-            {/* PLACEHOLDER: replace with client channel link */}
+            <span>Official Video Channel:</span>
             <a
-              href="https://youtube.com/@aapkaastro_official"
+              href="https://www.youtube.com/watch?v=hibDdoH5kbQ"
               target="_blank"
               rel="noopener noreferrer"
               className="text-amber-400 hover:text-amber-300 underline font-medium inline-flex items-center gap-1"
             >
-              @aapkaastro_official <ExternalLink className="w-3 h-3 inline" />
+              Aapka Astro on YouTube <ExternalLink className="w-3 h-3 inline" />
             </a>
           </p>
         </div>
@@ -794,7 +785,7 @@ export default function HomePage() {
               Our Other Services
             </h2>
             <p className="text-slate-400 text-sm sm:text-base">
-              Viar.in is part of a unified ecosystem founded by Acharya [ASTROLOGER NAME]. Whether you require personal astrological consultations or strategic enterprise advisory, explore our sister platforms.
+              Viar.in is part of a unified ecosystem founded by Acharya Niraj Kumar. Whether you require personal astrological consultations or strategic enterprise advisory, explore our sister platforms.
             </p>
           </div>
 
@@ -804,25 +795,41 @@ export default function HomePage() {
             <div className="cosmic-card p-8 rounded-2xl border border-amber-500/30 hover:border-amber-400/50 transition flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <Image
+                      src="/images/aapkaastro-logo.png"
+                      alt="Aapka Astro Logo"
+                      width={120}
+                      height={32}
+                      className="h-8 w-auto object-contain brightness-110"
+                    />
+                  </div>
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
                     {SISTER_SERVICES.aapkaAstro.badge}
                   </span>
-                  <ExternalLink className="w-4 h-4 text-amber-400" />
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-2">{SISTER_SERVICES.aapkaAstro.name}</h3>
-                <p className="text-xs font-semibold text-amber-300 mb-4">{SISTER_SERVICES.aapkaAstro.domain} • 35,000+ Consultations</p>
+                <p className="text-xs font-semibold text-amber-300 mb-4">{SISTER_SERVICES.aapkaAstro.domain} • 15,000+ Consultations • +91 93112 15564</p>
                 <p className="text-sm text-slate-300 leading-relaxed mb-6">
                   {SISTER_SERVICES.aapkaAstro.description}
                 </p>
               </div>
-              <div className="pt-6 border-t border-white/10">
+              <div className="pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center gap-3">
                 <a
                   href={SISTER_SERVICES.aapkaAstro.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="gold-button w-full py-3 rounded-xl text-xs font-bold text-center block"
+                  className="gold-button w-full sm:flex-1 py-3 rounded-xl text-xs font-bold text-center block"
                 >
                   {SISTER_SERVICES.aapkaAstro.ctaText} &rarr;
+                </a>
+                <a
+                  href="https://wa.me/919311215564"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto px-4 py-3 rounded-xl text-xs font-bold text-center bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 transition block"
+                >
+                  WhatsApp
                 </a>
               </div>
             </div>
@@ -868,9 +875,8 @@ export default function HomePage() {
           <h2 className="text-3xl sm:text-5xl font-black text-white mb-4">
             Begin Your Sacred Journey in Jyotish
           </h2>
-          {/* PLACEHOLDER: replace with real content */}
           <p className="text-slate-300 max-w-xl mx-auto text-base mb-8">
-            Seats in the upcoming cohort of &quot;What is Astrology&quot; are strictly capped at 50 students to ensure personal interaction with Acharya [ASTROLOGER NAME].
+            Seats in the upcoming cohort of &quot;What is Astrology&quot; are strictly capped at 50 students to ensure personal interaction with Acharya Niraj Kumar.
           </p>
           <Link
             href="/courses/what-is-astrology"

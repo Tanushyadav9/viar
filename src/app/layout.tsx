@@ -19,21 +19,21 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: 'Viar.in | Online Vedic Astrology Education Academy',
-  /* PLACEHOLDER: replace with real instructor name */
   description:
-    'Viar.in is a premier online astrology academy by Acharya [ASTROLOGER NAME] (Aapka Astro). Live cohort classes on Zoom/Meet, recordings, final test, and verifiable certification.',
+    'Viar.in is a premier online astrology academy by Acharya Niraj Kumar (Aapka Astro). Live cohort classes on Zoom/Meet, recordings, final test, and verifiable certification.',
   keywords: [
     'astrology courses',
     'vedic astrology classes',
     'jyotish academy',
+    'acharya niraj kumar',
     'what is astrology course',
     'aapka astro',
     'learn astrology online',
   ],
   openGraph: {
-    title: 'Viar.in — Live Vedic Astrology Academy',
+    title: 'Viar.in — Live Vedic Astrology Academy by Acharya Niraj Kumar',
     description:
-      'Learn authentic Vedic astrology in live interactive cohorts with Acharya [ASTROLOGER NAME]. 18 classes, recordings, and certification.',
+      'Learn authentic Vedic astrology in live interactive cohorts with Acharya Niraj Kumar. 18 classes, recordings, and certification.',
     url: 'https://viar.in',
     siteName: 'Viar.in',
     type: 'website',

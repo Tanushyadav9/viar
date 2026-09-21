@@ -244,7 +244,7 @@ export default function CohortClassByClassPage() {
                         </div>
 
                         <div>
-                          <h3 className="text-xl font-bold text-white">Join Acharya [ASTROLOGER NAME] Live</h3>
+                          <h3 className="text-xl font-bold text-white">Join Acharya Niraj Kumar Live</h3>
                           <p className="text-xs text-slate-300 mt-1 max-w-md mx-auto">
                             The live broadcast is underway on {activeClass.meetingPlatform || 'Zoom'}. Click below to join the session.
                           </p>
@@ -340,7 +340,7 @@ export default function CohortClassByClassPage() {
                       </div>
 
                       <p className="text-[11px] text-slate-500 italic">
-                        Missed the live broadcast? The HD recording will appear here automatically once uploaded by Acharya [ASTROLOGER NAME].
+                        Missed the live broadcast? The HD recording will appear here automatically once uploaded by Acharya Niraj Kumar.
                       </p>
                     </div>
                   );

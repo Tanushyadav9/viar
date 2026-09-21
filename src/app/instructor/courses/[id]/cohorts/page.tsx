@@ -24,7 +24,7 @@ export default function CourseCohortsPage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [isCreating, setIsCreating] = useState(false);
-  const [batchName, setBatchName] = useState('Batch — Starting [Month Year]');
+  const [batchName, setBatchName] = useState('Batch 2 — Starting November 2026');
   const [startDate, setStartDate] = useState('2026-11-07');
   const [scheduleDesc, setScheduleDesc] = useState('Every Saturday & Sunday at 8:00 PM – 9:30 PM IST');
   const [maxSeats, setMaxSeats] = useState('50');
@@ -132,7 +132,7 @@ export default function CourseCohortsPage() {
                     required
                     value={batchName}
                     onChange={(e) => setBatchName(e.target.value)}
-                    placeholder="Batch — Starting [Month Year]"
+                    placeholder="e.g. Batch 2 — Starting November 2026"
                     className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400"
                   />
                 </div>

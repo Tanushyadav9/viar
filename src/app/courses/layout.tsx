@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Course Catalog | Vedic Astrology Academy | Viar.in',
   description:
-    'Explore authentic Vedic astrology courses by Acharya [ASTROLOGER NAME]. Interactive live Zoom cohorts, structured 3-week blocks, final examination, and recognized certification.',
+    'Explore authentic Vedic astrology courses by Acharya Niraj Kumar. Interactive live Zoom cohorts, structured 3-week blocks, final examination, and recognized certification.',
   keywords: [
     'vedic astrology courses',
     'jyotish curriculum',

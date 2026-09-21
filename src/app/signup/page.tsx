@@ -110,7 +110,7 @@ function SignupContent() {
             Create Student Account
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Join the upcoming Vedic Jyotish cohort with Acharya [ASTROLOGER NAME].
+            Join the upcoming Vedic Jyotish cohort with Acharya Niraj Kumar.
           </p>
         </div>
 

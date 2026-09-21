@@ -265,8 +265,7 @@ export default function Navbar() {
                 >
                   <ShieldCheck className="w-4 h-4 text-purple-400" />
                   <div>
-                    {/* PLACEHOLDER: replace with real instructor name */}
-                    <p className="font-semibold">Admin: Acharya [ASTROLOGER NAME]</p>
+                    <p className="font-semibold">Admin: Acharya Niraj Kumar</p>
                     <p className="text-[10px] text-slate-400">Class Schedule, Zoom Links & Roster</p>
                   </div>
                 </button>

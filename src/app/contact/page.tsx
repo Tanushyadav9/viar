@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import {
   Sparkles,
   Mail,
@@ -9,7 +10,8 @@ import {
   CheckCircle2,
   ExternalLink,
   ShieldCheck,
-  Send
+  Send,
+  Phone
 } from 'lucide-react';
 
 import { SISTER_SERVICES } from '@/config/services';
@@ -50,7 +52,7 @@ export default function ContactPage() {
           <div className="lg:col-span-5 space-y-6">
             
             <div className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4">
-              <h3 className="text-lg font-bold text-white mb-2">Academic Office</h3>
+              <h3 className="text-lg font-bold text-white mb-2">Academic & Admissions Office</h3>
               
               <div className="flex items-start gap-3 text-xs sm:text-sm text-slate-300">
                 <Mail className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
@@ -58,6 +60,16 @@ export default function ContactPage() {
                   <span className="font-semibold text-white block">Admissions & Support</span>
                   <a href="mailto:admissions@viar.in" className="text-amber-300 hover:underline">
                     admissions@viar.in
+                  </a>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 text-xs sm:text-sm text-slate-300">
+                <Phone className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold text-white block">WhatsApp Student Desk</span>
+                  <a href="https://wa.me/919311215564" target="_blank" rel="noopener noreferrer" className="text-emerald-300 hover:underline">
+                    +91 93112 15564
                   </a>
                 </div>
               </div>
@@ -81,20 +93,42 @@ export default function ContactPage() {
 
             {/* Note on Private Consultations */}
             <div className="cosmic-card p-6 rounded-2xl border border-amber-500/30 bg-[#0e1320] space-y-3">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">{SISTER_SERVICES.aapkaAstro.badge}</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Image
+                    src="/images/aapkaastro-logo.png"
+                    alt="Aapka Astro"
+                    width={90}
+                    height={24}
+                    className="h-6 w-auto object-contain brightness-110"
+                  />
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">{SISTER_SERVICES.aapkaAstro.badge}</span>
+              </div>
               <h4 className="text-sm font-bold text-white">{SISTER_SERVICES.aapkaAstro.tagline}</h4>
               <p className="text-xs text-slate-300 leading-relaxed">
                 {SISTER_SERVICES.aapkaAstro.description}
               </p>
-              <a
-                href={SISTER_SERVICES.aapkaAstro.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="gold-button w-full py-2.5 rounded-xl text-xs font-bold text-center inline-flex items-center justify-center gap-1.5 mt-2"
-              >
-                <span>{SISTER_SERVICES.aapkaAstro.ctaText}</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+              <div className="flex items-center gap-2 pt-1">
+                <a
+                  href={SISTER_SERVICES.aapkaAstro.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="gold-button flex-1 py-2.5 rounded-xl text-xs font-bold text-center inline-flex items-center justify-center gap-1.5"
+                >
+                  <span>{SISTER_SERVICES.aapkaAstro.ctaText}</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+                <a
+                  href="https://wa.me/919311215564"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2.5 rounded-xl text-xs font-bold text-center bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 transition inline-flex items-center gap-1"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>WhatsApp</span>
+                </a>
+              </div>
             </div>
 
             {/* Corporate Advisory Note */}

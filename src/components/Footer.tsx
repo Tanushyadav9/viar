@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Sparkles, ShieldCheck, Video, Award, Clock, ExternalLink } from 'lucide-react';
+import Image from 'next/image';
+import { Sparkles, ShieldCheck, Video, Award, Clock, ExternalLink, Phone, Mail } from 'lucide-react';
 import { SISTER_SERVICES } from '@/config/services';
 
 export default function Footer() {
@@ -24,7 +25,7 @@ export default function Footer() {
                 Explore Consultations & Corporate Advisory
               </h3>
               <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-                Looking for 1-on-1 private chart readings or corporate muhurta consulting? Connect with our sister platforms founded by Acharya [ASTROLOGER NAME].
+                Looking for 1-on-1 private chart readings or corporate muhurta consulting? Connect with our sister platforms founded by Acharya Niraj Kumar.
               </p>
             </div>
 
@@ -33,9 +34,16 @@ export default function Footer() {
                 href={SISTER_SERVICES.aapkaAstro.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 inline-flex items-center gap-1.5 transition"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 inline-flex items-center gap-2 transition"
               >
-                <span>{SISTER_SERVICES.aapkaAstro.name} ({SISTER_SERVICES.aapkaAstro.domain})</span>
+                <Image
+                  src="/images/aapkaastro-logo.png"
+                  alt="Aapka Astro"
+                  width={60}
+                  height={18}
+                  className="h-4 w-auto object-contain brightness-110"
+                />
+                <span>{SISTER_SERVICES.aapkaAstro.name}</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
               <a
@@ -95,9 +103,8 @@ export default function Footer() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-white">Aapka Astro Pedigree</h4>
-              {/* PLACEHOLDER: replace with real content */}
               <p className="text-xs text-slate-400 mt-0.5">
-                Taught directly by Acharya [ASTROLOGER NAME], founder of aapkaastro.com.
+                Taught directly by Acharya Niraj Kumar, founder of aapkaastro.com.
               </p>
             </div>
           </div>
@@ -230,45 +237,60 @@ export default function Footer() {
           </div>
 
           <div>
-            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">Connect & Social</h5>
-            {/* PLACEHOLDER: replace with real social handles later */}
+            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">Connect & Channels</h5>
             <ul className="space-y-2.5 text-xs text-slate-400">
               <li>
                 <a
-                  href="https://youtube.com/@aapkaastro_official"
+                  href="https://wa.me/919311215564"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-amber-400 transition flex items-center gap-1.5"
+                  className="hover:text-emerald-400 transition flex items-center gap-1.5 text-slate-300 font-medium"
                 >
-                  <span>YouTube Channel</span>
-                  <span className="text-[10px] text-amber-500/80">(Placeholder)</span>
+                  <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>+91 93112 15564 (WhatsApp)</span>
                 </a>
               </li>
               <li>
                 <a
-                  href="https://instagram.com/aapkaastro_official"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-amber-400 transition flex items-center gap-1.5"
+                  href="mailto:ask@aapkaastro.com"
+                  className="hover:text-amber-300 transition flex items-center gap-1.5"
                 >
-                  <span>Instagram</span>
-                  <span className="text-[10px] text-amber-500/80">(Placeholder)</span>
+                  <Mail className="w-3.5 h-3.5 text-amber-400" />
+                  <span>ask@aapkaastro.com</span>
                 </a>
               </li>
               <li>
                 <a
-                  href="https://facebook.com/aapkaastro_official"
+                  href="https://www.instagram.com/aapkaastrologer/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-amber-400 transition flex items-center gap-1.5"
                 >
-                  <span>Facebook Page</span>
-                  <span className="text-[10px] text-amber-500/80">(Placeholder)</span>
+                  <span>Instagram: @aapkaastrologer</span>
+                  <ExternalLink className="w-3 h-3 inline" />
                 </a>
               </li>
-              <li className="pt-2 text-[11px] text-slate-500 italic">
-                {/* Note: Real social handles will be provided later */}
-                Real handles to be plugged in upon launch
+              <li>
+                <a
+                  href="https://www.facebook.com/aapkaastro"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-amber-400 transition flex items-center gap-1.5"
+                >
+                  <span>Facebook: /aapkaastro</span>
+                  <ExternalLink className="w-3 h-3 inline" />
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://www.youtube.com/watch?v=hibDdoH5kbQ"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-amber-400 transition flex items-center gap-1.5"
+                >
+                  <span>YouTube: Aapka Astro</span>
+                  <ExternalLink className="w-3 h-3 inline" />
+                </a>
               </li>
             </ul>
           </div>

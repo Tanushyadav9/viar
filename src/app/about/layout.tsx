@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'About Acharya [ASTROLOGER NAME] | Founder, Aapka Astro & Viar.in',
+  title: 'About Acharya Niraj Kumar | Founder, Aapka Astro & Viar.in',
   description:
-    'Learn about Acharya [ASTROLOGER NAME], with over [X] years of experience in Vedic astrology, Vastu Shastra, and gemstone science, trusted by over 26,000 followers.',
+    'Learn about Acharya Niraj Kumar, Jyotish Acharya (Bhartiya Vidya Bhawan), AstroVastu expert, and former VP & Business Head with over 20 years of Vedic practice, trusted by 26,000+ followers.',
   openGraph: {
-    title: 'About Acharya [ASTROLOGER NAME] — Master Astrologer',
+    title: 'About Acharya Niraj Kumar — Master Astrologer & AstroVastu Expert',
     description:
-      'Learn about Acharya [ASTROLOGER NAME], founder of Aapka Astro and instructor at Viar.in.',
+      'Learn about Acharya Niraj Kumar, founder of Aapka Astro and lead instructor at Viar.in.',
     url: 'https://viar.in/about',
     siteName: 'Viar.in',
     type: 'profile',

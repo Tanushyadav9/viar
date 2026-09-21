@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const title = `${course.title} | Live Vedic Astrology Course | Viar.in`;
-  const description = `${course.tagline} Live interactive cohort on Zoom/Meet with Acharya [ASTROLOGER NAME]. ${course.totalClasses} classes, lifetime recordings, final exam, and verifiable certificate.`;
+  const description = `${course.tagline} Live interactive cohort on Zoom/Meet with Acharya Niraj Kumar. ${course.totalClasses} classes, lifetime recordings, final exam, and verifiable certificate.`;
 
   return {
     title,

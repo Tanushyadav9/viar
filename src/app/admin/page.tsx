@@ -182,13 +182,12 @@ export default function AdminPortalPage() {
       featured: false,
       badge: 'New Cohort',
       instructor: {
-        /* PLACEHOLDER: replace with real content */
-        name: 'Acharya [ASTROLOGER NAME]',
-        title: 'Founder, Aapka Astro',
-        bio: 'Acharya [ASTROLOGER NAME], with over [X] years of experience in Vedic astrology, Vastu Shastra, and gemstone science, trusted by a growing community of over 26,000 followers.',
-        experienceYears: 15,
-        studentsTaught: 4800,
-        avatarUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=400&auto=format&fit=crop',
+        name: 'Acharya Niraj Kumar',
+        title: 'Founder, Aapka Astro & Master Astrologer',
+        bio: 'Acharya Niraj Kumar brings together deep traditional Vedic learning rooted in Baidyanath Dham (Deoghar) and corporate leadership experience. Over 20 years of practice and 15,000+ chart analyses.',
+        experienceYears: 20,
+        studentsTaught: 5200,
+        avatarUrl: '/images/Acharya_Niraj_Kumar.jpg',
         aapkaAstroUrl: 'https://aapkaastro.com',
       },
       highlights: [
@@ -230,8 +229,7 @@ export default function AdminPortalPage() {
                 Admin Console
               </span>
               <span className="text-slate-500">•</span>
-              {/* PLACEHOLDER: replace with real instructor name */}
-              <span className="text-xs text-slate-400">Acharya [ASTROLOGER NAME]</span>
+              <span className="text-xs text-slate-400">Acharya Niraj Kumar</span>
             </div>
             <h1 className="text-3xl font-black text-white mt-1">
               Viar.in Academy Management

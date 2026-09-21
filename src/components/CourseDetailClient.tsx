@@ -327,7 +327,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
               <div className="pt-4 border-t border-white/10 space-y-2 text-xs text-slate-300">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>18 interactive live video classes with Acharya</span>
+                  <span>18 interactive live video classes with Acharya Niraj Kumar</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
@@ -469,7 +469,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                 <Sparkles className="w-6 h-6" />
               </div>
               <span className="text-xs font-bold text-white block">Accredited by Viar.in</span>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Signed by Acharya [ASTROLOGER NAME]</span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">Signed by Acharya Niraj Kumar</span>
             </div>
           </div>
         </div>

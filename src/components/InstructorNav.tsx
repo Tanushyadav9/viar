@@ -30,8 +30,7 @@ export default function InstructorNav() {
               Instructor Dashboard
             </span>
             <span className="text-slate-500">•</span>
-            {/* PLACEHOLDER: replace with real instructor name */}
-            <span className="text-xs text-slate-400">Acharya [ASTROLOGER NAME]</span>
+            <span className="text-xs text-slate-400">Acharya Niraj Kumar</span>
           </div>
           <h1 className="text-3xl font-black text-white mt-1">
             Academy Management System

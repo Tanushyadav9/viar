@@ -55,12 +55,12 @@ export default function InstructorCoursesPage() {
       badge: 'Active Cohort',
       quizUnlockCondition,
       instructor: {
-        name: 'Acharya [ASTROLOGER NAME]',
-        title: 'Founder, Aapka Astro',
-        bio: 'Acharya [ASTROLOGER NAME], with over [X] years of experience in Vedic astrology, Vastu Shastra, and gemstone science, trusted by a growing community of over 26,000 followers.',
-        experienceYears: 15,
-        studentsTaught: 4800,
-        avatarUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=400&auto=format&fit=crop',
+        name: 'Acharya Niraj Kumar',
+        title: 'Founder, Aapka Astro & Master Astrologer',
+        bio: 'Acharya Niraj Kumar brings together deep traditional Vedic learning rooted in Baidyanath Dham (Deoghar) and corporate leadership experience. Over 20 years of practice and 15,000+ chart analyses.',
+        experienceYears: 20,
+        studentsTaught: 5200,
+        avatarUrl: '/images/Acharya_Niraj_Kumar.jpg',
         aapkaAstroUrl: 'https://aapkaastro.com',
       },
       highlights: [

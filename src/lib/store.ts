@@ -180,9 +180,8 @@ export const ViarStore = {
         studentName: submission.studentName,
         studentEmail: submission.studentEmail,
         courseId: test.courseId,
-        /* PLACEHOLDER: replace with real content */
         courseTitle: 'What is Astrology — Foundations of Vedic Astrology',
-        cohortBatchName: 'Batch — Starting [Month Year]',
+        cohortBatchName: 'Batch 1 — Starting October 2026',
         issueDate: new Date().toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'long',
@@ -190,8 +189,7 @@ export const ViarStore = {
         }),
         scorePercentage,
         grade,
-        /* PLACEHOLDER: replace with real content */
-        instructorName: 'Acharya [ASTROLOGER NAME]',
+        instructorName: 'Acharya Niraj Kumar',
         instructorTitle: 'Founder, Aapka Astro & Master Astrologer',
         verificationUrl: `${typeof window !== 'undefined' ? window.location.origin : 'https://viar.in'}/verify/${verificationCode}`,
       };
