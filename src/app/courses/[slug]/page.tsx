@@ -1,501 +1,130 @@
-'use client';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { INITIAL_COURSES } from '@/lib/data';
+import CourseDetailClient from '@/components/CourseDetailClient';
 
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import {
-  Sparkles,
-  Clock,
-  CheckCircle2,
-  ShieldCheck,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
-  Star,
-  Globe,
-  Bell,
-} from 'lucide-react';
-import { ViarStore } from '@/lib/store';
-import { Course, Cohort, ScheduledClass } from '@/lib/types';
-import { formatInTimezone, getUserLocalTimezone } from '@/lib/timezones';
-import { PLACEHOLDER_TESTIMONIALS } from '@/lib/data';
-
-export default function CourseDetailPage() {
-  const params = useParams();
-  const slug = params?.slug as string;
-
-  const [course, setCourse] = useState<Course | null>(null);
-  const [cohort, setCohort] = useState<Cohort | null>(null);
-  const [classes, setClasses] = useState<ScheduledClass[]>([]);
-  const [userTz, setUserTz] = useState<string>('Asia/Kolkata');
-  const [openModule, setOpenModule] = useState<number | null>(1);
-  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
-  const [notifyEmail, setNotifyEmail] = useState('');
-  const [notifySuccess, setNotifySuccess] = useState(false);
-
-  useEffect(() => {
-    const targetCourse = ViarStore.getCourseBySlug(slug) || ViarStore.getCourseBySlug('what-is-astrology');
-    if (targetCourse) {
-      setCourse(targetCourse);
-      const cohorts = ViarStore.getCohorts(targetCourse.id);
-      if (cohorts.length > 0) {
-        setCohort(cohorts[0]);
-        setClasses(ViarStore.getClasses(cohorts[0].id));
-      }
-    }
-
-    const tz = ViarStore.getTimezone() || getUserLocalTimezone();
-    setUserTz(tz);
-
-    // Auto-detect currency based on geo-IP / timezone, overridable by the user
-    const savedCurrency = (typeof window !== 'undefined' ? localStorage.getItem('viar_user_currency') : null) as 'INR' | 'USD' | null;
-    if (savedCurrency) {
-      setCurrency(savedCurrency);
-    } else {
-      const isIndiaTimezone = tz.toLowerCase().includes('kolkata') || tz.toLowerCase().includes('calcutta') || tz.toLowerCase().includes('india');
-      setCurrency(isIndiaTimezone ? 'INR' : 'USD');
-    }
-
-    const handleTzChange = () => {
-      setUserTz(ViarStore.getTimezone());
-    };
-    window.addEventListener('timezone-changed', handleTzChange);
-    return () => window.removeEventListener('timezone-changed', handleTzChange);
-  }, [slug]);
-
-  const handleCurrencySelect = (selectedCurrency: 'INR' | 'USD') => {
-    setCurrency(selectedCurrency);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('viar_user_currency', selectedCurrency);
-    }
+interface Props {
+  params: {
+    slug: string;
   };
+}
 
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const course = INITIAL_COURSES.find((c) => c.slug === params.slug) || INITIAL_COURSES[0];
   if (!course) {
-    return (
-      <div className="min-h-screen cosmic-bg flex items-center justify-center p-4">
-        <div className="text-center">
-          <Sparkles className="w-8 h-8 text-amber-400 mx-auto animate-spin mb-4" />
-          <p className="text-slate-300">Loading course curriculum...</p>
-        </div>
-      </div>
-    );
+    return {
+      title: 'Course Not Found | Viar.in',
+    };
   }
 
-  const seatsLeft = cohort ? Math.max(cohort.maxSeats - cohort.enrolledCount, 2) : 18;
-  const progressPercent = cohort ? Math.round((cohort.enrolledCount / cohort.maxSeats) * 100) : 70;
+  const title = `${course.title} | Live Vedic Astrology Course | Viar.in`;
+  const description = `${course.tagline} Live interactive cohort on Zoom/Meet with Acharya [ASTROLOGER NAME]. ${course.totalClasses} classes, lifetime recordings, final exam, and verifiable certificate.`;
+
+  return {
+    title,
+    description,
+    keywords: [
+      course.title,
+      'vedic astrology course',
+      'learn astrology online',
+      'jyotish masterclass',
+      'aapka astro',
+      'acharya',
+      'astrology certification',
+    ],
+    openGraph: {
+      title,
+      description,
+      url: `https://viar.in/courses/${course.slug}`,
+      siteName: 'Viar.in',
+      type: 'website',
+      images: [
+        {
+          url: course.instructor.avatarUrl,
+          width: 800,
+          height: 600,
+          alt: course.title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [course.instructor.avatarUrl],
+    },
+    alternates: {
+      canonical: `https://viar.in/courses/${course.slug}`,
+    },
+  };
+}
+
+export default function CourseDetailPage({ params }: Props) {
+  const course = INITIAL_COURSES.find((c) => c.slug === params.slug) || INITIAL_COURSES[0];
+
+  if (!course) {
+    notFound();
+  }
+
+  // Schema.org Course Structured Data (JSON-LD)
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Course',
+    name: course.title,
+    description: course.description,
+    provider: {
+      '@type': 'Organization',
+      name: 'Viar.in',
+      url: 'https://viar.in',
+      sameAs: 'https://aapkaastro.com',
+    },
+    instructor: {
+      '@type': 'Person',
+      name: course.instructor.name,
+      jobTitle: course.instructor.title,
+      url: 'https://aapkaastro.com',
+    },
+    educationalCredentialAwarded: 'Certificate of Completion in Vedic Astrology',
+    occupationalCredentialAwarded: 'Jyotish Foundations Accredited Certificate',
+    totalHistoricalEnrollment: 4800,
+    coursePrerequisites: 'None. Open to passionate beginners worldwide.',
+    offers: [
+      {
+        '@type': 'Offer',
+        price: course.priceInr,
+        priceCurrency: 'INR',
+        availability: 'https://schema.org/InStock',
+        category: 'Tuition',
+        url: `https://viar.in/courses/${course.slug}`,
+      },
+      {
+        '@type': 'Offer',
+        price: course.priceUsd,
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+        category: 'Tuition',
+        url: `https://viar.in/courses/${course.slug}`,
+      },
+    ],
+    hasCourseInstance: {
+      '@type': 'CourseInstance',
+      courseMode: 'online',
+      duration: `P${course.durationWeeks}W`,
+      courseWorkload: `PT${course.totalClasses * 1.5}H`,
+      instructor: {
+        '@type': 'Person',
+        name: course.instructor.name,
+      },
+    },
+  };
 
   return (
-    <div className="cosmic-bg min-h-screen py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Breadcrumbs */}
-        <div className="flex items-center gap-2 text-xs text-slate-400 mb-8">
-          <Link href="/" className="hover:text-amber-400 transition">Home</Link>
-          <span>/</span>
-          <Link href="/courses" className="hover:text-amber-400 transition">Courses</Link>
-          <span>/</span>
-          <span className="text-amber-300 font-medium">{course.title}</span>
-        </div>
-
-        {/* Hero Header */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16">
-          
-          <div className="lg:col-span-8">
-            <div className="flex flex-wrap items-center gap-3 mb-4">
-              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                {course.badge || 'Cohort Batch'}
-              </span>
-              <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 text-slate-300 border border-white/10">
-                {course.level} Level
-              </span>
-              <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 text-slate-300 border border-white/10 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-amber-400" />
-                {course.durationWeeks} Weeks • {course.totalClasses} Live Masterclasses
-              </span>
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight mb-4">
-              {course.title}
-            </h1>
-            <p className="text-lg text-amber-300/90 font-medium mb-6">
-              {course.tagline}
-            </p>
-            <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-8">
-              {course.description}
-            </p>
-
-            {/* Value Highlights */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-              {course.highlights.map((hl, i) => (
-                <div key={i} className="flex items-start gap-2.5 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <span className="text-xs text-slate-300">{hl}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Instructor Quick Card */}
-            {/* PLACEHOLDER: replace with real instructor info */}
-            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center gap-4">
-              <img
-                src={course.instructor.avatarUrl}
-                alt={course.instructor.name}
-                className="w-14 h-14 rounded-xl object-cover border border-amber-500/30 shrink-0"
-              />
-              <div>
-                <h4 className="text-sm font-bold text-white">{course.instructor.name}</h4>
-                <p className="text-xs text-amber-300">{course.instructor.title}</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  Over [X] years experience • Founder of{' '}
-                  <a
-                    href="https://aapkaastro.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline text-amber-300 hover:text-white inline-flex items-center gap-0.5"
-                  >
-                    Aapka Astro <ExternalLink className="w-2.5 h-2.5 inline" />
-                  </a>
-                  {' '}• 26,000+ followers
-                </p>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Sticky Enrollment Card */}
-          <div className="lg:col-span-4">
-            <div className="cosmic-card p-6 rounded-2xl border border-amber-500/40 bg-[#0c101c] sticky top-28 shadow-2xl">
-              
-              {/* Currency Selector */}
-              <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
-                <span className="text-xs text-slate-400 font-medium">Select Currency:</span>
-                <div className="flex rounded-lg bg-white/5 p-1 border border-white/10">
-                  <button
-                    onClick={() => handleCurrencySelect('INR')}
-                    className={`px-3 py-1 rounded text-xs font-bold transition ${
-                      currency === 'INR' ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    ₹ INR
-                  </button>
-                  <button
-                    onClick={() => handleCurrencySelect('USD')}
-                    className={`px-3 py-1 rounded text-xs font-bold transition ${
-                      currency === 'USD' ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    $ USD
-                  </button>
-                </div>
-              </div>
-              <p className="text-[10px] text-slate-400 mb-4 text-right">
-                Auto-detected from region • Click to switch
-              </p>
-
-              {/* Price display */}
-              <div className="mb-6">
-                <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Tuition (One-Time)</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  {currency === 'INR' ? (
-                    <>
-                      <span className="text-3xl font-black text-white">₹{course.priceInr.toLocaleString()}</span>
-                      <span className="text-sm text-slate-500 line-through">₹{course.originalPriceInr.toLocaleString()}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-3xl font-black text-white">${course.priceUsd}</span>
-                      <span className="text-sm text-slate-500 line-through">${course.originalPriceUsd}</span>
-                    </>
-                  )}
-                  <span className="text-xs font-bold text-emerald-400">Save 40%</span>
-                </div>
-                <p className="text-[11px] text-slate-400 mt-1">Includes all {course.totalClasses} classes, recordings & certificate.</p>
-              </div>
-
-              {/* Cohort Details & Local Timezone Conversion */}
-              {cohort && (
-                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-6 space-y-2 text-xs">
-                  <div className="flex items-center justify-between text-amber-300 font-bold">
-                    <span>{cohort.batchName}</span>
-                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-[10px]">Active</span>
-                  </div>
-                  
-                  <div className="text-slate-300">
-                    <p className="font-semibold text-white">Class Start Date:</p>
-                    <p className="text-amber-200">{formatInTimezone(cohort.startDate, userTz, 'short')}</p>
-                  </div>
-
-                  <div className="text-slate-300">
-                    <p className="font-semibold text-white flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-amber-400" />
-                      Live Schedule (in your timezone):
-                    </p>
-                    <p className="text-slate-300">
-                      {cohort.scheduleDescription || 'Scheduled classes'} at{' '}
-                      <strong className="text-white">
-                        {formatInTimezone(cohort.startDate, userTz, 'timeOnly')}
-                      </strong>
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Timezone: {userTz}</p>
-                  </div>
-
-                  {/* Seat urgency */}
-                  <div className="pt-2 border-t border-amber-500/20">
-                    <div className="flex justify-between text-[11px] mb-1 font-semibold">
-                      <span className="text-amber-300">Batch Filling Fast</span>
-                      <span className="text-white">{seatsLeft} seats left</span>
-                    </div>
-                    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full"
-                        style={{ width: `${progressPercent}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Checkout CTA or Notify Me Form (Requirement 6.3) */}
-              {course.isComingSoon ? (
-                <div className="space-y-3 p-4 rounded-2xl bg-purple-500/10 border border-purple-500/30">
-                  <div className="flex items-center gap-2 text-purple-300 font-bold text-xs">
-                    <Bell className="w-4 h-4" />
-                    <span>Early Cohort Access (Coming Soon)</span>
-                  </div>
-                  <p className="text-[11px] text-slate-300 leading-normal">
-                    Enrollment is not yet open for {course.title}. Enter your email to be notified the moment Batch 01 opens.
-                  </p>
-                  {notifySuccess ? (
-                    <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>You are on the priority list!</span>
-                    </div>
-                  ) : (
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        if (!notifyEmail) return;
-                        ViarStore.saveNotifyMeLead({
-                          courseId: course.id,
-                          courseTitle: course.title,
-                          email: notifyEmail,
-                        });
-                        setNotifySuccess(true);
-                      }}
-                      className="space-y-2"
-                    >
-                      <input
-                        type="email"
-                        required
-                        value={notifyEmail}
-                        onChange={(e) => setNotifyEmail(e.target.value)}
-                        placeholder="your.email@example.com"
-                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-400"
-                      />
-                      <button
-                        type="submit"
-                        className="w-full py-2.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition shadow-md"
-                      >
-                        Notify Me Upon Launch
-                      </button>
-                    </form>
-                  )}
-                </div>
-              ) : (
-                <Link
-                  href={`/checkout/${cohort?.id || 'cohort-wia-batch-1'}?currency=${currency}`}
-                  className="gold-button w-full py-3.5 rounded-xl text-center font-bold text-sm shadow-xl shadow-amber-500/20 block"
-                >
-                  Enroll Now • Instant Access
-                </Link>
-              )}
-
-              <div className="mt-4 space-y-1.5 text-[11px] text-slate-400 text-center">
-                <p className="flex items-center justify-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Secure checkout via Razorpay & Stripe</span>
-                </p>
-                <p>Attend live on Zoom/Meet or watch recordings anytime.</p>
-              </div>
-
-            </div>
-          </div>
-
-        </div>
-
-        {/* Dynamic Curriculum Accordion (Requirement 6.3) */}
-        <div className="py-12 border-t border-white/10">
-          <div className="max-w-4xl mx-auto">
-            
-            <div className="text-center mb-12">
-              <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Complete Syllabus</span>
-              <h2 className="text-3xl font-black text-white mt-1">
-                The {course.totalClasses}-Class Master Curriculum
-              </h2>
-              <p className="text-sm text-slate-400 mt-2">
-                Divided into {course.modules.length} progressive blocks ({course.totalClasses} classes) over {course.durationWeeks} weeks from cosmic fundamentals to real chart synthesis.
-              </p>
-            </div>
-
-            <div className="space-y-6">
-              {course.modules.map((mod) => {
-                const isExpanded = openModule === mod.moduleNumber;
-                const modClasses = classes.filter((c) => c.moduleNumber === mod.moduleNumber);
-
-                return (
-                  <div
-                    key={mod.id}
-                    className="rounded-2xl border border-white/10 bg-[#0d121f] overflow-hidden transition"
-                  >
-                    {/* Header */}
-                    <button
-                      onClick={() => setOpenModule(isExpanded ? null : mod.moduleNumber)}
-                      className="w-full p-6 text-left flex items-center justify-between gap-4 hover:bg-white/[0.02] transition"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 font-bold flex items-center justify-center text-sm border border-amber-500/30 shrink-0">
-                          M{mod.moduleNumber}
-                        </div>
-                        <div>
-                          <h3 className="text-base sm:text-lg font-bold text-white">
-                            {mod.title}
-                          </h3>
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            {mod.classCount} Classes • Classes {mod.classNumbers.join(', ')}
-                          </p>
-                        </div>
-                      </div>
-                      {isExpanded ? (
-                        <ChevronUp className="w-5 h-5 text-amber-400 shrink-0" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400 shrink-0" />
-                      )}
-                    </button>
-
-                    {/* Classes inside Module */}
-                    {isExpanded && (
-                      <div className="px-6 pb-6 pt-2 border-t border-white/5 space-y-4">
-                        <p className="text-xs text-slate-400 italic mb-3">{mod.description}</p>
-                        
-                        <div className="space-y-3">
-                          {modClasses.map((cls) => (
-                            <div
-                              key={cls.id}
-                              className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                            >
-                              <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">
-                                    Class {cls.classNumber}:
-                                  </span>
-                                  <h4 className="text-sm font-semibold text-white">
-                                    {cls.title}
-                                  </h4>
-                                </div>
-                                <p className="text-xs text-slate-400">{cls.description}</p>
-                              </div>
-
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-[11px] text-slate-400 px-2.5 py-1 rounded bg-white/5 border border-white/10 font-mono">
-                                  {cls.durationMinutes} mins
-                                </span>
-                                {cls.recording ? (
-                                  <span className="text-[11px] text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 font-medium">
-                                    Recording Ready
-                                  </span>
-                                ) : (
-                                  <span className="text-[11px] text-amber-300 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 font-medium">
-                                    Live Session
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-          </div>
-        </div>
-
-        {/* Course Testimonials Section */}
-        {/* PLACEHOLDER: replace with real student testimonials */}
-        <div className="py-16 border-t border-white/10">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-10">
-              <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Student Reviews</span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1">
-                Feedback on &ldquo;{course.title}&rdquo;
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {PLACEHOLDER_TESTIMONIALS.slice(0, 4).map((test) => (
-                <div
-                  key={test.id}
-                  className="cosmic-card p-6 rounded-2xl border border-white/10 flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-1">
-                        {[...Array(test.rating)].map((_, i) => (
-                          <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                        ))}
-                      </div>
-                      {test.isInternational && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30 flex items-center gap-1">
-                          <Globe className="w-3 h-3" />
-                          International
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs sm:text-sm font-semibold text-amber-200 mb-2">
-                      &ldquo;{test.highlight}&rdquo;
-                    </p>
-                    <p className="text-xs text-slate-300 leading-relaxed mb-4">
-                      {test.content.replace('/* PLACEHOLDER */ ', '')}
-                    </p>
-                  </div>
-                  <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-                    <span className="font-semibold text-white">{test.name}</span>
-                    <span className="text-slate-500">{test.location}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Course FAQ Section */}
-        {course.faqs && course.faqs.length > 0 && (
-          <div className="py-16 border-t border-white/10">
-            <div className="max-w-4xl mx-auto">
-              <div className="text-center mb-10">
-                <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Common Questions</span>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1">
-                  Course FAQs
-                </h2>
-              </div>
-              <div className="space-y-3">
-                {course.faqs.map((faq, index) => (
-                  <div
-                    key={index}
-                    className="p-5 rounded-2xl bg-white/[0.02] border border-white/10"
-                  >
-                    <h3 className="text-sm font-bold text-white mb-2">{faq.question}</h3>
-                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">{faq.answer}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-      </div>
-    </div>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <CourseDetailClient slug={params.slug} />
+    </>
   );
 }

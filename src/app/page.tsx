@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Sparkles,
   CheckCircle2,
@@ -391,11 +392,13 @@ export default function HomePage() {
             
             <div className="lg:col-span-5 text-center lg:text-left">
               <div className="relative inline-block">
-                <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-2xl overflow-hidden border-2 border-amber-500/40 shadow-2xl mx-auto">
-                  <img
+                <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-2xl overflow-hidden border-2 border-amber-500/40 shadow-2xl mx-auto relative">
+                  <Image
                     src="https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=600&auto=format&fit=crop"
                     alt="Acharya [ASTROLOGER NAME]"
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="(max-width: 640px) 224px, 256px"
+                    className="object-cover"
                   />
                 </div>
                 <div className="absolute -bottom-4 -right-2 bg-[#0f172a] border border-amber-400/40 px-3.5 py-1.5 rounded-xl shadow-xl">
@@ -722,6 +725,7 @@ export default function HomePage() {
             <iframe
               src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0"
               title="Viar.in Masterclass Preview"
+              loading="lazy"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               className="w-full h-full object-cover"

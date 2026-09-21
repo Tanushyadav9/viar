@@ -208,6 +208,7 @@ export default function CohortClassByClassPage() {
                       <iframe
                         src={activeClass.recording.videoUrl}
                         title={activeClass.title}
+                        loading="lazy"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
                         className="w-full h-full object-cover"

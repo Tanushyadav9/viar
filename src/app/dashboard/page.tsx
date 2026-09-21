@@ -492,6 +492,7 @@ function StudentDashboardContent() {
                   <iframe
                     src={selectedClassForNotes.recording.videoUrl}
                     title={selectedClassForNotes.title}
+                    loading="lazy"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     className="w-full h-full"

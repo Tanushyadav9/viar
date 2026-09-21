@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Sparkles,
   Award,
@@ -38,11 +39,14 @@ export default function AboutPage() {
             
             <div className="lg:col-span-5 text-center">
               <div className="relative inline-block mx-auto">
-                <div className="w-64 h-64 sm:w-80 sm:h-80 rounded-3xl overflow-hidden border-2 border-amber-500/40 shadow-2xl mx-auto">
-                  <img
+                <div className="w-64 h-64 sm:w-80 sm:h-80 rounded-3xl overflow-hidden border-2 border-amber-500/40 shadow-2xl mx-auto relative">
+                  <Image
                     src="https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=800&auto=format&fit=crop"
                     alt="Acharya [ASTROLOGER NAME]"
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="(max-width: 640px) 256px, 320px"
+                    className="object-cover"
+                    priority
                   />
                 </div>
                 <div className="absolute -bottom-4 right-0 bg-[#0f172a] border border-amber-400/40 px-4 py-2 rounded-xl shadow-xl">

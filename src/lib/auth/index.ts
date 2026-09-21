@@ -110,6 +110,8 @@ class DefaultAuthProvider implements AuthProvider {
         timezone: user.timezone,
         enrolledCohortIds: user.enrolledCohortIds,
       });
+      document.cookie = `viar_session=${user.id}; path=/; max-age=2592000; SameSite=Lax`;
+      document.cookie = `viar_user_role=${user.role}; path=/; max-age=2592000; SameSite=Lax`;
       window.dispatchEvent(new Event('user-role-changed'));
     }
 
@@ -147,6 +149,8 @@ class DefaultAuthProvider implements AuthProvider {
         timezone: user.timezone,
         enrolledCohortIds: user.enrolledCohortIds,
       });
+      document.cookie = `viar_session=${user.id}; path=/; max-age=2592000; SameSite=Lax`;
+      document.cookie = `viar_user_role=${user.role}; path=/; max-age=2592000; SameSite=Lax`;
       window.dispatchEvent(new Event('user-role-changed'));
     }
 
@@ -175,6 +179,8 @@ class DefaultAuthProvider implements AuthProvider {
         avatarUrl: user.avatarUrl,
         enrolledCohortIds: user.enrolledCohortIds,
       });
+      document.cookie = `viar_session=${user.id}; path=/; max-age=2592000; SameSite=Lax`;
+      document.cookie = `viar_user_role=${user.role}; path=/; max-age=2592000; SameSite=Lax`;
       window.dispatchEvent(new Event('user-role-changed'));
     }
 
@@ -184,6 +190,8 @@ class DefaultAuthProvider implements AuthProvider {
   async signOut(): Promise<void> {
     if (typeof window !== 'undefined') {
       ViarStore.resetToDefaults();
+      document.cookie = 'viar_session=; path=/; max-age=0';
+      document.cookie = 'viar_user_role=; path=/; max-age=0';
       window.dispatchEvent(new Event('user-role-changed'));
     }
   }

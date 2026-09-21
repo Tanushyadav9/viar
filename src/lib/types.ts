@@ -13,10 +13,13 @@ export interface User {
 export interface CourseModule {
   id: string;
   moduleNumber: number;
+  number?: number;
   title: string;
   description: string;
   classCount: number;
   classNumbers: number[];
+  weeks?: string;
+  classRange?: string;
 }
 
 export interface Course {
@@ -98,6 +101,7 @@ export interface Cohort {
     minutesUtc: number;
   };
   maxSeats: number;
+  capacity?: number;
   enrolledCount: number;
   status: CohortStatus;
   enrollmentDeadline: string;
@@ -128,11 +132,13 @@ export interface ScheduledClass {
   id: string;
   cohortId: string;
   classNumber: number;
+  sessionNumber?: number;
   moduleNumber: number;
   title: string;
   subtitle: string;
   description: string;
   scheduledStartTime: string; // ISO 8601 UTC
+  scheduledAt?: string;
   durationMinutes: number;
   meetingPlatform: MeetingPlatform;
   joinUrl: string;
