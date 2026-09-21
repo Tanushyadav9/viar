@@ -12,6 +12,8 @@ import {
   Send
 } from 'lucide-react';
 
+import { SISTER_SERVICES } from '@/config/services';
+
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [name, setName] = useState('');
@@ -63,51 +65,51 @@ export default function ContactPage() {
               <div className="flex items-start gap-3 text-xs sm:text-sm text-slate-300">
                 <Globe className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-semibold text-white block">Global Students</span>
-                  <p className="text-xs text-slate-400">Class timing support for US, UK, EU, UAE & APAC timezones.</p>
+                  <span className="font-semibold text-white block">Academic Coordination</span>
+                  <span>New Delhi, India • Serving students worldwide</span>
                 </div>
               </div>
 
               <div className="flex items-start gap-3 text-xs sm:text-sm text-slate-300">
                 <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-semibold text-white block">Office Hours</span>
-                  <p className="text-xs text-slate-400">Monday – Saturday: 10:00 AM – 7:00 PM IST</p>
+                  <span className="font-semibold text-white block">Response Hours</span>
+                  <span>Monday – Saturday: 10:00 AM – 7:00 PM IST</span>
                 </div>
               </div>
             </div>
 
             {/* Note on Private Consultations */}
             <div className="cosmic-card p-6 rounded-2xl border border-amber-500/30 bg-[#0e1320] space-y-3">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">Private Consultations Note</span>
-              <h4 className="text-sm font-bold text-white">Seeking personal horoscope readings?</h4>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">{SISTER_SERVICES.aapkaAstro.badge}</span>
+              <h4 className="text-sm font-bold text-white">{SISTER_SERVICES.aapkaAstro.tagline}</h4>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Viar.in is strictly an educational academy. For private 1-on-1 consultations with Acharya [ASTROLOGER NAME], please visit his official consultation portal:
+                {SISTER_SERVICES.aapkaAstro.description}
               </p>
               <a
-                href="https://aapkaastro.com"
+                href={SISTER_SERVICES.aapkaAstro.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="gold-button w-full py-2.5 rounded-xl text-xs font-bold text-center inline-flex items-center justify-center gap-1.5 mt-2"
               >
-                <span>Visit AapkaAstro.com</span>
+                <span>{SISTER_SERVICES.aapkaAstro.ctaText}</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
 
             {/* Corporate Advisory Note */}
             <div className="cosmic-card p-6 rounded-2xl border border-sky-500/20 bg-[#0d1424] space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-sky-300">Corporate & Institutional</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-sky-300">{SISTER_SERVICES.dowConsulting.badge}</span>
               <p className="text-xs text-slate-300 leading-relaxed">
-                For strategic organizational advisory, leadership alignment, or founder consulting:
+                {SISTER_SERVICES.dowConsulting.description}
               </p>
               <a
-                href="https://dowconsulting.in"
+                href={SISTER_SERVICES.dowConsulting.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-sky-300 hover:text-white underline font-semibold inline-flex items-center gap-1"
               >
-                <span>dowconsulting.in</span>
+                <span>{SISTER_SERVICES.dowConsulting.domain}</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>

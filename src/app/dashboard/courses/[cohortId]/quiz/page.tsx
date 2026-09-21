@@ -9,7 +9,8 @@ import {
   CheckCircle2,
   XCircle,
   ArrowLeft,
-  RotateCcw
+  RotateCcw,
+  Lock
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { FinalTest, Certificate, User, Cohort } from '@/lib/types';
@@ -27,6 +28,7 @@ export default function FinalQuizPage() {
   const [percentage, setPercentage] = useState(0);
   const [isPassed, setIsPassed] = useState(false);
   const [certificate, setCertificate] = useState<Certificate | null>(null);
+  const [forceUnlock, setForceUnlock] = useState(false);
 
   useEffect(() => {
     const t = ViarStore.getFinalTest(cohortId);
@@ -87,6 +89,45 @@ export default function FinalQuizPage() {
     return (
       <div className="min-h-screen cosmic-bg flex items-center justify-center p-4">
         <Sparkles className="w-8 h-8 text-amber-400 animate-spin" />
+      </div>
+    );
+  }
+
+  const quizUnlock = ViarStore.isQuizUnlocked(cohort.id);
+
+  if (!isSubmitted && !forceUnlock && !quizUnlock.isUnlocked) {
+    return (
+      <div className="cosmic-bg min-h-screen py-16 px-4">
+        <div className="max-w-lg mx-auto text-center cosmic-card p-8 rounded-3xl border border-amber-500/30 shadow-2xl space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+              Prerequisite Required
+            </span>
+            <h2 className="text-2xl font-black text-white mt-1">
+              Final Exam is Locked
+            </h2>
+            <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+              {quizUnlock.reason}
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col gap-2.5">
+            <Link
+              href={`/dashboard/courses/${cohort.id}`}
+              className="gold-button w-full py-3 rounded-xl text-xs font-bold text-center block"
+            >
+              Return to Classes & Complete Syllabus &rarr;
+            </Link>
+            <button
+              onClick={() => setForceUnlock(true)}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 transition"
+            >
+              (Instructor Demo: Bypass & Unlock Exam)
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

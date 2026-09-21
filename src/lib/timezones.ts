@@ -69,6 +69,7 @@ export function formatInTimezone(
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
+        timeZoneName: 'short',
       }).format(date);
     }
 
@@ -87,6 +88,63 @@ export function formatInTimezone(
     console.error('Timezone format error:', err);
     return new Date(isoDateString).toLocaleString();
   }
+}
+
+/**
+ * Calculates whether a student can access the live Zoom/Meet link.
+ * Link becomes visible only within 15 minutes of start (or when class is LIVE).
+ * Otherwise, precise countdown is returned.
+ */
+export function getJoinWindowStatus(
+  isoStartTime: string,
+  windowMinutes: number = 15,
+  durationMinutes: number = 90
+): {
+  isWithinWindow: boolean;
+  isLive: boolean;
+  isPast: boolean;
+  canJoin: boolean;
+  minutesUntilStart: number;
+  secondsUntilStart: number;
+  formattedCountdown: string;
+} {
+  const startMs = new Date(isoStartTime).getTime();
+  const endMs = startMs + durationMinutes * 60 * 1000;
+  const nowMs = Date.now();
+
+  const windowStartMs = startMs - windowMinutes * 60 * 1000;
+  const isPast = nowMs > endMs;
+  const isLive = nowMs >= startMs && nowMs <= endMs;
+  const isWithinWindow = nowMs >= windowStartMs && nowMs <= endMs;
+  const canJoin = isWithinWindow || isLive;
+
+  const msUntilStart = Math.max(0, startMs - nowMs);
+  const secondsUntilStart = Math.floor(msUntilStart / 1000);
+  const minutesUntilStart = Math.floor(secondsUntilStart / 60);
+
+  const days = Math.floor(secondsUntilStart / (3600 * 24));
+  const hours = Math.floor((secondsUntilStart % (3600 * 24)) / 3600);
+  const mins = Math.floor((secondsUntilStart % 3600) / 60);
+  const secs = secondsUntilStart % 60;
+
+  let formattedCountdown = '';
+  if (days > 0) {
+    formattedCountdown = `${days}d ${hours}h ${mins}m`;
+  } else if (hours > 0) {
+    formattedCountdown = `${hours}h ${mins}m ${secs}s`;
+  } else {
+    formattedCountdown = `${mins}m ${secs}s`;
+  }
+
+  return {
+    isWithinWindow,
+    isLive,
+    isPast,
+    canJoin,
+    minutesUntilStart,
+    secondsUntilStart,
+    formattedCountdown,
+  };
 }
 
 export function getRelativeClassTime(isoDateString: string): {

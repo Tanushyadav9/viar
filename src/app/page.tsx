@@ -22,6 +22,7 @@ import { ViarStore } from '@/lib/store';
 import { Course, Cohort } from '@/lib/types';
 import { formatInTimezone, getUserLocalTimezone } from '@/lib/timezones';
 import { PLACEHOLDER_TESTIMONIALS } from '@/lib/data';
+import { SISTER_SERVICES } from '@/config/services';
 
 export default function HomePage() {
   const [course, setCourse] = useState<Course | null>(null);
@@ -800,24 +801,24 @@ export default function HomePage() {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    Consultation Platform
+                    {SISTER_SERVICES.aapkaAstro.badge}
                   </span>
                   <ExternalLink className="w-4 h-4 text-amber-400" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">Aapka Astro</h3>
-                <p className="text-xs font-semibold text-amber-300 mb-4">aapkaastro.com • 35,000+ Consultations</p>
+                <h3 className="text-2xl font-bold text-white mb-2">{SISTER_SERVICES.aapkaAstro.name}</h3>
+                <p className="text-xs font-semibold text-amber-300 mb-4">{SISTER_SERVICES.aapkaAstro.domain} • 35,000+ Consultations</p>
                 <p className="text-sm text-slate-300 leading-relaxed mb-6">
-                  Private 1-on-1 Vedic consultations with Acharya [ASTROLOGER NAME]. Get personalized horoscope readings, marriage compatibility (Kundali Milan), career forecasting, gemstone advice, and Vastu analysis.
+                  {SISTER_SERVICES.aapkaAstro.description}
                 </p>
               </div>
               <div className="pt-6 border-t border-white/10">
                 <a
-                  href="https://aapkaastro.com"
+                  href={SISTER_SERVICES.aapkaAstro.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="gold-button w-full py-3 rounded-xl text-xs font-bold text-center block"
                 >
-                  Book Private Consultation on Aapka Astro &rarr;
+                  {SISTER_SERVICES.aapkaAstro.ctaText} &rarr;
                 </a>
               </div>
             </div>
@@ -827,24 +828,24 @@ export default function HomePage() {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                    Corporate Advisory
+                    {SISTER_SERVICES.dowConsulting.badge}
                   </span>
                   <ExternalLink className="w-4 h-4 text-sky-400" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">DOW Consulting</h3>
-                <p className="text-xs font-semibold text-sky-300 mb-4">dowconsulting.in • Strategic Advisory</p>
+                <h3 className="text-2xl font-bold text-white mb-2">{SISTER_SERVICES.dowConsulting.name}</h3>
+                <p className="text-xs font-semibold text-sky-300 mb-4">{SISTER_SERVICES.dowConsulting.domain} • Enterprise Advisory</p>
                 <p className="text-sm text-slate-300 leading-relaxed mb-6">
-                  Executive advisory and organizational strategy for founders, enterprise leaders, and institutions. Harmonizing high-stakes decision-making with cosmic timing principles and analytical rigor.
+                  {SISTER_SERVICES.dowConsulting.description}
                 </p>
               </div>
               <div className="pt-6 border-t border-white/10">
                 <a
-                  href="https://dowconsulting.in"
+                  href={SISTER_SERVICES.dowConsulting.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-5 py-3 rounded-xl text-xs font-bold text-center block bg-sky-600/20 hover:bg-sky-600/30 text-sky-200 border border-sky-500/40 transition"
                 >
-                  Visit DOW Consulting Advisory &rarr;
+                  {SISTER_SERVICES.dowConsulting.ctaText} &rarr;
                 </a>
               </div>
             </div>

@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Star,
   Globe,
+  Bell,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort, ScheduledClass } from '@/lib/types';
@@ -29,6 +30,8 @@ export default function CourseDetailPage() {
   const [userTz, setUserTz] = useState<string>('Asia/Kolkata');
   const [openModule, setOpenModule] = useState<number | null>(1);
   const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
+  const [notifyEmail, setNotifyEmail] = useState('');
+  const [notifySuccess, setNotifySuccess] = useState(false);
 
   useEffect(() => {
     const targetCourse = ViarStore.getCourseBySlug(slug) || ViarStore.getCourseBySlug('what-is-astrology');
@@ -206,7 +209,7 @@ export default function CourseDetailPage() {
                   )}
                   <span className="text-xs font-bold text-emerald-400">Save 40%</span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">Includes all 18 classes, recordings & certificate.</p>
+                <p className="text-[11px] text-slate-400 mt-1">Includes all {course.totalClasses} classes, recordings & certificate.</p>
               </div>
 
               {/* Cohort Details & Local Timezone Conversion */}
@@ -228,7 +231,7 @@ export default function CourseDetailPage() {
                       Live Schedule (in your timezone):
                     </p>
                     <p className="text-slate-300">
-                      Every Saturday & Sunday at{' '}
+                      {cohort.scheduleDescription || 'Scheduled classes'} at{' '}
                       <strong className="text-white">
                         {formatInTimezone(cohort.startDate, userTz, 'timeOnly')}
                       </strong>
@@ -252,15 +255,52 @@ export default function CourseDetailPage() {
                 </div>
               )}
 
-              {/* Checkout CTA */}
+              {/* Checkout CTA or Notify Me Form (Requirement 6.3) */}
               {course.isComingSoon ? (
-                /* PLACEHOLDER: Additional catalog placeholder, not yet open for enrollment */
-                <button
-                  disabled
-                  className="w-full py-3.5 rounded-xl text-center font-bold text-sm bg-white/10 text-purple-300/70 border border-purple-500/30 cursor-not-allowed block"
-                >
-                  Coming Soon • Enrollment Opens Soon
-                </button>
+                <div className="space-y-3 p-4 rounded-2xl bg-purple-500/10 border border-purple-500/30">
+                  <div className="flex items-center gap-2 text-purple-300 font-bold text-xs">
+                    <Bell className="w-4 h-4" />
+                    <span>Early Cohort Access (Coming Soon)</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-normal">
+                    Enrollment is not yet open for {course.title}. Enter your email to be notified the moment Batch 01 opens.
+                  </p>
+                  {notifySuccess ? (
+                    <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>You are on the priority list!</span>
+                    </div>
+                  ) : (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!notifyEmail) return;
+                        ViarStore.saveNotifyMeLead({
+                          courseId: course.id,
+                          courseTitle: course.title,
+                          email: notifyEmail,
+                        });
+                        setNotifySuccess(true);
+                      }}
+                      className="space-y-2"
+                    >
+                      <input
+                        type="email"
+                        required
+                        value={notifyEmail}
+                        onChange={(e) => setNotifyEmail(e.target.value)}
+                        placeholder="your.email@example.com"
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-400"
+                      />
+                      <button
+                        type="submit"
+                        className="w-full py-2.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition shadow-md"
+                      >
+                        Notify Me Upon Launch
+                      </button>
+                    </form>
+                  )}
+                </div>
               ) : (
                 <Link
                   href={`/checkout/${cohort?.id || 'cohort-wia-batch-1'}?currency=${currency}`}
@@ -283,18 +323,17 @@ export default function CourseDetailPage() {
 
         </div>
 
-        {/* Full 18-Class Curriculum Accordion */}
+        {/* Dynamic Curriculum Accordion (Requirement 6.3) */}
         <div className="py-12 border-t border-white/10">
           <div className="max-w-4xl mx-auto">
             
             <div className="text-center mb-12">
               <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Complete Syllabus</span>
               <h2 className="text-3xl font-black text-white mt-1">
-                The 18-Class Master Curriculum
+                The {course.totalClasses}-Class Master Curriculum
               </h2>
-              {/* PLACEHOLDER: 3-week block structure */}
               <p className="text-sm text-slate-400 mt-2">
-                Divided into 3 progressive blocks (18 classes) over 9 weeks from cosmic fundamentals to real chart synthesis.
+                Divided into {course.modules.length} progressive blocks ({course.totalClasses} classes) over {course.durationWeeks} weeks from cosmic fundamentals to real chart synthesis.
               </p>
             </div>
 

@@ -13,11 +13,12 @@ import {
   ExternalLink,
   BookOpen,
   Award,
-  Play
+  Play,
+  Calendar
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort, ScheduledClass } from '@/lib/types';
-import { formatInTimezone, getUserLocalTimezone } from '@/lib/timezones';
+import { formatInTimezone, getUserLocalTimezone, getJoinWindowStatus, generateGoogleCalendarUrl } from '@/lib/timezones';
 
 export default function CohortClassByClassPage() {
   const params = useParams();
@@ -49,8 +50,20 @@ export default function CohortClassByClassPage() {
     setUserTz(tz);
   }, [cohortId]);
 
+  const [, setCurrentTime] = useState(Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(Date.now()), 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleToggleWatched = (classId: string) => {
     ViarStore.toggleClassWatched(classId);
+    const updated = new Set(ViarStore.getWatchedClassIds());
+    setWatchedSet(updated);
+  };
+
+  const handleAttendedLive = (classId: string) => {
+    ViarStore.markClassAttended(classId);
     const updated = new Set(ViarStore.getWatchedClassIds());
     setWatchedSet(updated);
   };
@@ -188,7 +201,7 @@ export default function CohortClassByClassPage() {
                   </span>
                 </div>
 
-                {/* Video / Join Link Container */}
+                {/* Video / Join Link Container (Requirement 6.1 & 6.2) */}
                 {activeClass.recording ? (
                   <div className="space-y-4">
                     <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/30 shadow-2xl bg-black aspect-video">
@@ -200,43 +213,137 @@ export default function CohortClassByClassPage() {
                         className="w-full h-full object-cover"
                       ></iframe>
                     </div>
-                    <p className="text-xs text-slate-400 flex items-center justify-between">
+                    <div className="text-xs text-slate-400 flex flex-wrap items-center justify-between gap-2">
                       <span>Duration: {activeClass.recording.durationMinutes} mins</span>
-                      <span className="text-emerald-400 font-semibold">HD Replay Ready</span>
-                    </p>
-                  </div>
-                ) : (
-                  <div className="p-8 rounded-2xl bg-gradient-to-b from-[#101726] to-[#0a0f1a] border border-amber-500/30 text-center space-y-4">
-                    <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto">
-                      <Video className="w-7 h-7" />
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          HD Replay Ready
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleWatched(activeClass.id)}
+                          className="px-3 py-1 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10"
+                        >
+                          {watchedSet.has(activeClass.id) ? 'Watched ✓' : 'Mark as Watched'}
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-white">Live Zoom / Meet Classroom</h3>
-                      <p className="text-xs text-slate-300 mt-1 max-w-md mx-auto">
-                        This session will broadcast live with direct Q&A. Click below to launch Zoom when class begins.
+                  </div>
+                ) : (() => {
+                  const joinStatus = getJoinWindowStatus(activeClass.scheduledStartTime, 15, activeClass.durationMinutes);
+                  const isWatched = watchedSet.has(activeClass.id) || activeClass.status === 'COMPLETED';
+
+                  if (joinStatus.canJoin) {
+                    return (
+                      <div className="p-8 rounded-2xl bg-gradient-to-b from-[#101726] to-[#0a0f1a] border border-emerald-500/40 text-center space-y-5">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold animate-pulse">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                          <span>LIVE CLASSROOM IN SESSION</span>
+                        </div>
+
+                        <div>
+                          <h3 className="text-xl font-bold text-white">Join Acharya [ASTROLOGER NAME] Live</h3>
+                          <p className="text-xs text-slate-300 mt-1 max-w-md mx-auto">
+                            The live broadcast is underway on {activeClass.meetingPlatform || 'Zoom'}. Click below to join the session.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-center gap-3">
+                          <a
+                            href={activeClass.joinUrl || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="gold-button px-6 py-3.5 rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-lg shadow-amber-500/20"
+                          >
+                            <Video className="w-4 h-4" />
+                            <span>Launch Live Classroom</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+
+                          <button
+                            type="button"
+                            onClick={() => handleAttendedLive(activeClass.id)}
+                            className={`px-4 py-3 rounded-xl text-xs font-semibold transition border flex items-center gap-1.5 ${
+                              isWatched
+                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                : 'bg-white/5 hover:bg-white/10 text-white border-white/10'
+                            }`}
+                          >
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <span>{isWatched ? 'Attended Live ✓' : 'I Attended Live'}</span>
+                          </button>
+                        </div>
+
+                        {activeClass.meetingId && (
+                          <div className="text-[11px] text-slate-400 font-mono pt-2">
+                            Meeting ID: <span className="text-amber-300 font-bold">{activeClass.meetingId}</span> • Passcode: <span className="text-amber-300 font-bold">{activeClass.passcode}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // Not yet within 15-minute window
+                  const gcalUrl = generateGoogleCalendarUrl(
+                    `Viar.in: Class ${activeClass.classNumber} - ${activeClass.title}`,
+                    activeClass.description,
+                    activeClass.joinUrl || 'https://viar.in',
+                    activeClass.scheduledStartTime,
+                    activeClass.durationMinutes
+                  );
+
+                  return (
+                    <div className="p-8 rounded-2xl bg-gradient-to-b from-[#101726] to-[#0a0f1a] border border-amber-500/20 text-center space-y-4">
+                      <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center mx-auto">
+                        <Clock className="w-7 h-7" />
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+                          Upcoming Scheduled Class
+                        </span>
+                        <h3 className="text-2xl font-black text-white mt-1">
+                          Starts in {joinStatus.formattedCountdown}
+                        </h3>
+                        <p className="text-xs text-slate-400 mt-2 max-w-md mx-auto">
+                          Join link unlocks <strong className="text-white">15 minutes before showtime</strong> at{' '}
+                          <strong className="text-amber-300">{formatInTimezone(activeClass.scheduledStartTime, userTz, 'short')}</strong>.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                        <a
+                          href={gcalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-white border border-white/10 inline-flex items-center gap-2 transition"
+                        >
+                          <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Add to Google Calendar</span>
+                          <ExternalLink className="w-3 h-3 text-slate-400" />
+                        </a>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAttendedLive(activeClass.id)}
+                          className={`px-4 py-2.5 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 ${
+                            isWatched
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                              : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
+                          }`}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>{isWatched ? 'Marked Attended ✓' : 'I Attended Live'}</span>
+                        </button>
+                      </div>
+
+                      <p className="text-[11px] text-slate-500 italic">
+                        Missed the live broadcast? The HD recording will appear here automatically once uploaded by Acharya [ASTROLOGER NAME].
                       </p>
                     </div>
-
-                    <div className="flex flex-wrap items-center justify-center gap-3">
-                      <a
-                        href={activeClass.joinUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="gold-button px-6 py-3 rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-lg shadow-amber-500/20"
-                      >
-                        <Video className="w-4 h-4" />
-                        <span>Join Live Session</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    </div>
-
-                    {activeClass.meetingId && (
-                      <div className="text-[11px] text-slate-400 font-mono pt-2">
-                        Meeting ID: <span className="text-amber-300 font-bold">{activeClass.meetingId}</span> • Passcode: <span className="text-amber-300 font-bold">{activeClass.passcode}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Description & Study Notes */}
                 <div className="space-y-4 pt-4 border-t border-white/10">
@@ -338,20 +445,32 @@ export default function CohortClassByClassPage() {
               })}
             </div>
 
-            {/* Bottom Quiz Callout */}
+            {/* Bottom Quiz Callout (Requirement 6.2) */}
             <div className="pt-4 border-t border-white/10 text-center">
-              <Link
-                href={`/dashboard/courses/${cohort.id}/quiz`}
-                className={`w-full py-3 rounded-xl text-xs font-bold block transition ${
-                  progress.canTakeQuiz
-                    ? 'gold-button shadow-lg shadow-amber-500/20'
-                    : 'bg-white/5 text-slate-400 hover:text-white border border-white/10'
-                }`}
-              >
-                {progress.canTakeQuiz
-                  ? 'Take Final Quiz Now &rarr;'
-                  : `Pass all 18 classes to unlock quiz (${progress.completedClasses}/18)`}
-              </Link>
+              {(() => {
+                const quizUnlock = ViarStore.isQuizUnlocked(cohort.id);
+                if (quizUnlock.isUnlocked) {
+                  return (
+                    <Link
+                      href={`/dashboard/courses/${cohort.id}/quiz`}
+                      className="gold-button w-full py-3.5 rounded-xl text-xs font-bold block transition shadow-lg shadow-amber-500/20 text-center"
+                    >
+                      <span>Take Final Quiz & Earn Certificate &rarr;</span>
+                    </Link>
+                  );
+                }
+                return (
+                  <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 text-center space-y-2">
+                    <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-300">
+                      <Lock className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Certification Assessment Locked</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 max-w-xs mx-auto leading-relaxed">
+                      {quizUnlock.reason}
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
 
           </div>

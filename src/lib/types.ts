@@ -47,11 +47,28 @@ export interface Course {
     avatarUrl: string;
     aapkaAstroUrl: string;
   };
+  quizUnlockCondition?: 'ALL_SESSIONS_COMPLETED' | 'COHORT_END_DATE_PASSED';
   highlights: string[];
   prerequisites: string[];
   whatYouWillLearn: string[];
   modules: CourseModule[];
   faqs: { question: string; answer: string }[];
+}
+
+export interface NotifyMeLead {
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  email: string;
+  createdAt: string;
+}
+
+export interface SessionProgress {
+  id: string;
+  userId: string;
+  classSessionId: string;
+  completedAt: string;
+  method: 'ATTENDED_LIVE' | 'WATCHED_RECORDING';
 }
 
 export interface Testimonial {

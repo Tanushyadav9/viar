@@ -9,6 +9,7 @@ import {
   Certificate,
   Enrollment,
   User,
+  NotifyMeLead,
 } from './types';
 import {
   INITIAL_COURSES,
@@ -32,6 +33,7 @@ const STORAGE_KEYS = {
   CURRENT_USER: 'viar_current_user',
   TIMEZONE: 'viar_preferred_timezone',
   WATCHED_CLASSES: 'viar_watched_classes',
+  NOTIFY_LEADS: 'viar_notify_leads',
 };
 
 function getStorageItem<T>(key: string, fallback: T): T {
@@ -129,60 +131,6 @@ export const ViarStore = {
     classes[index].status = 'COMPLETED';
     setStorageItem(STORAGE_KEYS.CLASSES, classes);
     return true;
-  },
-
-  // Watched / Attendance Tracking
-  getWatchedClassIds(): string[] {
-    return getStorageItem<string[]>(STORAGE_KEYS.WATCHED_CLASSES, ['cls-1', 'cls-2', 'cls-3', 'cls-4']);
-  },
-
-  isClassWatched(classId: string): boolean {
-    const watched = this.getWatchedClassIds();
-    return watched.includes(classId);
-  },
-
-  toggleClassWatched(classId: string): boolean {
-    const watched = this.getWatchedClassIds();
-    const index = watched.indexOf(classId);
-    let isNowWatched = false;
-    if (index >= 0) {
-      watched.splice(index, 1);
-      isNowWatched = false;
-    } else {
-      watched.push(classId);
-      isNowWatched = true;
-    }
-    setStorageItem(STORAGE_KEYS.WATCHED_CLASSES, watched);
-    return isNowWatched;
-  },
-
-  getCourseProgress(cohortId: string): {
-    completedClasses: number;
-    totalClasses: number;
-    percentage: number;
-    canTakeQuiz: boolean;
-  } {
-    const classes = this.getClasses(cohortId);
-    const watchedIds = new Set(this.getWatchedClassIds());
-
-    // A class counts toward completion if it has status COMPLETED or is marked watched
-    let completedCount = 0;
-    classes.forEach((c) => {
-      if (c.status === 'COMPLETED' || watchedIds.has(c.id)) {
-        completedCount++;
-      }
-    });
-
-    const total = classes.length || 18;
-    const percentage = Math.round((completedCount / total) * 100);
-    const canTakeQuiz = completedCount >= total;
-
-    return {
-      completedClasses: completedCount,
-      totalClasses: total,
-      percentage,
-      canTakeQuiz,
-    };
   },
 
   // Final Exam
@@ -394,6 +342,141 @@ export const ViarStore = {
       activeCohorts: cohorts.filter((c) => c.status === 'ENROLLING' || c.status === 'IN_PROGRESS')
         .length,
     };
+  },
+
+  // --------------------------------------------------------------------------
+  // Course Completion & Watched Checklist (Requirement 6.2)
+  // No distinction between attending live and watching recording.
+  // --------------------------------------------------------------------------
+  getWatchedClassIds(): string[] {
+    return getStorageItem<string[]>(STORAGE_KEYS.WATCHED_CLASSES, []);
+  },
+
+  isClassWatched(classId: string): boolean {
+    const ids = this.getWatchedClassIds();
+    return ids.includes(classId);
+  },
+
+  toggleClassWatched(classId: string): boolean {
+    const ids = this.getWatchedClassIds();
+    let updated: string[];
+    let isNowWatched: boolean;
+    if (ids.includes(classId)) {
+      updated = ids.filter((id) => id !== classId);
+      isNowWatched = false;
+    } else {
+      updated = [...ids, classId];
+      isNowWatched = true;
+    }
+    setStorageItem(STORAGE_KEYS.WATCHED_CLASSES, updated);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('session-progress-updated', { detail: { classId, isNowWatched } }));
+    }
+    return isNowWatched;
+  },
+
+  markClassAttended(classId: string): boolean {
+    // Both live attendance and recording replay record identically in SessionProgress
+    const ids = this.getWatchedClassIds();
+    if (!ids.includes(classId)) {
+      setStorageItem(STORAGE_KEYS.WATCHED_CLASSES, [...ids, classId]);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('session-progress-updated', { detail: { classId, isNowWatched: true } }));
+      }
+    }
+    return true;
+  },
+
+  getCourseProgress(cohortId: string): {
+    totalClasses: number;
+    completedCount: number;
+    completedClasses: number;
+    percentage: number;
+    allSessionsComplete: boolean;
+    canTakeQuiz: boolean;
+  } {
+    const classes = this.getClasses(cohortId);
+    if (classes.length === 0) return { totalClasses: 18, completedCount: 0, completedClasses: 0, percentage: 0, allSessionsComplete: false, canTakeQuiz: false };
+
+    const watchedIds = new Set(this.getWatchedClassIds());
+    let completedCount = 0;
+
+    classes.forEach((cls) => {
+      if (watchedIds.has(cls.id) || cls.status === 'COMPLETED') {
+        completedCount++;
+      }
+    });
+
+    const percentage = Math.round((completedCount / classes.length) * 100);
+    const allSessionsComplete = completedCount >= classes.length;
+    return {
+      totalClasses: classes.length,
+      completedCount,
+      completedClasses: completedCount,
+      percentage,
+      allSessionsComplete,
+      canTakeQuiz: allSessionsComplete,
+    };
+  },
+
+  /**
+   * Final Quiz Unlock Logic (Requirement 6.2)
+   * Unlocks either once all sessions are marked complete, or once the cohort's
+   * end date has passed (configurable per course/cohort).
+   */
+  isQuizUnlocked(cohortId: string): { isUnlocked: boolean; reason?: string } {
+    const cohort = this.getCohortById(cohortId) || this.getCohorts()[0];
+    if (!cohort) return { isUnlocked: true };
+
+    const course = this.getCourseById(cohort.courseId);
+    const condition = course?.quizUnlockCondition || 'ALL_SESSIONS_COMPLETED';
+
+    if (condition === 'COHORT_END_DATE_PASSED') {
+      const now = Date.now();
+      const endMs = new Date(cohort.endDate).getTime();
+      if (now >= endMs) {
+        return { isUnlocked: true };
+      } else {
+        return {
+          isUnlocked: false,
+          reason: `Certification exam unlocks when the 9-week cohort formally concludes on ${new Date(cohort.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`,
+        };
+      }
+    }
+
+    // Default: ALL_SESSIONS_COMPLETED
+    const progress = this.getCourseProgress(cohortId);
+    if (progress.allSessionsComplete) {
+      return { isUnlocked: true };
+    } else {
+      return {
+        isUnlocked: false,
+        reason: `Complete all ${progress.totalClasses} classes (attend live or mark recordings watched) to unlock the final certification exam. (${progress.completedCount}/${progress.totalClasses} completed).`,
+      };
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // Catalog "Notify Me" Lead Capture (Requirement 6.3)
+  // --------------------------------------------------------------------------
+  saveNotifyMeLead(lead: { courseId: string; courseTitle: string; email: string }): NotifyMeLead {
+    const leads = getStorageItem<NotifyMeLead[]>(STORAGE_KEYS.NOTIFY_LEADS, []);
+    const newLead: NotifyMeLead = {
+      id: `lead-${Date.now()}`,
+      courseId: lead.courseId,
+      courseTitle: lead.courseTitle,
+      email: lead.email,
+      createdAt: new Date().toISOString(),
+    };
+    leads.unshift(newLead);
+    setStorageItem(STORAGE_KEYS.NOTIFY_LEADS, leads);
+    return newLead;
+  },
+
+  getNotifyMeLeads(courseId?: string): NotifyMeLead[] {
+    const leads = getStorageItem<NotifyMeLead[]>(STORAGE_KEYS.NOTIFY_LEADS, []);
+    if (!courseId) return leads;
+    return leads.filter((l) => l.courseId === courseId);
   },
 
   // Reset demo data

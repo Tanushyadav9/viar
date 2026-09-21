@@ -32,6 +32,18 @@ export interface VideoHostingService {
    * Request a direct creator upload URL for class recordings
    */
   generateUploadUrl(metadata: VideoMetadata): Promise<{ uploadUrl: string; videoId: string }>;
+
+  /**
+   * Extension point for automated Zoom Cloud Recording ingestion.
+   * In v1, instructor manually pastes or uploads the recording URL.
+   * This stub defines the signature for future webhook automation when
+   * Zoom OAuth app and cloud recording download tokens are enabled.
+   */
+  ingestFromZoomRecording(
+    zoomMeetingId: string,
+    downloadUrl?: string,
+    downloadToken?: string
+  ): Promise<{ videoId: string; status: 'QUEUED' | 'PROCESSED' | 'FAILED'; message: string }>;
 }
 
 /**
@@ -66,6 +78,20 @@ export class CloudflareStreamService implements VideoHostingService {
       videoId,
     };
   }
+
+  async ingestFromZoomRecording(
+    zoomMeetingId: string,
+    downloadUrl?: string,
+    downloadToken?: string
+  ): Promise<{ videoId: string; status: 'QUEUED' | 'PROCESSED' | 'FAILED'; message: string }> {
+    // Extension point: Ingest from Zoom Cloud recording via URL copy to Cloudflare Stream
+    const videoId = `cf_zoom_${zoomMeetingId}_${Date.now()}`;
+    return {
+      videoId,
+      status: 'QUEUED',
+      message: `Zoom meeting ${zoomMeetingId} recording queued for Cloudflare Stream copy (Token: ${downloadToken ? 'present' : 'none'}). Download source: ${downloadUrl || 'API webhook'}`,
+    };
+  }
 }
 
 /**
@@ -98,6 +124,20 @@ export class MuxVideoService implements VideoHostingService {
       videoId,
     };
   }
+
+  async ingestFromZoomRecording(
+    zoomMeetingId: string,
+    downloadUrl?: string,
+    downloadToken?: string
+  ): Promise<{ videoId: string; status: 'QUEUED' | 'PROCESSED' | 'FAILED'; message: string }> {
+    // Extension point: Ingest from Zoom Cloud recording into Mux Asset
+    const videoId = `mux_zoom_${zoomMeetingId}_${Date.now()}`;
+    return {
+      videoId,
+      status: 'QUEUED',
+      message: `Zoom meeting ${zoomMeetingId} recording queued for Mux asset ingestion (Token: ${downloadToken ? 'present' : 'none'}). Download source: ${downloadUrl || 'API webhook'}`,
+    };
+  }
 }
 
 /**
@@ -124,6 +164,17 @@ export class DirectVideoService implements VideoHostingService {
     return {
       uploadUrl: `https://storage.viar.in/uploads/${videoId}`,
       videoId,
+    };
+  }
+
+  async ingestFromZoomRecording(
+    zoomMeetingId: string,
+    downloadUrl?: string
+  ): Promise<{ videoId: string; status: 'QUEUED' | 'PROCESSED' | 'FAILED'; message: string }> {
+    return {
+      videoId: `direct_${zoomMeetingId}`,
+      status: 'PROCESSED',
+      message: `Direct link saved: ${downloadUrl || zoomMeetingId}`,
     };
   }
 }

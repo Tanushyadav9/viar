@@ -23,6 +23,7 @@ export default function InstructorCoursesPage() {
   const [priceUsd, setPriceUsd] = useState('69');
   const [durationWeeks, setDurationWeeks] = useState('9');
   const [totalClasses, setTotalClasses] = useState('18');
+  const [quizUnlockCondition, setQuizUnlockCondition] = useState<'ALL_SESSIONS_COMPLETED' | 'COHORT_END_DATE_PASSED'>('ALL_SESSIONS_COMPLETED');
   const [isSuccess, setIsSuccess] = useState('');
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export default function InstructorCoursesPage() {
       isPublished: true,
       featured: false,
       badge: 'Active Cohort',
+      quizUnlockCondition,
       instructor: {
         name: 'Acharya [ASTROLOGER NAME]',
         title: 'Founder, Aapka Astro',
@@ -203,6 +205,27 @@ export default function InstructorCoursesPage() {
                       className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Final Quiz Unlock Condition
+                  </label>
+                  <select
+                    value={quizUnlockCondition}
+                    onChange={(e) => setQuizUnlockCondition(e.target.value as 'ALL_SESSIONS_COMPLETED' | 'COHORT_END_DATE_PASSED')}
+                    className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="ALL_SESSIONS_COMPLETED" className="bg-slate-900 text-white">
+                      Require all sessions watched/attended (Recommended)
+                    </option>
+                    <option value="COHORT_END_DATE_PASSED" className="bg-slate-900 text-white">
+                      Unlock automatically once cohort end date passes
+                    </option>
+                  </select>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Students must pass the quiz (≥70%) to receive their digital credential & certificate.
+                  </p>
                 </div>
 
                 <div>
