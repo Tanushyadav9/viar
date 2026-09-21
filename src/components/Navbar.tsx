@@ -98,7 +98,7 @@ export default function Navbar() {
           </Link>
 
           {/* Primary Nav */}
-          <nav className="hidden md:flex items-center space-x-1 pl-4 border-l border-white/10">
+          <nav className="hidden lg:flex items-center space-x-1 pl-4 border-l border-white/10">
             <Link
               href="/courses"
               className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
@@ -107,7 +107,7 @@ export default function Navbar() {
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
-              Course Catalog
+              Courses
             </Link>
             <Link
               href="/courses/what-is-astrology"
@@ -120,6 +120,26 @@ export default function Navbar() {
               Flagship Cohort
             </Link>
             <Link
+              href="/about"
+              className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
+                pathname === '/about'
+                  ? 'text-amber-400 bg-white/5'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              About Instructor
+            </Link>
+            <Link
+              href="/contact"
+              className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
+                pathname === '/contact'
+                  ? 'text-amber-400 bg-white/5'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              Contact
+            </Link>
+            <Link
               href="/verify"
               className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
                 pathname.startsWith('/verify')
@@ -127,7 +147,7 @@ export default function Navbar() {
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
-              Verify Certificate
+              Verify
             </Link>
           </nav>
         </div>
@@ -236,21 +256,21 @@ export default function Navbar() {
             )}
           </div>
 
-          <button
-            onClick={() => setIsAuthModalOpen(true)}
+          <Link
+            href="/login"
             className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition"
           >
             Sign In
-          </button>
+          </Link>
 
           {/* Navigation CTA */}
           {isAdmin ? (
             <Link
-              href="/admin"
+              href="/instructor"
               className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-md shadow-purple-900/30 transition flex items-center gap-1.5"
             >
               <ShieldCheck className="w-4 h-4" />
-              <span>Admin Console</span>
+              <span>Instructor Suite</span>
             </Link>
           ) : (
             <Link

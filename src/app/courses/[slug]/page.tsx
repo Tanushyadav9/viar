@@ -11,10 +11,13 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  Star,
+  Globe,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort, ScheduledClass } from '@/lib/types';
 import { formatInTimezone, getUserLocalTimezone } from '@/lib/timezones';
+import { PLACEHOLDER_TESTIMONIALS } from '@/lib/data';
 
 export default function CourseDetailPage() {
   const params = useParams();
@@ -41,12 +44,28 @@ export default function CourseDetailPage() {
     const tz = ViarStore.getTimezone() || getUserLocalTimezone();
     setUserTz(tz);
 
+    // Auto-detect currency based on geo-IP / timezone, overridable by the user
+    const savedCurrency = (typeof window !== 'undefined' ? localStorage.getItem('viar_user_currency') : null) as 'INR' | 'USD' | null;
+    if (savedCurrency) {
+      setCurrency(savedCurrency);
+    } else {
+      const isIndiaTimezone = tz.toLowerCase().includes('kolkata') || tz.toLowerCase().includes('calcutta') || tz.toLowerCase().includes('india');
+      setCurrency(isIndiaTimezone ? 'INR' : 'USD');
+    }
+
     const handleTzChange = () => {
       setUserTz(ViarStore.getTimezone());
     };
     window.addEventListener('timezone-changed', handleTzChange);
     return () => window.removeEventListener('timezone-changed', handleTzChange);
   }, [slug]);
+
+  const handleCurrencySelect = (selectedCurrency: 'INR' | 'USD') => {
+    setCurrency(selectedCurrency);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('viar_user_currency', selectedCurrency);
+    }
+  };
 
   if (!course) {
     return (
@@ -149,7 +168,7 @@ export default function CourseDetailPage() {
                 <span className="text-xs text-slate-400 font-medium">Select Currency:</span>
                 <div className="flex rounded-lg bg-white/5 p-1 border border-white/10">
                   <button
-                    onClick={() => setCurrency('INR')}
+                    onClick={() => handleCurrencySelect('INR')}
                     className={`px-3 py-1 rounded text-xs font-bold transition ${
                       currency === 'INR' ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'
                     }`}
@@ -157,7 +176,7 @@ export default function CourseDetailPage() {
                     ₹ INR
                   </button>
                   <button
-                    onClick={() => setCurrency('USD')}
+                    onClick={() => handleCurrencySelect('USD')}
                     className={`px-3 py-1 rounded text-xs font-bold transition ${
                       currency === 'USD' ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'
                     }`}
@@ -166,6 +185,9 @@ export default function CourseDetailPage() {
                   </button>
                 </div>
               </div>
+              <p className="text-[10px] text-slate-400 mb-4 text-right">
+                Auto-detected from region • Click to switch
+              </p>
 
               {/* Price display */}
               <div className="mb-6">
@@ -361,22 +383,78 @@ export default function CourseDetailPage() {
           </div>
         </div>
 
-        {/* What You Will Learn Grid */}
+        {/* Course Testimonials Section */}
+        {/* PLACEHOLDER: replace with real student testimonials */}
         <div className="py-16 border-t border-white/10">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white text-center mb-10">
-              Core Skills You Will Graduate With
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {course.whatYouWillLearn.map((item, i) => (
-                <div key={i} className="p-4 rounded-xl bg-white/[0.02] border border-white/10 flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                  <span className="text-xs sm:text-sm text-slate-300">{item}</span>
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-10">
+              <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Student Reviews</span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1">
+                Feedback on &ldquo;{course.title}&rdquo;
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {PLACEHOLDER_TESTIMONIALS.slice(0, 4).map((test) => (
+                <div
+                  key={test.id}
+                  className="cosmic-card p-6 rounded-2xl border border-white/10 flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-1">
+                        {[...Array(test.rating)].map((_, i) => (
+                          <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        ))}
+                      </div>
+                      {test.isInternational && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30 flex items-center gap-1">
+                          <Globe className="w-3 h-3" />
+                          International
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs sm:text-sm font-semibold text-amber-200 mb-2">
+                      &ldquo;{test.highlight}&rdquo;
+                    </p>
+                    <p className="text-xs text-slate-300 leading-relaxed mb-4">
+                      {test.content.replace('/* PLACEHOLDER */ ', '')}
+                    </p>
+                  </div>
+                  <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+                    <span className="font-semibold text-white">{test.name}</span>
+                    <span className="text-slate-500">{test.location}</span>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         </div>
+
+        {/* Course FAQ Section */}
+        {course.faqs && course.faqs.length > 0 && (
+          <div className="py-16 border-t border-white/10">
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-10">
+                <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Common Questions</span>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1">
+                  Course FAQs
+                </h2>
+              </div>
+              <div className="space-y-3">
+                {course.faqs.map((faq, index) => (
+                  <div
+                    key={index}
+                    className="p-5 rounded-2xl bg-white/[0.02] border border-white/10"
+                  >
+                    <h3 className="text-sm font-bold text-white mb-2">{faq.question}</h3>
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">{faq.answer}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

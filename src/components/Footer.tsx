@@ -120,26 +120,68 @@ export default function Footer() {
           </div>
 
           <div>
-            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">Students</h5>
+            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">Academy & Lineage</h5>
+            <ul className="space-y-2.5 text-sm">
+              <li>
+                <Link href="/about" className="hover:text-amber-400 transition">
+                  About the Instructor
+                </Link>
+              </li>
+              <li>
+                <Link href="/courses" className="hover:text-amber-400 transition">
+                  Full Course Catalog
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="hover:text-amber-400 transition">
+                  Contact & Admissions
+                </Link>
+              </li>
+              <li>
+                <Link href="/instructor" className="hover:text-amber-400 transition text-amber-300">
+                  Instructor Suite
+                </Link>
+              </li>
+              <li>
+                <a
+                  href="https://dowconsulting.in"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-sky-300 transition text-slate-400 flex items-center gap-1"
+                >
+                  <span>DOW Consulting</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">Student Portal</h5>
             <ul className="space-y-2.5 text-sm">
               <li>
                 <Link href="/dashboard" className="hover:text-amber-400 transition">
-                  Student Portal
+                  Student Dashboard
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard?tab=recordings" className="hover:text-amber-400 transition">
-                  Class Recordings & Notes
+                <Link href="/dashboard/courses/cohort-wia-batch-1" className="hover:text-amber-400 transition">
+                  18 Classes & Replays
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard?tab=exam" className="hover:text-amber-400 transition">
-                  Final Exam Portal
+                <Link href="/dashboard/certificates" className="hover:text-amber-400 transition">
+                  My Certificates
+                </Link>
+              </li>
+              <li>
+                <Link href="/dashboard/payments" className="hover:text-amber-400 transition">
+                  Purchase History & Receipts
                 </Link>
               </li>
               <li>
                 <Link href="/verify" className="hover:text-amber-400 transition">
-                  Verify a Certificate
+                  Public Certificate Lookup
                 </Link>
               </li>
             </ul>

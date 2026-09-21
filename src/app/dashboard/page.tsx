@@ -184,21 +184,26 @@ function StudentDashboardContent() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            {certificate && (
-              <button
-                onClick={() => setActiveTab('certificate')}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1.5"
-              >
-                <Award className="w-4 h-4 text-amber-400" />
-                <span>View My Certificate</span>
-              </button>
-            )}
+          <div className="flex flex-wrap items-center gap-2.5">
             <Link
-              href="/courses/what-is-astrology"
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 transition"
+              href={`/dashboard/courses/${cohort?.id || 'cohort-wia-batch-1'}`}
+              className="gold-button px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-amber-500/20"
             >
-              Course Overview
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>All 18 Classes & Replays</span>
+            </Link>
+            <Link
+              href="/dashboard/certificates"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 transition flex items-center gap-1.5"
+            >
+              <Award className="w-3.5 h-3.5 text-amber-400" />
+              <span>Certificates</span>
+            </Link>
+            <Link
+              href="/dashboard/payments"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 transition"
+            >
+              Receipts
             </Link>
           </div>
         </div>

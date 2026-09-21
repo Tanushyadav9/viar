@@ -42,7 +42,7 @@ export interface AuthProvider {
   /**
    * International Students: Initiate Google OAuth Single Sign-On
    */
-  signInWithGoogle(): Promise<{ success: boolean; redirectUrl?: string }>;
+  signInWithGoogle(): Promise<{ success: boolean; redirectUrl?: string; error?: string }>;
 
   /**
    * Sign out current session

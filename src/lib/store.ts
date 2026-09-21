@@ -31,6 +31,7 @@ const STORAGE_KEYS = {
   ENROLLMENTS: 'viar_enrollments',
   CURRENT_USER: 'viar_current_user',
   TIMEZONE: 'viar_preferred_timezone',
+  WATCHED_CLASSES: 'viar_watched_classes',
 };
 
 function getStorageItem<T>(key: string, fallback: T): T {
@@ -128,6 +129,60 @@ export const ViarStore = {
     classes[index].status = 'COMPLETED';
     setStorageItem(STORAGE_KEYS.CLASSES, classes);
     return true;
+  },
+
+  // Watched / Attendance Tracking
+  getWatchedClassIds(): string[] {
+    return getStorageItem<string[]>(STORAGE_KEYS.WATCHED_CLASSES, ['cls-1', 'cls-2', 'cls-3', 'cls-4']);
+  },
+
+  isClassWatched(classId: string): boolean {
+    const watched = this.getWatchedClassIds();
+    return watched.includes(classId);
+  },
+
+  toggleClassWatched(classId: string): boolean {
+    const watched = this.getWatchedClassIds();
+    const index = watched.indexOf(classId);
+    let isNowWatched = false;
+    if (index >= 0) {
+      watched.splice(index, 1);
+      isNowWatched = false;
+    } else {
+      watched.push(classId);
+      isNowWatched = true;
+    }
+    setStorageItem(STORAGE_KEYS.WATCHED_CLASSES, watched);
+    return isNowWatched;
+  },
+
+  getCourseProgress(cohortId: string): {
+    completedClasses: number;
+    totalClasses: number;
+    percentage: number;
+    canTakeQuiz: boolean;
+  } {
+    const classes = this.getClasses(cohortId);
+    const watchedIds = new Set(this.getWatchedClassIds());
+
+    // A class counts toward completion if it has status COMPLETED or is marked watched
+    let completedCount = 0;
+    classes.forEach((c) => {
+      if (c.status === 'COMPLETED' || watchedIds.has(c.id)) {
+        completedCount++;
+      }
+    });
+
+    const total = classes.length || 18;
+    const percentage = Math.round((completedCount / total) * 100);
+    const canTakeQuiz = completedCount >= total;
+
+    return {
+      completedClasses: completedCount,
+      totalClasses: total,
+      percentage,
+      canTakeQuiz,
+    };
   },
 
   // Final Exam

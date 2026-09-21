@@ -702,8 +702,48 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Frequently Asked Questions */}
+      {/* YouTube Preview Embed Section */}
+      {/* PLACEHOLDER: replace with real YouTube embed */}
       <section className="py-20 bg-[#090d16] border-t border-white/10">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-red-500/10 border border-red-500/25 text-red-300 text-xs font-semibold uppercase tracking-wider mb-4">
+            <Video className="w-3.5 h-3.5 text-red-400" />
+            <span>Sample Lecture Preview</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">
+            Experience the Teaching Method
+          </h2>
+          <p className="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed mb-8">
+            Watch a preview excerpt from Class 1 of <em>&ldquo;What is Astrology&rdquo;</em> with <strong className="text-amber-300">Acharya [ASTROLOGER NAME]</strong> as he explains how celestial geometry translates into human consciousness.
+          </p>
+
+          <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/30 shadow-2xl bg-black aspect-video max-w-4xl mx-auto">
+            <iframe
+              src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0"
+              title="Viar.in Masterclass Preview"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="w-full h-full object-cover"
+            ></iframe>
+          </div>
+
+          <p className="text-xs text-slate-400 mt-4 flex items-center justify-center gap-2">
+            <span>Official YouTube Channel:</span>
+            {/* PLACEHOLDER: replace with client channel link */}
+            <a
+              href="https://youtube.com/@aapkaastro_official"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-amber-400 hover:text-amber-300 underline font-medium inline-flex items-center gap-1"
+            >
+              @aapkaastro_official <ExternalLink className="w-3 h-3 inline" />
+            </a>
+          </p>
+        </div>
+      </section>
+
+      {/* Frequently Asked Questions */}
+      <section className="py-20 bg-[#070b12] border-t border-white/10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center mb-12">
@@ -734,6 +774,81 @@ export default function HomePage() {
                 </div>
               );
             })}
+          </div>
+
+        </div>
+      </section>
+
+      {/* "Our Other Services" Cross-Promotion Section */}
+      <section className="py-20 bg-gradient-to-b from-[#090d16] to-[#0d121f] border-t border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Ecosystem & Lineage</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mt-2 mb-4">
+              Our Other Services
+            </h2>
+            <p className="text-slate-400 text-sm sm:text-base">
+              Viar.in is part of a unified ecosystem founded by Acharya [ASTROLOGER NAME]. Whether you require personal astrological consultations or strategic enterprise advisory, explore our sister platforms.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            
+            {/* Sister Site 1: Aapka Astro */}
+            <div className="cosmic-card p-8 rounded-2xl border border-amber-500/30 hover:border-amber-400/50 transition flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Consultation Platform
+                  </span>
+                  <ExternalLink className="w-4 h-4 text-amber-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">Aapka Astro</h3>
+                <p className="text-xs font-semibold text-amber-300 mb-4">aapkaastro.com • 35,000+ Consultations</p>
+                <p className="text-sm text-slate-300 leading-relaxed mb-6">
+                  Private 1-on-1 Vedic consultations with Acharya [ASTROLOGER NAME]. Get personalized horoscope readings, marriage compatibility (Kundali Milan), career forecasting, gemstone advice, and Vastu analysis.
+                </p>
+              </div>
+              <div className="pt-6 border-t border-white/10">
+                <a
+                  href="https://aapkaastro.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="gold-button w-full py-3 rounded-xl text-xs font-bold text-center block"
+                >
+                  Book Private Consultation on Aapka Astro &rarr;
+                </a>
+              </div>
+            </div>
+
+            {/* Sister Site 2: DOW Consulting */}
+            <div className="cosmic-card p-8 rounded-2xl border border-sky-500/30 hover:border-sky-400/50 transition flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                    Corporate Advisory
+                  </span>
+                  <ExternalLink className="w-4 h-4 text-sky-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">DOW Consulting</h3>
+                <p className="text-xs font-semibold text-sky-300 mb-4">dowconsulting.in • Strategic Advisory</p>
+                <p className="text-sm text-slate-300 leading-relaxed mb-6">
+                  Executive advisory and organizational strategy for founders, enterprise leaders, and institutions. Harmonizing high-stakes decision-making with cosmic timing principles and analytical rigor.
+                </p>
+              </div>
+              <div className="pt-6 border-t border-white/10">
+                <a
+                  href="https://dowconsulting.in"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-5 py-3 rounded-xl text-xs font-bold text-center block bg-sky-600/20 hover:bg-sky-600/30 text-sky-200 border border-sky-500/40 transition"
+                >
+                  Visit DOW Consulting Advisory &rarr;
+                </a>
+              </div>
+            </div>
+
           </div>
 
         </div>

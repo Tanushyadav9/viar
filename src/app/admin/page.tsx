@@ -242,6 +242,12 @@ export default function AdminPortalPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/instructor"
+              className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-amber-500/20"
+            >
+              <span>Open Instructor Suite &rarr;</span>
+            </Link>
             <button
               onClick={() => setIsManualEnrollOpen(true)}
               className="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-white border border-white/10 transition flex items-center gap-1.5"
