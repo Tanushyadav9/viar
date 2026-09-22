@@ -72,44 +72,56 @@ The application is in a high state of completeness:
 
 ---
 
-### 2.4 Core Functional Requirements (Section 6)
+### 2.4 Core Architectural & Functional Checks (Section 1 & 6)
 
-1. **6.1 Live Classes via Zoom / Google Meet:**
-   * **Status:** ✅ **Fully implemented.**
-   * Instructor inputs join links in ClassSession.
-   * Student dashboard only reveals the join button when the session enters the reasonable start window (15 minutes prior to scheduled start time).
-   * A dynamic countdown timer renders in the student's detected or selected local timezone.
-   * After the session, the recording player takes the place of the join button.
-   * Extension point `ingestFromZoomRecording()` is stubbed in `VideoHostingService`.
+#### 1. Critical Check — Multi-Course Catalog Architecture
+* **Status:** ✅ **Fully implemented & Verified.**
+* **Audit Finding:** The platform is explicitly architected as a scalable, multi-course learning academy rather than a hardcoded single-course landing page.
+  * The public catalog route (`/courses`) dynamically iterates across any registered course in the database/store.
+  * The course detail route (`/courses/[slug]`) dynamically resolves courses by unique slug with automatic OpenGraph and JSON-LD schema generation.
+  * The data models (`Course`, `Cohort`, `ClassSession`, `Quiz`, `Certificate`, `CourseBundle`) decouple instructors, cohorts, syllabi, and schedules cleanly.
+  * The Instructor Console (`/instructor/courses`) enables the creation and publication of new courses (e.g., Vastu Shastra, Gemstones, Numerology) without touching code.
 
-2. **6.2 Course Completion & Certification (No Attendance Gate):**
-   * **Status:** ✅ **Fully implemented.**
-   * Students mark sessions complete either by clicking "I attended" or "Mark as Watched" on recordings; both update `SessionProgress` equally.
-   * Final quiz unlocks either when all sessions are completed or based on the instructor's per-course toggle (`quizUnlockCondition`: `ALL_SESSIONS_COMPLETED` vs `COHORT_END_PASSED`).
-   * Quiz passing threshold (default 70%) generates a certificate with a unique code (`VIAR-2026-WIA-XXXX`) and activates `/verify/[code]`.
+#### 2. Critical Check — "No Attendance Gate" Implementation
+* **Status:** ✅ **Fully implemented & Verified.**
+* **Audit Finding:** Live attendance and watching recorded sessions are treated strictly equally for course progression and certificate eligibility.
+  * Students can mark sessions complete via either the "I Attended Live" action or the "Mark as Watched" video checklist button (`handleToggleWatched`).
+  * Both update the student's `SessionProgress` records identically.
+  * Access to the final certification assessment (`/dashboard/courses/[cohortId]/quiz`) requires completing the session checklist, ensuring working professionals and international students across divergent timezones face zero attendance penalties.
 
-3. **6.3 Multi-Course Catalog Architecture:**
-   * **Status:** ✅ **Fully implemented.**
-   * `/courses` and `/courses/[slug]` operate generically from course and cohort data structures.
-   * Adding new courses from the Instructor Suite immediately populates the public catalog without code changes.
-   * "Coming Soon" courses present an email capture modal for notifications.
+#### 3. Critical Check — No Custom Live-Streaming Infrastructure (Link-Based Only)
+* **Status:** ✅ **Confirmed & Verified.**
+* **Audit Finding:** Zero custom live-streaming WebRTC infrastructure (e.g., Agora, Zego, Twilio Video, custom media servers) was built into the repository.
+  * Live classes are strictly link-based (Zoom / Google Meet), fully conforming to the product spec.
+  * The student classroom UI unlocks external join links inside a secure 15-minute countdown window prior to scheduled class start time.
+  * Recordings use standard embeddable video players and Cloudflare Stream/Mux abstraction points rather than live peer-to-peer pipelines.
 
-4. **6.4 Payments:**
-   * **Status:** 🟡 **Fully designed & tested with mock/sandbox providers.**
-   * Supports INR via Razorpay and USD via Stripe.
-   * Server-side webhook signature verification for Razorpay HMAC-SHA256 and Stripe signature headers.
-   * Graceful fallback to Razorpay when Stripe is unconfigured.
-   * Auto-detected currency with manual toggle.
+#### 4. Critical Check — Design System & Aapka Astro Visual Identity
+* **Status:** ✅ **Fully implemented & Verified.**
+* **Audit Finding:** The design system strictly matches Aapka Astro's brand guidelines:
+  * **Color Palette:**
+    - Deep Maroon: `#7B2D26`
+    - Marigold Gold: `#E8A33D`
+    - Terracotta: `#C1662F`
+    - Warm Ivory: `#FBF3E7`
+    - Deep Brown: `#3B2A1E`
+    - Sage Green: `#6B8E5A`
+  * **Typography:**
+    - Headings: `Cinzel` / `Yatra One` (`font-serif`)
+    - Body Text: `Mukta` / `Poppins` (`font-sans`)
+  * **Interactive Tokens:**
+    - Primary CTAs styled with `.gold-button` gradient (`#E8A33D` to `#C1662F`).
+    - Cards styled with cosmic dark gradients and warm gold border highlights (`cosmic-card`).
+    - Full Dark / Light mode toggle integrated seamlessly via `ThemeProvider.tsx`.
 
-5. **6.5 Timezone Handling:**
-   * **Status:** ✅ **Fully implemented.**
-   * All timestamps stored in UTC (`ISO 8601`).
-   * Detected automatically via browser API (`Intl.DateTimeFormat().resolvedOptions().timeZone`) and overridable in navigation/account settings.
-   * Every displayed time displays explicit timezone identifiers.
+#### 5. Timezone Handling & Global Readiness
+* **Status:** ✅ **Fully implemented.**
+* All timestamps stored in UTC (`ISO 8601`) and converted dynamically to the user's detected local timezone via `Intl.DateTimeFormat` or custom override.
+* Explicit timezone identifiers (e.g., `IST`, `EDT`, `GMT`) displayed next to every countdown and scheduled class time.
 
-6. **6.6 Cross-Promotion:**
-   * **Status:** ✅ **Fully implemented.**
-   * Centralized configuration in `src/config/services.ts` drives the "Our Other Services" cards on Home, Footer, and Contact pages, linking to `aapkaastro.com` and `dowconsulting.in`.
+#### 6. Cross-Site Synergy
+* **Status:** ✅ **Fully implemented.**
+* Configured in `src/config/services.ts` linking Viar.in to sister properties `https://aapkaastro.com` and `https://dowconsulting.in`.
 
 ---
 
@@ -239,5 +251,46 @@ To establish an educational moat over generic astrology marketplaces like Astrot
    - Added `bundleId` and `discountAmount` relation fields to `Enrollment` and `Payment`.
    - Generated updated `@prisma/client` bindings via `npx prisma generate`.
    - Reflected corresponding TypeScript interfaces in `src/lib/types.ts`.
+
+---
+
+## 8. Final Pre-Launch Checklist: Credentials, Content Items & Client Decisions Required Before Going Live
+
+To bring `Viar.in` live into production, the following credentials, content items, and business decisions must be supplied or finalized:
+
+### 8.1 Real Credentials & Production API Keys
+
+| Service / Integration | Environment Variables / Keys | Purpose | Status in Codebase |
+| :--- | :--- | :--- | :--- |
+| **Clerk Production Auth** | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (`pk_live_...`), `CLERK_SECRET_KEY` (`sk_live_...`), `NEXT_PUBLIC_CLERK_DOMAIN="viar.in"`, `NEXT_PUBLIC_CLERK_IS_SATELLITE="true"` | Multi-domain Single Sign-On (Email & Google) across `viar.in` and `aapkaastro.com` | Blueprint ready; tested in simulated session mode. Awaiting production Clerk instance keys. |
+| **Razorpay (India Gateway)** | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | Live INR student payments via UPI, Netbanking, Rupay, and Indian credit/debit cards | Tested with mock HMAC-SHA256 verifier. Awaiting client's live merchant dashboard keys. |
+| **Stripe (Global Gateway)** | `STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | International USD payments (Visa, Mastercard, Amex, Apple Pay) | Abstracted in `src/lib/payments/stripe.ts` with feature toggle. Awaiting client's Stripe live keys or toggle confirmation. |
+| **PostgreSQL Database** | `DATABASE_URL` (`postgresql://user:password@host:5432/dbname`) | Persistent cloud relational storage for users, cohorts, payments, and certificates | Prisma schema defined and generated; runtime seamlessly defaults to `ViarStore` until connection string is set. |
+| **Video Hosting (Cloudflare / Mux)** | `CLOUDFLARE_STREAM_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` or `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET` | Direct HD recording ingestion and DRM-secured streaming for past live classes | Typed provider abstractions created in `src/lib/video/`; YouTube embed fallback currently active for demo. |
+| **Transactional Email / SMS** | `RESEND_API_KEY` or `SENDGRID_API_KEY`, `WHATSAPP_BUSINESS_API_TOKEN` | Automated 1-hour class start notifications and order confirmations | Notification queue and HTML templates created in `src/lib/notifications.ts`. |
+
+### 8.2 Real Content Items to Finalize
+
+1. **Class 1–18 Zoom / Google Meet Recurring Meeting Links:**
+   - Recurring Zoom or Google Meet room link, Meeting ID, and Passcode for Cohort 01 ("Vedic Initiation Batch 1").
+   - *Current status:* Initialized with placeholder join links that unlock 15 minutes before showtime.
+2. **First Cohort Exact Start Date & Class Schedule:**
+   - Confirm official start date (currently set to Saturday, October 3, 2026, 10:00 AM IST) and weekly cadence (Saturdays & Sundays, 90 mins).
+3. **Downloadable Syllabus PDF Branding & Asset Finalization:**
+   - Review `/api/courses/what-is-astrology/syllabus/download` to confirm session titles, homework assignments, and reading list align with Acharya Niraj Kumar's exact teaching sequence.
+4. **Alumni Discount / Free Consultation Voucher Policy:**
+   - Confirm whether certified graduates receive an exclusive coupon code (e.g., `ALUMNI20`) or a free 15-minute introductory chart reading on Aapka Astro.
+
+### 8.3 Business Decisions Requiring Client Sign-Off
+
+1. **Refund Guarantee Policy Wording:**
+   - Marked in codebase with `/* PLACEHOLDER: Policy wording to be confirmed with client */`.
+   - Current text on `/checkout/[cohortId]`: *"100% Risk-Free Guarantee: Full refund if requested before your 3rd live class."*
+   - Decision required: Confirm refund window (before class 3 vs 7 calendar days) and automated refund handling vs manual WhatsApp desk approval.
+2. **Stripe USD International Payments:**
+   - Decide whether to launch Cohort 01 with Razorpay-only (supporting international cards via Razorpay international mode) or activate Stripe concurrently for USD payments.
+3. **Clerk Multi-Domain Launch Sequence:**
+   - Determine which domain will serve as the Clerk primary instance (`aapkaastro.com` recommended) and authorize `viar.in` as the satellite domain.
+
 
 
