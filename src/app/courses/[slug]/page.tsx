@@ -10,7 +10,7 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const course = INITIAL_COURSES.find((c) => c.slug === params.slug) || INITIAL_COURSES[0];
+  const course = INITIAL_COURSES.find((c) => c.slug === params.slug);
   if (!course) {
     return {
       title: 'Course Not Found | Viar.in',
@@ -60,7 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default function CourseDetailPage({ params }: Props) {
-  const course = INITIAL_COURSES.find((c) => c.slug === params.slug) || INITIAL_COURSES[0];
+  const course = INITIAL_COURSES.find((c) => c.slug === params.slug);
 
   if (!course) {
     notFound();

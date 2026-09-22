@@ -77,6 +77,18 @@ export default function InstructorSessionsPage() {
     }
 
     ViarStore.updateClass(editingClass.id, updates);
+    fetch('/api/sessions', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: editingClass.id,
+        joinLink: joinUrl,
+        recordingUrl: recordingUrl || undefined,
+        status: updates.status,
+        notesMarkdown,
+      }),
+    }).catch((err) => console.warn('Sessions API sync failed:', err));
+
     setClasses(ViarStore.getClasses(cohortId));
     setEditingClass(null);
     setSuccessMsg(`Class ${editingClass.classNumber} updated successfully!`);

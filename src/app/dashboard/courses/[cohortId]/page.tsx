@@ -57,15 +57,41 @@ export default function CohortClassByClassPage() {
   }, []);
 
   const handleToggleWatched = (classId: string) => {
-    ViarStore.toggleClassWatched(classId);
+    const isWatched = ViarStore.toggleClassWatched(classId);
     const updated = new Set(ViarStore.getWatchedClassIds());
     setWatchedSet(updated);
+
+    const currentUser = ViarStore.getCurrentUser();
+    if (currentUser) {
+      fetch('/api/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          classSessionId: classId,
+          watched: isWatched,
+        }),
+      }).catch((err) => console.warn('Progress API sync failed:', err));
+    }
   };
 
   const handleAttendedLive = (classId: string) => {
     ViarStore.markClassAttended(classId);
     const updated = new Set(ViarStore.getWatchedClassIds());
     setWatchedSet(updated);
+
+    const currentUser = ViarStore.getCurrentUser();
+    if (currentUser) {
+      fetch('/api/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          classSessionId: classId,
+          watched: true,
+        }),
+      }).catch((err) => console.warn('Progress API sync failed:', err));
+    }
   };
 
   const progress = ViarStore.getCourseProgress(cohortId);

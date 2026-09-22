@@ -31,9 +31,10 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
   const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
   const [notifyEmail, setNotifyEmail] = useState('');
   const [notifySuccess, setNotifySuccess] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    const targetCourse = ViarStore.getCourseBySlug(slug) || ViarStore.getCourseBySlug('what-is-astrology');
+    const targetCourse = ViarStore.getCourseBySlug(slug);
     if (targetCourse) {
       setCourse(targetCourse);
       const cohorts = ViarStore.getCohorts(targetCourse.id);
@@ -41,6 +42,8 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
         setCohort(cohorts[0]);
         setClasses(ViarStore.getClasses(cohorts[0].id));
       }
+    } else {
+      setNotFound(true);
     }
 
     const tz = ViarStore.getTimezone() || getUserLocalTimezone();
@@ -88,6 +91,20 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
     setNotifySuccess(true);
     setNotifyEmail('');
   };
+
+  if (notFound) {
+    return (
+      <div className="min-h-screen cosmic-bg flex flex-col items-center justify-center p-4 text-center">
+        <h1 className="text-3xl font-black text-white mb-2">Course Not Found</h1>
+        <p className="text-slate-400 text-sm max-w-md mb-6">
+          The course you are looking for does not exist or has been moved in the Viar Academy catalog.
+        </p>
+        <Link href="/courses" className="gold-button px-6 py-3 rounded-xl text-xs font-bold inline-block">
+          Explore All Courses
+        </Link>
+      </div>
+    );
+  }
 
   if (!course) {
     return (

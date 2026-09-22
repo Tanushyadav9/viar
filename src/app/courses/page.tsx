@@ -86,14 +86,14 @@ export default function CoursesPage() {
         {/* Course Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
           {filteredCourses.map((course) => {
-            const isFlagship = course.slug === 'what-is-astrology';
+            const isFeatured = course.featured;
             const isComingSoon = course.isComingSoon;
 
             return (
               <div
                 key={course.id}
                 className={`cosmic-card rounded-2xl p-8 border flex flex-col justify-between transition ${
-                  isFlagship
+                  isFeatured
                     ? 'border-amber-500/50 bg-[#111827]/80 ring-1 ring-amber-500/30'
                     : isComingSoon
                     ? 'border-purple-500/30 bg-[#0d101a]/90 opacity-95'
@@ -102,10 +102,9 @@ export default function CoursesPage() {
               >
                 <div>
                   <div className="flex items-center justify-between gap-4 mb-4">
-                    {/* PLACEHOLDER: Additional catalog placeholder status */}
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        isFlagship
+                        isFeatured
                           ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                           : isComingSoon
                           ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
@@ -165,7 +164,7 @@ export default function CoursesPage() {
                     <Link
                       href={`/courses/${course.slug}`}
                       className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-                        isFlagship
+                        isFeatured
                           ? 'gold-button shadow-md shadow-amber-500/20'
                           : 'bg-white/10 hover:bg-white/15 text-white border border-white/10'
                       }`}
