@@ -217,4 +217,34 @@ export interface Enrollment {
   currency: 'INR' | 'USD';
   paymentMethod: string;
   paymentId: string;
+  bundleId?: string;
+  discountAppliedInr?: number;
+  discountAppliedUsd?: number;
 }
+
+export interface ClassDiscussionComment {
+  id: string;
+  sessionId: string;
+  authorName: string;
+  authorRole: 'STUDENT' | 'INSTRUCTOR' | 'ADMIN';
+  authorAvatarUrl?: string;
+  comment: string;
+  createdAt: string;
+  instructorReply?: {
+    authorName: string;
+    comment: string;
+    repliedAt: string;
+  };
+}
+
+export interface CourseBundle {
+  id: string;
+  title: string;
+  slug: string;
+  courseIds: string[];
+  discountPercentage: number;
+  priceInr: number;
+  priceUsd: number;
+  isActive: boolean;
+}
+

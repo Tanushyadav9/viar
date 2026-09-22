@@ -10,6 +10,7 @@ import {
   Enrollment,
   User,
   NotifyMeLead,
+  ClassDiscussionComment,
 } from './types';
 import {
   INITIAL_COURSES,
@@ -34,7 +35,32 @@ const STORAGE_KEYS = {
   TIMEZONE: 'viar_preferred_timezone',
   WATCHED_CLASSES: 'viar_watched_classes',
   NOTIFY_LEADS: 'viar_notify_leads',
+  DISCUSSIONS: 'viar_class_discussions',
 };
+
+const DEFAULT_CLASS_DISCUSSIONS: ClassDiscussionComment[] = [
+  {
+    id: 'comm-1',
+    sessionId: 'cls-1',
+    authorName: 'Rohan Mehra',
+    authorRole: 'STUDENT',
+    comment: 'Acharya ji, when calculating the exact degree of the Lagna at dawn, does the local apparent sunrise time take precedence over standard civil tables?',
+    createdAt: '2026-10-04T05:30:00.000Z',
+    instructorReply: {
+      authorName: 'Acharya Niraj Kumar',
+      comment: 'Excellent inquiry Rohan. True local apparent solar dawn is always the authentic baseline in classical Jyotish. In Class 3 we will compute the exact Chara Khanda ascendant adjustments for any latitude.',
+      repliedAt: '2026-10-04T08:15:00.000Z',
+    },
+  },
+  {
+    id: 'comm-2',
+    sessionId: 'cls-1',
+    authorName: 'Ananya Iyer',
+    authorRole: 'STUDENT',
+    comment: 'The explanation of Prarabdha Karma versus Kriyamana Karma completely clarified why two charts with similar planetary signs experience divergent life directions. Thank you for this mathematical rigor!',
+    createdAt: '2026-10-05T12:00:00.000Z',
+  },
+];
 
 function getStorageItem<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -475,6 +501,34 @@ export const ViarStore = {
     const leads = getStorageItem<NotifyMeLead[]>(STORAGE_KEYS.NOTIFY_LEADS, []);
     if (!courseId) return leads;
     return leads.filter((l) => l.courseId === courseId);
+  },
+
+  // --------------------------------------------------------------------------
+  // Per-Session Q&A & Discussion Space (Requirement 3: Beat Astrotalk)
+  // --------------------------------------------------------------------------
+  getDiscussionComments(sessionId: string): ClassDiscussionComment[] {
+    const all = getStorageItem<ClassDiscussionComment[]>(STORAGE_KEYS.DISCUSSIONS, DEFAULT_CLASS_DISCUSSIONS);
+    return all.filter((c) => c.sessionId === sessionId);
+  },
+
+  addDiscussionComment(params: {
+    sessionId: string;
+    authorName: string;
+    authorRole?: 'STUDENT' | 'INSTRUCTOR' | 'ADMIN';
+    comment: string;
+  }): ClassDiscussionComment {
+    const all = getStorageItem<ClassDiscussionComment[]>(STORAGE_KEYS.DISCUSSIONS, DEFAULT_CLASS_DISCUSSIONS);
+    const newComment: ClassDiscussionComment = {
+      id: `comm-${Date.now()}`,
+      sessionId: params.sessionId,
+      authorName: params.authorName,
+      authorRole: params.authorRole || 'STUDENT',
+      comment: params.comment,
+      createdAt: new Date().toISOString(),
+    };
+    all.push(newComment);
+    setStorageItem(STORAGE_KEYS.DISCUSSIONS, all);
+    return newComment;
   },
 
   // Reset demo data

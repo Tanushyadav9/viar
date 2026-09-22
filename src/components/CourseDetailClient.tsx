@@ -12,6 +12,8 @@ import {
   Star,
   Globe,
   Bell,
+  Download,
+  Video,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort, ScheduledClass } from '@/lib/types';
@@ -373,6 +375,45 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
 
         </div>
 
+        {/* Free Sample Lesson Section (Requirement: Beat Astrotalk) */}
+        <div className="mb-20 cosmic-card p-6 sm:p-10 rounded-3xl border border-amber-500/30 bg-gradient-to-b from-[#111827] to-[#0a0f1a]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div className="lg:col-span-5 space-y-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold uppercase tracking-wider">
+                <Video className="w-3.5 h-3.5 text-amber-400" />
+                <span>Free Preview Lesson</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+                Experience Acharya Niraj Kumar&apos;s Teaching Style
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                Sample the clarity, logic, and profound Vedic depth before enrolling. Watch this free introductory session demonstrating how astronomical angles, bhavas, and planetary karma are explained without fear or superstition.
+              </p>
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <span className="text-xs text-amber-400 font-semibold flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4" /> 100% Free Sample Lesson
+                </span>
+                <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> No Card Required
+                </span>
+              </div>
+            </div>
+
+            <div className="lg:col-span-7">
+              <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/30 shadow-2xl bg-black aspect-video">
+                <iframe
+                  src="https://www.youtube-nocookie.com/embed/hibDdoH5kbQ?rel=0"
+                  title="Acharya Niraj Kumar Astrology Teaching Preview"
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full object-cover"
+                ></iframe>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* 3-Week Blocks / Syllabus Section */}
         <div className="mb-20">
           <div className="text-center max-w-3xl mx-auto mb-12">
@@ -382,9 +423,20 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
               {course.totalClasses} Live Sessions Structured in 3-Week Mastery Blocks
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 mt-2">
+            <p className="text-xs sm:text-sm text-slate-400 mt-2 mb-6">
               Every class is ~60–90 minutes of structured lecture, live birth chart demonstrations, and student Q&A.
             </p>
+
+            {/* Downloadable Syllabus Button (Requirement: Beat Astrotalk) */}
+            <a
+              href={`/api/courses/${course.slug}/syllabus/download?print=true`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs font-bold text-slate-200 inline-flex items-center gap-2 transition shadow-md hover:border-amber-400/40"
+            >
+              <Download className="w-4 h-4 text-amber-400" />
+              <span>Download Full 18-Class Syllabus (PDF)</span>
+            </a>
           </div>
 
           <div className="space-y-4 max-w-4xl mx-auto">

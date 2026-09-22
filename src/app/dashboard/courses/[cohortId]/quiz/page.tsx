@@ -201,6 +201,24 @@ export default function FinalQuizPage() {
                       Certificate Dashboard
                     </Link>
                   </div>
+
+                  {/* 1:1 Consultation Cross-Sell */}
+                  <div className="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-left">
+                    <p className="text-xs font-bold text-amber-300 mb-1">
+                      Ready to Analyze Your Personal Kundli?
+                    </p>
+                    <p className="text-[11px] text-slate-300 mb-3">
+                      As an academy graduate, schedule a private 1-on-1 chart consultation with Acharya Niraj Kumar on Aapka Astro.
+                    </p>
+                    <a
+                      href="https://aapkaastro.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-bold text-amber-400 hover:text-amber-300 underline inline-flex items-center gap-1"
+                    >
+                      <span>Book Private Consultation on AapkaAstro.com &rarr;</span>
+                    </a>
+                  </div>
                 </div>
               )}
 

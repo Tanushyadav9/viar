@@ -14,10 +14,12 @@ import {
   BookOpen,
   Award,
   Play,
-  Calendar
+  Calendar,
+  MessageSquare,
+  Send
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
-import { Course, Cohort, ScheduledClass } from '@/lib/types';
+import { Course, Cohort, ScheduledClass, ClassDiscussionComment } from '@/lib/types';
 import { formatInTimezone, getUserLocalTimezone, getJoinWindowStatus, generateGoogleCalendarUrl } from '@/lib/timezones';
 
 export default function CohortClassByClassPage() {
@@ -30,6 +32,29 @@ export default function CohortClassByClassPage() {
   const [activeClass, setActiveClass] = useState<ScheduledClass | null>(null);
   const [watchedSet, setWatchedSet] = useState<Set<string>>(new Set());
   const [userTz, setUserTz] = useState<string>('Asia/Kolkata');
+  const [comments, setComments] = useState<ClassDiscussionComment[]>([]);
+  const [commentText, setCommentText] = useState('');
+
+  useEffect(() => {
+    if (activeClass) {
+      setComments(ViarStore.getDiscussionComments(activeClass.id));
+    }
+  }, [activeClass]);
+
+  const handlePostComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentText.trim() || !activeClass) return;
+    const user = ViarStore.getCurrentUser();
+    const authorName = user?.name || 'Viar Scholar';
+    const newC = ViarStore.addDiscussionComment({
+      sessionId: activeClass.id,
+      authorName,
+      comment: commentText.trim(),
+      authorRole: user?.role === 'ADMIN' ? 'ADMIN' : 'STUDENT',
+    });
+    setComments((prev) => [...prev, newC]);
+    setCommentText('');
+  };
 
   useEffect(() => {
     const c = ViarStore.getCohortById(cohortId) || ViarStore.getCohorts()[0];
@@ -386,6 +411,121 @@ export default function CohortClassByClassPage() {
                       {activeClass.recording.notesMarkdown}
                     </div>
                   )}
+                </div>
+
+                {/* Per-Session Q&A / Discussion Space (Beat Astrotalk) */}
+                <div className="space-y-4 pt-6 border-t border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center">
+                        <MessageSquare className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                          <span>Class Q&A & Discussion</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            {comments.length}
+                          </span>
+                        </h4>
+                        <p className="text-[11px] text-slate-400">
+                          Ask questions on Class {activeClass.classNumber} concepts. Acharya Niraj Kumar and cohort peers reply here.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Comments Thread */}
+                  <div className="space-y-3 pt-2">
+                    {comments.length === 0 ? (
+                      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center text-xs text-slate-400">
+                        No questions posted yet for this class session. Be the first to start the discussion!
+                      </div>
+                    ) : (
+                      comments.map((comm) => (
+                        <div
+                          key={comm.id}
+                          className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 space-y-2.5"
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center text-[10px] font-bold">
+                                {comm.authorName.charAt(0)}
+                              </span>
+                              <span className="font-semibold text-slate-200">{comm.authorName}</span>
+                              {comm.authorRole === 'INSTRUCTOR' || comm.authorRole === 'ADMIN' ? (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#7B2D26] text-amber-200 border border-amber-500/30">
+                                  Faculty
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-white/5 text-slate-400">
+                                  Student
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-slate-500">
+                              {new Date(comm.createdAt).toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-300 leading-relaxed pl-8">
+                            {comm.comment}
+                          </p>
+
+                          {/* Instructor Reply */}
+                          {comm.instructorReply && (
+                            <div className="ml-8 mt-2 p-3 rounded-lg bg-[#7B2D26]/20 border-l-2 border-[#E8A33D] space-y-1">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                                  <span>✦</span>
+                                  <span>{comm.instructorReply.authorName}</span>
+                                  <span className="text-[9px] uppercase px-1 rounded bg-amber-500/20 text-amber-200">
+                                    Lead Acharya
+                                  </span>
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  {new Date(comm.instructorReply.repliedAt).toLocaleDateString(undefined, {
+                                    month: 'short',
+                                    day: 'numeric',
+                                  })}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-200 leading-relaxed">
+                                {comm.instructorReply.comment}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Post New Comment Form */}
+                  <form onSubmit={handlePostComment} className="pt-2">
+                    <div className="space-y-2">
+                      <textarea
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        placeholder={`Ask a question or share notes regarding Class ${activeClass.classNumber}...`}
+                        rows={2}
+                        className="w-full px-3 py-2 text-xs rounded-xl bg-white/[0.04] border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition resize-none"
+                      />
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-slate-500">
+                          Markdown supported • Moderated for Vedic scholarship
+                        </span>
+                        <button
+                          type="submit"
+                          disabled={!commentText.trim()}
+                          className="gold-button px-4 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Send className="w-3 h-3" />
+                          <span>Post to Cohort</span>
+                        </button>
+                      </div>
+                    </div>
+                  </form>
                 </div>
               </>
             ) : (

@@ -272,6 +272,27 @@ function CheckoutContent() {
                 </div>
               </div>
 
+              {/* 100% Risk-Free Guarantee Trust Box (Beat Astrotalk) */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/40 via-amber-950/20 to-emerald-950/40 border border-emerald-500/40 space-y-2">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                    100% Risk-Free Satisfaction Guarantee
+                  </span>
+                </div>
+                {/* PLACEHOLDER: Policy wording to be confirmed with client */}
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Attend the first 2 classes completely risk-free. If you feel the depth and mathematical rigor of Vedic astrology under Acharya Niraj Kumar isn&apos;t the right fit for your journey, request a <strong className="text-emerald-300">full refund anytime before the 3rd live class</strong>. No questions asked.
+                </p>
+                <div className="flex items-center gap-3 text-[11px] text-slate-400 pt-1">
+                  <span className="flex items-center gap-1 text-emerald-400">
+                    ✓ Full Refund Prior to Class 3
+                  </span>
+                  <span>•</span>
+                  <span>Direct UPI / Card Reversal</span>
+                </div>
+              </div>
+
               {/* Submit CTA */}
               <button
                 type="submit"
@@ -365,10 +386,11 @@ function CheckoutContent() {
             <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-xs text-slate-300 space-y-2">
               <p className="font-bold text-amber-300 flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>The Viar.in Learning Guarantee</span>
+                <span>The Viar.in 3-Class Refund Guarantee</span>
               </p>
+              {/* PLACEHOLDER: Policy wording to be confirmed with client */}
               <p className="leading-relaxed text-slate-400">
-                Attending live and watching recordings are treated equally. You will have full access to study materials, session notes, and final exam certification at any time.
+                100% full refund if requested before your 3rd live class. Plus, attending live and watching recordings are treated equally for certificate eligibility.
               </p>
             </div>
 

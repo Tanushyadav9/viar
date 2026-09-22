@@ -216,6 +216,9 @@ model Enrollment {
   amountPaid     Int         @map("amount_paid")
   currency       String      @default("INR")
   status         String      @default("ACTIVE") // ACTIVE | CANCELLED | REFUNDED
+  bundleId       String?     @map("bundle_id")
+  bundle         CourseBundle? @relation(fields: [bundleId], references: [id], onDelete: SetNull)
+  discountAmount Int?        @default(0) @map("discount_amount")
 
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
@@ -224,6 +227,7 @@ model Enrollment {
   @@index([userId])
   @@index([cohortId])
   @@index([paymentId])
+  @@index([bundleId])
   @@map("enrollments")
 }
 
@@ -344,6 +348,7 @@ model Payment {
   providerReference String          @map("provider_reference") // Razorpay payment_id / Stripe PaymentIntent ID
   amount            Int             // stored in lowest currency denomination or base unit
   currency          String          @default("INR") // INR | USD
+  discountAmount    Int?            @default(0) @map("discount_amount")
   status            PaymentStatus   @default(PENDING)
 
   createdAt         DateTime        @default(now()) @map("created_at")
@@ -405,4 +410,30 @@ model NotifyMeLead {
   @@index([courseSlug])
   @@map("notify_me_leads")
 }
+
+// ------------------------------------------------------------------------------
+// 13. COURSE BUNDLE
+// Bundled courses offering percentage or fixed tuition discounts
+// ------------------------------------------------------------------------------
+
+model CourseBundle {
+  id                 String       @id @default(cuid())
+  title              String
+  slug               String       @unique
+  description        String?      @db.Text
+  discountPercentage Int          @default(15) @map("discount_percentage")
+  priceInr           Int          @map("price_inr")
+  priceUsd           Int          @map("price_usd")
+  isActive           Boolean      @default(true) @map("is_active")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  enrollments        Enrollment[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("course_bundles")
+}
+
 

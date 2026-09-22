@@ -223,6 +223,44 @@ export default function StudentCertificatesPage() {
           </div>
         )}
 
+        {/* Course Completion Cross-Sell: 1:1 Consultation on Aapka Astro (Requirement: Beat Astrotalk) */}
+        <div className="mt-12 p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-amber-500/10 via-amber-950/20 to-purple-950/20 border border-amber-500/30 text-white relative overflow-hidden shadow-2xl">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div className="space-y-2 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Alumni Privilege • Next Step in Your Astrological Journey</span>
+              </div>
+              <h3 className="text-2xl font-black text-white">
+                Apply Your Knowledge to Your Own Chart
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                Now that you have mastered the foundational mechanics of Jyotish, book a private 1-on-1 Kundali consultation with <strong>Acharya Niraj Kumar</strong> on Aapka Astro. Have your personal dashas, karmic questions, and remedies analyzed directly by your master instructor.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full lg:w-auto">
+              <a
+                href="https://aapkaastro.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="gold-button w-full sm:w-auto px-6 py-3.5 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2 shadow-lg"
+              >
+                <span>Book 1:1 Consultation on Aapka Astro</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+              <a
+                href="https://wa.me/919311215564?text=Hello%20Acharya%20Niraj%20Kumar,%20I%20have%20completed%20the%20Viar.in%20astrology%20course%20and%20would%20like%20to%20schedule%20a%20private%20chart%20consultation."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto px-5 py-3.5 rounded-xl text-xs font-bold text-center bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 transition"
+              >
+                WhatsApp Desk
+              </a>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

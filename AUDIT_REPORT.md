@@ -206,3 +206,38 @@ The following keys are fully wired into typed environment schemas (`src/config/e
 3. **Database Connection:**
    - `DATABASE_URL` (PostgreSQL connection string; app auto-falls back to in-memory store when absent).
 
+---
+
+## 7. Beat Astrotalk Additions (Section 3: Course-Platform Competitive Edge)
+
+To establish an educational moat over generic astrology marketplaces like Astrotalk, the following six core enhancements were implemented:
+
+1. **Free Preview Lesson on Course Detail Page (`/courses/[slug]`):**
+   - High-definition responsive YouTube video player (`hibDdoH5kbQ`) embedded directly into the flagship course sales page.
+   - Allows prospective students to experience Acharya Niraj Kumar's authentic teaching pedagogy, mathematical depth, and clarity prior to paying tuition.
+
+2. **Downloadable 18-Class Syllabus PDF:**
+   - Dedicated API route at `/api/courses/[slug]/syllabus/download` generating an authentic, branded printable curriculum breakdown.
+   - Includes full 18-class session objectives, reference materials, weekly rhythm, and certification requirements.
+   - Prominent "Download Full 18-Class Syllabus (PDF)" CTA button placed on `/courses/[slug]`.
+
+3. **Alumni 1:1 Consultation Cross-Sell on Aapka Astro:**
+   - Integrated prominent alumni privilege banners on both the certificate dashboard (`/dashboard/certificates`) and the exam passing screen (`/dashboard/courses/[cohortId]/quiz`).
+   - Invites certified graduates to book personalized 1:1 horoscope readings with Acharya Niraj Kumar at [https://aapkaastro.com/](https://aapkaastro.com/) to resolve personal chart nuances.
+
+4. **Per-Cohort Class Q&A & Discussion Thread:**
+   - Lightweight, session-specific discussion area embedded directly under each class recording/join window in `/dashboard/courses/[cohortId]`.
+   - Supports student questions, faculty badges, and official answers from Acharya Niraj Kumar.
+   - Backed by persistent storage handlers `getDiscussionComments(sessionId)` and `addDiscussionComment(...)` in `src/lib/store.ts`.
+
+5. **Risk-Free 3-Class Refund Guarantee on Checkout:**
+   - Prominent trust box and guarantee badge on `/checkout/[cohortId]`: *"100% Risk-Free Satisfaction Guarantee: Attend the first 2 classes risk-free. Request a full refund anytime before your 3rd live class."*
+   - Explicitly annotated with `/* PLACEHOLDER: Policy wording to be confirmed with client */` for final client sign-off.
+
+6. **Course Bundle & Tuition Discount Data Model:**
+   - Added `CourseBundle` model to `prisma/schema.prisma` with fields for `discountPercentage`, `priceInr`, `priceUsd`, and `isActive`.
+   - Added `bundleId` and `discountAmount` relation fields to `Enrollment` and `Payment`.
+   - Generated updated `@prisma/client` bindings via `npx prisma generate`.
+   - Reflected corresponding TypeScript interfaces in `src/lib/types.ts`.
+
+
