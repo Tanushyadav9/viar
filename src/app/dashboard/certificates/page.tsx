@@ -141,13 +141,15 @@ export default function StudentCertificatesPage() {
                       <span>View Public Page</span>
                     </Link>
 
-                    <button
-                      onClick={() => window.print()}
+                    <a
+                      href={`/api/certificates/${cert.verificationCode}/download?print=true`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span>Download / Print</span>
-                    </button>
+                      <span>Download PDF</span>
+                    </a>
                   </div>
                 </div>
 

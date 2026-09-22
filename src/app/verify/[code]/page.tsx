@@ -86,13 +86,15 @@ export default function PublicVerifyCertificatePage() {
             </div>
           </div>
 
-          <button
-            onClick={() => window.print()}
+          <a
+            href={`/api/certificates/${code}/download?print=true`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="px-4 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/15 text-white border border-white/15 flex items-center gap-1.5 shrink-0"
           >
             <Download className="w-3.5 h-3.5 text-amber-400" />
-            <span>Print Official Certificate</span>
-          </button>
+            <span>Official Certificate PDF</span>
+          </a>
         </div>
 
         {/* The Official Certificate Rendering */}
@@ -145,7 +147,7 @@ export default function PublicVerifyCertificatePage() {
             </div>
 
             <div className="text-center">
-              {/* PLACEHOLDER: replace with real content */}
+              {/* Verified Instructor Signature Line */}
               <div className="font-serif italic text-lg text-amber-400 mb-1">
                 {cert.instructorName}
               </div>

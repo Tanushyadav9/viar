@@ -77,6 +77,14 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
       courseTitle: course.title,
       email: notifyEmail,
     });
+    fetch('/api/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: notifyEmail,
+        courseSlug: course.slug,
+      }),
+    }).catch((err) => console.warn('Leads API sync failed:', err));
     setNotifySuccess(true);
     setNotifyEmail('');
   };

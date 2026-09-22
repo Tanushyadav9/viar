@@ -27,6 +27,15 @@ export default function CoursesPage() {
       email: notifyEmail,
     });
 
+    fetch('/api/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: notifyEmail,
+        courseSlug: notifyCourse.slug,
+      }),
+    }).catch((err) => console.warn('Leads API sync failed:', err));
+
     setNotifySuccess(true);
     setTimeout(() => {
       setNotifySuccess(false);

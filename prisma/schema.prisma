@@ -113,9 +113,7 @@ model Course {
   classesPerWeek   Int            @default(2) @map("classes_per_week")
 
   // Instructor metadata
-  // PLACEHOLDER: replace with real instructor name
-  instructorName   String         @default("Acharya [ASTROLOGER NAME]") @map("instructor_name")
-  // PLACEHOLDER: replace with real instructor bio
+  instructorName   String         @default("Acharya Niraj Kumar") @map("instructor_name")
   instructorBio    String?        @db.Text @map("instructor_bio")
 
   createdAt        DateTime       @default(now()) @map("created_at")
@@ -319,8 +317,7 @@ model Certificate {
   // Certificate metadata
   grade             String?     // Distinction | Merit | Pass
   scorePercentage   Int?        @map("score_percentage")
-  // PLACEHOLDER: replace with real instructor name
-  instructorName    String      @default("Acharya [ASTROLOGER NAME]") @map("instructor_name")
+  instructorName    String      @default("Acharya Niraj Kumar") @map("instructor_name")
 
   createdAt         DateTime    @default(now()) @map("created_at")
 
@@ -390,3 +387,22 @@ model Testimonial {
   @@index([createdAt])
   @@map("testimonials")
 }
+
+// ------------------------------------------------------------------------------
+// 12. NOTIFY ME LEAD
+// For upcoming/coming-soon course registration and waitlists
+// ------------------------------------------------------------------------------
+
+model NotifyMeLead {
+  id         String   @id @default(cuid())
+  email      String
+  courseSlug String   @map("course_slug")
+  name       String?
+  phone      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([email])
+  @@index([courseSlug])
+  @@map("notify_me_leads")
+}
+
