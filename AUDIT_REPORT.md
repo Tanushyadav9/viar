@@ -30,7 +30,7 @@ The application is in a high state of completeness:
 | **Styling** | Tailwind CSS | Tailwind CSS with custom theme tokens (`maroon-900`, `gold-400`, `gold-500`, cosmic cards) + Light/Dark mode support | ✅ Fully implemented |
 | **Database & ORM** | PostgreSQL + Prisma | `prisma/schema.prisma` defines all 11 models (User, Course, Cohort, ClassSession, Enrollment, SessionProgress, Quiz, QuizAttempt, Certificate, Payment, Testimonial). Runtime currently uses `ViarStore` for client-side evaluation without mandatory DB server. | 🟡 Partially implemented (Schema complete; runtime uses client-side store) |
 | **Cache / Scheduling** | Redis | `src/lib/redis.ts` and `src/lib/rate-limit.ts` provide in-memory sliding window rate limiting with Upstash Redis client extension points. | 🟡 Stubbed with fallback |
-| **Auth** | AuthProvider abstraction (Phone+OTP, Email, Google; Clerk multi-domain SSO blueprint) | `src/lib/auth/index.ts` provides `DefaultAuthProvider` supporting Phone+OTP, Email, and Google, role switching, cookie sessions, and multi-domain Clerk blueprint. | 🟡 Abstracted with functional local provider |
+| **Auth** | Clerk Email/Password + Google OAuth ONLY (Multi-Domain Satellite SSO) | Fully unified on Email/Password and Google OAuth across all students. Phone OTP dropped completely (superseded to eliminate SMS fees and India DLT registration). User identity anchored to unique ID. | ✅ Fully implemented |
 | **Payments** | Razorpay (India live) + Stripe (toggled/abstracted) | `src/lib/payments/` provides unified `PaymentProvider` interface, `razorpayProvider`, `stripeProvider`, and server-side webhook signature verifications. | 🟡 Implemented with test/mock keys |
 | **Video Hosting** | Cloudflare Stream / Mux abstraction | `src/lib/video/index.ts` provides `VideoHostingService` interface, Cloudflare & Mux implementations, direct upload URL generation, and `ingestFromZoomRecording()` extension point. | 🟡 Implemented with YouTube/direct video fallback |
 | **Secrets Management** | Typed config module + `.env.example` | `src/config/env.ts` provides typed environment configuration; `.env.example` documents all required keys. | ✅ Fully implemented |
@@ -60,7 +60,7 @@ The application is in a high state of completeness:
 | **`/courses/[slug]`** | Full syllabus, cohort dates, instructor bio, currency selector (INR/USD), FAQ, testimonials | Fully built with Schema.org Course JSON-LD | ✅ Fully implemented |
 | **`/about`** | Comprehensive instructor biography, credentials breakdown, interactive certificates gallery modal | Fully built with high-res photos and certificates | ✅ Fully implemented |
 | **`/contact`** | Contact form, academic desk, direct WhatsApp support (+91 93112 15564), email links | Fully built with input validation and feedback | ✅ Fully implemented |
-| **`/login` & `/signup`** | Phone/OTP (India) and Email/Password or Google (International) | Fully built via `AuthProvider` | ✅ Fully implemented |
+| **`/login` & `/signup`** | Email/Password & Google OAuth via Clerk multi-domain SSO | Fully built with zero phone OTP dependencies, unified single sign-on across Viar.in, AapkaAstro.com, and DOW Consulting | ✅ Fully implemented |
 | **`/dashboard`** | Overview of enrolled courses, next upcoming session countdown in local timezone, progress bar | Fully built with live countdown timer and local timezone display | ✅ Fully implemented |
 | **`/dashboard/courses/[cohortId]`** | Class-by-class list of all 18 sessions, 15-min join window for live classes, video player for recordings, "I attended" / "Watched" checklist | Fully built, timezone-aware, GCal download links | ✅ Fully implemented |
 | **`/dashboard/courses/[cohortId]/quiz`**| 20-question final quiz, timer, scoring, instant certificate unlock upon scoring ≥70% | Fully built with automated grading | ✅ Fully implemented |
@@ -150,6 +150,16 @@ The application is in a high state of completeness:
    * *Specification:* Standard About page.
    * *Implementation:* Added an interactive visual gallery modal showcasing real scanned credentials (`Jyotish_Acharya_Certificate.png`, `Vastu_Expert_Certificate.png`, etc.) downloaded from `aapkaastro.com`.
    * *Rationale:* Greatly elevates institutional credibility and authority for international and corporate students.
+
+4. **Authentication: Clerk Email/Password + Google OAuth Only (Phone OTP Dropped Everywhere):**
+   * *What was in place before:* The initial codebase provided a dual login interface with a Phone + OTP tab for Indian students (using development passcode `123456`) and an Email/Google tab for international students.
+   * *Decision & Rationale:* The client confirmed dropping Phone OTP across all three websites (`viar.in`, `aapkaastro.com`, `dowconsulting.in`). Phone OTP carries an unavoidable per-SMS carrier fee, requires complex India TRAI/DLT business registration/templates, and introduces failure points. Unifying on Clerk Email/Password and Google OAuth provides a single, streamlined, completely free auth flow.
+   * *Migration Completed:*
+     - Removed the Phone OTP tab, inputs, and state machines from both `/login` (`src/app/login/page.tsx`) and `/signup` (`src/app/signup/page.tsx`).
+     - Standardized sign-in and account creation on Email/Password and Google OAuth via Clerk.
+     - Anchored user identity to a unique identifier (`id` / Clerk User ID), with `email` and `phone` treated as optional attributes in both `prisma/schema.prisma` and `src/lib/auth/types.ts`.
+     - Preserved dormant phone helper extension points in `AuthProvider` so that adding phone sign-in in the future is a zero-code Clerk dashboard configuration change rather than a code rewrite.
+     - Documented multi-domain satellite SSO configuration in `.env.example` and `src/lib/auth/index.ts` (`aapkaastro.com` primary, `viar.in` satellite).
 
 ---
 

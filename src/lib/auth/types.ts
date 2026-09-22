@@ -1,5 +1,5 @@
 export interface AuthUser {
-  id: string;
+  id: string; // Primary unique identifier (e.g. Clerk user ID: usr_...)
   name: string;
   email?: string;
   phone?: string;
@@ -9,6 +9,14 @@ export interface AuthUser {
   enrolledCohortIds: string[];
 }
 
+/**
+ * Unified Multi-Domain Authentication Provider (Clerk Ecosystem)
+ * Single free authentication approach across Viar.in, AapkaAstro.com, and DOW Consulting:
+ * - Email / Password sign-in and sign-up
+ * - Google OAuth Single Sign-On
+ * - No Phone OTP (zero SMS costs / no India DLT registration overhead)
+ * - Multi-domain / Satellite SSO configuration
+ */
 export interface AuthProvider {
   readonly name: string;
   
@@ -18,21 +26,7 @@ export interface AuthProvider {
   getCurrentUser(): Promise<AuthUser | null>;
 
   /**
-   * Indian Students: Request OTP to phone number
-   */
-  sendPhoneOtp(phone: string): Promise<{ success: boolean; message: string }>;
-
-  /**
-   * Indian Students: Verify 6-digit OTP and establish session
-   */
-  verifyPhoneOtp(
-    phone: string,
-    otp: string,
-    name?: string
-  ): Promise<{ success: boolean; user?: AuthUser; error?: string }>;
-
-  /**
-   * International Students: Sign in with Email & Password
+   * Sign in with Email & Password (for all students)
    */
   signInWithEmail(
     email: string,
@@ -40,9 +34,33 @@ export interface AuthProvider {
   ): Promise<{ success: boolean; user?: AuthUser; error?: string }>;
 
   /**
-   * International Students: Initiate Google OAuth Single Sign-On
+   * Create account with Email & Password
+   */
+  signUpWithEmail(
+    email: string,
+    password: string,
+    name: string
+  ): Promise<{ success: boolean; user?: AuthUser; error?: string }>;
+
+  /**
+   * Initiate Google OAuth Single Sign-On via Clerk
    */
   signInWithGoogle(): Promise<{ success: boolean; redirectUrl?: string; error?: string }>;
+
+  /**
+   * Dormant / Optional extension point: Request OTP to phone number
+   * (Disabled by default to avoid SMS costs; can be enabled purely in Clerk config without architectural changes)
+   */
+  sendPhoneOtp?(phone: string): Promise<{ success: boolean; message: string }>;
+
+  /**
+   * Dormant / Optional extension point: Verify OTP code
+   */
+  verifyPhoneOtp?(
+    phone: string,
+    otp: string,
+    name?: string
+  ): Promise<{ success: boolean; user?: AuthUser; error?: string }>;
 
   /**
    * Sign out current session

@@ -3,14 +3,12 @@
 import React, { useState } from 'react';
 import {
   Sparkles,
-  Phone,
   Mail,
   Lock,
   ArrowRight,
-  CheckCircle2,
   AlertCircle,
   X,
-  Globe
+  ShieldCheck
 } from 'lucide-react';
 import { authProvider } from '@/lib/auth';
 
@@ -21,55 +19,15 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
-  const [tab, setTab] = useState<'PHONE_OTP' | 'EMAIL_PASSWORD'>('PHONE_OTP');
-  
-  // Phone OTP state
-  const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
-  const [otp, setOtp] = useState('');
-  const [isOtpSent, setIsOtpSent] = useState(false);
-  
   // Email state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   // Status state
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
-
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setMessage('');
-    setLoading(true);
-
-    const res = await authProvider.sendPhoneOtp(phone);
-    setLoading(false);
-    if (res.success) {
-      setIsOtpSent(true);
-      setMessage(res.message);
-    } else {
-      setError(res.message);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    const res = await authProvider.verifyPhoneOtp(phone, otp, name);
-    setLoading(false);
-    if (res.success) {
-      onSuccess?.();
-      onClose();
-    } else {
-      setError(res.error || 'Verification failed');
-    }
-  };
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +40,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       onSuccess?.();
       onClose();
     } else {
-      setError(res.error || 'Login failed');
+      setError(res.error || 'Login failed. Please check your credentials.');
     }
   };
 
@@ -93,6 +51,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
     if (res.success) {
       onSuccess?.();
       onClose();
+    } else {
+      setError(res.error || 'Google sign in failed.');
     }
   };
 
@@ -113,47 +73,16 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto mb-3">
             <Sparkles className="w-6 h-6" />
           </div>
-          <h3 className="text-xl font-black text-white">Student Login</h3>
+          <h3 className="text-xl font-black text-white">Student Sign In</h3>
           <p className="text-xs text-slate-400 mt-1">
             Access your live class links, video recordings, and certificate.
           </p>
-        </div>
 
-        {/* Tab Selection */}
-        <div className="grid grid-cols-2 gap-2 bg-white/5 p-1 rounded-xl mb-6 border border-white/10">
-          <button
-            type="button"
-            onClick={() => {
-              setTab('PHONE_OTP');
-              setError('');
-              setMessage('');
-            }}
-            className={`py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
-              tab === 'PHONE_OTP'
-                ? 'bg-amber-500 text-black shadow-md'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Phone className="w-3.5 h-3.5" />
-            <span>Indian (Phone + OTP)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setTab('EMAIL_PASSWORD');
-              setError('');
-              setMessage('');
-            }}
-            className={`py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
-              tab === 'EMAIL_PASSWORD'
-                ? 'bg-amber-500 text-black shadow-md'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span>Global (Email / Google)</span>
-          </button>
+          {/* Multi-Domain Satellite SSO Notice */}
+          <div className="mt-3 p-2 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center gap-1.5 text-[10px] text-slate-300">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>Single Sign-On across Viar.in, AapkaAstro & DOW Consulting</span>
+          </div>
         </div>
 
         {/* Messages */}
@@ -163,178 +92,107 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
             <span>{error}</span>
           </div>
         )}
-        {message && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>{message}</span>
-          </div>
-        )}
 
-        {/* TAB 1: PHONE + OTP */}
-        {tab === 'PHONE_OTP' && (
+        {/* Google OAuth via Clerk */}
+        <button
+          type="button"
+          onClick={handleGoogleSignIn}
+          disabled={loading}
+          className="w-full py-3 px-4 rounded-xl bg-white text-slate-900 hover:bg-slate-100 font-bold text-xs sm:text-sm flex items-center justify-center gap-3 transition shadow-md disabled:opacity-50 mb-4"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24">
+            <path
+              fill="#4285F4"
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+            />
+          </svg>
+          <span>Continue with Google</span>
+        </button>
+
+        {/* Divider */}
+        <div className="relative my-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/10"></div>
+          </div>
+          <div className="relative flex justify-center text-[10px] uppercase">
+            <span className="bg-[#0f172a] px-3 text-slate-500 font-bold tracking-wider">
+              Or continue with email
+            </span>
+          </div>
+        </div>
+
+        {/* Email & Password Form */}
+        <form onSubmit={handleEmailSignIn} className="space-y-4">
           <div>
-            {!isOtpSent ? (
-              <form onSubmit={handleSendOtp} className="space-y-4">
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">
-                    Full Name (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Aarav Sharma"
-                    className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">
-                    Mobile Number (India)
-                  </label>
-                  <div className="flex gap-2">
-                    <span className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-xs font-semibold flex items-center">
-                      +91
-                    </span>
-                    <input
-                      type="tel"
-                      required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="98765 43210"
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="gold-button w-full py-3 rounded-xl text-xs font-bold shadow-lg flex items-center justify-center gap-1.5"
-                >
-                  <span>Send 6-Digit OTP</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">
-                    Enter 6-Digit OTP sent to +91 {phone}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    placeholder="123456"
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-amber-400/40 text-center font-mono text-lg tracking-widest text-amber-300 focus:outline-none"
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1.5 text-center">
-                    Enter test OTP: <strong className="text-amber-300">123456</strong>
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="gold-button w-full py-3 rounded-xl text-xs font-bold shadow-lg flex items-center justify-center gap-1.5"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Verify & Enter Dashboard</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsOtpSent(false)}
-                  className="w-full text-center text-[11px] text-slate-400 hover:text-white"
-                >
-                  Change Mobile Number
-                </button>
-              </form>
-            )}
-          </div>
-        )}
-
-        {/* TAB 2: GLOBAL EMAIL / GOOGLE */}
-        {tab === 'EMAIL_PASSWORD' && (
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-bold flex items-center justify-center gap-2.5 transition"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path
-                  fill="#EA4335"
-                  d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"
-                />
-                <path
-                  fill="#4285F4"
-                  d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8s.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"
-                />
-              </svg>
-              <span>Continue with Google</span>
-            </button>
-
-            <div className="flex items-center gap-3 text-slate-500 text-[11px]">
-              <div className="h-[1px] bg-white/10 flex-1"></div>
-              <span>OR EMAIL</span>
-              <div className="h-[1px] bg-white/10 flex-1"></div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">
+              Email Address
+            </label>
+            <div className="relative">
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+              />
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             </div>
-
-            <form onSubmit={handleEmailSignIn} className="space-y-3">
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Email Address</label>
-                <div className="relative">
-                  <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="elena@example.com"
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">Password</label>
-                <div className="relative">
-                  <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="gold-button w-full py-3 rounded-xl text-xs font-bold shadow-lg flex items-center justify-center gap-1.5"
-              >
-                <span>Sign In with Email</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </form>
           </div>
-        )}
+
+          <div>
+            <label className="block text-xs text-slate-300 font-semibold mb-1">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+              />
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="gold-button w-full py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+          >
+            <span>{loading ? 'Signing in...' : 'Sign In'}</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </form>
+
+        {/* Demo Fast Fill */}
+        <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+          <span>Quick Demo:</span>
+          <button
+            type="button"
+            onClick={() => {
+              setEmail('student@example.com');
+              setPassword('ViarPassword123');
+            }}
+            className="text-amber-400 hover:underline font-semibold"
+          >
+            Fill Demo Credentials
+          </button>
+        </div>
 
       </div>
     </div>
