@@ -325,36 +325,45 @@ export const ViarStore = {
   // User & Session
   getCurrentUser(): User {
     const raw = getStorageItem<User>(STORAGE_KEYS.CURRENT_USER, DEMO_USERS[0]);
-    // Deliberate Site Owner evaluation
-    const isOwner = isSiteOwner(raw);
+    // Deliberate Site Owner evaluation strictly against verified owner emails
+    const isOwner = isSiteOwner(raw.email);
     
     // Look up dynamically granted permissions
     const allPerms = this.getStaffPermissions();
     const userPerms = allPerms.filter((p) => p.userId === raw.id).map((p) => p.section);
     const activePerms = userPerms.length > 0 ? userPerms : (raw.staffSections || []);
 
+    // Prevent non-owners from possessing OWNER role
+    const sanitizedRole: User['role'] = isOwner
+      ? 'OWNER'
+      : (raw.role === 'OWNER' ? 'STUDENT' : raw.role);
+
     return {
       ...raw,
       isOwner,
-      role: isOwner ? 'ADMIN' : raw.role,
+      role: sanitizedRole,
       staffSections: isOwner ? [...ADMIN_SECTIONS] : activePerms,
     };
   },
 
   setCurrentUser(user: User): void {
-    const isOwner = isSiteOwner(user);
+    const isOwner = isSiteOwner(user.email);
+    const sanitizedRole: User['role'] = isOwner
+      ? 'OWNER'
+      : (user.role === 'OWNER' ? 'STUDENT' : user.role);
+
     const enriched: User = {
       ...user,
       isOwner,
-      role: isOwner ? 'ADMIN' : user.role,
+      role: sanitizedRole,
       staffSections: isOwner ? [...ADMIN_SECTIONS] : (user.staffSections || []),
     };
     setStorageItem(STORAGE_KEYS.CURRENT_USER, enriched);
   },
 
-  switchUserRole(role: 'STUDENT' | 'ADMIN' | 'STAFF'): User {
+  switchUserRole(role: 'STUDENT' | 'ADMIN' | 'STAFF' | 'OWNER'): User {
     let target: User;
-    if (role === 'ADMIN') {
+    if (role === 'OWNER' || role === 'ADMIN') {
       target = DEMO_USERS.find((u) => u.isOwner) || DEMO_USERS[1];
     } else if (role === 'STAFF') {
       target = DEMO_USERS.find((u) => u.id === 'user-staff-content') || DEMO_USERS[2] || DEMO_USERS[1];

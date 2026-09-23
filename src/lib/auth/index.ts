@@ -1,6 +1,7 @@
 import { AuthProvider, AuthUser } from './types';
 import { ViarStore } from '../store';
 import { validateEmailForSignup } from './email-policy';
+import { assignRoleForUser } from './permissions';
 
 /**
  * ============================================================================
@@ -65,12 +66,15 @@ class DefaultAuthProvider implements AuthProvider {
       return { success: false, error: 'Password must be at least 4 characters.' };
     }
 
-    const isAdmin = email.toLowerCase().includes('admin');
+    const cleanEmail = email.trim().toLowerCase();
+    const { role, isOwner } = assignRoleForUser(cleanEmail);
+
     const user: AuthUser = {
-      id: `usr_${Date.now()}`,
-      name: isAdmin ? 'Acharya Niraj Kumar' : email.split('@')[0],
-      email: email.trim().toLowerCase(),
-      role: isAdmin ? 'ADMIN' : 'STUDENT',
+      id: isOwner ? 'user-owner' : `usr_${Date.now()}`,
+      name: isOwner ? 'Acharya Niraj Kumar' : email.split('@')[0],
+      email: cleanEmail,
+      role,
+      isOwner,
       timezone: ViarStore.getTimezone(),
       enrolledCohortIds: ['cohort-wia-batch-1'],
     };
@@ -81,6 +85,7 @@ class DefaultAuthProvider implements AuthProvider {
         name: user.name,
         email: user.email || '',
         role: user.role,
+        isOwner: user.isOwner,
         timezone: user.timezone,
         enrolledCohortIds: user.enrolledCohortIds,
       });
@@ -116,11 +121,15 @@ class DefaultAuthProvider implements AuthProvider {
       };
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+    const { role, isOwner } = assignRoleForUser(cleanEmail);
+
     const user: AuthUser = {
-      id: `usr_${Date.now()}`,
+      id: isOwner ? 'user-owner' : `usr_${Date.now()}`,
       name: name.trim(),
-      email: email.trim().toLowerCase(),
-      role: 'STUDENT',
+      email: cleanEmail,
+      role,
+      isOwner,
       timezone: ViarStore.getTimezone(),
       enrolledCohortIds: [],
     };
@@ -131,6 +140,7 @@ class DefaultAuthProvider implements AuthProvider {
         name: user.name,
         email: user.email || '',
         role: user.role,
+        isOwner: user.isOwner,
         timezone: user.timezone,
         enrolledCohortIds: user.enrolledCohortIds,
       });
@@ -144,11 +154,15 @@ class DefaultAuthProvider implements AuthProvider {
 
   async signInWithGoogle(): Promise<{ success: boolean; redirectUrl?: string }> {
     // Clerk Google OAuth Single Sign-On
+    const googleEmail = 'elena.rostova@gmail.com';
+    const { role, isOwner } = assignRoleForUser(googleEmail);
+
     const user: AuthUser = {
       id: 'usr_clerk_google_sso',
-      name: 'Elena Rostova',
-      email: 'elena.rostova@gmail.com',
-      role: 'STUDENT',
+      name: isOwner ? 'Acharya Niraj Kumar' : 'Elena Rostova',
+      email: googleEmail,
+      role,
+      isOwner,
       timezone: 'America/New_York',
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
       enrolledCohortIds: ['cohort-wia-batch-1'],
@@ -160,6 +174,7 @@ class DefaultAuthProvider implements AuthProvider {
         name: user.name,
         email: user.email || '',
         role: user.role,
+        isOwner: user.isOwner,
         timezone: user.timezone,
         avatarUrl: user.avatarUrl,
         enrolledCohortIds: user.enrolledCohortIds,

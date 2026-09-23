@@ -8,6 +8,8 @@ import {
   ADMIN_SECTIONS,
   ADMIN_SECTIONS_META,
   getOwnerEmails,
+  getPrimaryOwnerEmail,
+  assignRoleForUser,
 } from '../src/lib/auth/permissions.ts';
 import type { User, AdminSection } from '../src/lib/types.ts';
 
@@ -18,7 +20,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
     id: 'user-owner',
     name: 'Acharya Niraj Kumar',
     email: ownerEmail,
-    role: 'ADMIN',
+    role: 'OWNER',
     isOwner: true,
     enrolledCohortIds: [],
   };
@@ -50,12 +52,18 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
       assert.strictEqual(isSiteOwner('niraj@aapkaastro.com'), true);
     });
 
+    it('should return primary owner email matching OWNER_EMAIL or fallback', () => {
+      const primary = getPrimaryOwnerEmail();
+      assert.strictEqual(typeof primary, 'string');
+      assert.ok(primary.includes('@'));
+    });
+
     it('should be case-insensitive and trim whitespaces', () => {
       assert.strictEqual(isSiteOwner('  ASK@AAPKAASTRO.COM  '), true);
       assert.strictEqual(isSiteOwner('Admin@Viar.IN'), true);
     });
 
-    it('should recognize owner user object with isOwner=true', () => {
+    it('should recognize owner user object with verified owner email', () => {
       assert.strictEqual(isSiteOwner(ownerUser), true);
     });
 
@@ -85,7 +93,83 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
     });
   });
 
-  describe('2. Per-Section Staff Permissions (Zero-cost RBAC)', () => {
+  describe('2. Anti-Tamper & Anti-Spoofing: Non-Owner Can Never Self-Assign OWNER Role', () => {
+    it('should automatically assign OWNER role when verified email matches OWNER_EMAIL', () => {
+      const result = assignRoleForUser('ask@aapkaastro.com');
+      assert.strictEqual(result.role, 'OWNER');
+      assert.strictEqual(result.isOwner, true);
+    });
+
+    it('should assign STUDENT role to regular sign-up emails', () => {
+      const result = assignRoleForUser('student@gmail.com');
+      assert.strictEqual(result.role, 'STUDENT');
+      assert.strictEqual(result.isOwner, false);
+    });
+
+    it('should block non-owner from self-assigning OWNER role during sign-up/mutation', () => {
+      // Attacker attempts to pass requestedRole: 'OWNER'
+      const attackerAttempt = assignRoleForUser('hacker@darkweb.org', 'OWNER');
+      assert.strictEqual(
+        attackerAttempt.role,
+        'STUDENT',
+        'Security breach: Non-owner was able to self-assign OWNER role!'
+      );
+      assert.strictEqual(attackerAttempt.isOwner, false);
+    });
+
+    it('should strictly reject user object with forged role="OWNER" or isOwner=true if email does not match', () => {
+      const forgedUser: User = {
+        id: 'usr_forged_999',
+        name: 'Malicious Actor',
+        email: 'attacker@evil.com',
+        role: 'OWNER', // Attempted forgery
+        isOwner: true,  // Attempted forgery
+        enrolledCohortIds: [],
+      };
+
+      assert.strictEqual(
+        isSiteOwner(forgedUser),
+        false,
+        'Security breach: isSiteOwner trusted a forged role/flag without email verification!'
+      );
+
+      // Section permission must also be completely denied
+      assert.strictEqual(
+        hasSectionPermission(forgedUser, 'STAFF'),
+        false,
+        'Security breach: Forged owner gained access to STAFF section!'
+      );
+      assert.strictEqual(
+        hasSectionPermission(forgedUser, 'REVENUE'),
+        false,
+        'Security breach: Forged owner gained access to REVENUE section!'
+      );
+    });
+
+    it('should reject email spoofing tricks and subdomains mimicking owner address', () => {
+      const spoofAttempts = [
+        'ask@aapkaastro.com.fake.com',
+        'ask@aapkaastro.com@evil.com',
+        'fake-ask@aapkaastro.com',
+        'ask@aapkaastro.com.attacker.org',
+        'ask@aapkaastro.co',
+        'ask@aapkaastro.org',
+      ];
+
+      for (const spoof of spoofAttempts) {
+        assert.strictEqual(
+          isSiteOwner(spoof),
+          false,
+          `Security breach: Spoof attempt ${spoof} was recognized as owner!`
+        );
+        const assigned = assignRoleForUser(spoof, 'OWNER');
+        assert.strictEqual(assigned.role, 'STUDENT');
+        assert.strictEqual(assigned.isOwner, false);
+      }
+    });
+  });
+
+  describe('3. Per-Section Staff Permissions (Zero-cost RBAC)', () => {
     it('should grant Site Owner access to ALL sections without exception', () => {
       for (const section of ADMIN_SECTIONS) {
         assert.strictEqual(
@@ -139,7 +223,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
     });
   });
 
-  describe('3. getUserAllowedSections helper', () => {
+  describe('4. getUserAllowedSections helper', () => {
     it('should return all 8 sections for Site Owner', () => {
       const allowed = getUserAllowedSections(ownerUser);
       assert.strictEqual(allowed.length, ADMIN_SECTIONS.length);
@@ -158,7 +242,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
     });
   });
 
-  describe('4. Metadata and Section Definitions', () => {
+  describe('5. Metadata and Section Definitions', () => {
     it('should have complete metadata for all admin sections', () => {
       for (const sec of ADMIN_SECTIONS) {
         const meta = ADMIN_SECTIONS_META[sec];

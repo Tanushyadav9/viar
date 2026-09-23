@@ -50,7 +50,7 @@ export default function CohortClassByClassPage() {
       sessionId: activeClass.id,
       authorName,
       comment: commentText.trim(),
-      authorRole: user?.role === 'ADMIN' ? 'ADMIN' : 'STUDENT',
+      authorRole: user?.role === 'ADMIN' || user?.role === 'OWNER' ? 'ADMIN' : 'STUDENT',
     });
     setComments((prev) => [...prev, newC]);
     setCommentText('');

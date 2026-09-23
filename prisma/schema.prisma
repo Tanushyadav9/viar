@@ -19,6 +19,7 @@ enum UserRole {
   STUDENT
   INSTRUCTOR
   ADMIN
+  OWNER
 }
 
 enum CourseStatus {

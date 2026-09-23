@@ -45,7 +45,7 @@ export default function Navbar() {
     window.dispatchEvent(new Event('timezone-changed'));
   };
 
-  const handleRoleSwitch = (role: 'STUDENT' | 'ADMIN' | 'STAFF') => {
+  const handleRoleSwitch = (role: 'STUDENT' | 'ADMIN' | 'STAFF' | 'OWNER') => {
     const updated = ViarStore.switchUserRole(role);
     setCurrentUser(updated);
     setIsRoleOpen(false);
@@ -64,7 +64,8 @@ export default function Navbar() {
     );
   }
 
-  const isAdmin = currentUser?.role === 'ADMIN';
+  const isOwner = currentUser?.role === 'OWNER' || currentUser?.isOwner;
+  const isAdmin = isOwner || currentUser?.role === 'ADMIN';
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#07090e]/90 backdrop-blur-md">
@@ -268,7 +269,7 @@ export default function Navbar() {
                 </button>
 
                 <button
-                  onClick={() => handleRoleSwitch('ADMIN')}
+                  onClick={() => handleRoleSwitch('OWNER')}
                   className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition mt-1 ${
                     currentUser?.isOwner
                       ? 'bg-amber-500/20 text-amber-300 font-bold'

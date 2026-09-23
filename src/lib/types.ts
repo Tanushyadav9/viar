@@ -1,4 +1,4 @@
-export type UserRole = 'STUDENT' | 'ADMIN' | 'INSTRUCTOR';
+export type UserRole = 'STUDENT' | 'ADMIN' | 'INSTRUCTOR' | 'OWNER';
 
 export type AdminSection =
   | 'COURSES'

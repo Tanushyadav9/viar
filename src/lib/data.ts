@@ -1039,7 +1039,7 @@ export const DEMO_USERS: User[] = [
     id: 'user-admin-demo',
     name: 'Acharya Niraj Kumar',
     email: 'ask@aapkaastro.com',
-    role: 'ADMIN',
+    role: 'OWNER',
     isOwner: true,
     timezone: 'Asia/Kolkata',
     avatarUrl: '/images/Acharya_Niraj_Kumar.jpg',

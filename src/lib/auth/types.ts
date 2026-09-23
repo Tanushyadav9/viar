@@ -3,7 +3,8 @@ export interface AuthUser {
   name: string;
   email?: string;
   phone?: string;
-  role: 'STUDENT' | 'ADMIN' | 'INSTRUCTOR';
+  role: 'STUDENT' | 'ADMIN' | 'INSTRUCTOR' | 'OWNER';
+  isOwner?: boolean;
   timezone?: string;
   avatarUrl?: string;
   enrolledCohortIds: string[];

@@ -392,26 +392,52 @@ The engineering implementation is 100% complete. Prior to public announcement, t
 
 The client required two vital identity and permission governance capabilities:
 1. **Confirmed, Deliberate Owner Recognition**:
-   - Previous testing mechanisms relied on loose heuristic checks (such as whether an email string happened to contain the word `"admin"`), creating a vulnerability where an unauthorized user could accidentally or maliciously acquire administrative privileges.
-   - The client's account needed a deliberate, immutable, and cryptographically sound mechanism to be recognized as the supreme **Site Owner** (`Acharya Niraj Kumar`).
+   - **What the mechanism actually was in earlier work:** During rapid initial prototyping, `src/lib/auth/index.ts` contained a temporary heuristic check: `const isAdmin = email.toLowerCase().includes('admin');`. Anyone logging in with an email containing the substring "admin" (e.g., `admin@attacker.com`, `badadmin@gmail.com`) was automatically treated as an administrator. This was an accident of testing and an obvious security risk.
+   - **The new mechanism implemented:** The client needed an explicit, immutable **`OWNER`** role distinct from any general "astrologer" or "admin" role. The Owner is the client himself (`Acharya Niraj Kumar`), always has unrestricted access to every section, and is never subject to section-level permission restrictions.
 2. **Per-Section Delegated Staff Permissions (RBAC)**:
    - The client needs the ability to employ staff members or virtual assistants and give them access **only to specific parts of the administration area** (for example, allowing a marketing assistant to curate blog posts or Instagram reels in the Content section without giving them access to tuition financial revenue, student contact databases, or live class links).
-3. **Strict Constraints**:
-   - **Cost Constraint ($0 Recurring Fees)**: Do NOT use Clerk's Organizations custom roles and permissions feature. Clerk charges an expensive monthly subscription plus per-seat add-on fees for custom organization roles. The solution must be built directly using the app's existing free Neon PostgreSQL database and application middleware at zero additional cost.
-   - **Strict Per-Site Scope**: Each site in the client's network (`Viar.in`, `AapkaAstro.com`, `DOW Consulting`) maintains its own independent permissions. Granting a staff member permission on Viar.in must **never** leak or grant access to Aapka Astro or DOW Consulting unless explicitly authorized on those systems separately.
+3. **Strict Constraints Respected**:
+   - **Cost Constraint ($0 Recurring Fees)**: Do NOT use Clerk's Organizations custom roles and permissions feature. Clerk charges an expensive monthly subscription plus per-seat add-on fees for custom organization roles. The solution is built directly using the app's existing free Neon PostgreSQL database and application code at zero additional cost.
+   - **Strict Per-Site Scope**: Each site in the client's network (`Viar.in`, `AapkaAstro.com`, `DOW Consulting`) maintains its own independent permissions. Granting a staff member permission on Viar.in **never** leaks or grants access to Aapka Astro or DOW Consulting unless explicitly authorized on those systems separately.
 
 ---
 
 ### 10.2 Architectural Implementation Details
 
-#### 1. Deliberate Site Owner Anchor Mechanism
-Rather than guessing roles from substrings, the Site Owner identity is anchored through a multi-tiered verification system implemented in [`src/lib/auth/permissions.ts`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/src/lib/auth/permissions.ts):
-- **Verified Owner Emails**: Anchored to `ask@aapkaastro.com`, `admin@viar.in`, and `niraj@aapkaastro.com`.
-- **Environment Variable Configuration**: Fully configurable via `OWNER_EMAIL` and comma-separated `SUPERADMIN_EMAILS` in `src/config/env.ts` and `.env.example`.
-- **Database Boolean Anchor**: In `prisma/schema.prisma`, the `User` model includes `isOwner: Boolean @default(false)` (`is_owner` column in PostgreSQL).
-- **Security Test Guarantee**: In [`tests/permissions.test.ts`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/tests/permissions.test.ts), tests explicitly verify that strings like `fakeadmin@gmail.com`, `admin@attacker.com`, or `superadmin@randommail.org` are strictly rejected with zero accidental elevation.
+#### 1. Deliberate Site Owner Designation (`OWNER_EMAIL`)
+Rather than guessing roles from email substrings, the Site Owner identity is anchored through the recommended single environment variable mechanism:
+- **Environment Variable Anchor**: `OWNER_EMAIL` in `src/config/env.ts` and `.env.example` (defaulting to `ask@aapkaastro.com`).
+- **Database `OWNER` Role**: In [`prisma/schema.prisma`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/prisma/schema.prisma) and [`prisma/migrations/0_init/migration.sql`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/prisma/migrations/0_init/migration.sql), the `UserRole` enum defines:
+  ```prisma
+  enum UserRole {
+    STUDENT
+    INSTRUCTOR
+    ADMIN
+    OWNER
+  }
+  ```
+  The `OWNER` role is distinct from `ADMIN` and `INSTRUCTOR`.
+- **Automatic Assignment on Sign-up or First Login**:
+  Implemented in [`src/lib/auth/permissions.ts`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/src/lib/auth/permissions.ts) via `assignRoleForUser(email)` and integrated into [`src/lib/auth/index.ts`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/src/lib/auth/index.ts) (`signInWithEmail`, `signUpWithEmail`, `signInWithGoogle`):
+  ```ts
+  export function assignRoleForUser(email: string, requestedRole?: User['role']): { role: User['role']; isOwner: boolean } {
+    if (isSiteOwner(email)) {
+      return { role: 'OWNER', isOwner: true };
+    }
+    // Non-owner: ensure OWNER role cannot be self-assigned
+    const safeRole = requestedRole === 'OWNER' ? 'STUDENT' : (requestedRole || 'STUDENT');
+    return { role: safeRole, isOwner: false };
+  }
+  ```
+  When an authenticated user's email matches `OWNER_EMAIL` (case-insensitive and trimmed), they are **automatically assigned `role = 'OWNER'` and `isOwner = true`** in the application and database.
 
-#### 2. Free Database-Backed Staff Permissions Schema
+#### 2. Anti-Tamper & Anti-Spoofing Security Guarantee
+A non-owner account can **never** self-assign or be tricked into obtaining the Owner role:
+- **Client Body Injection Blocked**: If a user attempts to send `{ role: 'OWNER' }` or `{ isOwner: true }` in a registration or update payload, `assignRoleForUser` actively strips the role and coerces it to `STUDENT`.
+- **Forged Object Neutralization**: Even if a forged user object with `role: 'OWNER'` or `isOwner: true` exists in storage or a request, `isSiteOwner(user)` verifies that `user.email` strictly matches the designated owner address. If it does not match, `isSiteOwner` returns `false` and access is denied.
+- **Deceptive Email & Domain Spoofing Rejection**: Testing confirms that deceptive variations like `badadmin@gmail.com`, `admin@attacker.com`, `ask@aapkaastro.com.fake.com`, `ask@aapkaastro.com@evil.com`, or `fake-ask@aapkaastro.com` are strictly rejected.
+
+#### 3. Free Database-Backed Staff Permissions Schema
 In [`prisma/schema.prisma`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/prisma/schema.prisma) and [`prisma/migrations/0_init/migration.sql`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/prisma/migrations/0_init/migration.sql):
 ```prisma
 enum AdminSection {
@@ -440,7 +466,7 @@ model StaffPermission {
 }
 ```
 
-#### 3. The 8 Granular Administrative Sections
+#### 4. The 8 Granular Administrative Sections
 
 | Admin Section | Scope & Capabilities | Access Level |
 | :--- | :--- | :--- |
@@ -453,30 +479,44 @@ model StaffPermission {
 | **`CONTENT`** | Curate marketing reels, student testimonials, reviews, and homepage FAQs. | Owner + Authorized Staff |
 | **`STAFF`** | Assign, modify, or revoke section permissions for team members. | **Site Owner ONLY** |
 
-#### 4. Enforcement & Unauthorized Lockout UI
+#### 5. Enforcement & Unauthorized Lockout UI
 - Evaluated centrally via `hasSectionPermission(user, section)` in `src/lib/auth/permissions.ts`.
-- The **Site Owner** has universal, permanent access to all 8 modules.
-- The **`STAFF` section** is strictly reserved for the Site Owner. Regular staff members are blocked from viewing or mutating permissions even if malicious payloads attempt to grant `STAFF`.
+- The **Site Owner** has universal, permanent access to all 8 modules and is **never** subject to section-level restrictions.
+- The **`STAFF` section** is strictly reserved for the Site Owner. Regular staff members are blocked from viewing or mutating permissions.
 - If a staff member visits or clicks an unassigned tab in `/admin`, the portal renders a polite, informative **"Section Access Restricted"** panel explaining that permissions are managed per-site by Acharya Niraj Kumar (`ask@aapkaastro.com`).
 
 ---
 
 ### 10.3 Verification & Testing Summary
 
-The entire permissions architecture was verified using automated unit tests:
+The entire permissions and anti-tamper architecture was verified using automated unit tests:
 * **Test Suite:** [`tests/permissions.test.ts`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/tests/permissions.test.ts)
-* **Total Automated Tests:** 13 permission-specific unit tests (42 tests total across repository).
-* **Results:**
-  * Deliberate Site Owner recognition verified across all primary email addresses (`ask@aapkaastro.com`, `admin@viar.in`, `niraj@aapkaastro.com`).
-  * Zero false-positive admin elevation for deceptive emails containing `"admin"`.
-  * Section-by-section gating confirmed for staff members (e.g. `Priya Verma` permitted for `CONTENT` and `RECORDINGS`, denied for `SCHEDULE`, `COURSES`, `STUDENTS`, `REVENUE`, `CERTIFICATES`).
-  * `STAFF` delegation module confirmed strictly restricted to the Site Owner.
-  * All 42 tests passing (`npm test` exited 0).
-  * Next.js production build (`npm run build`) succeeded with 0 errors across all 30 routes.
+* **Total Automated Tests:** 18 permission & owner unit tests (48 tests total across repository).
+* **Automated Test Scenarios:**
+  1. Verified auto-assignment of `OWNER` role upon sign-up or login when email matches `OWNER_EMAIL`.
+  2. Verified non-owner accounts attempting to pass `requestedRole: 'OWNER'` are coerced to `STUDENT`.
+  3. Verified forged user objects with `role: 'OWNER'` or `isOwner: true` are rejected when email does not match `OWNER_EMAIL`.
+  4. Verified domain spoofing attempts (`ask@aapkaastro.com.fake.com`, `fake-ask@...`, `...evil.com`) are rejected.
+  5. Verified zero false-positive admin elevation for deceptive emails containing `"admin"`.
+  6. Verified section-by-section gating confirmed for staff members (e.g. `Priya Verma` permitted for `CONTENT` and `RECORDINGS`, denied for `SCHEDULE`, `COURSES`, `STUDENTS`, `REVENUE`, `CERTIFICATES`).
+  7. Verified `STAFF` delegation module confirmed strictly restricted to the Site Owner.
+  8. All 48 tests passing (`npm test` exited 0).
+  9. Next.js production build (`npm run build`) succeeded with 0 errors across all 30 routes.
 
 ---
 
-### 10.4 Staff Administration Guide for Acharya Niraj Kumar
+### 10.4 What the Client Needs to Do Before Go-Live
+
+To confirm Site Owner access in production, Acharya Niraj Kumar needs to perform one simple step:
+1. In the **Vercel Dashboard** for Viar.in, go to **Settings $\rightarrow$ Environment Variables**.
+2. Set the environment variable:
+   - **`OWNER_EMAIL`** = `ask@aapkaastro.com`
+   - *(Optional)* **`SUPERADMIN_EMAILS`** = `admin@viar.in,niraj@aapkaastro.com` (if secondary login emails are used).
+3. On first login or sign-up on production with `ask@aapkaastro.com`, the system automatically recognizes and designates the account with the `OWNER` role, unlocking full access to all 8 modules and the exclusive Staff Roles manager.
+
+---
+
+### 10.5 Staff Administration Guide for Acharya Niraj Kumar
 
 To grant or manage staff access on Viar.in:
 1. Sign in to Viar.in using your owner account (`ask@aapkaastro.com`).

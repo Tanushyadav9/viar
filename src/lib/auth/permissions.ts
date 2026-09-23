@@ -93,6 +93,14 @@ export const ADMIN_SECTIONS_META: Record<AdminSection, AdminSectionMeta> = {
 };
 
 /**
+ * Returns the primary Site Owner email address configured via OWNER_EMAIL.
+ * Defaults to Acharya Niraj Kumar's verified email.
+ */
+export function getPrimaryOwnerEmail(): string {
+  return process.env.OWNER_EMAIL?.trim().toLowerCase() || 'ask@aapkaastro.com';
+}
+
+/**
  * Returns the list of designated Site Owner / Superadmin email addresses.
  * Configurable via environment variables with verified fallback to Acharya Niraj Kumar's address.
  */
@@ -118,7 +126,12 @@ export function getOwnerEmails(): string[] {
 
 /**
  * Deliberate, secure check to determine if an account is the Site Owner.
- * Checks against verified owner email list or explicit isOwner flag.
+ * 
+ * ANTI-TAMPER SECURITY GUARANTEE:
+ * An account is recognized as Site Owner IF AND ONLY IF its verified email
+ * strictly matches the designated owner address list (anchored by OWNER_EMAIL).
+ * Even if a malicious request payload or database record contains `role: 'OWNER'`
+ * or `isOwner: true`, it is completely rejected if the email does not match.
  */
 export function isSiteOwner(userOrEmail?: string | User | null): boolean {
   if (!userOrEmail) return false;
@@ -130,13 +143,32 @@ export function isSiteOwner(userOrEmail?: string | User | null): boolean {
     return ownerEmails.includes(email);
   }
 
-  // If user object
-  if (userOrEmail.isOwner === true) return true;
-  if (userOrEmail.email && ownerEmails.includes(userOrEmail.email.trim().toLowerCase())) {
-    return true;
+  // If user object, the email MUST match verified owner emails.
+  // Never trust a claimed role or isOwner flag alone without verified email match.
+  if (userOrEmail.email) {
+    const email = userOrEmail.email.trim().toLowerCase();
+    return ownerEmails.includes(email);
   }
 
   return false;
+}
+
+/**
+ * Automatically resolves and assigns the correct role on sign-up or login.
+ * If the authenticated email matches OWNER_EMAIL, automatically assigns OWNER role.
+ * If not, prevents any client self-assignment of OWNER role (coercing to STUDENT).
+ */
+export function assignRoleForUser(
+  email: string,
+  requestedRole?: User['role']
+): { role: User['role']; isOwner: boolean } {
+  if (isSiteOwner(email)) {
+    return { role: 'OWNER', isOwner: true };
+  }
+
+  // Non-owner: ensure OWNER role cannot be self-assigned
+  const safeRole = requestedRole === 'OWNER' ? 'STUDENT' : (requestedRole || 'STUDENT');
+  return { role: safeRole, isOwner: false };
 }
 
 /**

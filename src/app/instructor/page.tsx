@@ -22,9 +22,9 @@ export default function InstructorOverviewPage() {
   const [stats, setStats] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    // Auto switch to ADMIN persona if visiting instructor page
+    // Auto switch to ADMIN persona if visiting instructor page as a student
     const user = ViarStore.getCurrentUser();
-    if (user.role !== 'ADMIN') {
+    if (user.role !== 'ADMIN' && user.role !== 'OWNER') {
       ViarStore.switchUserRole('ADMIN');
     }
     setCourses(ViarStore.getCourses());
