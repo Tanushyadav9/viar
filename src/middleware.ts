@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isSiteOwner } from '@/lib/auth/permissions';
+import { isDevSimulationAllowed, parseClerkSessionClaims } from '@/lib/auth/devSimulation';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -14,22 +15,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Retrieve auth session and role tokens
+  // Retrieve auth session token
   const sessionToken =
     request.cookies.get('viar_session')?.value ||
     request.cookies.get('__session')?.value ||
     request.cookies.get('viar_auth_token')?.value;
-
-  const userRole =
-    request.cookies.get('viar_user_role')?.value ||
-    request.headers.get('x-user-role') ||
-    '';
-
-  const rawEmail =
-    request.cookies.get('viar_user_email')?.value ||
-    request.headers.get('x-user-email') ||
-    '';
-  const userEmail = rawEmail ? decodeURIComponent(rawEmail).trim().toLowerCase() : '';
 
   // 1. Unauthenticated check for all protected routes
   if (!sessionToken) {
@@ -38,10 +28,25 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 2. /admin/team: Strictly Site Owner-Only
+  // 2. Resolve verified user email (NEVER trust client-supplied headers/cookies in production)
+  let verifiedEmail = '';
+  const clerkPayload = parseClerkSessionClaims(sessionToken);
+  if (clerkPayload?.email) {
+    verifiedEmail = clerkPayload.email;
+  } else if (isDevSimulationAllowed()) {
+    // Only in local development when explicit ENABLE_LOCAL_DEV_SIMULATOR is set
+    const rawEmail =
+      request.cookies.get('viar_user_email')?.value ||
+      request.headers.get('x-user-email') ||
+      '';
+    verifiedEmail = rawEmail ? decodeURIComponent(rawEmail).trim().toLowerCase() : '';
+  }
+
+  const isOwner = verifiedEmail ? isSiteOwner(verifiedEmail) : false;
+
+  // 3. /admin/team: Strictly Site Owner-Only
   // Rejects anyone else (including staff with MANAGE access to other sections) server-side
   if (pathname.startsWith('/admin/team')) {
-    const isOwner = isSiteOwner(userEmail);
     if (!isOwner) {
       const redirectUrl = new URL('/admin', request.url);
       redirectUrl.searchParams.set('error', 'owner_only');
@@ -49,13 +54,21 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // 3. Role-based access control for instructor & admin portals
+  // 4. Role-based access control for instructor & admin portals
+  // Deny regular students by default; only allow confirmed Owner or verified Staff
   if (isInstructorRoute || isAdminRoute) {
-    // If authenticated as regular STUDENT and not INSTRUCTOR/ADMIN/OWNER:
-    if (sessionToken && userRole === 'STUDENT' && !isSiteOwner(userEmail)) {
-      const unauthorizedUrl = new URL('/dashboard', request.url);
-      unauthorizedUrl.searchParams.set('error', 'unauthorized_role');
-      return NextResponse.redirect(unauthorizedUrl);
+    if (!isOwner) {
+      // In local development simulation mode, check if dev staff session is simulated
+      const isDevStaff =
+        isDevSimulationAllowed() &&
+        (request.cookies.get('viar_user_role')?.value === 'ADMIN' ||
+          request.headers.get('x-user-role') === 'ADMIN');
+
+      if (!isDevStaff) {
+        const unauthorizedUrl = new URL('/dashboard', request.url);
+        unauthorizedUrl.searchParams.set('error', 'unauthorized_role');
+        return NextResponse.redirect(unauthorizedUrl);
+      }
     }
   }
 

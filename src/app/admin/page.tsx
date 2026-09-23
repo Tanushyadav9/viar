@@ -363,7 +363,7 @@ export default function AdminPortalPage() {
               href="/dashboard"
               className="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
             >
-              Student View
+              Student Portal
             </Link>
           </div>
         </div>

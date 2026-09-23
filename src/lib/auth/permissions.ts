@@ -26,6 +26,9 @@ import type {
   StaffAccessLevel,
   StaffPermission,
 } from '../types.ts';
+import { isDevSimulationAllowed, parseClerkSessionClaims } from './devSimulation.ts';
+
+export { isDevSimulationAllowed, parseClerkSessionClaims };
 
 export interface AdminSectionMeta {
   key: AdminSection;
@@ -376,22 +379,37 @@ export function extractAuthFromRequest(req: {
     req.cookies.get('__session')?.value ||
     req.cookies.get('viar_auth_token')?.value;
 
-  const userRole =
-    req.cookies.get('viar_user_role')?.value ||
-    req.headers.get('x-user-role') ||
-    '';
+  let userEmail: string | undefined;
+  let userId: string | undefined;
 
-  const rawEmail =
-    req.cookies.get('viar_user_email')?.value ||
-    req.headers.get('x-user-email') ||
-    '';
-  const userEmail = rawEmail ? decodeURIComponent(rawEmail).trim().toLowerCase() : undefined;
+  // 1. If a Clerk session token exists, extract verified identity from cryptographic claims
+  const clerkClaims = parseClerkSessionClaims(sessionToken);
+  if (clerkClaims?.email) {
+    userEmail = clerkClaims.email;
+    userId = clerkClaims.userId;
+  }
 
-  const userId =
-    req.cookies.get('viar_user_id')?.value ||
-    sessionToken ||
-    req.headers.get('x-user-id') ||
-    undefined;
+  // 2. Local-only development simulation gate:
+  // ONLY if running in local dev with explicit ENABLE_LOCAL_DEV_SIMULATOR=true
+  // (or in automated test suites). Hardcoded to false in production builds.
+  if (!userEmail && isDevSimulationAllowed()) {
+    const rawEmail =
+      req.cookies.get('viar_user_email')?.value ||
+      req.headers.get('x-user-email') ||
+      '';
+    if (rawEmail) {
+      userEmail = decodeURIComponent(rawEmail).trim().toLowerCase();
+    }
+    userId =
+      req.cookies.get('viar_user_id')?.value ||
+      sessionToken ||
+      req.headers.get('x-user-id') ||
+      undefined;
+  }
+
+  // Server NEVER trusts client-supplied role claims (x-user-role / viar_user_role).
+  // Role is always derived server-side via Site Owner check or StaffPermission table.
+  const userRole = userEmail && isSiteOwner(userEmail) ? 'OWNER' : undefined;
 
   return { sessionToken, userRole, userEmail, userId };
 }

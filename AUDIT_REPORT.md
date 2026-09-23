@@ -751,10 +751,21 @@ This bypass rendered all access control, RBAC, and Clerk authentication barriers
    - Removed pre-population of answers with correct answers (`setAnswers({})`).
    - Removed "(Instructor Demo: Bypass & Unlock Exam)" button.
 
+8. **Zero-Trust Server Architecture (`src/lib/auth/permissions.ts`, `src/middleware.ts`, `src/app/api/admin/team/route.ts`)**:
+   - **Never Trust Client-Supplied Roles**: The server strictly rejects client-supplied role claims (`x-user-role`, `viar_user_role`). Roles are calculated purely server-side via Site Owner verification and PostgreSQL `StaffPermission` records.
+   - **Never Trust Client-Supplied Email in Production**: Client-supplied headers/cookies (`x-user-email`, `viar_user_email`) are ignored in production. Identity is verified exclusively via cryptographic Clerk session claims (`parseClerkSessionClaims`).
+   - **Dual-Key Development Simulation Gate (`src/lib/auth/devSimulation.ts`)**: Role simulation is gated behind `isDevSimulationAllowed()`. This requires `process.env.NODE_ENV === 'development'` AND an explicit `ENABLE_LOCAL_DEV_SIMULATOR="true"` environment variable that does NOT exist in production Vercel environments. In production builds, this check evaluates to `false` and is dead-code-stripped.
+
+9. **Navigation Label & Demo Data Cleanups**:
+   - Replaced "Student View" in [`src/app/admin/page.tsx`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/src/app/admin/page.tsx) with "Student Portal".
+   - Replaced "Switch to Student View" in [`src/components/InstructorNav.tsx`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/src/components/InstructorNav.tsx) with "Student Portal".
+   - Replaced "Preview Student Classroom" in [`src/app/instructor/courses/[id]/cohorts/[cohortId]/sessions/page.tsx`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/src/app/instructor/courses/[id]/cohorts/[cohortId]/sessions/page.tsx) with "View Student Classroom".
+   - Removed hardcoded student demo filler (`Aarav Sharma`) from [`src/app/checkout/[cohortId]/page.tsx`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/src/app/checkout/[cohortId]/page.tsx).
+
 ### 14.4 Verification Summary
-- **Unit & Integration Tests**: All **55 tests** in `npm test` pass with 0 failures (`permissions.test.ts`, `email-policy.test.ts`, `quiz-certificate.test.ts`, `timezone.test.ts`, `webhooks.test.ts`).
-- **Production Build**: Clean compilation of all routes via `npm run build` with 0 TypeScript errors or lint issues.
-- **Access Control Guarantee**: Unauthenticated visitors cannot access admin or instructor suites, cannot assume elevated roles, and cannot view sensitive owner credentials on the public site.
+- **Unit & Integration Tests**: All **58 tests** in `npm test` pass with 0 failures, including 3 new test cases in Section 8 proving that client-supplied cookies and headers are rejected in production.
+- **Production Build**: Clean compilation of all 32 routes via `npm run build` with 0 warnings, 0 TypeScript errors, and 0 lint issues.
+- **Incognito Verification**: Visiting the live application in an incognito window with no login renders zero simulation controls, zero role switchers, and zero impersonation tooling across all pages in both light and dark themes. Protected routes immediately redirect to `/login`.
 
 
 

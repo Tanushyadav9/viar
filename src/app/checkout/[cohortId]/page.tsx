@@ -50,10 +50,12 @@ function CheckoutContent() {
     const tz = ViarStore.getTimezone() || getUserLocalTimezone();
     setUserTz(tz);
 
-    // Default student demo filler
-    setFullName('Aarav Sharma');
-    setEmail('aarav.sharma@example.com');
-    setPhone('+91 98765 43210');
+    // Pre-fill user details if already authenticated
+    const currentUser = ViarStore.getCurrentUser();
+    if (currentUser) {
+      if (currentUser.name) setFullName(currentUser.name);
+      if (currentUser.email) setEmail(currentUser.email);
+    }
   }, [cohortId]);
 
   const handleCurrencyChange = (newCurr: 'INR' | 'USD') => {

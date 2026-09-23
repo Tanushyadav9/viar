@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { isSiteOwner, VIAR_SECTIONS } from '@/lib/auth/permissions';
+import { isDevSimulationAllowed, parseClerkSessionClaims } from '@/lib/auth/devSimulation';
 import { DEMO_USERS } from '@/lib/data';
 import { StaffAccessLevel, StaffPermission, User, AdminSection } from '@/lib/types';
 
@@ -14,11 +15,22 @@ function getCallerEmail(req: NextRequest): string {
     return '';
   }
 
-  const rawEmail =
-    req.cookies.get('viar_user_email')?.value ||
-    req.headers.get('x-user-email') ||
-    '';
-  return rawEmail ? decodeURIComponent(rawEmail).trim().toLowerCase() : '';
+  // 1. If real Clerk session JWT exists, extract verified email
+  const clerkPayload = parseClerkSessionClaims(sessionToken);
+  if (clerkPayload?.email) {
+    return clerkPayload.email;
+  }
+
+  // 2. Only allow unverified header/cookie in local dev simulation mode or test
+  if (isDevSimulationAllowed()) {
+    const rawEmail =
+      req.cookies.get('viar_user_email')?.value ||
+      req.headers.get('x-user-email') ||
+      '';
+    return rawEmail ? decodeURIComponent(rawEmail).trim().toLowerCase() : '';
+  }
+
+  return '';
 }
 
 // In-memory server fallback cache when DB is unprovisioned during local testing

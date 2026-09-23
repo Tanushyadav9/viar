@@ -131,7 +131,7 @@ export default function InstructorSessionsPage() {
             href={`/dashboard/courses/${cohortId}`}
             className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/10 transition shrink-0 flex items-center gap-1.5"
           >
-            <span>Preview Student Classroom</span>
+            <span>View Student Classroom</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
         </div>

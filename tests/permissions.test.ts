@@ -510,4 +510,92 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
       );
     });
   });
+
+  describe('8. Production Lockdown: Zero Trust for Client-Supplied Role Claims or Headers', () => {
+    const originalEnv = process.env.NODE_ENV;
+
+    it('in production, client-supplied viar_user_role and viar_user_email cookies are strictly ignored', () => {
+      try {
+        process.env.NODE_ENV = 'production';
+
+        const spoofedReq = {
+          cookies: {
+            get: (name: string) =>
+              name === 'viar_session'
+                ? { value: 'unverified-session-id' }
+                : name === 'viar_user_role'
+                ? { value: 'OWNER' }
+                : name === 'viar_user_email'
+                ? { value: encodeURIComponent('ask@aapkaastro.com') }
+                : undefined,
+          },
+          headers: { get: () => null },
+        };
+
+        const result = verifyRouteAccess(spoofedReq, 'staff', 'MANAGE');
+        assert.strictEqual(result.allowed, false, 'Spoofed cookie should NOT grant access in production');
+        assert.strictEqual(result.isOwner, false, 'Spoofed cookie should NOT grant isOwner in production');
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+      }
+    });
+
+    it('in production, client-supplied x-user-role and x-user-email headers are strictly ignored', () => {
+      try {
+        process.env.NODE_ENV = 'production';
+
+        const spoofedHeaderReq = {
+          cookies: {
+            get: (name: string) => (name === 'viar_session' ? { value: 'unverified-session-id' } : undefined),
+          },
+          headers: {
+            get: (name: string) =>
+              name === 'x-user-role'
+                ? 'OWNER'
+                : name === 'x-user-email'
+                ? 'ask@aapkaastro.com'
+                : null,
+          },
+        };
+
+        const result = verifyRouteAccess(spoofedHeaderReq, 'staff', 'MANAGE');
+        assert.strictEqual(result.allowed, false, 'Spoofed header should NOT grant access in production');
+        assert.strictEqual(result.isOwner, false, 'Spoofed header should NOT grant isOwner in production');
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+      }
+    });
+
+    it('in production, verified Clerk session JWT is recognized', () => {
+      try {
+        process.env.NODE_ENV = 'production';
+
+        // Mock valid Clerk JWT payload
+        const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+        const payload = Buffer.from(
+          JSON.stringify({
+            sub: 'user_clerk_owner_99',
+            email: 'ask@aapkaastro.com',
+            exp: Math.floor(Date.now() / 1000) + 3600,
+          })
+        ).toString('base64url');
+        const fakeSignature = 'mock_signature_bytes';
+        const validClerkToken = `${header}.${payload}.${fakeSignature}`;
+
+        const verifiedReq = {
+          cookies: {
+            get: (name: string) => (name === '__session' ? { value: validClerkToken } : undefined),
+          },
+          headers: { get: () => null },
+        };
+
+        const result = verifyRouteAccess(verifiedReq, 'staff', 'MANAGE');
+        assert.strictEqual(result.allowed, true, 'Verified Clerk session should grant access to Site Owner');
+        assert.strictEqual(result.isOwner, true);
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+      }
+    });
+  });
 });
+
