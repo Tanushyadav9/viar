@@ -440,3 +440,98 @@ export function verifyRouteAccess(
     permissions,
   });
 }
+
+export interface RouteAccessDecision {
+  action: 'allow' | 'redirect';
+  redirectUrl?: string;
+  statusCode?: number;
+  reason?: string;
+}
+
+/**
+ * Pure evaluation function for route middleware and authorization gates.
+ * Enforces fail-closed security:
+ * 1. Unauthenticated requests are redirected to /login with redirect parameter.
+ * 2. Any protected route with error=unauthorized_role is intercepted and redirected
+ *    to /login with error=unauthorized_role, NEVER rendering protected content.
+ * 3. /admin/team is strictly owner-only.
+ * 4. Instructor & Admin portals require Owner or verified Staff authorization.
+ */
+export function evaluateRouteAccess(params: {
+  pathname: string;
+  searchParams?: URLSearchParams | Record<string, string | null | undefined>;
+  sessionToken?: string;
+  userEmail?: string;
+  userRole?: string;
+  isDevSimulationAllowed?: boolean;
+}): RouteAccessDecision {
+  const { pathname, searchParams, sessionToken, userEmail, userRole, isDevSimulationAllowed = false } = params;
+
+  const isDashboardRoute = pathname.startsWith('/dashboard');
+  const isInstructorRoute = pathname.startsWith('/instructor');
+  const isAdminRoute = pathname.startsWith('/admin');
+
+  if (!isDashboardRoute && !isInstructorRoute && !isAdminRoute) {
+    return { action: 'allow' };
+  }
+
+  // 1. Unauthenticated check for all protected routes
+  if (!sessionToken) {
+    return {
+      action: 'redirect',
+      redirectUrl: `/login?redirect=${encodeURIComponent(pathname)}`,
+      statusCode: 307,
+      reason: 'Unauthenticated: No active session token',
+    };
+  }
+
+  // 2. Fail-Closed Check: If ANY protected request carries error=unauthorized_role,
+  // it indicates a failed authorization state and MUST NEVER render protected content.
+  let errorParam: string | null | undefined;
+  if (searchParams instanceof URLSearchParams) {
+    errorParam = searchParams.get('error');
+  } else if (searchParams && typeof searchParams === 'object') {
+    errorParam = searchParams['error'];
+  }
+
+  if (errorParam === 'unauthorized_role') {
+    return {
+      action: 'redirect',
+      redirectUrl: '/login?error=unauthorized_role',
+      statusCode: 307,
+      reason: 'Fail-closed: unauthorized_role error state must redirect away from protected route',
+    };
+  }
+
+  const isOwner = userEmail ? isSiteOwner(userEmail) : false;
+
+  // 4. /admin/team: Strictly Site Owner-Only
+  if (pathname.startsWith('/admin/team')) {
+    if (!isOwner) {
+      return {
+        action: 'redirect',
+        redirectUrl: '/admin?error=owner_only',
+        statusCode: 307,
+        reason: 'Restricted: Team management is reserved exclusively for the Site Owner',
+      };
+    }
+  }
+
+  // 5. Role-based access control for instructor & admin portals
+  if (isInstructorRoute || isAdminRoute) {
+    if (!isOwner) {
+      const isDevStaff = isDevSimulationAllowed && userRole === 'ADMIN';
+      if (!isDevStaff) {
+        return {
+          action: 'redirect',
+          redirectUrl: '/login?error=unauthorized_role',
+          statusCode: 307,
+          reason: 'Access denied: user role is not authorized for portal',
+        };
+      }
+    }
+  }
+
+  return { action: 'allow' };
+}
+

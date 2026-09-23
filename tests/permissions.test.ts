@@ -13,6 +13,7 @@ import {
   checkStaffSectionAccess,
   hasSectionAccess,
   verifyRouteAccess,
+  evaluateRouteAccess,
 } from '../src/lib/auth/permissions.ts';
 import type { User, AdminSection } from '../src/lib/types.ts';
 
@@ -594,6 +595,79 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
         assert.strictEqual(result.isOwner, true);
       } finally {
         process.env.NODE_ENV = originalEnv;
+      }
+    });
+  });
+
+  describe('9. Fail-Closed Security: Unauthorized Role Handling', () => {
+    it('request to /dashboard?error=unauthorized_role must redirect away to /login and never allow access to protected content', () => {
+      const decision = evaluateRouteAccess({
+        pathname: '/dashboard',
+        searchParams: new URLSearchParams('error=unauthorized_role'),
+        sessionToken: 'session-student-123',
+        userEmail: 'student@example.com',
+      });
+
+      assert.strictEqual(decision.action, 'redirect');
+      assert.strictEqual(decision.statusCode, 307);
+      assert.strictEqual(decision.redirectUrl, '/login?error=unauthorized_role');
+      assert.ok(decision.reason?.includes('Fail-closed'));
+    });
+
+    it('unauthorized student attempting to access /instructor or /admin must redirect to /login?error=unauthorized_role', () => {
+      const instructorDecision = evaluateRouteAccess({
+        pathname: '/instructor',
+        sessionToken: 'session-student-123',
+        userEmail: 'student@example.com',
+      });
+
+      assert.strictEqual(instructorDecision.action, 'redirect');
+      assert.strictEqual(instructorDecision.statusCode, 307);
+      assert.strictEqual(instructorDecision.redirectUrl, '/login?error=unauthorized_role');
+
+      const adminDecision = evaluateRouteAccess({
+        pathname: '/admin',
+        sessionToken: 'session-student-123',
+        userEmail: 'student@example.com',
+      });
+
+      assert.strictEqual(adminDecision.action, 'redirect');
+      assert.strictEqual(adminDecision.statusCode, 307);
+      assert.strictEqual(adminDecision.redirectUrl, '/login?error=unauthorized_role');
+    });
+
+    it('unauthorized role attempting to access /admin/team must redirect to /admin?error=owner_only', () => {
+      const teamDecision = evaluateRouteAccess({
+        pathname: '/admin/team',
+        sessionToken: 'session-staff-123',
+        userEmail: 'priya.staff@viar.in',
+      });
+
+      assert.strictEqual(teamDecision.action, 'redirect');
+      assert.strictEqual(teamDecision.statusCode, 307);
+      assert.strictEqual(teamDecision.redirectUrl, '/admin?error=owner_only');
+    });
+
+    it('unauthenticated request to any protected route must redirect to /login with redirect parameter', () => {
+      const unauthDecision = evaluateRouteAccess({
+        pathname: '/dashboard',
+        sessionToken: undefined,
+      });
+
+      assert.strictEqual(unauthDecision.action, 'redirect');
+      assert.strictEqual(unauthDecision.statusCode, 307);
+      assert.strictEqual(unauthDecision.redirectUrl, '/login?redirect=%2Fdashboard');
+    });
+
+    it('verified Site Owner must be granted access to all protected areas', () => {
+      const ownerRoutes = ['/dashboard', '/instructor', '/admin', '/admin/team'];
+      for (const path of ownerRoutes) {
+        const ownerDecision = evaluateRouteAccess({
+          pathname: path,
+          sessionToken: 'session-owner-123',
+          userEmail: 'ask@aapkaastro.com',
+        });
+        assert.strictEqual(ownerDecision.action, 'allow', `Owner should be allowed on ${path}`);
       }
     });
   });

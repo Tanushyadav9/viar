@@ -40,6 +40,7 @@ import {
 function StudentDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const errorParam = searchParams?.get('error');
   const initialTab = (searchParams?.get('tab') as 'schedule' | 'recordings' | 'exam' | 'certificate') || 'schedule';
   const justEnrolled = searchParams?.get('enrolled') === 'true';
 
@@ -60,6 +61,12 @@ function StudentDashboardContent() {
   const [isSubmittingExam, setIsSubmittingExam] = useState(false);
 
   const loadData = useCallback(() => {
+    // Fail-Closed: If URL indicates an authorization failure, NEVER load protected data
+    if (errorParam === 'unauthorized_role') {
+      router.replace('/login?error=unauthorized_role');
+      return;
+    }
+
     const user = ViarStore.getCurrentUser();
     if (!user) {
       router.push('/login?returnUrl=/dashboard');
@@ -83,7 +90,7 @@ function StudentDashboardContent() {
     }
 
     setUserTz(ViarStore.getTimezone() || getUserLocalTimezone());
-  }, [router]);
+  }, [router, errorParam]);
 
   useEffect(() => {
     loadData();
@@ -142,6 +149,37 @@ function StudentDashboardContent() {
       }
     }, 1000);
   };
+
+  // Fail-Closed Guard: If authorization failed, NEVER render protected dashboard content
+  if (errorParam === 'unauthorized_role') {
+    return (
+      <div className="cosmic-bg min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-md w-full cosmic-card p-8 rounded-3xl border border-red-500/30 text-center shadow-2xl space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto text-red-400">
+            <AlertCircle className="w-7 h-7" />
+          </div>
+          <h1 className="text-xl font-bold text-white">Access Denied</h1>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            You do not have the required authorization or role to access this section.
+          </p>
+          <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
+            <Link
+              href="/"
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white transition"
+            >
+              Return Home
+            </Link>
+            <Link
+              href="/login"
+              className="gold-button px-4 py-2 rounded-xl text-xs font-bold transition"
+            >
+              Sign In
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="cosmic-bg min-h-screen py-10">

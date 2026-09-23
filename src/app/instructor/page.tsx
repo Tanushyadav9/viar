@@ -30,7 +30,7 @@ export default function InstructorOverviewPage() {
       return;
     }
     if (user.role !== 'ADMIN' && user.role !== 'OWNER' && (!user.staffSections || user.staffSections.length === 0)) {
-      router.push('/dashboard?error=unauthorized_role');
+      router.push('/login?error=unauthorized_role');
       return;
     }
     setCourses(ViarStore.getCourses());

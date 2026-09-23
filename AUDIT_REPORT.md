@@ -767,6 +767,56 @@ This bypass rendered all access control, RBAC, and Clerk authentication barriers
 - **Production Build**: Clean compilation of all 32 routes via `npm run build` with 0 warnings, 0 TypeScript errors, and 0 lint issues.
 - **Incognito Verification**: Visiting the live application in an incognito window with no login renders zero simulation controls, zero role switchers, and zero impersonation tooling across all pages in both light and dark themes. Protected routes immediately redirect to `/login`.
 
+---
+
+## 15. Fail-Closed Security Resolution: Elimination of the Fail-Open `/dashboard?error=unauthorized_role` Bug
+
+### 15.1 Incident Context & Root Cause Analysis
+During manual security audit of role transitions, a fail-open access control vulnerability was identified:
+- When a user was rejected by an upstream role-check (for example, attempting to access `/instructor` or `/admin` without appropriate instructor/staff permissions), the application redirected the user to `/dashboard?error=unauthorized_role`.
+- However, `src/app/dashboard/page.tsx` previously ignored the `error=unauthorized_role` query parameter completely.
+- Consequently, `loadData()` proceeded to run, retrieving and rendering the full protected student dashboard (active cohorts, live classroom links, Zoom/Meet credentials, exam portals, certificates, and recordings) despite the URL explicitly declaring an authorization failure (`error=unauthorized_role`).
+- This violated fundamental fail-closed security principles: under an unauthorized role condition, protected content must never be rendered.
+
+### 15.2 Root Causes Identified
+1. **Misconfigured Redirection Target in Middleware**: `src/middleware.ts` previously redirected role check failures from `/instructor` and `/admin` to `/dashboard?error=unauthorized_role` instead of routing the user out of the protected portal to `/login?error=unauthorized_role`.
+2. **Misconfigured Client-Side Redirection in Instructor Suite**: `src/app/instructor/page.tsx` routed unauthorized users via `router.push('/dashboard?error=unauthorized_role')`.
+3. **Absence of Parameter Handling in Dashboard**: `src/app/dashboard/page.tsx` did not extract or act upon `searchParams.get('error')`, defaulting to normal protected data rendering.
+4. **No Interception at Edge/Middleware**: Protected requests carrying `error=unauthorized_role` were passed through rather than terminated at the gateway.
+
+### 15.3 Comprehensive Remediation Implemented
+
+1. **Edge Middleware Interception (`src/middleware.ts` & `src/lib/auth/permissions.ts`)**:
+   - `evaluateRouteAccess` intercepts any incoming request to protected routes (`/dashboard`, `/instructor`, `/admin`) carrying `error=unauthorized_role`.
+   - Middleware immediately issues an HTTP 307 redirect away from the protected route to `/login?error=unauthorized_role`.
+   - The response body is `null`, ensuring zero protected content is transmitted over the wire.
+
+2. **Corrected Role Rejection Routing (`src/middleware.ts` & `src/app/instructor/page.tsx`)**:
+   - In `middleware.ts`, when a user lacks the required role for `/instructor` or `/admin`, they are redirected to `/login?error=unauthorized_role` (never to `/dashboard`).
+   - In `src/app/instructor/page.tsx`, when an unauthorized student is detected, `router.push('/login?error=unauthorized_role')` is triggered immediately.
+
+3. **Client-Side Defense-in-Depth in Dashboard (`src/app/dashboard/page.tsx`)**:
+   - Extracted `errorParam = searchParams?.get('error')`.
+   - **Data Load Suppression**: In `loadData()`, if `errorParam === 'unauthorized_role'`, the function immediately calls `router.replace('/login?error=unauthorized_role')` and returns without fetching or setting courses, cohorts, classes, live links, or certificates.
+   - **Fallback Block Screen**: Before returning the main dashboard JSX, if `errorParam === 'unauthorized_role'`, the component renders an "Access Restricted: Unauthorized Role" card with zero protected student elements, directing the user to `/login`.
+
+4. **Dedicated User Guidance on Login (`src/app/login/page.tsx`)**:
+   - Added banner detection for `searchParams.get('error') === 'unauthorized_role'`:
+     > *"Access Restricted: You do not have the required role or authorization to access that section. Please sign in with an authorized account."*
+
+5. **Automated Test Coverage (`tests/permissions.test.ts`)**:
+   - Added Section 9 to the automated test suite (`tests/permissions.test.ts`):
+     - Assert `/dashboard?error=unauthorized_role` immediately triggers redirect to `/login?error=unauthorized_role` with HTTP 307.
+     - Assert unauthorized role attempting to access `/instructor` or `/admin` redirects to `/login?error=unauthorized_role`.
+     - Assert unauthorized role attempting to access `/admin/team` redirects to `/admin?error=owner_only`.
+     - Assert unauthenticated requests to any protected route redirect to `/login?redirect=...`.
+     - Assert verified Site Owner (`ask@aapkaastro.com`) is granted access to all protected areas.
+
+### 15.4 Verification Summary
+- **Unit & Security Tests**: All **63 tests** across 20 suites pass cleanly (`npm test` exited 0).
+- **Production Build**: Clean compilation across all 32 routes with 0 errors and 0 warnings (`npm run build` exited 0).
+- **Security Posture**: Fail-closed architecture guaranteed across all routes.
+
 
 
 

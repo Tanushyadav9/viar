@@ -83,10 +83,10 @@ function LoginContent() {
         {/* Auth Card */}
         <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10 shadow-2xl relative">
           
-          {errorMsg && (
+          {(errorMsg || (searchParams?.get('error') === 'unauthorized_role' && !errorMsg ? 'Access Restricted: You do not have the required role or authorization to access that section. Please sign in with an authorized account.' : searchParams?.get('error') === 'owner_only' && !errorMsg ? 'Access Restricted: This section is strictly reserved for the Site Owner.' : '')) && (
             <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
+              <span>{errorMsg || (searchParams?.get('error') === 'unauthorized_role' ? 'Access Restricted: You do not have the required role or authorization to access that section. Please sign in with an authorized account.' : 'Access Restricted: This section is strictly reserved for the Site Owner.')}</span>
             </div>
           )}
 
