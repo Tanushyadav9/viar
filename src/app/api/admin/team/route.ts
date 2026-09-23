@@ -5,6 +5,15 @@ import { DEMO_USERS } from '@/lib/data';
 import { StaffAccessLevel, StaffPermission, User, AdminSection } from '@/lib/types';
 
 function getCallerEmail(req: NextRequest): string {
+  const sessionToken =
+    req.cookies.get('viar_session')?.value ||
+    req.cookies.get('__session')?.value ||
+    req.cookies.get('viar_auth_token')?.value;
+
+  if (!sessionToken) {
+    return '';
+  }
+
   const rawEmail =
     req.cookies.get('viar_user_email')?.value ||
     req.headers.get('x-user-email') ||

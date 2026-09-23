@@ -324,8 +324,10 @@ export const ViarStore = {
   },
 
   // User & Session
-  getCurrentUser(): User {
-    const raw = getStorageItem<User>(STORAGE_KEYS.CURRENT_USER, DEMO_USERS[0]);
+  getCurrentUser(): User | null {
+    const raw = getStorageItem<User | null>(STORAGE_KEYS.CURRENT_USER, null);
+    if (!raw || !raw.email) return null;
+
     // Deliberate Site Owner evaluation strictly against verified owner emails
     const isOwner = isSiteOwner(raw.email);
     
@@ -359,19 +361,6 @@ export const ViarStore = {
       staffSections: isOwner ? [...ADMIN_SECTIONS] : (user.staffSections || []),
     };
     setStorageItem(STORAGE_KEYS.CURRENT_USER, enriched);
-  },
-
-  switchUserRole(role: 'STUDENT' | 'ADMIN' | 'STAFF' | 'OWNER'): User {
-    let target: User;
-    if (role === 'OWNER' || role === 'ADMIN') {
-      target = DEMO_USERS.find((u) => u.isOwner) || DEMO_USERS[1];
-    } else if (role === 'STAFF') {
-      target = DEMO_USERS.find((u) => u.id === 'user-staff-content') || DEMO_USERS[2] || DEMO_USERS[1];
-    } else {
-      target = DEMO_USERS.find((u) => u.role === 'STUDENT') || DEMO_USERS[0];
-    }
-    this.setCurrentUser(target);
-    return target;
   },
 
   // --------------------------------------------------------------------------
@@ -469,7 +458,7 @@ export const ViarStore = {
 
     // If current user is this user, update current user too
     const current = this.getCurrentUser();
-    if (current.id === userId) {
+    if (current && current.id === userId) {
       this.setCurrentUser({ ...current, staffSections: validNormalized as AdminSection[] });
     }
   },

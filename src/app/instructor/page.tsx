@@ -11,26 +11,32 @@ import {
   ArrowRight,
   ChevronRight
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import InstructorNav from '@/components/InstructorNav';
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort } from '@/lib/types';
 import { formatInTimezone } from '@/lib/timezones';
 
 export default function InstructorOverviewPage() {
+  const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [stats, setStats] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    // Auto switch to ADMIN persona if visiting instructor page as a student
     const user = ViarStore.getCurrentUser();
-    if (user.role !== 'ADMIN' && user.role !== 'OWNER') {
-      ViarStore.switchUserRole('ADMIN');
+    if (!user) {
+      router.push('/login?returnUrl=/instructor');
+      return;
+    }
+    if (user.role !== 'ADMIN' && user.role !== 'OWNER' && (!user.staffSections || user.staffSections.length === 0)) {
+      router.push('/dashboard?error=unauthorized_role');
+      return;
     }
     setCourses(ViarStore.getCourses());
     setCohorts(ViarStore.getCohorts());
     setStats(ViarStore.getAdminStats());
-  }, []);
+  }, [router]);
 
   return (
     <div className="cosmic-bg min-h-screen py-10">

@@ -694,6 +694,68 @@ The following tables document every modified location in the codebase, contrasti
 | **`src/components/Footer.tsx`**<br>(Footer Links, Lines 285–294) | `<li><a href="https://www.youtube.com/watch?v=hibDdoH5kbQ"><span>YouTube: Aapka Astro</span></a></li>` | **Link Removed.** Removed dead link to unverified video ID from footer navigation. | `/* PLACEHOLDER: YouTube channel link to be re-added once verified channel URL is confirmed by client */` |
 | **`AUDIT_REPORT.md`**<br>(Section 7 & Table 2.2/2.3) | `High-definition responsive YouTube video player (hibDdoH5kbQ) embedded directly into the flagship course sales page.` | Documented unverified origin, verified removal, and replacement with honest placeholder state. | Aligned with Section 12 forensic report |
 
+---
+
+## 14. Emergency Security Resolution: Removal of "Simulate Account & Permissions" Dropdown & Complete Elimination of Role-Bypass Mechanisms
+
+### 14.1 Incident Context & Threat Analysis
+During public deployment audit of `viar-eight.vercel.app`, a critical access-control vulnerability was identified:
+- A prominent button titled **"Role Switcher Menu (Instant Demo Testing)"** with a popup menu titled **"Simulate Account & Permissions (Dev / Demo Mode)"** was rendered in the top navbar on every page of the public live site.
+- Any unauthenticated public visitor could click this menu and instantly assume:
+  1. **Site Owner (`OWNER`)**: Elevating the visitor to Acharya Niraj Kumar's account with universal access to all 8 modules and `/admin/team`.
+  2. **Staff (`STAFF`)**: Elevating the visitor to Priya Verma with content management permissions.
+  3. **Student (`STUDENT`)**: Setting the visitor to Aarav Sharma.
+- The dropdown also explicitly exposed the production owner email address (`ask@aapkaastro.com`) in plain text to any unauthenticated visitor.
+- Furthermore, visiting `/instructor` contained an auto-elevation hook (`if (user.role !== 'ADMIN') ViarStore.switchUserRole('ADMIN')`) that silently promoted regular students to administrators.
+- In `middleware.ts`, an `isDemoActive` cookie check permitted anyone who passed `viar_demo_active=true` to bypass session verification on protected routes (`/dashboard`, `/instructor`, `/admin`).
+
+This bypass rendered all access control, RBAC, and Clerk authentication barriers ineffective on live deployments.
+
+### 14.2 Root Cause Analysis
+1. **Default LocalStorage Fallback**: `ViarStore.getCurrentUser()` defaulted to `DEMO_USERS[0]` (`Aarav Sharma`) whenever `localStorage['viar_current_user']` was empty. Because of this, every unauthenticated visitor was treated as an active user, triggering `Navbar.tsx` to display role controls.
+2. **Dev Simulation Controls Left in Navbar**: The navbar component retained interactive testing buttons that invoked `ViarStore.switchUserRole()`.
+3. **Client-Side Role Swapping**: `switchUserRole(role)` in `src/lib/store.ts` allowed arbitrary role elevation in client state without backend or identity verification.
+4. **Client-Side Route Bypasses**: The quiz interface included a bypass button that revealed correct answers and auto-passed prerequisite requirements.
+
+### 14.3 Remediation Actions Taken
+
+1. **Elimination of Simulation Dropdown & Menu (`src/components/Navbar.tsx`)**:
+   - Completely removed `isRoleOpen`, `setIsRoleOpen`, and `handleRoleSwitch`.
+   - Removed the "Role Switcher Menu" button and "Simulate Account & Permissions" popup.
+   - Removed plaintext rendering of `ask@aapkaastro.com`.
+   - Restructured Navbar authentication controls:
+     - **Unauthenticated Visitors**: See only clean "Sign In" (`/login`) and "Enroll Now" (`/courses/what-is-astrology`) links. No role simulation controls are rendered.
+     - **Authenticated Users**: See their verified role badge (`Site Owner`, `Staff`, or `Student`), the relevant portal link (`Instructor Suite` or `Student Portal`), and a working **"Sign Out"** button that invokes `authProvider.signOut()` and purges all session cookies.
+
+2. **Securing `ViarStore.getCurrentUser()` & Removal of `switchUserRole` (`src/lib/store.ts`)**:
+   - Changed `getCurrentUser(): User | null`: when no user is stored in local storage, it strictly returns `null` instead of defaulting to a demo user.
+   - Completely deleted the `switchUserRole` method from `ViarStore`. Role mutations cannot be initiated from the client store.
+
+3. **Elimination of Auto-Elevation Backdoor (`src/app/instructor/page.tsx`)**:
+   - Removed `if (user.role !== 'ADMIN') ViarStore.switchUserRole('ADMIN')`.
+   - Replaced with strict authentication and role guards: unauthenticated visitors are redirected to `/login`, and unauthorized students are redirected to `/dashboard?error=unauthorized_role`.
+
+4. **Middleware Hardening (`src/middleware.ts`)**:
+   - Removed `isDemoActive` cookie check (`viar_demo_active`).
+   - All protected routes (`/dashboard`, `/instructor`, `/admin`, `/admin/team`) strictly require a valid session token (`sessionToken`). Unauthenticated requests are immediately redirected to `/login`.
+
+5. **Server-Side Team API Route Session Validation (`src/app/api/admin/team/route.ts` & `src/lib/auth/permissions.ts`)**:
+   - Updated `verifyRouteAccess`: strictly requires `auth.sessionToken`. Unauthenticated requests without session tokens are rejected immediately.
+   - Updated `/api/admin/team`: requires an active session token before parsing caller identity, rejecting unauthenticated requests with HTTP 403 Forbidden.
+
+6. **Removal of Demo Quick-Fill Buttons (`src/app/login/page.tsx` & `src/components/AuthModal.tsx`)**:
+   - Removed "Preview Demo Accounts" quick access bar from `/login`.
+   - Removed "Quick Demo: Fill Demo Credentials" from `AuthModal.tsx`.
+
+7. **Removal of Quiz Answer Pre-population & Bypass (`src/app/dashboard/courses/[cohortId]/quiz/page.tsx`)**:
+   - Removed pre-population of answers with correct answers (`setAnswers({})`).
+   - Removed "(Instructor Demo: Bypass & Unlock Exam)" button.
+
+### 14.4 Verification Summary
+- **Unit & Integration Tests**: All **55 tests** in `npm test` pass with 0 failures (`permissions.test.ts`, `email-policy.test.ts`, `quiz-certificate.test.ts`, `timezone.test.ts`, `webhooks.test.ts`).
+- **Production Build**: Clean compilation of all routes via `npm run build` with 0 TypeScript errors or lint issues.
+- **Access Control Guarantee**: Unauthenticated visitors cannot access admin or instructor suites, cannot assume elevated roles, and cannot view sensitive owner credentials on the public site.
+
 
 
 

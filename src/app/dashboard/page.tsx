@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Sparkles,
   Video,
@@ -38,6 +38,7 @@ import {
 } from '@/lib/timezones';
 
 function StudentDashboardContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = (searchParams?.get('tab') as 'schedule' | 'recordings' | 'exam' | 'certificate') || 'schedule';
   const justEnrolled = searchParams?.get('enrolled') === 'true';
@@ -58,27 +59,12 @@ function StudentDashboardContent() {
   const [examResult, setExamResult] = useState<TestSubmission | null>(null);
   const [isSubmittingExam, setIsSubmittingExam] = useState(false);
 
-  useEffect(() => {
-    loadData();
-
-    const handleTzChange = () => {
-      const tz = ViarStore.getTimezone();
-      setUserTz(tz);
-    };
-    const handleRoleChange = () => {
-      loadData();
-    };
-
-    window.addEventListener('timezone-changed', handleTzChange);
-    window.addEventListener('user-role-changed', handleRoleChange);
-    return () => {
-      window.removeEventListener('timezone-changed', handleTzChange);
-      window.removeEventListener('user-role-changed', handleRoleChange);
-    };
-  }, []);
-
-  const loadData = () => {
+  const loadData = useCallback(() => {
     const user = ViarStore.getCurrentUser();
+    if (!user) {
+      router.push('/login?returnUrl=/dashboard');
+      return;
+    }
     setCurrentUser(user);
 
     const flagship = ViarStore.getCourseBySlug('what-is-astrology');
@@ -97,7 +83,26 @@ function StudentDashboardContent() {
     }
 
     setUserTz(ViarStore.getTimezone() || getUserLocalTimezone());
-  };
+  }, [router]);
+
+  useEffect(() => {
+    loadData();
+
+    const handleTzChange = () => {
+      const tz = ViarStore.getTimezone();
+      setUserTz(tz);
+    };
+    const handleRoleChange = () => {
+      loadData();
+    };
+
+    window.addEventListener('timezone-changed', handleTzChange);
+    window.addEventListener('user-role-changed', handleRoleChange);
+    return () => {
+      window.removeEventListener('timezone-changed', handleTzChange);
+      window.removeEventListener('user-role-changed', handleRoleChange);
+    };
+  }, [loadData]);
 
   // Find next class
   const nextClass = classes.find((c) => c.status === 'LIVE') || classes.find((c) => c.status === 'UPCOMING') || classes[0];

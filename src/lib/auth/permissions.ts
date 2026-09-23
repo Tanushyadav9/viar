@@ -112,6 +112,8 @@ export function getPrimaryOwnerEmail(): string {
   return process.env.OWNER_EMAIL?.trim().toLowerCase() || 'ask@aapkaastro.com';
 }
 
+export const primaryOwnerEmail = getPrimaryOwnerEmail();
+
 /**
  * Returns the list of designated Site Owner / Superadmin email addresses.
  * Configurable via environment variables with verified fallback to Acharya Niraj Kumar's address.
@@ -404,11 +406,11 @@ export function verifyRouteAccess(
   permissions?: StaffPermission[]
 ): StaffSectionCheckResult {
   const auth = extractAuthFromRequest(req);
-  if (!auth.sessionToken && !auth.userEmail) {
-    return { allowed: false, isOwner: false, reason: 'Unauthenticated' };
+  if (!auth.sessionToken) {
+    return { allowed: false, isOwner: false, reason: 'Unauthenticated: No active session token' };
   }
 
-  // If site owner email
+  // If site owner email with valid session
   if (auth.userEmail && isSiteOwner(auth.userEmail)) {
     return { allowed: true, isOwner: true, accessLevel: 'MANAGE' };
   }

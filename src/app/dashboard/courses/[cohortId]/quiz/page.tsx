@@ -28,7 +28,6 @@ export default function FinalQuizPage() {
   const [percentage, setPercentage] = useState(0);
   const [isPassed, setIsPassed] = useState(false);
   const [certificate, setCertificate] = useState<Certificate | null>(null);
-  const [forceUnlock, setForceUnlock] = useState(false);
 
   useEffect(() => {
     const t = ViarStore.getFinalTest(cohortId);
@@ -41,13 +40,7 @@ export default function FinalQuizPage() {
 
     const u = ViarStore.getCurrentUser();
     setCurrentUser(u);
-
-    // Pre-populate answers with correct answers for convenient testing
-    const defaultAnswers: Record<string, number> = {};
-    t.questions.forEach((q) => {
-      defaultAnswers[q.id] = q.correctOptionIndex;
-    });
-    setAnswers(defaultAnswers);
+    setAnswers({});
   }, [cohortId]);
 
   const handleSelectOption = (questionId: string, optionIndex: number) => {
@@ -95,7 +88,7 @@ export default function FinalQuizPage() {
 
   const quizUnlock = ViarStore.isQuizUnlocked(cohort.id);
 
-  if (!isSubmitted && !forceUnlock && !quizUnlock.isUnlocked) {
+  if (!isSubmitted && !quizUnlock.isUnlocked) {
     return (
       <div className="cosmic-bg min-h-screen py-16 px-4">
         <div className="max-w-lg mx-auto text-center cosmic-card p-8 rounded-3xl border border-amber-500/30 shadow-2xl space-y-5">
@@ -120,12 +113,6 @@ export default function FinalQuizPage() {
             >
               Return to Classes & Complete Syllabus &rarr;
             </Link>
-            <button
-              onClick={() => setForceUnlock(true)}
-              className="w-full py-2.5 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 transition"
-            >
-              (Instructor Demo: Bypass & Unlock Exam)
-            </button>
           </div>
         </div>
       </div>

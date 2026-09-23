@@ -52,17 +52,6 @@ function LoginContent() {
     }
   };
 
-  const handleDemoSignIn = async (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword('ViarPassword123');
-    setLoading(true);
-    const res = await authProvider.signInWithEmail(demoEmail, 'ViarPassword123');
-    setLoading(false);
-    if (res.success) {
-      router.push(demoEmail.includes('admin') ? '/instructor' : returnUrl);
-    }
-  };
-
   return (
     <div className="cosmic-bg min-h-screen py-16 sm:py-24 flex items-center justify-center px-4">
       <div className="max-w-md w-full">
@@ -198,29 +187,6 @@ function LoginContent() {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          {/* Quick Demo Access Bar */}
-          <div className="mt-6 pt-6 border-t border-white/10">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider block text-center mb-2">
-              Preview Demo Accounts
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleDemoSignIn('student@example.com')}
-                className="py-1.5 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-slate-300 hover:text-white transition text-center"
-              >
-                Student Demo
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoSignIn('admin@aapkaastro.com')}
-                className="py-1.5 px-2.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[11px] text-amber-300 transition text-center"
-              >
-                Acharya / Admin
-              </button>
-            </div>
-          </div>
 
         </div>
 

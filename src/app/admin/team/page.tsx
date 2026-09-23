@@ -89,7 +89,7 @@ export default function TeamManagementPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-email': currentUser?.email || primaryOwnerEmail,
+          'x-user-email': currentUser?.email || '',
         },
         body: JSON.stringify({
           email: inviteEmail.trim().toLowerCase(),
@@ -111,7 +111,7 @@ export default function TeamManagementPage() {
           name: inviteName.trim() || inviteEmail.split('@')[0],
           sections: [inviteSection],
           accessLevel: inviteAccessLevel,
-          grantedByUserId: currentUser?.email || primaryOwnerEmail,
+          grantedByUserId: currentUser?.email || '',
         });
         showNotice(
           'success',
@@ -125,7 +125,7 @@ export default function TeamManagementPage() {
         name: inviteName.trim() || inviteEmail.split('@')[0],
         sections: [inviteSection],
         accessLevel: inviteAccessLevel,
-        grantedByUserId: currentUser?.email || primaryOwnerEmail,
+        grantedByUserId: currentUser?.email || '',
       });
       showNotice(
         'success',
@@ -178,7 +178,7 @@ export default function TeamManagementPage() {
       ? currentSections.filter((s) => s !== section)
       : [...currentSections, section];
 
-    ViarStore.setStaffSections(userId, updated, 'MANAGE', currentUser?.email || primaryOwnerEmail);
+    ViarStore.setStaffSections(userId, updated, 'MANAGE', currentUser?.email || '');
     loadData();
     showNotice('success', `Updated sections for ${staff.email}.`);
   };

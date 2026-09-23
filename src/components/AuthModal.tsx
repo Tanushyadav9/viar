@@ -179,21 +179,6 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           </button>
         </form>
 
-        {/* Demo Fast Fill */}
-        <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
-          <span>Quick Demo:</span>
-          <button
-            type="button"
-            onClick={() => {
-              setEmail('student@example.com');
-              setPassword('ViarPassword123');
-            }}
-            className="text-amber-400 hover:underline font-semibold"
-          >
-            Fill Demo Credentials
-          </button>
-        </div>
-
       </div>
     </div>
   );

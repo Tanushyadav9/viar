@@ -31,14 +31,8 @@ export function middleware(request: NextRequest) {
     '';
   const userEmail = rawEmail ? decodeURIComponent(rawEmail).trim().toLowerCase() : '';
 
-  // In Next.js client-side local demo mode, if no session cookie exists yet,
-  // we check if an authorization bypass/demo cookie exists or check query params
-  const isDemoActive =
-    request.cookies.get('viar_demo_active')?.value === 'true' ||
-    process.env.NODE_ENV === 'development';
-
   // 1. Unauthenticated check for all protected routes
-  if (!sessionToken && !isDemoActive) {
+  if (!sessionToken) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);

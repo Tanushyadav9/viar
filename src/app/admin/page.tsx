@@ -37,6 +37,7 @@ import {
 } from '@/lib/types';
 import {
   isSiteOwner,
+  primaryOwnerEmail,
   hasSectionPermission,
   getUserAllowedSections,
   ADMIN_SECTIONS,
@@ -466,7 +467,7 @@ export default function AdminPortalPage() {
             </p>
             <div className="p-3 bg-white/5 rounded-xl text-xs text-slate-400 border border-white/10 mb-6 text-left">
               <p className="font-semibold text-slate-300 mb-1">Per-Site Security Policy:</p>
-              <p>Staff permissions are strictly isolated per-site and granted by the Site Owner (<span className="text-amber-300">ask@aapkaastro.com</span>). Contact Acharya Niraj Kumar to request authorization.</p>
+              <p>Staff permissions are strictly isolated per-site and granted by the Site Owner (<span className="text-amber-300">{primaryOwnerEmail}</span>). Contact Acharya Niraj Kumar to request authorization.</p>
             </div>
             {allowedSections.length > 0 && (
               <div className="flex flex-wrap justify-center gap-2">
@@ -949,7 +950,7 @@ export default function AdminPortalPage() {
               </p>
               <div className="pt-2 border-t border-amber-500/20 flex flex-wrap gap-4 text-[11px] text-slate-400">
                 <span>• <strong>Isolated Scope:</strong> Permissions here apply strictly to Viar.in. Staff have zero access to Aapka Astro or DOW Consulting.</span>
-                <span>• <strong>Owner Anchor:</strong> Anchored to <code className="text-amber-200">ask@aapkaastro.com</code>. Cannot be overridden by employees.</span>
+                <span>• <strong>Owner Anchor:</strong> Anchored to <code className="text-amber-200">{primaryOwnerEmail}</code>. Cannot be overridden by employees.</span>
                 <span>• <strong>Audit Trail:</strong> Soft-revocations preserve full historical timestamps without permanent row deletion.</span>
               </div>
             </div>
@@ -963,7 +964,7 @@ export default function AdminPortalPage() {
                     Supreme Owner Anchor
                   </span>
                 </div>
-                <p className="text-xs text-slate-300 font-mono">ask@aapkaastro.com</p>
+                <p className="text-xs text-slate-300 font-mono">{primaryOwnerEmail}</p>
                 <p className="text-[11px] text-slate-400 mt-1">
                   Permanent full access to all admin sections. Sole authorized account that can delegate staff roles.
                 </p>
@@ -1109,7 +1110,7 @@ export default function AdminPortalPage() {
                             {perm.accessLevel || 'MANAGE'}
                           </span>
                         </td>
-                        <td className="px-6 py-3 font-mono text-[11px] text-slate-300">{perm.grantedByUserId || 'ask@aapkaastro.com'}</td>
+                        <td className="px-6 py-3 font-mono text-[11px] text-slate-300">{perm.grantedByUserId || primaryOwnerEmail}</td>
                         <td className="px-4 py-3 text-[11px] text-slate-400">
                           {new Date(perm.grantedAt || Date.now()).toLocaleDateString()}
                         </td>
