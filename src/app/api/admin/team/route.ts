@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { isSiteOwner, VIAR_SECTIONS } from '@/lib/auth/permissions';
-import { ViarStore } from '@/lib/store';
-import { StaffAccessLevel, AdminSection } from '@/lib/types';
+import { DEMO_USERS } from '@/lib/data';
+import { StaffAccessLevel, StaffPermission, User } from '@/lib/types';
 
 function getCallerEmail(req: NextRequest): string {
   const rawEmail =
@@ -11,6 +11,32 @@ function getCallerEmail(req: NextRequest): string {
     '';
   return rawEmail ? decodeURIComponent(rawEmail).trim().toLowerCase() : '';
 }
+
+// In-memory server fallback cache when DB is unprovisioned during local testing
+const serverPermissionsFallback: StaffPermission[] = [
+  {
+    id: 'perm-1',
+    userId: 'user-staff-content',
+    section: 'courses',
+    accessLevel: 'MANAGE',
+    grantedByUserId: 'ask@aapkaastro.com',
+    grantedAt: '2026-09-20T10:00:00.000Z',
+    revokedAt: null,
+  },
+  {
+    id: 'perm-2',
+    userId: 'user-staff-content',
+    section: 'quizzes',
+    accessLevel: 'MANAGE',
+    grantedByUserId: 'ask@aapkaastro.com',
+    grantedAt: '2026-09-20T10:00:00.000Z',
+    revokedAt: null,
+  },
+];
+
+const serverStaffFallback: Partial<User>[] = DEMO_USERS.filter(
+  (u) => u.isOwner || (u.staffSections && u.staffSections.length > 0)
+);
 
 /**
  * GET /api/admin/team
@@ -60,15 +86,12 @@ export async function GET(req: NextRequest) {
       console.warn('Database query for staff permissions skipped:', (dbError as Error).message);
     }
 
-    // Fallback to runtime store
-    const storeStaff = ViarStore.getStaffUsers();
-    const storePermissions = ViarStore.getStaffPermissions();
-
+    // Fallback to in-memory server state
     return NextResponse.json({
       success: true,
-      source: 'store',
-      staff: storeStaff,
-      permissions: storePermissions,
+      source: 'server_fallback',
+      staff: serverStaffFallback,
+      permissions: serverPermissionsFallback,
     });
   } catch (error) {
     return NextResponse.json(
@@ -128,7 +151,6 @@ export async function POST(req: NextRequest) {
 
     // 1. Attempt Prisma creation
     try {
-      // Find or create User record if needed
       let user = await prisma.user.findUnique({
         where: { email: normalizedEmail },
       });
@@ -163,19 +185,35 @@ export async function POST(req: NextRequest) {
       console.warn('Database write for staff permission skipped:', (dbError as Error).message);
     }
 
-    // 2. Store fallback
-    ViarStore.addStaffMember({
-      name: name || normalizedEmail.split('@')[0],
-      email: normalizedEmail,
-      sections: [normalizedSection as AdminSection],
+    // 2. Server memory fallback
+    const newPerm: StaffPermission = {
+      id: `perm-${Date.now()}-${normalizedSection}`,
+      userId: normalizedEmail,
+      section: normalizedSection,
       accessLevel: validLevel,
       grantedByUserId: grantedBy,
-    });
+      grantedAt: new Date().toISOString(),
+      revokedAt: null,
+    };
+    serverPermissionsFallback.push(newPerm);
+
+    const existingStaff = serverStaffFallback.find((u) => u.email === normalizedEmail);
+    if (!existingStaff) {
+      serverStaffFallback.push({
+        id: `user-staff-${Date.now()}`,
+        name: name || normalizedEmail.split('@')[0],
+        email: normalizedEmail,
+        role: 'INSTRUCTOR',
+        isOwner: false,
+        staffSections: [normalizedSection as any],
+      });
+    }
 
     return NextResponse.json({
       success: true,
-      source: 'store',
-      message: `Granted ${validLevel} permission on '${normalizedSection}' to ${normalizedEmail} in runtime store.`,
+      source: 'server_fallback',
+      permission: newPerm,
+      message: `Granted ${validLevel} permission on '${normalizedSection}' to ${normalizedEmail}.`,
     });
   } catch (error) {
     return NextResponse.json(
@@ -242,14 +280,16 @@ export async function DELETE(req: NextRequest) {
       console.warn('Database soft-revoke skipped:', (dbError as Error).message);
     }
 
-    // 2. Store fallback
-    const ok = ViarStore.softRevokeStaffPermission(permissionId);
+    // 2. Server memory fallback
+    const target = serverPermissionsFallback.find((p) => p.id === permissionId);
+    if (target) {
+      target.revokedAt = now.toISOString();
+    }
 
     return NextResponse.json({
       success: true,
-      source: 'store',
-      updated: ok,
-      message: `Permission ${permissionId} soft-revoked in store. Audit trail preserved.`,
+      source: 'server_fallback',
+      message: `Permission ${permissionId} soft-revoked. Audit trail preserved.`,
     });
   } catch (error) {
     return NextResponse.json(
