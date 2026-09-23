@@ -400,15 +400,26 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
             </div>
 
             <div className="lg:col-span-7">
-              <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/30 shadow-2xl bg-black aspect-video">
-                <iframe
-                  src="https://www.youtube-nocookie.com/embed/hibDdoH5kbQ?rel=0"
-                  title="Acharya Niraj Kumar Astrology Teaching Preview"
-                  loading="lazy"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="w-full h-full object-cover"
-                ></iframe>
+              {/* PLACEHOLDER: Unverified video embed hibDdoH5kbQ removed. Client to provide verified official sample video URL. */}
+              <div className="relative rounded-2xl border border-dashed border-amber-500/30 bg-gradient-to-b from-[#111827]/80 to-[#0a0f1a]/80 p-8 sm:p-10 text-center aspect-video flex flex-col items-center justify-center">
+                <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mb-3">
+                  <Video className="w-7 h-7" />
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold text-white mb-2">
+                  Sample Lecture Video Coming Soon
+                </h3>
+                <p className="text-slate-300 text-xs leading-relaxed max-w-sm mb-4">
+                  Full preview excerpts from Batch 1 live classes will be published here prior to cohort launch.
+                </p>
+                <a
+                  href={`/api/courses/${course.slug}/syllabus/download?print=true`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-semibold inline-flex items-center gap-2 transition"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download Complete Syllabus (PDF)</span>
+                </a>
               </div>
             </div>
           </div>

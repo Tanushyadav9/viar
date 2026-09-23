@@ -94,7 +94,8 @@ export default function CertificateSearchPage() {
           <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
             <CheckCircle2 className="w-4 h-4 text-amber-400 mb-2" />
             <h4 className="text-xs font-bold text-white mb-1">Aapka Astro Lineage</h4>
-            <p className="text-[11px] text-slate-400">Authenticated by master astrologer with 35,000+ readings.</p>
+            {/* PLACEHOLDER: Replace with verified reading/consultation count once confirmed across both sites */}
+            <p className="text-[11px] text-slate-400">Authenticated by master astrologer trusted by students and clients across India and abroad.</p>
           </div>
         </div>
 

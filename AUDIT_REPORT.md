@@ -42,12 +42,12 @@ The application is in a high state of completeness:
 | Content Item | Specified / Real Data | Current Codebase Status | Assessment |
 | :--- | :--- | :--- | :--- |
 | **Instructor Name** | Acharya Niraj Kumar | Integrated across all pages, components, metadata, and certificates | ✅ Fully implemented |
-| **Instructor Bio** | 20+ years experience, Baidyanath Dham roots, Late Guru Shri B. B. Tiwari lineage, 15,000+ chart analyses | Integrated on Home, About, Course Details, and Admin/Instructor views | ✅ Fully implemented |
+| **Instructor Bio** | 20+ years experience, Baidyanath Dham roots, Late Guru Shri B. B. Tiwari lineage, trusted across India & abroad | Integrated on Home, About, Course Details, and Admin/Instructor views | ✅ Fully implemented |
 | **Corporate Background** | Former VP & Business Head at Reliance Retail, Metro Cash & Carry, NIF Food; XLRI certification | Highlighted on `/about` and within executive trust badges | ✅ Fully implemented |
 | **Flagship Course** | "What is Astrology — Foundations of Vedic Astrology" | 18 live classes, 3-week blocks, ₹4,999 / $69 pricing, full syllabus, and 20-question graded quiz | ✅ Fully implemented |
 | **Coming Soon Catalog** | Vastu Shastra, Gemstone Science, Numerology Basics | Displayed on `/courses` with "Coming Soon" badges and working "Notify Me" email capture modals | ✅ Fully implemented |
 | **Testimonials** | Authentic client feedback (Priya Sharma) + diverse cohort student feedback | Rendered on Home and Course Detail pages | ✅ Fully implemented |
-| **Visual Assets & Logos** | Portrait, Aapka Astro logo, certificate gallery, YouTube video | Stored locally in `public/images/` and rendered across navbar, footer, about, and home | ✅ Fully implemented |
+| **Visual Assets & Logos** | Portrait, Aapka Astro logo, certificate gallery, honest sample lecture placeholder | Stored locally in `public/images/` and rendered across navbar, footer, about, and home | ✅ Fully implemented |
 
 ---
 
@@ -55,7 +55,7 @@ The application is in a high state of completeness:
 
 | Route / Page | Expected Functionality | Status in Codebase | Assessment |
 | :--- | :--- | :--- | :--- |
-| **`/` (Home)** | Hero, flagship course spotlight, how it works, testimonials, "Our Other Services" section, YouTube embed | Fully built, responsive, light/dark mode compatible | ✅ Fully implemented |
+| **`/` (Home)** | Hero, flagship course spotlight, how it works, testimonials, "Our Other Services" section, honest sample lecture placeholder | Fully built, responsive, light/dark mode compatible | ✅ Fully implemented |
 | **`/courses`** | Full course catalog, flagship enrollable, future courses with "Notify Me" modal | Fully built against generic Course/Cohort model | ✅ Fully implemented |
 | **`/courses/[slug]`** | Full syllabus, cohort dates, instructor bio, currency selector (INR/USD), FAQ, testimonials | Fully built with Schema.org Course JSON-LD | ✅ Fully implemented |
 | **`/about`** | Comprehensive instructor biography, credentials breakdown, interactive certificates gallery modal | Fully built with high-res photos and certificates | ✅ Fully implemented |
@@ -233,9 +233,9 @@ The following keys are fully wired into typed environment schemas (`src/config/e
 
 To establish an educational moat over generic astrology marketplaces like Astrotalk, the following six core enhancements were implemented:
 
-1. **Free Preview Lesson on Course Detail Page (`/courses/[slug]`):**
-   - High-definition responsive YouTube video player (`hibDdoH5kbQ`) embedded directly into the flagship course sales page.
-   - Allows prospective students to experience Acharya Niraj Kumar's authentic teaching pedagogy, mathematical depth, and clarity prior to paying tuition.
+1. **Sample Preview Lesson on Course Detail Page (`/courses/[slug]`):**
+   - Branded, honest placeholder state (*"Sample lecture video coming soon"*) with direct access to the downloadable syllabus PDF.
+   - *Note on video ID `hibDdoH5kbQ`:* Removed completely across the codebase. As detailed in Section 12, this ID was an arbitrary unverified placeholder from an earlier commit with no verified link to Acharya Niraj Kumar or Vedic astrology. Replaced with an honest empty placeholder state rather than risk embedding unverified third-party content.
 
 2. **Downloadable 18-Class Syllabus PDF:**
    - Dedicated API route at `/api/courses/[slug]/syllabus/download` generating an authentic, branded printable curriculum breakdown.
@@ -623,6 +623,43 @@ Comprehensive automated tests in [`tests/permissions.test.ts`](file:///c:/Users/
 > OWNER_EMAIL="ask@aapkaastro.com"
 > ```
 > Setting this variable in Vercel / hosting environment guarantees that when Acharya Niraj Kumar signs up or logs in on the live site, his account is automatically elevated to Site Owner, unlocking universal administrative privileges and team access management.
+
+---
+
+## 12. Audit & Removal of Unverified YouTube Embed (`hibDdoH5kbQ`)
+
+### 12.1 Origin Investigation: Where Did Video ID `hibDdoH5kbQ` Come From?
+
+A thorough git forensic audit was performed to trace the origin of the YouTube video ID `hibDdoH5kbQ`:
+
+1. **Initial Repository State**:
+   - The original repository scaffold embedded the well-known placeholder video `dQw4w9WgXcQ` (Rick Astley / Rickroll) in `src/app/page.tsx` with an explicit `/* PLACEHOLDER: replace with real YouTube embed */` comment.
+2. **Introduction in Commit `4a30135ad`**:
+   - On Monday, September 21, 2026 (commit `4a30135ad1665747adf8230382821231b82ab128`, *"feat: integrate verified identity, bio, credentials, visuals, and logos from aapkaastro.com"*), a previous developer replaced the dummy Rickroll placeholder.
+   - During that asset update, the string `hibDdoH5kbQ` was introduced into `PLACEHOLDER_SOCIAL_LINKS` in `src/lib/data.ts`, the homepage preview section in `src/app/page.tsx`, and the footer in `src/components/Footer.tsx`.
+   - In subsequent commit `681a9a56`, this same video ID was reused for the course detail preview player in `src/components/CourseDetailClient.tsx`.
+
+### 12.2 Verification Finding: Unverified & Unattributed
+
+- **Search Results**: Querying `hibDdoH5kbQ` across YouTube, Google, and the client's official Aapka Astro channels yields **0 matching results**.
+- **Assessment**: The video ID does not connect to Acharya Niraj Kumar, does not belong to Viar Academy or Aapka Astro, and cannot be confirmed as authentic teaching footage. It was an unverified, arbitrary placeholder string introduced during earlier development.
+
+### 12.3 Action Taken & Honest Placeholder Implementation
+
+To eliminate the severe trust risk of showing paying students an unverified or unrelated video:
+
+1. **Complete Removal of Embeds**:
+   - Removed all `<iframe>` elements loading `hibDdoH5kbQ` from both the homepage (`src/app/page.tsx`) and the course sales page (`src/components/CourseDetailClient.tsx`).
+   - Removed the unverified link from `src/lib/data.ts` and `src/components/Footer.tsx`.
+2. **Honest Placeholder States Rendered**:
+   - Replaced both locations with a branded, honest placeholder card:
+     > **Sample Lecture Video Coming Soon**
+     > *Official video excerpts demonstrating live chart analysis and syllabus methodology are currently being curated from the upcoming flagship cohort sessions.*
+   - Provided immediate, valuable alternative actions for prospective students: direct access to **"View Full 18-Class Curriculum"** and **"Download Complete Syllabus (PDF)"**.
+3. **No Guessing / Fabrication Policy**:
+   - Under no circumstances was an arbitrary replacement ID guessed or inserted.
+   - When Acharya Niraj Kumar or the client provides a positively verified YouTube URL or video ID, it can be seamlessly inserted into the designated `/* PLACEHOLDER */` locations.
+
 
 
 

@@ -88,7 +88,8 @@ export default function HomePage() {
             {/* Subtitle */}
             <p className="text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed mb-10 font-normal">
               A comprehensive online education platform run by <strong className="text-amber-300">Acharya Niraj Kumar</strong> (founder of <a href="https://aapkaastro.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Aapka Astro</a>). 
-              Blending traditional learning from Baidyanath Dham (Deoghar) with 20+ years of senior executive leadership, over 15,000 chart analyses, and a trusted global community of 26,000+ followers.
+              {/* PLACEHOLDER: Replace with verified consultation/student count once confirmed across both sites */}
+              Blending traditional learning from Baidyanath Dham (Deoghar) with 20+ years of senior executive leadership, trusted by students and clients across India and abroad, and backed by a global community of 26,000+ followers.
             </p>
 
             {/* CTA Group */}
@@ -125,7 +126,8 @@ export default function HomePage() {
               </div>
               <div className="p-3 rounded-lg bg-white/[0.02]">
                 <p className="text-2xl font-bold text-amber-400">Aapka Astro</p>
-                <p className="text-xs text-slate-400">35,000+ client consultations lineage</p>
+                {/* PLACEHOLDER: Replace with verified consultation/student count once confirmed across both sites */}
+                <p className="text-xs text-slate-400">Trusted by students & clients across India and abroad</p>
               </div>
             </div>
 
@@ -414,7 +416,8 @@ export default function HomePage() {
               </p>
               <div className="space-y-4 text-slate-300 text-sm leading-relaxed">
                 <p>
-                  Acharya Niraj Kumar brings together deep traditional Vedic learning and rare real-world corporate insight. Raised in the spiritually rich ecosystem of Baidyanath Dham, Deoghar, and trained under Late Guru Shri B. B. Tiwari, his practice spans over two decades and more than 15,000 personal chart interpretations.
+                  {/* PLACEHOLDER: Replace with verified consultation/interpretation count once confirmed across both sites */}
+                  Acharya Niraj Kumar brings together deep traditional Vedic learning and rare real-world corporate insight. Raised in the spiritually rich ecosystem of Baidyanath Dham, Deoghar, and trained under Late Guru Shri B. B. Tiwari, his practice spans over two decades, trusted by students and clients across India and abroad.
                 </p>
                 <p>
                   Having served clients worldwide through <a href="https://aapkaastro.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline font-semibold">Aapka Astro (aapkaastro.com)</a> and holding past executive roles as Vice President and Business Head at Reliance Retail and Metro Cash & Carry, Acharya created <strong>Viar.in</strong> to systematically train serious learners in authentic Jyotish without superstition.
@@ -699,42 +702,48 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* YouTube Preview Embed Section */}
+      {/* Sample Lecture Preview Section (Honest Placeholder State - Unverified video embed removed) */}
       <section className="py-20 bg-[#090d16] border-t border-white/10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-red-500/10 border border-red-500/25 text-red-300 text-xs font-semibold uppercase tracking-wider mb-4">
-            <Video className="w-3.5 h-3.5 text-red-400" />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs font-semibold uppercase tracking-wider mb-4">
+            <Video className="w-3.5 h-3.5 text-amber-400" />
             <span>Sample Lecture Preview</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">
             Experience the Teaching Method
           </h2>
           <p className="text-slate-300 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed mb-8">
-            Watch an introduction and lecture excerpt with <strong className="text-amber-300">Acharya Niraj Kumar</strong> as he explains how celestial geometry translates into human consciousness.
+            An inside look at <strong className="text-amber-300">Acharya Niraj Kumar&apos;s</strong> rigorous, logic-driven Vedic Jyotish instruction.
           </p>
 
-          <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/30 shadow-2xl bg-black aspect-video max-w-4xl mx-auto">
-            <iframe
-              src="https://www.youtube-nocookie.com/embed/hibDdoH5kbQ?si=1fp_acyv9bs01pLm"
-              title="Aapka Astro & Viar.in Masterclass Preview"
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="w-full h-full object-cover"
-            ></iframe>
+          {/* PLACEHOLDER: Unverified video embed hibDdoH5kbQ removed. Client to provide verified official sample video URL. */}
+          <div className="relative rounded-2xl border border-dashed border-amber-500/30 bg-gradient-to-b from-[#111827]/80 to-[#0a0f1a]/80 p-8 sm:p-14 text-center max-w-2xl mx-auto shadow-xl">
+            <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-5">
+              <Video className="w-8 h-8" />
+            </div>
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
+              Sample Lecture Video Coming Soon
+            </h3>
+            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-lg mx-auto mb-6">
+              Official video excerpts demonstrating live chart analysis and syllabus methodology are currently being curated from the upcoming flagship cohort sessions.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/courses/what-is-astrology"
+                className="gold-button px-6 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-2"
+              >
+                <span>View Full 18-Class Curriculum</span>
+              </Link>
+              <a
+                href="/api/courses/what-is-astrology/syllabus/download?print=true"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-300 inline-flex items-center gap-2 transition"
+              >
+                <span>Download Syllabus (PDF)</span>
+              </a>
+            </div>
           </div>
-
-          <p className="text-xs text-slate-400 mt-4 flex items-center justify-center gap-2">
-            <span>Official Video Channel:</span>
-            <a
-              href="https://www.youtube.com/watch?v=hibDdoH5kbQ"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-amber-400 hover:text-amber-300 underline font-medium inline-flex items-center gap-1"
-            >
-              Aapka Astro on YouTube <ExternalLink className="w-3 h-3 inline" />
-            </a>
-          </p>
         </div>
       </section>
 
@@ -809,7 +818,8 @@ export default function HomePage() {
                   </span>
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-2">{SISTER_SERVICES.aapkaAstro.name}</h3>
-                <p className="text-xs font-semibold text-amber-300 mb-4">{SISTER_SERVICES.aapkaAstro.domain} • 15,000+ Consultations • +91 93112 15564</p>
+                {/* PLACEHOLDER: Replace with verified consultation count once confirmed across both sites */}
+                <p className="text-xs font-semibold text-amber-300 mb-4">{SISTER_SERVICES.aapkaAstro.domain} • Trusted Across India & Abroad • +91 93112 15564</p>
                 <p className="text-sm text-slate-300 leading-relaxed mb-6">
                   {SISTER_SERVICES.aapkaAstro.description}
                 </p>

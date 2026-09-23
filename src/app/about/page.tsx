@@ -142,7 +142,8 @@ export default function AboutPage() {
               </div>
 
               <p>
-                Raised in the spiritually rich ecosystem of <strong>Baidyanath Dham, Deoghar</strong>, his journey into astrology and Vastu began early, shaped by curiosity and disciplined guidance. Over the last two decades, he has studied, practiced, and refined his approach across more than <strong>15,000 personal chart analyses</strong> and numerous Vastu consultations.
+                {/* PLACEHOLDER: Replace with verified chart analysis count once confirmed across both sites */}
+                Raised in the spiritually rich ecosystem of <strong>Baidyanath Dham, Deoghar</strong>, his journey into astrology and Vastu began early, shaped by curiosity and disciplined guidance. Over the last two decades, he has studied, practiced, and refined his approach, <strong>trusted by students and clients across India and abroad</strong> through comprehensive chart interpretations and numerous Vastu consultations.
               </p>
 
               <p>
@@ -155,8 +156,9 @@ export default function AboutPage() {
                   <p className="text-xs text-slate-400">Vedic Practice</p>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.03]">
-                  <p className="text-2xl font-black text-white">15,000+</p>
-                  <p className="text-xs text-slate-400">Charts Interpreted</p>
+                  {/* PLACEHOLDER: Replace with verified chart count once confirmed across both sites */}
+                  <p className="text-2xl font-black text-white">Trusted</p>
+                  <p className="text-xs text-slate-400">Across India & Abroad</p>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.03] col-span-2 sm:col-span-1">
                   <p className="text-2xl font-black text-emerald-400">26,000+</p>
