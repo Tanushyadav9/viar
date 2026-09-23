@@ -8,7 +8,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --experimental-strip-types --test tests/webhooks.test.ts tests/quiz-certificate.test.ts tests/timezone.test.ts"
+    "test": "node --experimental-strip-types --test tests/webhooks.test.ts tests/quiz-certificate.test.ts tests/timezone.test.ts tests/email-policy.test.ts"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",

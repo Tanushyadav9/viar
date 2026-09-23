@@ -28,6 +28,13 @@ export interface AppEnvConfig {
     clerkSignInUrl: string;
   };
 
+  // Email Sign-Up Policy (Anti-Abuse / Domain Restrictions)
+  emailPolicy: {
+    mode: 'BLOCKLIST' | 'ALLOWLIST';
+    allowlist: string[];
+    blocklistExtra: string[];
+  };
+
   // Payments (Razorpay India & Stripe International)
   payments: {
     enableStripe: boolean;
@@ -85,6 +92,21 @@ export const env: AppEnvConfig = {
     clerkDomain: getEnvVar('NEXT_PUBLIC_CLERK_DOMAIN', 'viar.in'),
     clerkIsSatellite: getBooleanEnvVar('NEXT_PUBLIC_CLERK_IS_SATELLITE', true),
     clerkSignInUrl: getEnvVar('NEXT_PUBLIC_CLERK_SIGN_IN_URL', '/sign-in'),
+  },
+
+  emailPolicy: {
+    mode: (getEnvVar('EMAIL_SIGNUP_POLICY_MODE', 'BLOCKLIST').toUpperCase() as 'BLOCKLIST' | 'ALLOWLIST') || 'BLOCKLIST',
+    allowlist: getEnvVar(
+      'EMAIL_SIGNUP_ALLOWLIST',
+      'gmail.com,yahoo.com,outlook.com,hotmail.com,icloud.com,proton.me,protonmail.com,live.com,aol.com,zoho.com'
+    )
+      .split(',')
+      .map((d) => d.trim().toLowerCase())
+      .filter(Boolean),
+    blocklistExtra: getEnvVar('EMAIL_SIGNUP_BLOCKLIST_EXTRA', '')
+      .split(',')
+      .map((d) => d.trim().toLowerCase())
+      .filter(Boolean),
   },
 
   payments: {

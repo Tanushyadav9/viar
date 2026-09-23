@@ -173,6 +173,15 @@ The application is in a high state of completeness:
      - Preserved dormant phone helper extension points in `AuthProvider` so that adding phone sign-in in the future is a zero-code Clerk dashboard configuration change rather than a code rewrite.
      - Documented multi-domain satellite SSO configuration in `.env.example` and `src/lib/auth/index.ts` (`aapkaastro.com` primary, `viar.in` satellite).
 
+5. **Configurable Email Sign-Up Policy (Allow-list vs Block-list):**
+   * *Specification:* Restrict sign-ups to "known" email addresses for anti-abuse reasons, built as a configurable policy rather than a hardcoded rule.
+   * *Implementation:* Built `src/lib/auth/email-policy.ts` supporting two switchable modes controlled via environment variable `EMAIL_SIGNUP_POLICY_MODE`:
+     - **Mode 1: Block-list Mode (`BLOCKLIST`, Recommended Default):** Permits any real, permanent email domain (Gmail, Outlook, Yahoo, iCloud, university, and corporate domains), but blocks over 100+ known disposable/temporary throwaway email services (e.g., `mailinator.com`, `tempmail.com`, `10minutemail.com`, `guerrillamail.com`, `yopmail.com`). Prevents throwaway bot accounts while ensuring legitimate paying students are never turned away.
+     - **Mode 2: Allow-list Mode (`ALLOWLIST`):** Strictly permits only explicitly whitelisted email providers (e.g. `gmail.com`, `yahoo.com`, `outlook.com` via `EMAIL_SIGNUP_ALLOWLIST`). Simple, but blocks real students on corporate or custom email domains.
+   * *User Experience:* Shows a friendly, informative error message explaining why disposable addresses are restricted (e.g., to ensure reliable delivery of live Zoom links, recordings, and certificates) rather than an unexplained generic failure.
+   * *Native Clerk Enforcement:* Supports native API-level enforcement in Clerk Dashboard under `Users & Authentication -> Email, Phone, Username -> Restrictions`.
+   * *Test Coverage:* 11 dedicated automated tests in `tests/email-policy.test.ts` verifying both modes, throwaway domain detection, and error clarity.
+
 ---
 
 ## 5. Remediation Status (Gaps Closed)
@@ -291,6 +300,10 @@ To bring `Viar.in` live into production, the following credentials, content item
    - Decide whether to launch Cohort 01 with Razorpay-only (supporting international cards via Razorpay international mode) or activate Stripe concurrently for USD payments.
 3. **Clerk Multi-Domain Launch Sequence:**
    - Determine which domain will serve as the Clerk primary instance (`aapkaastro.com` recommended) and authorize `viar.in` as the satellite domain.
+4. **Email Sign-Up Restriction Policy Mode:**
+   - Choose between **Block-list mode** (`EMAIL_SIGNUP_POLICY_MODE="BLOCKLIST"`, recommended default) or **Allow-list mode** (`EMAIL_SIGNUP_POLICY_MODE="ALLOWLIST"`).
+   - Recommendation: Keep Block-list mode active so paying students with Outlook, iCloud, university, or corporate addresses are never blocked, while all temporary/disposable throwaways are prevented.
+
 
 
 

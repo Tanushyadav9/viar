@@ -91,8 +91,8 @@ function SignupContent() {
         <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10 shadow-2xl relative">
           
           {errorMsg && (
-            <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-start gap-2.5 leading-relaxed">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
               <span>{errorMsg}</span>
             </div>
           )}

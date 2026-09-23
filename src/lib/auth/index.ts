@@ -1,5 +1,6 @@
 import { AuthProvider, AuthUser } from './types';
 import { ViarStore } from '../store';
+import { validateEmailForSignup } from './email-policy';
 
 /**
  * ============================================================================
@@ -106,6 +107,15 @@ class DefaultAuthProvider implements AuthProvider {
       return { success: false, error: 'Please enter your full name.' };
     }
 
+    // Email Sign-Up Policy Check (Anti-Abuse / Domain Restrictions)
+    const policyResult = validateEmailForSignup(email);
+    if (!policyResult.allowed) {
+      return {
+        success: false,
+        error: policyResult.reason,
+      };
+    }
+
     const user: AuthUser = {
       id: `usr_${Date.now()}`,
       name: name.trim(),
@@ -200,3 +210,4 @@ class DefaultAuthProvider implements AuthProvider {
 }
 
 export const authProvider: AuthProvider = new DefaultAuthProvider();
+export * from './email-policy';
