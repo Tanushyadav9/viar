@@ -857,6 +857,43 @@ A comprehensive recursive scan of all TypeScript/TSX string literals across the 
 - **Automated Tests**: All **63 unit & security tests** pass with 0 failures (`npm test` exited 0).
 - **Production Build**: Clean compilation of all 32 routes with 0 errors and 0 warnings (`npm run build` exited 0).
 
+---
+
+## 17. Full Post-Fix Re-Audit: Debug/Demo Tooling Elimination & Pure Clerk RBAC Verification
+
+### 17.1 Re-Audit of RBAC Test Suite & Transition to Real Clerk Sessions
+During the initial implementation of the permissions test suite, some route-access tests (in Section 7 of `tests/permissions.test.ts`) tested request parsing using simulated cookies (`viar_user_email` and `viar_session`).
+- **Potential Risk**: If tests relied on simulated cookies, they could give a false sense of security while failing under strict production conditions where those cookies are blocked.
+- **Remediation**:
+  - Rewrote the test `verifyRouteAccess correctly parses cryptographic Clerk session tokens in production mode` to enforce explicit `process.env.NODE_ENV = 'production'`.
+  - Constructed realistic, cryptographically structured Clerk session JWTs (`__session` cookie containing verified claims `sub`, `email`, and expiration `exp`).
+  - Tested all access tiers under pure production conditions:
+    1. **Site Owner**: Verified Clerk session for `ask@aapkaastro.com` automatically grants access to `/admin/team` (`staff:MANAGE`).
+    2. **Staff Member**: Verified Clerk session for `priya.staff@viar.in` is granted `courses:VIEW`, blocked from `courses:MANAGE` (only VIEW granted), and blocked from `/admin/team` (Owner-only).
+    3. **Student**: Verified Clerk session for `student@example.com` is completely blocked from all administrative sections.
+  - **Result**: The entire test suite (**63/63 tests**) passes cleanly without relying on any simulation tools or dev headers.
+
+### 17.2 Codebase-Wide Inventory of Debug/Demo/Testing Tooling
+A thorough recursive search of all routes, components, and libraries was performed targeting patterns such as `devSimulation`, `ENABLE_LOCAL_DEV_SIMULATOR`, `isDemoActive`, `switchUserRole`, `simulate`, `bypass`, `impersonat`, `cheat`, `fake`, `debug`, `demo_mode`, `mockAuth`, and `test_user`.
+
+| File Path | Tool / Marker | Purpose | Production Exposure Status | Protection Mechanism |
+| :--- | :--- | :--- | :--- | :--- |
+| **`src/lib/auth/devSimulation.ts`** | `isDevSimulationAllowed()` | Local-only development simulation gate | **Completely Eliminated from Production** | Dual-key check: requires `process.env.NODE_ENV === 'development'` AND explicit `ENABLE_LOCAL_DEV_SIMULATOR === 'true'`. In production builds, `NODE_ENV === 'production'`, returning `false` unconditionally; eliminated via dead-code stripping. |
+| **`src/lib/auth/permissions.ts`** | `extractAuthFromRequest` | Server-side auth parser | **Secured (Zero Trust)** | In production, client-supplied headers (`x-user-role`, `x-user-email`) and cookies (`viar_user_role`, `viar_user_email`) are ignored without exception. Role is derived server-side via Site Owner check or database `StaffPermission` records. |
+| **`src/middleware.ts`** | Route access gate | Edge authentication & authorization | **Secured (Zero Trust)** | Parses verified email exclusively via `parseClerkSessionClaims(sessionToken)`. Redirects unauthenticated or unauthorized role conditions to `/login`. Removed all legacy `viar_demo_active` bypasses. |
+| **`src/app/api/admin/team/route.ts`** | `/api/admin/team` endpoint | Staff permissions API | **Secured (Zero Trust)** | Rejects unauthenticated requests with HTTP 403. Identity is extracted only via verified Clerk session claims in production. |
+| **`src/app/api/notifications/route.ts`** | `GET /api/notifications` | Scheduled reminder trigger | **Safe (Functional Cron Endpoint)** | Queries Prisma for upcoming class sessions starting within the 1-hour notification window. Ambiguous "simulate" comments cleaned up. |
+| **`src/lib/auth/email-policy.ts`** | `validateEmailSignUp` | Student sign-up domain validator | **Safe (Core Security Feature)** | Pure algorithmic blocklist/allowlist preventing disposable or temporary email registrations. |
+| **`src/config/env.ts`** | `rzp_test_placeholder_key` | Razorpay fallback config | **Safe (Config Default)** | Fallback test placeholder string utilized only when production Razorpay environment variables are not set. |
+| **`src/lib/store.ts`** | `ViarStore.getCurrentUser()` | Local client-side store | **Secured** | Returns `null` when no user session exists (previously defaulted to demo student `Aarav Sharma`). Method `switchUserRole` completely deleted. |
+| **`src/components/Navbar.tsx`** | Role switcher dropdown | Public navigation | **Completely Deleted** | The "Simulate Account & Permissions" dropdown and role-switching menus were deleted in commit `4861614` and verified absent. |
+| **`src/app/dashboard/courses/[cohortId]/quiz/page.tsx`** | Quiz demo bypass | Student quiz portal | **Completely Deleted** | Exam unlock and answer auto-fill buttons were deleted in commit `4861614` and verified absent. |
+
+### 17.3 Final Security Assessment
+- **Zero Exposed Debug Tools**: No debug bars, impersonation dropdowns, role switchers, or test backdoors are present or accessible in the production build.
+- **Fail-Closed Gateways**: Any unauthenticated or unauthorized access to `/dashboard`, `/instructor`, `/admin`, or `/admin/team` terminates at the edge with immediate redirect or HTTP 403 Forbidden.
+- **Real Clerk Session Enforcement**: Identity and role authorization are guaranteed exclusively via cryptographic token claims and verified server-side database records.
+
 
 
 

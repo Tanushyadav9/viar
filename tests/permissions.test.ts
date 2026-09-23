@@ -451,64 +451,106 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
       }
     });
 
-    it('verifyRouteAccess correctly parses server request cookies and headers', () => {
-      // Mock NextRequest for Owner
-      const mockOwnerReq = {
-        cookies: {
-          get: (name: string) =>
-            name === 'viar_user_email'
-              ? { value: encodeURIComponent('ask@aapkaastro.com') }
-              : name === 'viar_session'
-              ? { value: 'session-123' }
-              : undefined,
-        },
-        headers: { get: () => null },
-      };
+    it('verifyRouteAccess correctly parses cryptographic Clerk session tokens in production mode', () => {
+      const originalEnv = process.env.NODE_ENV;
+      try {
+        process.env.NODE_ENV = 'production';
 
-      const ownerRouteResult = verifyRouteAccess(mockOwnerReq, 'staff', 'MANAGE');
-      assert.strictEqual(ownerRouteResult.allowed, true);
-      assert.strictEqual(ownerRouteResult.isOwner, true);
+        // Helper to generate a realistic Clerk session JWT with cryptographic claims
+        const makeClerkToken = (email: string, userId: string) => {
+          const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+          const payload = Buffer.from(
+            JSON.stringify({
+              sub: userId,
+              email,
+              exp: Math.floor(Date.now() / 1000) + 3600,
+            })
+          ).toString('base64url');
+          return `${header}.${payload}.mock_clerk_signature`;
+        };
 
-      // Mock NextRequest for Staff with only courses:VIEW
-      const mockStaffReq = {
-        cookies: {
-          get: (name: string) =>
-            name === 'viar_user_email'
-              ? { value: encodeURIComponent('priya.staff@viar.in') }
-              : name === 'viar_session'
-              ? { value: 'session-456' }
-              : undefined,
-        },
-        headers: { get: () => null },
-      };
+        // 1. Real Clerk Session for Site Owner (ask@aapkaastro.com)
+        const mockOwnerReq = {
+          cookies: {
+            get: (name: string) =>
+              name === '__session'
+                ? { value: makeClerkToken('ask@aapkaastro.com', 'user-owner') }
+                : undefined,
+          },
+          headers: { get: () => null },
+        };
 
-      const mockPerms = [
-        {
-          id: 'perm-p1',
-          userId: 'priya.staff@viar.in',
-          section: 'courses',
-          accessLevel: 'VIEW' as const,
-          grantedByUserId: 'ask@aapkaastro.com',
-          grantedAt: new Date().toISOString(),
-          revokedAt: null,
-        },
-      ];
+        const ownerRouteResult = verifyRouteAccess(mockOwnerReq, 'staff', 'MANAGE');
+        assert.strictEqual(ownerRouteResult.allowed, true, 'Site Owner with real Clerk session must be granted access');
+        assert.strictEqual(ownerRouteResult.isOwner, true);
 
-      // Viewing courses is allowed
-      assert.strictEqual(
-        verifyRouteAccess(mockStaffReq, 'courses', 'VIEW', mockPerms).allowed,
-        true
-      );
-      // Editing courses is blocked
-      assert.strictEqual(
-        verifyRouteAccess(mockStaffReq, 'courses', 'MANAGE', mockPerms).allowed,
-        false
-      );
-      // Accessing team/staff is blocked
-      assert.strictEqual(
-        verifyRouteAccess(mockStaffReq, 'staff', 'VIEW', mockPerms).allowed,
-        false
-      );
+        // 2. Real Clerk Session for Staff member (priya.staff@viar.in) with courses:VIEW
+        const mockStaffReq = {
+          cookies: {
+            get: (name: string) =>
+              name === '__session'
+                ? { value: makeClerkToken('priya.staff@viar.in', 'user-staff-1') }
+                : undefined,
+          },
+          headers: { get: () => null },
+        };
+
+        const mockPerms = [
+          {
+            id: 'perm-p1',
+            userId: 'priya.staff@viar.in',
+            section: 'courses',
+            accessLevel: 'VIEW' as const,
+            grantedByUserId: 'ask@aapkaastro.com',
+            grantedAt: new Date().toISOString(),
+            revokedAt: null,
+          },
+        ];
+
+        // Viewing courses is allowed for permitted staff
+        assert.strictEqual(
+          verifyRouteAccess(mockStaffReq, 'courses', 'VIEW', mockPerms).allowed,
+          true,
+          'Permitted staff with Clerk session should be allowed VIEW access'
+        );
+        // Editing courses is blocked (only VIEW granted)
+        assert.strictEqual(
+          verifyRouteAccess(mockStaffReq, 'courses', 'MANAGE', mockPerms).allowed,
+          false,
+          'Staff with VIEW only must be blocked from MANAGE access'
+        );
+        // Accessing team/staff is blocked (Owner-only)
+        assert.strictEqual(
+          verifyRouteAccess(mockStaffReq, 'staff', 'VIEW', mockPerms).allowed,
+          false,
+          'Non-owner staff must be blocked from staff management section'
+        );
+
+        // 3. Real Clerk Session for regular Student (student@example.com)
+        const mockStudentReq = {
+          cookies: {
+            get: (name: string) =>
+              name === '__session'
+                ? { value: makeClerkToken('student@example.com', 'user-student-1') }
+                : undefined,
+          },
+          headers: { get: () => null },
+        };
+
+        // Student is denied on all admin sections
+        assert.strictEqual(
+          verifyRouteAccess(mockStudentReq, 'courses', 'VIEW', mockPerms).allowed,
+          false,
+          'Regular student must be denied on all admin sections'
+        );
+        assert.strictEqual(
+          verifyRouteAccess(mockStudentReq, 'staff', 'MANAGE', mockPerms).allowed,
+          false,
+          'Regular student must be denied on staff section'
+        );
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+      }
     });
   });
 

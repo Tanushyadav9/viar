@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET endpoint to simulate a cron scan for sessions starting in 1 hour
+// GET endpoint to trigger scheduled cron scan for sessions starting in 1 hour
 export async function GET() {
   try {
     const now = new Date();
