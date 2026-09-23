@@ -682,7 +682,7 @@ export default function HomePage() {
                     &ldquo;{test.highlight}&rdquo;
                   </p>
                   <p className="text-xs text-slate-300 leading-relaxed mb-6">
-                    {test.content.replace('/* PLACEHOLDER */ ', '')}
+                    {test.content}
                   </p>
                 </div>
 

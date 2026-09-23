@@ -125,7 +125,7 @@ export default function CourseCohortsPage() {
               <form onSubmit={handleCreateCohort} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Batch Name (Placeholder / Admin-Editable)
+                    Batch Name
                   </label>
                   <input
                     type="text"

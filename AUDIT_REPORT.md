@@ -817,6 +817,47 @@ During manual security audit of role transitions, a fail-open access control vul
 - **Production Build**: Clean compilation across all 32 routes with 0 errors and 0 warnings (`npm run build` exited 0).
 - **Security Posture**: Fail-closed architecture guaranteed across all routes.
 
+---
+
+## 16. Content Hygiene: Removal of Leaked Developer Placeholder Markers from Live Content
+
+### 16.1 Incident Context
+During content review of the live student classroom and course outline, literal developer comment syntax was found rendering directly into user-visible content:
+- The flagship class content displayed literal text:
+  `/* PLACEHOLDER */ Fire, Earth, Air, Water. Cardinal (Chara), Fixed (Sthira), Dual (Dwiswabhava). Assessing elemental temperament.`
+- Additionally, class subtitles across the curriculum rendered:
+  `/* PLACEHOLDER: Block 1 - History & Fundamentals */`
+  `/* PLACEHOLDER: Block 2 - Reading a Birth Chart */`
+  `/* PLACEHOLDER: Block 3 - Planets, Houses & Basic Predictions */`
+- In `INITIAL_FINAL_TEST`, the quiz description rendered:
+  `/* PLACEHOLDER */ 20 multiple-choice questions assessing your understanding...`
+- In the instructor cohort creation form, the label rendered:
+  `Batch Name (Placeholder / Admin-Editable)`
+- In the homepage testimonial renderer, defensive string stripping (`.replace('/* PLACEHOLDER */ ', '')`) was present rather than clean data.
+
+### 16.2 Codebase-Wide Audit & Remediation
+A comprehensive recursive scan of all TypeScript/TSX string literals across the entire codebase was conducted:
+1. **`src/lib/data.ts`**:
+   - Stripped `/* PLACEHOLDER */` from all 18 live class descriptions.
+   - Replaced all `/* PLACEHOLDER: Block X ... */` subtitles with clean, professional titles:
+     - `Block 1 - History & Fundamentals`
+     - `Block 2 - Reading a Birth Chart`
+     - `Block 3 - Planets, Houses & Basic Predictions`
+   - Stripped `/* PLACEHOLDER */` from `INITIAL_FINAL_TEST.description`.
+   - Cleaned meeting join URLs to remove `_PLACEHOLDER` tokens.
+2. **`src/app/instructor/courses/[id]/cohorts/page.tsx`**:
+   - Replaced `Batch Name (Placeholder / Admin-Editable)` with `Batch Name`.
+3. **`src/app/page.tsx`**:
+   - Removed `.replace('/* PLACEHOLDER */ ', '')` in favor of direct `{test.content}` rendering.
+4. **Code Comment Retention**:
+   - Developer notes and placeholders intended for code maintainers remain cleanly formatted as genuine TypeScript (`//` or `/* ... */`) or JSX (`{/* ... */}`) comments, completely invisible to end users and absent from compiled HTML/DOM.
+
+### 16.3 Verification Summary
+- **Zero Leaked Markers**: Verified via automated AST/regex scan that no user-visible string contains leaked comment markers.
+- **Automated Tests**: All **63 unit & security tests** pass with 0 failures (`npm test` exited 0).
+- **Production Build**: Clean compilation of all 32 routes with 0 errors and 0 warnings (`npm run build` exited 0).
+
+
 
 
 
