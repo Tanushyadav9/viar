@@ -274,7 +274,7 @@ To bring `Viar.in` live into production, the following credentials, content item
 | **Clerk Production Auth** | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (`pk_live_...`), `CLERK_SECRET_KEY` (`sk_live_...`), `NEXT_PUBLIC_CLERK_DOMAIN="viar.in"`, `NEXT_PUBLIC_CLERK_IS_SATELLITE="true"` | Multi-domain Single Sign-On (Email & Google) across `viar.in` and `aapkaastro.com` | Blueprint ready; tested in simulated session mode. Awaiting production Clerk instance keys. |
 | **Razorpay (India Gateway)** | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | Live INR student payments via UPI, Netbanking, Rupay, and Indian credit/debit cards | Tested with mock HMAC-SHA256 verifier. Awaiting client's live merchant dashboard keys. |
 | **Stripe (Global Gateway)** | `STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | International USD payments (Visa, Mastercard, Amex, Apple Pay) | Abstracted in `src/lib/payments/stripe.ts` with feature toggle. Awaiting client's Stripe live keys or toggle confirmation. |
-| **PostgreSQL Database** | `DATABASE_URL` (`postgresql://user:password@host:5432/dbname`) | Persistent cloud relational storage for users, cohorts, payments, and certificates | Prisma schema defined and generated; runtime seamlessly defaults to `ViarStore` until connection string is set. |
+| **PostgreSQL Database (Neon Free Tier)** | `DATABASE_URL` (pooled: `...-pooler...neon.tech...?sslmode=require&pgbouncer=true`), `DIRECT_URL` (direct: `...neon.tech...?sslmode=require`) | Persistent cloud relational storage for users, cohorts, payments, and certificates | Prisma schema & migrations ready (`prisma/migrations/0_init/migration.sql`); runtime defaults to `ViarStore` until Neon URL is set. |
 | **Video Hosting (Cloudflare / Mux)** | `CLOUDFLARE_STREAM_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` or `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET` | Direct HD recording ingestion and DRM-secured streaming for past live classes | Typed provider abstractions created in `src/lib/video/`; YouTube embed fallback currently active for demo. |
 | **Transactional Email / SMS** | `RESEND_API_KEY` or `SENDGRID_API_KEY`, `WHATSAPP_BUSINESS_API_TOKEN` | Automated 1-hour class start notifications and order confirmations | Notification queue and HTML templates created in `src/lib/notifications.ts`. |
 
@@ -303,6 +303,45 @@ To bring `Viar.in` live into production, the following credentials, content item
 4. **Email Sign-Up Restriction Policy Mode:**
    - Choose between **Block-list mode** (`EMAIL_SIGNUP_POLICY_MODE="BLOCKLIST"`, recommended default) or **Allow-list mode** (`EMAIL_SIGNUP_POLICY_MODE="ALLOWLIST"`).
    - Recommendation: Keep Block-list mode active so paying students with Outlook, iCloud, university, or corporate addresses are never blocked, while all temporary/disposable throwaways are prevented.
+
+---
+
+### 8.4 Production Database Strategy: Neon Free Tier Provisioning & Go-Live Checklist
+
+#### 1. Why Neon (neon.tech) Free Tier Over Supabase / Paid Managed DBs
+* **Zero Idle Cost with Instant Auto-Resume:** Neon's free tier automatically scales compute to zero when no traffic is present, and auto-resumes instantaneously on the next incoming request with **zero manual intervention**. In contrast, Supabase's free tier entirely pauses the project after 7 days of inactivity, requiring manual intervention in a web console and creating a critical risk of an unnoticed site outage for an academy with uneven seasonal traffic.
+* **Generous 3 GiB Storage Quota:** Neon provides 3 GiB of SSD storage per branch on its free tier. Because heavy media assets (class video recordings and student portraits) are streamed directly through Cloudflare Stream and Cloudflare R2, database storage is reserved exclusively for tabular records (users, enrollments, quiz attempts, and certificates). 3 GiB accommodates over 150,000+ student enrollments before approaching capacity limits.
+
+#### 2. Connection Pooling Architecture (Vercel Serverless Functions)
+* **Pooled Endpoint for Application Runtime (`DATABASE_URL`):**
+  Vercel deploys Next.js App Router API routes as serverless functions. Opening direct PostgreSQL connections from hundreds of concurrent serverless instances exhausts PostgreSQL connection limits within seconds.
+  - The runtime `DATABASE_URL` must point to Neon's **pooled connection string** (via built-in PgBouncer, denoted by `-pooler` in the host name and `?sslmode=require&pgbouncer=true`).
+* **Direct Endpoint for Database Migrations (`DIRECT_URL`):**
+  Prisma migration commands (`npx prisma migrate deploy` and `prisma migrate dev`) execute transactional DDL statements and acquire advisory locks that are not supported by PgBouncer transaction pooling.
+  - `prisma/schema.prisma` is configured with `directUrl = env("DIRECT_URL")`.
+  - The direct unpooled connection string (without `-pooler`) must be supplied for running migrations.
+
+#### 3. Pre-Go-Live Database Confirmation Checklist
+Before declaring the website live in production, confirm and document:
+- [ ] **Real Neon Project Created:** Created at [https://console.neon.tech](https://console.neon.tech) (e.g., project `viar-production`, region `ap-southeast-1` or `aws-eu-central-1` / `aws-us-east-2`).
+- [ ] **Vercel Environment Variables Assigned:**
+  - `DATABASE_URL`: Set to the Neon pooled connection string.
+  - `DIRECT_URL`: Set to the Neon direct unpooled connection string.
+- [ ] **Schema Migration Deployed:**
+  Execute `npx prisma migrate deploy` in the production deployment pipeline or from terminal against the live Neon instance. The initial migration file [`prisma/migrations/0_init/migration.sql`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/prisma/migrations/0_init/migration.sql) will automatically initialize all 13 tables, enums, indexes, and relations.
+
+#### 4. Backup & Disaster Recovery Strategy (Free Tier Considerations)
+* **Point-in-Time Recovery (PITR) Window:** Neon's free tier provides 24 hours of point-in-time recovery history.
+* **Recommended Periodic Backup (Nice to have soon, not blocking launch):**
+  - Set up a scheduled weekly GitHub Action or cron script running `pg_dump` targeting the Neon direct endpoint and pushing encrypted database snapshots to private cloud storage (e.g. AWS S3 or Cloudflare R2).
+  - *Status:* Classified as an operational enhancement to be scheduled after launch, not a launch blocker.
+
+#### 5. Seamless Scale-Up / Upgrade Path
+* If the academy outgrows the free tier (exceeding 3 GiB storage or shared compute limits), Neon offers smooth, usage-based pay-as-you-go pricing:
+  - Extra storage: ~$0.35 per GiB/month.
+  - Extra compute: Usage-based per compute hour.
+* Unlike Supabase's rigid $25/month jump cliff, Neon allows seamless scaling with zero code changes, zero migration downtime, and predictable pay-for-what-you-use pricing.
+
 
 
 

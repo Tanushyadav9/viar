@@ -9,9 +9,10 @@ export interface AppEnvConfig {
   nodeEnv: 'development' | 'production' | 'test';
   appUrl: string;
 
-  // Database (PostgreSQL)
+  // Database (PostgreSQL / Neon)
   database: {
     url: string;
+    directUrl: string;
   };
 
   // Cache & Scheduling (Redis)
@@ -80,6 +81,7 @@ export const env: AppEnvConfig = {
 
   database: {
     url: getEnvVar('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/viar_db?schema=public'),
+    directUrl: getEnvVar('DIRECT_URL', ''),
   },
 
   redis: {
