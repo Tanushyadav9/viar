@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { isSiteOwner, VIAR_SECTIONS } from '@/lib/auth/permissions';
 import { DEMO_USERS } from '@/lib/data';
-import { StaffAccessLevel, StaffPermission, User } from '@/lib/types';
+import { StaffAccessLevel, StaffPermission, User, AdminSection } from '@/lib/types';
 
 function getCallerEmail(req: NextRequest): string {
   const rawEmail =
@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
         email: normalizedEmail,
         role: 'INSTRUCTOR',
         isOwner: false,
-        staffSections: [normalizedSection as any],
+        staffSections: [normalizedSection as AdminSection],
       });
     }
 
