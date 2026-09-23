@@ -384,6 +384,113 @@ The engineering implementation is 100% complete. Prior to public announcement, t
 4. **Custom Domain**:
    - Assign `viar.in` in Vercel Domains and verify DNS CNAME/A records.
 
+---
+
+## 10. Site Owner Recognition & Per-Section Staff Permissions (Zero-Cost RBAC)
+
+### 10.1 Problem Statement & Architectural Context
+
+The client required two vital identity and permission governance capabilities:
+1. **Confirmed, Deliberate Owner Recognition**:
+   - Previous testing mechanisms relied on loose heuristic checks (such as whether an email string happened to contain the word `"admin"`), creating a vulnerability where an unauthorized user could accidentally or maliciously acquire administrative privileges.
+   - The client's account needed a deliberate, immutable, and cryptographically sound mechanism to be recognized as the supreme **Site Owner** (`Acharya Niraj Kumar`).
+2. **Per-Section Delegated Staff Permissions (RBAC)**:
+   - The client needs the ability to employ staff members or virtual assistants and give them access **only to specific parts of the administration area** (for example, allowing a marketing assistant to curate blog posts or Instagram reels in the Content section without giving them access to tuition financial revenue, student contact databases, or live class links).
+3. **Strict Constraints**:
+   - **Cost Constraint ($0 Recurring Fees)**: Do NOT use Clerk's Organizations custom roles and permissions feature. Clerk charges an expensive monthly subscription plus per-seat add-on fees for custom organization roles. The solution must be built directly using the app's existing free Neon PostgreSQL database and application middleware at zero additional cost.
+   - **Strict Per-Site Scope**: Each site in the client's network (`Viar.in`, `AapkaAstro.com`, `DOW Consulting`) maintains its own independent permissions. Granting a staff member permission on Viar.in must **never** leak or grant access to Aapka Astro or DOW Consulting unless explicitly authorized on those systems separately.
+
+---
+
+### 10.2 Architectural Implementation Details
+
+#### 1. Deliberate Site Owner Anchor Mechanism
+Rather than guessing roles from substrings, the Site Owner identity is anchored through a multi-tiered verification system implemented in [`src/lib/auth/permissions.ts`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/src/lib/auth/permissions.ts):
+- **Verified Owner Emails**: Anchored to `ask@aapkaastro.com`, `admin@viar.in`, and `niraj@aapkaastro.com`.
+- **Environment Variable Configuration**: Fully configurable via `OWNER_EMAIL` and comma-separated `SUPERADMIN_EMAILS` in `src/config/env.ts` and `.env.example`.
+- **Database Boolean Anchor**: In `prisma/schema.prisma`, the `User` model includes `isOwner: Boolean @default(false)` (`is_owner` column in PostgreSQL).
+- **Security Test Guarantee**: In [`tests/permissions.test.ts`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/tests/permissions.test.ts), tests explicitly verify that strings like `fakeadmin@gmail.com`, `admin@attacker.com`, or `superadmin@randommail.org` are strictly rejected with zero accidental elevation.
+
+#### 2. Free Database-Backed Staff Permissions Schema
+In [`prisma/schema.prisma`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/prisma/schema.prisma) and [`prisma/migrations/0_init/migration.sql`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/prisma/migrations/0_init/migration.sql):
+```prisma
+enum AdminSection {
+  COURSES
+  SCHEDULE
+  RECORDINGS
+  STUDENTS
+  REVENUE
+  CERTIFICATES
+  CONTENT
+  STAFF
+}
+
+model StaffPermission {
+  id        String       @id @default(cuid())
+  userId    String       @map("user_id")
+  section   AdminSection
+  grantedBy String?      @map("granted_by")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, section])
+  @@map("staff_permissions")
+}
+```
+
+#### 3. The 8 Granular Administrative Sections
+
+| Admin Section | Scope & Capabilities | Access Level |
+| :--- | :--- | :--- |
+| **`SCHEDULE`** | Manage class dates, live Zoom/Google Meet links, and meeting passcodes. | Owner + Authorized Staff |
+| **`RECORDINGS`** | Upload and update lecture replay embeds, Cloudflare/Mux links, and study notes. | Owner + Authorized Staff |
+| **`COURSES`** | Create and publish new courses, edit pricing (INR/USD), and syllabi. | Owner + Authorized Staff |
+| **`STUDENTS`** | View enrolled student roster, manual enrollments, and attendance status. | Owner + Authorized Staff |
+| **`REVENUE`** | Financial analytics, Razorpay / Stripe transaction receipts, and tuition earnings. | Owner + Authorized Staff |
+| **`CERTIFICATES`** | View issued certificates, student grades, and cryptographic verification codes. | Owner + Authorized Staff |
+| **`CONTENT`** | Curate marketing reels, student testimonials, reviews, and homepage FAQs. | Owner + Authorized Staff |
+| **`STAFF`** | Assign, modify, or revoke section permissions for team members. | **Site Owner ONLY** |
+
+#### 4. Enforcement & Unauthorized Lockout UI
+- Evaluated centrally via `hasSectionPermission(user, section)` in `src/lib/auth/permissions.ts`.
+- The **Site Owner** has universal, permanent access to all 8 modules.
+- The **`STAFF` section** is strictly reserved for the Site Owner. Regular staff members are blocked from viewing or mutating permissions even if malicious payloads attempt to grant `STAFF`.
+- If a staff member visits or clicks an unassigned tab in `/admin`, the portal renders a polite, informative **"Section Access Restricted"** panel explaining that permissions are managed per-site by Acharya Niraj Kumar (`ask@aapkaastro.com`).
+
+---
+
+### 10.3 Verification & Testing Summary
+
+The entire permissions architecture was verified using automated unit tests:
+* **Test Suite:** [`tests/permissions.test.ts`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/tests/permissions.test.ts)
+* **Total Automated Tests:** 13 permission-specific unit tests (42 tests total across repository).
+* **Results:**
+  * Deliberate Site Owner recognition verified across all primary email addresses (`ask@aapkaastro.com`, `admin@viar.in`, `niraj@aapkaastro.com`).
+  * Zero false-positive admin elevation for deceptive emails containing `"admin"`.
+  * Section-by-section gating confirmed for staff members (e.g. `Priya Verma` permitted for `CONTENT` and `RECORDINGS`, denied for `SCHEDULE`, `COURSES`, `STUDENTS`, `REVENUE`, `CERTIFICATES`).
+  * `STAFF` delegation module confirmed strictly restricted to the Site Owner.
+  * All 42 tests passing (`npm test` exited 0).
+  * Next.js production build (`npm run build`) succeeded with 0 errors across all 30 routes.
+
+---
+
+### 10.4 Staff Administration Guide for Acharya Niraj Kumar
+
+To grant or manage staff access on Viar.in:
+1. Sign in to Viar.in using your owner account (`ask@aapkaastro.com`).
+2. Navigate to **`/admin`** and select the **Staff Roles** tab (gold crown badge).
+3. To add a new employee:
+   - Click **"Add Staff Member"**.
+   - Enter the employee's name and email address.
+   - Check the specific sections they are authorized to manage (e.g. check only *Content* for a social media curator).
+   - Click *Grant Staff Access*.
+4. To adjust existing staff permissions:
+   - Toggle any section checkbox in real-time in the Staff Members table.
+   - Click the trash icon to revoke all administrative access immediately.
+
+
 
 
 

@@ -56,33 +56,47 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum AdminSection {
+  COURSES
+  SCHEDULE
+  RECORDINGS
+  STUDENTS
+  REVENUE
+  CERTIFICATES
+  CONTENT
+  STAFF
+}
+
 // ------------------------------------------------------------------------------
 // 1. USER
 // Role: student / instructor / admin, name, email, phone, country, created_at
 // ------------------------------------------------------------------------------
 
 model User {
-  id              String            @id @default(cuid())
-  role            UserRole          @default(STUDENT)
-  name            String
-  email           String?           @unique
-  phone           String?           @unique
-  country         String?           @default("IN")
-  timezone        String            @default("Asia/Kolkata")
-  avatarUrl       String?           @map("avatar_url")
-  clerkId         String?           @unique @map("clerk_id")
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
+  id               String            @id @default(cuid())
+  role             UserRole          @default(STUDENT)
+  isOwner          Boolean           @default(false) @map("is_owner")
+  name             String
+  email            String?           @unique
+  phone            String?           @unique
+  country          String?           @default("IN")
+  timezone         String            @default("Asia/Kolkata")
+  avatarUrl        String?           @map("avatar_url")
+  clerkId          String?           @unique @map("clerk_id")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
 
   // Relations
-  enrollments     Enrollment[]
-  sessionProgress SessionProgress[]
-  quizAttempts    QuizAttempt[]
-  certificates    Certificate[]
-  payments        Payment[]
-  testimonials    Testimonial[]
+  enrollments      Enrollment[]
+  sessionProgress  SessionProgress[]
+  quizAttempts     QuizAttempt[]
+  certificates     Certificate[]
+  payments         Payment[]
+  testimonials     Testimonial[]
+  staffPermissions StaffPermission[]
 
   @@index([role])
+  @@index([isOwner])
   @@index([createdAt])
   @@map("users")
 }
@@ -436,5 +450,26 @@ model CourseBundle {
   @@index([isActive])
   @@map("course_bundles")
 }
+
+// ------------------------------------------------------------------------------
+// 14. STAFF PERMISSION (Per-Section RBAC)
+// Granular permissions per admin section for staff members without Clerk Org costs
+// ------------------------------------------------------------------------------
+
+model StaffPermission {
+  id        String       @id @default(cuid())
+  userId    String       @map("user_id")
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  section   AdminSection
+  grantedBy String?      @map("granted_by")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  @@unique([userId, section])
+  @@index([userId])
+  @@index([section])
+  @@map("staff_permissions")
+}
+
 
 

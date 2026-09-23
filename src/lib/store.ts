@@ -11,6 +11,8 @@ import {
   User,
   NotifyMeLead,
   ClassDiscussionComment,
+  AdminSection,
+  StaffPermission,
 } from './types';
 import {
   INITIAL_COURSES,
@@ -22,6 +24,7 @@ import {
   DEMO_ENROLLMENTS,
 } from './data';
 import { getUserLocalTimezone } from './timezones';
+import { isSiteOwner, ADMIN_SECTIONS } from './auth/permissions';
 
 const STORAGE_KEYS = {
   COURSES: 'viar_courses',
@@ -36,6 +39,8 @@ const STORAGE_KEYS = {
   WATCHED_CLASSES: 'viar_watched_classes',
   NOTIFY_LEADS: 'viar_notify_leads',
   DISCUSSIONS: 'viar_class_discussions',
+  STAFF_PERMISSIONS: 'viar_staff_permissions',
+  STAFF_USERS: 'viar_staff_users',
 };
 
 const DEFAULT_CLASS_DISCUSSIONS: ClassDiscussionComment[] = [
@@ -319,17 +324,128 @@ export const ViarStore = {
 
   // User & Session
   getCurrentUser(): User {
-    return getStorageItem<User>(STORAGE_KEYS.CURRENT_USER, DEMO_USERS[0]);
+    const raw = getStorageItem<User>(STORAGE_KEYS.CURRENT_USER, DEMO_USERS[0]);
+    // Deliberate Site Owner evaluation
+    const isOwner = isSiteOwner(raw);
+    
+    // Look up dynamically granted permissions
+    const allPerms = this.getStaffPermissions();
+    const userPerms = allPerms.filter((p) => p.userId === raw.id).map((p) => p.section);
+    const activePerms = userPerms.length > 0 ? userPerms : (raw.staffSections || []);
+
+    return {
+      ...raw,
+      isOwner,
+      role: isOwner ? 'ADMIN' : raw.role,
+      staffSections: isOwner ? [...ADMIN_SECTIONS] : activePerms,
+    };
   },
 
   setCurrentUser(user: User): void {
-    setStorageItem(STORAGE_KEYS.CURRENT_USER, user);
+    const isOwner = isSiteOwner(user);
+    const enriched: User = {
+      ...user,
+      isOwner,
+      role: isOwner ? 'ADMIN' : user.role,
+      staffSections: isOwner ? [...ADMIN_SECTIONS] : (user.staffSections || []),
+    };
+    setStorageItem(STORAGE_KEYS.CURRENT_USER, enriched);
   },
 
-  switchUserRole(role: 'STUDENT' | 'ADMIN'): User {
-    const target = DEMO_USERS.find((u) => u.role === role) || DEMO_USERS[0];
+  switchUserRole(role: 'STUDENT' | 'ADMIN' | 'STAFF'): User {
+    let target: User;
+    if (role === 'ADMIN') {
+      target = DEMO_USERS.find((u) => u.isOwner) || DEMO_USERS[1];
+    } else if (role === 'STAFF') {
+      target = DEMO_USERS.find((u) => u.id === 'user-staff-content') || DEMO_USERS[2] || DEMO_USERS[1];
+    } else {
+      target = DEMO_USERS.find((u) => u.role === 'STUDENT') || DEMO_USERS[0];
+    }
     this.setCurrentUser(target);
     return target;
+  },
+
+  // --------------------------------------------------------------------------
+  // Staff Roles & Section Permissions (Zero-Cost RBAC via Postgres/Store)
+  // --------------------------------------------------------------------------
+  getStaffPermissions(userId?: string): StaffPermission[] {
+    const defaultPerms: StaffPermission[] = [
+      { id: 'perm-1', userId: 'user-staff-content', section: 'CONTENT', createdAt: '2026-09-20T10:00:00.000Z', grantedBy: 'ask@aapkaastro.com' },
+      { id: 'perm-2', userId: 'user-staff-content', section: 'RECORDINGS', createdAt: '2026-09-20T10:00:00.000Z', grantedBy: 'ask@aapkaastro.com' },
+    ];
+    const all = getStorageItem<StaffPermission[]>(STORAGE_KEYS.STAFF_PERMISSIONS, defaultPerms);
+    if (!userId) return all;
+    return all.filter((p) => p.userId === userId);
+  },
+
+  getStaffUsers(): User[] {
+    const defaultStaff = DEMO_USERS.filter((u) => u.isOwner || (u.staffSections && u.staffSections.length > 0));
+    return getStorageItem<User[]>(STORAGE_KEYS.STAFF_USERS, defaultStaff);
+  },
+
+  setStaffSections(userId: string, sections: AdminSection[]): void {
+    const allPerms = this.getStaffPermissions();
+    // Remove existing permissions for this user
+    const remaining = allPerms.filter((p) => p.userId !== userId);
+    // Add new permissions (filtering out 'STAFF' which is strictly Owner-only)
+    const validSections = sections.filter((s) => s !== 'STAFF');
+    const newPerms: StaffPermission[] = validSections.map((sec) => ({
+      id: `perm-${Date.now()}-${sec}`,
+      userId,
+      section: sec,
+      grantedBy: 'ask@aapkaastro.com',
+      createdAt: new Date().toISOString(),
+    }));
+    setStorageItem(STORAGE_KEYS.STAFF_PERMISSIONS, [...remaining, ...newPerms]);
+
+    // Update staff users list
+    const staffUsers = this.getStaffUsers();
+    const updatedUsers = staffUsers.map((u) => {
+      if (u.id === userId) {
+        return { ...u, staffSections: validSections };
+      }
+      return u;
+    });
+    setStorageItem(STORAGE_KEYS.STAFF_USERS, updatedUsers);
+
+    // If current user is this user, update current user too
+    const current = this.getCurrentUser();
+    if (current.id === userId) {
+      this.setCurrentUser({ ...current, staffSections: validSections });
+    }
+  },
+
+  addStaffMember(params: { name: string; email: string; sections: AdminSection[] }): User {
+    const newId = `user-staff-${Date.now()}`;
+    const validSections = params.sections.filter((s) => s !== 'STAFF');
+    const newUser: User = {
+      id: newId,
+      name: params.name,
+      email: params.email.trim().toLowerCase(),
+      role: 'ADMIN',
+      isOwner: false,
+      staffSections: validSections,
+      timezone: 'Asia/Kolkata',
+      enrolledCohortIds: [],
+    };
+
+    const staffUsers = this.getStaffUsers();
+    staffUsers.push(newUser);
+    setStorageItem(STORAGE_KEYS.STAFF_USERS, staffUsers);
+
+    // Set permissions
+    this.setStaffSections(newId, validSections);
+
+    return newUser;
+  },
+
+  removeStaffMember(userId: string): boolean {
+    const staffUsers = this.getStaffUsers().filter((u) => u.id !== userId);
+    setStorageItem(STORAGE_KEYS.STAFF_USERS, staffUsers);
+
+    const allPerms = this.getStaffPermissions().filter((p) => p.userId !== userId);
+    setStorageItem(STORAGE_KEYS.STAFF_PERMISSIONS, allPerms);
+    return true;
   },
 
   // Timezone preference
@@ -542,5 +658,7 @@ export const ViarStore = {
     localStorage.removeItem(STORAGE_KEYS.CERTIFICATES);
     localStorage.removeItem(STORAGE_KEYS.ENROLLMENTS);
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    localStorage.removeItem(STORAGE_KEYS.STAFF_PERMISSIONS);
+    localStorage.removeItem(STORAGE_KEYS.STAFF_USERS);
   },
 };

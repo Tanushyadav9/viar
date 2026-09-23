@@ -45,7 +45,7 @@ export default function Navbar() {
     window.dispatchEvent(new Event('timezone-changed'));
   };
 
-  const handleRoleSwitch = (role: 'STUDENT' | 'ADMIN') => {
+  const handleRoleSwitch = (role: 'STUDENT' | 'ADMIN' | 'STAFF') => {
     const updated = ViarStore.switchUserRole(role);
     setCurrentUser(updated);
     setIsRoleOpen(false);
@@ -221,15 +221,22 @@ export default function Navbar() {
             <button
               onClick={() => setIsRoleOpen(!isRoleOpen)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                isAdmin
+                currentUser?.isOwner
+                  ? 'bg-amber-950/60 text-amber-200 border-amber-500/40 shadow-sm shadow-amber-500/20'
+                  : currentUser?.staffSections && currentUser.staffSections.length > 0
                   ? 'bg-purple-950/60 text-purple-200 border-purple-500/40'
                   : 'bg-emerald-950/60 text-emerald-200 border-emerald-500/40'
               }`}
             >
-              {isAdmin ? (
+              {currentUser?.isOwner ? (
+                <>
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Site Owner</span>
+                </>
+              ) : currentUser?.staffSections && currentUser.staffSections.length > 0 ? (
                 <>
                   <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Admin Mode</span>
+                  <span>Staff Member</span>
                 </>
               ) : (
                 <>
@@ -241,32 +248,52 @@ export default function Navbar() {
             </button>
 
             {isRoleOpen && (
-              <div className="absolute right-0 mt-2 w-64 rounded-xl bg-[#0f172a] border border-white/15 shadow-2xl p-2 z-50">
-                <p className="text-[11px] uppercase tracking-wider text-slate-400 px-3 py-1 font-bold">
-                  Simulate Role
+              <div className="absolute right-0 mt-2 w-72 rounded-xl bg-[#0f172a] border border-white/15 shadow-2xl p-2 z-50">
+                <p className="text-[10px] uppercase tracking-wider text-slate-400 px-3 py-1 font-bold">
+                  Simulate Account & Permissions
                 </p>
                 <button
                   onClick={() => handleRoleSwitch('STUDENT')}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs flex items-center gap-2.5 transition ${
-                    !isAdmin ? 'bg-emerald-500/20 text-emerald-300 font-bold' : 'text-slate-300 hover:bg-white/5'
+                  className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition ${
+                    !currentUser?.isOwner && (!currentUser?.staffSections || currentUser.staffSections.length === 0)
+                      ? 'bg-emerald-500/20 text-emerald-300 font-bold'
+                      : 'text-slate-300 hover:bg-white/5'
                   }`}
                 >
-                  <GraduationCap className="w-4 h-4 text-emerald-400" />
+                  <GraduationCap className="w-4 h-4 text-emerald-400 shrink-0" />
                   <div>
-                    <p className="font-semibold">Student: Aarav Sharma</p>
-                    <p className="text-[10px] text-slate-400">Enrolled in Cohort 1 • Test & Cert Access</p>
+                    <p className="font-semibold text-white">Student: Aarav Sharma</p>
+                    <p className="text-[10px] text-slate-400">Regular learner • Cohort 1 dashboard & certs</p>
                   </div>
                 </button>
+
                 <button
                   onClick={() => handleRoleSwitch('ADMIN')}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs flex items-center gap-2.5 transition mt-1 ${
-                    isAdmin ? 'bg-purple-500/20 text-purple-300 font-bold' : 'text-slate-300 hover:bg-white/5'
+                  className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition mt-1 ${
+                    currentUser?.isOwner
+                      ? 'bg-amber-500/20 text-amber-300 font-bold'
+                      : 'text-slate-300 hover:bg-white/5'
                   }`}
                 >
-                  <ShieldCheck className="w-4 h-4 text-purple-400" />
+                  <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
                   <div>
-                    <p className="font-semibold">Admin: Acharya Niraj Kumar</p>
-                    <p className="text-[10px] text-slate-400">Class Schedule, Zoom Links & Roster</p>
+                    <p className="font-semibold text-white">Site Owner: Acharya Niraj Kumar</p>
+                    <p className="text-[10px] text-amber-300/80">ask@aapkaastro.com • Full access & staff admin</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleRoleSwitch('STAFF')}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition mt-1 ${
+                    !currentUser?.isOwner && currentUser?.staffSections && currentUser.staffSections.length > 0
+                      ? 'bg-purple-500/20 text-purple-300 font-bold'
+                      : 'text-slate-300 hover:bg-white/5'
+                  }`}
+                >
+                  <ShieldCheck className="w-4 h-4 text-purple-400 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-white">Staff: Priya Verma (Restricted)</p>
+                    <p className="text-[10px] text-purple-300/80">priya.staff@viar.in • Content & recordings only</p>
                   </div>
                 </button>
               </div>

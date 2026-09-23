@@ -27,6 +27,8 @@ export interface AppEnvConfig {
     clerkDomain: string;
     clerkIsSatellite: boolean;
     clerkSignInUrl: string;
+    ownerEmail: string;
+    superadminEmails: string[];
   };
 
   // Email Sign-Up Policy (Anti-Abuse / Domain Restrictions)
@@ -94,6 +96,11 @@ export const env: AppEnvConfig = {
     clerkDomain: getEnvVar('NEXT_PUBLIC_CLERK_DOMAIN', 'viar.in'),
     clerkIsSatellite: getBooleanEnvVar('NEXT_PUBLIC_CLERK_IS_SATELLITE', true),
     clerkSignInUrl: getEnvVar('NEXT_PUBLIC_CLERK_SIGN_IN_URL', '/sign-in'),
+    ownerEmail: getEnvVar('OWNER_EMAIL', 'ask@aapkaastro.com'),
+    superadminEmails: getEnvVar('SUPERADMIN_EMAILS', 'ask@aapkaastro.com,admin@viar.in,niraj@aapkaastro.com')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean),
   },
 
   emailPolicy: {

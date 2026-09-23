@@ -1,10 +1,30 @@
 export type UserRole = 'STUDENT' | 'ADMIN' | 'INSTRUCTOR';
 
+export type AdminSection =
+  | 'COURSES'
+  | 'SCHEDULE'
+  | 'RECORDINGS'
+  | 'STUDENTS'
+  | 'REVENUE'
+  | 'CERTIFICATES'
+  | 'CONTENT'
+  | 'STAFF';
+
+export interface StaffPermission {
+  id: string;
+  userId: string;
+  section: AdminSection;
+  grantedBy?: string;
+  createdAt: string;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  isOwner?: boolean;
+  staffSections?: AdminSection[];
   timezone?: string;
   avatarUrl?: string;
   enrolledCohortIds: string[];

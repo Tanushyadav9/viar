@@ -19,10 +19,14 @@ CREATE TYPE "PaymentProvider" AS ENUM ('RAZORPAY', 'STRIPE');
 -- CreateEnum
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED');
 
+-- CreateEnum
+CREATE TYPE "AdminSection" AS ENUM ('COURSES', 'SCHEDULE', 'RECORDINGS', 'STUDENTS', 'REVENUE', 'CERTIFICATES', 'CONTENT', 'STAFF');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "role" "UserRole" NOT NULL DEFAULT 'STUDENT',
+    "is_owner" BOOLEAN NOT NULL DEFAULT false,
     "name" TEXT NOT NULL,
     "email" TEXT,
     "phone" TEXT,
@@ -237,6 +241,18 @@ CREATE TABLE "course_bundles" (
     CONSTRAINT "course_bundles_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "staff_permissions" (
+    "id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "section" "AdminSection" NOT NULL,
+    "granted_by" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "staff_permissions_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
@@ -248,6 +264,9 @@ CREATE UNIQUE INDEX "users_clerk_id_key" ON "users"("clerk_id");
 
 -- CreateIndex
 CREATE INDEX "users_role_idx" ON "users"("role");
+
+-- CreateIndex
+CREATE INDEX "users_is_owner_idx" ON "users"("is_owner");
 
 -- CreateIndex
 CREATE INDEX "users_created_at_idx" ON "users"("created_at");
@@ -390,6 +409,15 @@ CREATE INDEX "course_bundles_slug_idx" ON "course_bundles"("slug");
 -- CreateIndex
 CREATE INDEX "course_bundles_is_active_idx" ON "course_bundles"("is_active");
 
+-- CreateIndex
+CREATE INDEX "staff_permissions_user_id_idx" ON "staff_permissions"("user_id");
+
+-- CreateIndex
+CREATE INDEX "staff_permissions_section_idx" ON "staff_permissions"("section");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "staff_permissions_user_id_section_key" ON "staff_permissions"("user_id", "section");
+
 -- AddForeignKey
 ALTER TABLE "cohorts" ADD CONSTRAINT "cohorts_course_id_fkey" FOREIGN KEY ("course_id") REFERENCES "courses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -443,4 +471,7 @@ ALTER TABLE "testimonials" ADD CONSTRAINT "testimonials_user_id_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "testimonials" ADD CONSTRAINT "testimonials_course_id_fkey" FOREIGN KEY ("course_id") REFERENCES "courses"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "staff_permissions" ADD CONSTRAINT "staff_permissions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 

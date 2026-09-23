@@ -1038,11 +1038,23 @@ export const DEMO_USERS: User[] = [
   {
     id: 'user-admin-demo',
     name: 'Acharya Niraj Kumar',
-    email: 'admin@viar.in',
+    email: 'ask@aapkaastro.com',
     role: 'ADMIN',
+    isOwner: true,
     timezone: 'Asia/Kolkata',
     avatarUrl: '/images/Acharya_Niraj_Kumar.jpg',
     enrolledCohortIds: ['cohort-wia-batch-1'],
+  },
+  {
+    id: 'user-staff-content',
+    name: 'Priya Verma (Staff - Content Only)',
+    email: 'priya.staff@viar.in',
+    role: 'ADMIN',
+    isOwner: false,
+    staffSections: ['CONTENT', 'RECORDINGS'],
+    timezone: 'Asia/Kolkata',
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop',
+    enrolledCohortIds: [],
   },
 ];
 
