@@ -498,6 +498,7 @@ export const ViarStore = {
     email: string;
     sections: (AdminSection | string)[];
     accessLevel?: StaffAccessLevel;
+    grantedByUserId?: string;
   }): User {
     const newId = `user-staff-${Date.now()}`;
     const validSections = params.sections.filter((s) => s.toLowerCase() !== 'staff');
@@ -518,7 +519,12 @@ export const ViarStore = {
     setStorageItem(STORAGE_KEYS.STAFF_USERS, staffUsers);
 
     // Set permissions with audit trail
-    this.setStaffSections(newId, validNormalized, params.accessLevel || 'MANAGE');
+    this.setStaffSections(
+      newId,
+      validNormalized,
+      params.accessLevel || 'MANAGE',
+      params.grantedByUserId || 'ask@aapkaastro.com'
+    );
 
     return newUser;
   },

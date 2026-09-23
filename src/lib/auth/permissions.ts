@@ -19,7 +19,13 @@
  * ==============================================================================
  */
 
-import type { AdminSection, ViarSection, User } from '../types.ts';
+import type {
+  AdminSection,
+  ViarSection,
+  User,
+  StaffAccessLevel,
+  StaffPermission,
+} from '../types.ts';
 
 export interface AdminSectionMeta {
   key: AdminSection;
@@ -234,4 +240,183 @@ export function getUserAllowedSections(
   const sections = (explicitSections || user.staffSections || []).map((s) => s.toLowerCase() as AdminSection);
   // Ensure staff section is never granted to non-owners
   return sections.filter((s) => s !== 'staff');
+}
+
+export interface StaffSectionCheckResult {
+  allowed: boolean;
+  isOwner: boolean;
+  accessLevel?: StaffAccessLevel;
+  reason?: string;
+}
+
+/**
+ * Enforces section-level access control on routes, layouts, and server actions.
+ * 
+ * Rules:
+ * 1. Site Owner: Always passes every section check automatically with MANAGE level.
+ * 2. 'staff' section: Strictly Owner-only. Rejects anyone else (even staff with MANAGE on other sections).
+ * 3. Active Check: Staff member only passes if they have an active (revokedAt IS NULL)
+ *    StaffPermission row for that exact section.
+ * 4. Access Level Check: If the action requires MANAGE (e.g. creating/editing), user must have MANAGE.
+ *    If user only has VIEW, they are permitted for VIEW requests and rejected for MANAGE requests.
+ */
+export function checkStaffSectionAccess(params: {
+  user?: User | string | null;
+  section: AdminSection | string;
+  requiredLevel?: StaffAccessLevel; // Defaults to 'VIEW'
+  permissions?: StaffPermission[];
+}): StaffSectionCheckResult {
+  const { user, section, requiredLevel = 'VIEW', permissions } = params;
+  if (!user) {
+    return { allowed: false, isOwner: false, reason: 'Unauthenticated' };
+  }
+
+  // 1. Site Owner always passes every check automatically
+  if (isSiteOwner(user)) {
+    return { allowed: true, isOwner: true, accessLevel: 'MANAGE' };
+  }
+
+  const normalizedSection = section.toLowerCase();
+
+  // 2. Staff management is strictly reserved for the Site Owner
+  if (normalizedSection === 'staff') {
+    return {
+      allowed: false,
+      isOwner: false,
+      reason: 'Staff section is restricted to the Site Owner only',
+    };
+  }
+
+  // 3. Look up active permissions
+  const userObj = typeof user === 'object' ? user : null;
+  const userIdentifier = typeof user === 'string' ? user.trim().toLowerCase() : (user.id || user.email?.trim().toLowerCase());
+
+  let activePerm: StaffPermission | undefined;
+
+  if (permissions && permissions.length > 0) {
+    activePerm = permissions.find((p) => {
+      const pUserLower = p.userId.toLowerCase();
+      const isUserMatch =
+        pUserLower === userIdentifier ||
+        (userObj && (pUserLower === userObj.id.toLowerCase() || pUserLower === userObj.email.toLowerCase()));
+      const isSectionMatch = p.section.toLowerCase() === normalizedSection;
+      const isActive = !p.revokedAt;
+      return isUserMatch && isSectionMatch && isActive;
+    });
+  }
+
+  // Fallback to userObj.staffSections if permissions table array was not passed
+  if (!activePerm && userObj) {
+    const hasSection = (userObj.staffSections || []).map((s) => s.toLowerCase()).includes(normalizedSection);
+    if (hasSection) {
+      activePerm = {
+        id: `perm-user-${normalizedSection}`,
+        userId: userObj.id,
+        section: normalizedSection,
+        accessLevel: 'MANAGE',
+        grantedByUserId: 'ask@aapkaastro.com',
+        grantedAt: new Date().toISOString(),
+        revokedAt: null,
+      };
+    }
+  }
+
+  if (!activePerm) {
+    return {
+      allowed: false,
+      isOwner: false,
+      reason: `No active permission granted for section '${section}'`,
+    };
+  }
+
+  // 4. Access level check (MANAGE vs VIEW)
+  if (requiredLevel === 'MANAGE' && activePerm.accessLevel === 'VIEW') {
+    return {
+      allowed: false,
+      isOwner: false,
+      accessLevel: 'VIEW',
+      reason: `Action requires MANAGE access level on '${section}', but current account only has VIEW access`,
+    };
+  }
+
+  return {
+    allowed: true,
+    isOwner: false,
+    accessLevel: activePerm.accessLevel,
+  };
+}
+
+/**
+ * Boolean helper for route layouts, server actions, and middleware.
+ */
+export function hasSectionAccess(
+  user: User | string | null,
+  section: AdminSection | string,
+  requiredLevel: StaffAccessLevel = 'VIEW',
+  permissions?: StaffPermission[]
+): boolean {
+  return checkStaffSectionAccess({ user, section, requiredLevel, permissions }).allowed;
+}
+
+export interface RequestAuthInfo {
+  sessionToken?: string;
+  userRole?: string;
+  userEmail?: string;
+  userId?: string;
+}
+
+export function extractAuthFromRequest(req: {
+  cookies: { get(name: string): { value?: string } | undefined };
+  headers: { get(name: string): string | null };
+}): RequestAuthInfo {
+  const sessionToken =
+    req.cookies.get('viar_session')?.value ||
+    req.cookies.get('__session')?.value ||
+    req.cookies.get('viar_auth_token')?.value;
+
+  const userRole =
+    req.cookies.get('viar_user_role')?.value ||
+    req.headers.get('x-user-role') ||
+    '';
+
+  const rawEmail =
+    req.cookies.get('viar_user_email')?.value ||
+    req.headers.get('x-user-email') ||
+    '';
+  const userEmail = rawEmail ? decodeURIComponent(rawEmail).trim().toLowerCase() : undefined;
+
+  const userId =
+    req.cookies.get('viar_user_id')?.value ||
+    sessionToken ||
+    req.headers.get('x-user-id') ||
+    undefined;
+
+  return { sessionToken, userRole, userEmail, userId };
+}
+
+export function verifyRouteAccess(
+  req: {
+    cookies: { get(name: string): { value?: string } | undefined };
+    headers: { get(name: string): string | null };
+  },
+  section: AdminSection | string,
+  requiredLevel: StaffAccessLevel = 'VIEW',
+  permissions?: StaffPermission[]
+): StaffSectionCheckResult {
+  const auth = extractAuthFromRequest(req);
+  if (!auth.sessionToken && !auth.userEmail) {
+    return { allowed: false, isOwner: false, reason: 'Unauthenticated' };
+  }
+
+  // If site owner email
+  if (auth.userEmail && isSiteOwner(auth.userEmail)) {
+    return { allowed: true, isOwner: true, accessLevel: 'MANAGE' };
+  }
+
+  return checkStaffSectionAccess({
+    user: auth.userEmail || auth.userId || null,
+    section,
+    requiredLevel,
+    permissions,
+  });
 }

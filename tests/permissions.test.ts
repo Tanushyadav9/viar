@@ -10,6 +10,9 @@ import {
   getOwnerEmails,
   getPrimaryOwnerEmail,
   assignRoleForUser,
+  checkStaffSectionAccess,
+  hasSectionAccess,
+  verifyRouteAccess,
 } from '../src/lib/auth/permissions.ts';
 import type { User, AdminSection } from '../src/lib/types.ts';
 
@@ -295,6 +298,216 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
 
       assert.strictEqual(perm.grantedByUserId, 'ask@aapkaastro.com');
       assert.strictEqual(isSiteOwner(perm.grantedByUserId), true);
+    });
+  });
+
+  describe('7. Enforce Section-Level Checks on Every Admin Route (VIEW vs MANAGE)', () => {
+    const singleSectionStaff: User = {
+      id: 'staff-courses-only',
+      name: 'Course Specialist',
+      email: 'specialist@viar.in',
+      role: 'INSTRUCTOR',
+      isOwner: false,
+      staffSections: ['courses'],
+      enrolledCohortIds: [],
+    };
+
+    it('a staff account with only courses:MANAGE can access courses but is rejected from every other section', () => {
+      // Passes for courses
+      const courseCheck = checkStaffSectionAccess({
+        user: singleSectionStaff,
+        section: 'courses',
+        requiredLevel: 'MANAGE',
+      });
+      assert.strictEqual(courseCheck.allowed, true);
+      assert.strictEqual(courseCheck.accessLevel, 'MANAGE');
+
+      // Rejected from cohorts
+      const cohortCheck = checkStaffSectionAccess({
+        user: singleSectionStaff,
+        section: 'cohorts',
+        requiredLevel: 'VIEW',
+      });
+      assert.strictEqual(cohortCheck.allowed, false);
+
+      // Rejected from students
+      const studentCheck = checkStaffSectionAccess({
+        user: singleSectionStaff,
+        section: 'students',
+        requiredLevel: 'VIEW',
+      });
+      assert.strictEqual(studentCheck.allowed, false);
+
+      // Rejected from quizzes
+      const quizCheck = checkStaffSectionAccess({
+        user: singleSectionStaff,
+        section: 'quizzes',
+        requiredLevel: 'VIEW',
+      });
+      assert.strictEqual(quizCheck.allowed, false);
+
+      // Rejected from analytics
+      const analyticsCheck = checkStaffSectionAccess({
+        user: singleSectionStaff,
+        section: 'analytics',
+        requiredLevel: 'VIEW',
+      });
+      assert.strictEqual(analyticsCheck.allowed, false);
+
+      // Rejected from payments
+      const paymentsCheck = checkStaffSectionAccess({
+        user: singleSectionStaff,
+        section: 'payments',
+        requiredLevel: 'VIEW',
+      });
+      assert.strictEqual(paymentsCheck.allowed, false);
+
+      // Rejected from staff management (/admin/team)
+      const staffCheck = checkStaffSectionAccess({
+        user: singleSectionStaff,
+        section: 'staff',
+        requiredLevel: 'VIEW',
+      });
+      assert.strictEqual(staffCheck.allowed, false);
+      assert.strictEqual(staffCheck.reason, 'Staff section is restricted to the Site Owner only');
+    });
+
+    it('a staff account with courses:VIEW can see but not edit', () => {
+      const viewOnlyStaffPermissions = [
+        {
+          id: 'perm-view-only',
+          userId: 'staff-viewer',
+          section: 'courses',
+          accessLevel: 'VIEW' as const,
+          grantedByUserId: 'ask@aapkaastro.com',
+          grantedAt: new Date().toISOString(),
+          revokedAt: null,
+        },
+      ];
+
+      // VIEW action: Allowed
+      const viewResult = checkStaffSectionAccess({
+        user: 'staff-viewer',
+        section: 'courses',
+        requiredLevel: 'VIEW',
+        permissions: viewOnlyStaffPermissions,
+      });
+      assert.strictEqual(viewResult.allowed, true);
+      assert.strictEqual(viewResult.accessLevel, 'VIEW');
+
+      // MANAGE action (editing, adding new course): Rejected
+      const editResult = checkStaffSectionAccess({
+        user: 'staff-viewer',
+        section: 'courses',
+        requiredLevel: 'MANAGE',
+        permissions: viewOnlyStaffPermissions,
+      });
+      assert.strictEqual(editResult.allowed, false);
+      assert.ok(editResult.reason?.includes('Action requires MANAGE access level'));
+    });
+
+    it('soft-revoked permission is rejected on both VIEW and MANAGE', () => {
+      const softRevokedPermissions = [
+        {
+          id: 'perm-revoked',
+          userId: 'staff-ex',
+          section: 'courses',
+          accessLevel: 'MANAGE' as const,
+          grantedByUserId: 'ask@aapkaastro.com',
+          grantedAt: '2026-09-01T00:00:00.000Z',
+          revokedAt: '2026-09-22T00:00:00.000Z',
+        },
+      ];
+
+      const res = checkStaffSectionAccess({
+        user: 'staff-ex',
+        section: 'courses',
+        requiredLevel: 'VIEW',
+        permissions: softRevokedPermissions,
+      });
+      assert.strictEqual(res.allowed, false);
+      assert.ok(res.reason?.includes('No active permission'));
+    });
+
+    it('the Site Owner always passes every check automatically with MANAGE level', () => {
+      for (const section of ADMIN_SECTIONS) {
+        const ownerCheck = checkStaffSectionAccess({
+          user: ownerUser,
+          section,
+          requiredLevel: 'MANAGE',
+        });
+        assert.strictEqual(ownerCheck.allowed, true, `Owner should pass ${section}`);
+        assert.strictEqual(ownerCheck.isOwner, true);
+        assert.strictEqual(ownerCheck.accessLevel, 'MANAGE');
+
+        // Verify with email string directly
+        const emailCheck = checkStaffSectionAccess({
+          user: 'ask@aapkaastro.com',
+          section,
+          requiredLevel: 'MANAGE',
+        });
+        assert.strictEqual(emailCheck.allowed, true);
+      }
+    });
+
+    it('verifyRouteAccess correctly parses server request cookies and headers', () => {
+      // Mock NextRequest for Owner
+      const mockOwnerReq = {
+        cookies: {
+          get: (name: string) =>
+            name === 'viar_user_email'
+              ? { value: encodeURIComponent('ask@aapkaastro.com') }
+              : name === 'viar_session'
+              ? { value: 'session-123' }
+              : undefined,
+        },
+        headers: { get: () => null },
+      };
+
+      const ownerRouteResult = verifyRouteAccess(mockOwnerReq, 'staff', 'MANAGE');
+      assert.strictEqual(ownerRouteResult.allowed, true);
+      assert.strictEqual(ownerRouteResult.isOwner, true);
+
+      // Mock NextRequest for Staff with only courses:VIEW
+      const mockStaffReq = {
+        cookies: {
+          get: (name: string) =>
+            name === 'viar_user_email'
+              ? { value: encodeURIComponent('priya.staff@viar.in') }
+              : name === 'viar_session'
+              ? { value: 'session-456' }
+              : undefined,
+        },
+        headers: { get: () => null },
+      };
+
+      const mockPerms = [
+        {
+          id: 'perm-p1',
+          userId: 'priya.staff@viar.in',
+          section: 'courses',
+          accessLevel: 'VIEW' as const,
+          grantedByUserId: 'ask@aapkaastro.com',
+          grantedAt: new Date().toISOString(),
+          revokedAt: null,
+        },
+      ];
+
+      // Viewing courses is allowed
+      assert.strictEqual(
+        verifyRouteAccess(mockStaffReq, 'courses', 'VIEW', mockPerms).allowed,
+        true
+      );
+      // Editing courses is blocked
+      assert.strictEqual(
+        verifyRouteAccess(mockStaffReq, 'courses', 'MANAGE', mockPerms).allowed,
+        false
+      );
+      // Accessing team/staff is blocked
+      assert.strictEqual(
+        verifyRouteAccess(mockStaffReq, 'staff', 'VIEW', mockPerms).allowed,
+        false
+      );
     });
   });
 });

@@ -91,6 +91,7 @@ class DefaultAuthProvider implements AuthProvider {
       });
       document.cookie = `viar_session=${user.id}; path=/; max-age=2592000; SameSite=Lax`;
       document.cookie = `viar_user_role=${user.role}; path=/; max-age=2592000; SameSite=Lax`;
+      document.cookie = `viar_user_email=${encodeURIComponent(user.email || '')}; path=/; max-age=2592000; SameSite=Lax`;
       window.dispatchEvent(new Event('user-role-changed'));
     }
 
@@ -146,6 +147,7 @@ class DefaultAuthProvider implements AuthProvider {
       });
       document.cookie = `viar_session=${user.id}; path=/; max-age=2592000; SameSite=Lax`;
       document.cookie = `viar_user_role=${user.role}; path=/; max-age=2592000; SameSite=Lax`;
+      document.cookie = `viar_user_email=${encodeURIComponent(user.email || '')}; path=/; max-age=2592000; SameSite=Lax`;
       window.dispatchEvent(new Event('user-role-changed'));
     }
 
@@ -181,6 +183,7 @@ class DefaultAuthProvider implements AuthProvider {
       });
       document.cookie = `viar_session=${user.id}; path=/; max-age=2592000; SameSite=Lax`;
       document.cookie = `viar_user_role=${user.role}; path=/; max-age=2592000; SameSite=Lax`;
+      document.cookie = `viar_user_email=${encodeURIComponent(user.email || '')}; path=/; max-age=2592000; SameSite=Lax`;
       window.dispatchEvent(new Event('user-role-changed'));
     }
 
@@ -219,6 +222,7 @@ class DefaultAuthProvider implements AuthProvider {
       ViarStore.resetToDefaults();
       document.cookie = 'viar_session=; path=/; max-age=0';
       document.cookie = 'viar_user_role=; path=/; max-age=0';
+      document.cookie = 'viar_user_email=; path=/; max-age=0';
       window.dispatchEvent(new Event('user-role-changed'));
     }
   }

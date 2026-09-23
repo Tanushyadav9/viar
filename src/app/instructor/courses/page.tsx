@@ -11,9 +11,11 @@ import {
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
 import { ViarStore } from '@/lib/store';
-import { Course } from '@/lib/types';
+import { Course, User } from '@/lib/types';
+import { checkStaffSectionAccess, isSiteOwner } from '@/lib/auth/permissions';
 
 export default function InstructorCoursesPage() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [title, setTitle] = useState('');
@@ -28,7 +30,13 @@ export default function InstructorCoursesPage() {
 
   useEffect(() => {
     setCourses(ViarStore.getCourses());
+    setCurrentUser(ViarStore.getCurrentUser());
   }, []);
+
+  const permissions = ViarStore.getStaffPermissions();
+  const isOwner = isSiteOwner(currentUser);
+  const canManage = isOwner || checkStaffSectionAccess({ user: currentUser, section: 'courses', requiredLevel: 'MANAGE', permissions }).allowed;
+  const canView = isOwner || checkStaffSectionAccess({ user: currentUser, section: 'courses', requiredLevel: 'VIEW', permissions }).allowed;
 
   const handleCreateCourse = (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,20 +104,40 @@ export default function InstructorCoursesPage() {
         {/* Action Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-white">Course Curriculum & Catalog</h2>
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="text-2xl font-bold text-white">Course Curriculum & Catalog</h2>
+              {!canManage && canView && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  VIEW-ONLY ACCESS
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-400 mt-1">
               Create, edit, and configure pricing, syllabus blocks, and cohorts for your academy.
             </p>
           </div>
 
-          <button
-            onClick={() => setIsCreating(true)}
-            className="gold-button px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-amber-500/20 shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create New Course</span>
-          </button>
+          {canManage ? (
+            <button
+              onClick={() => setIsCreating(true)}
+              className="gold-button px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-amber-500/20 shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create New Course</span>
+            </button>
+          ) : (
+            <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-400 flex items-center gap-1.5">
+              <span>View-Only Mode (MANAGE permission required to edit)</span>
+            </div>
+          )}
         </div>
+
+        {!canView && (
+          <div className="p-8 rounded-2xl bg-red-950/20 border border-red-500/30 text-center my-8">
+            <h3 className="text-lg font-bold text-white mb-2">Section Access Restricted</h3>
+            <p className="text-xs text-slate-300">Your account does not have permission to view the courses section.</p>
+          </div>
+        )}
 
         {isSuccess && (
           <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">

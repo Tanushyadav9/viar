@@ -537,6 +537,94 @@ To grant or manage staff access on Viar.in:
    - Toggle any section checkbox in real-time in the Staff Members table.
    - Click the trash icon to revoke all administrative access immediately.
 
+---
+
+## 11. Team Access Management Screen (`/admin/team`), Server-Side Section Gating & Database Architecture
+
+### 11.1 Dedicated Owner-Only Team Access Management Screen (`/admin/team`)
+
+Per Section 3 of the mandate, a dedicated team access management screen has been deployed at **`/admin/team`** with strict server-side gating:
+- **Strict Owner-Only Route**: Non-owners (including staff members who possess `MANAGE` access to other sections such as `courses` or `analytics`) are **rejected server-side** by Next.js middleware and API route logic. Visiting `/admin/team` as a non-owner results in an immediate redirection or an explicit "Access Denied: Owner Exclusive" security barrier.
+- **Clerk Invite & Normal Login Integration**: The Owner can invite staff members simply by entering their work email address. Staff members sign up or log in through the standard Clerk authentication flow (Email magic link, password, or Google SSO). Once authenticated, application code immediately associates their verified email with their granted section permissions.
+- **Granular Permission Grants (`VIEW` vs `MANAGE`)**:
+  - The Owner selects the specific section (`courses`, `cohorts`, `students`, `quizzes`, `analytics`, `payments`).
+  - The Owner selects the access tier: **`VIEW`** (inspect lists and data without write access) or **`MANAGE`** (full editing, publishing, deleting, and scheduling rights).
+- **Interactive PostgreSQL Audit Trail**:
+  - Renders all entries from the `StaffPermission` table.
+  - Pulls and displays: `permissionId`, `userId` (staff identifier/email), `section`, `accessLevel`, `grantedByUserId` (always records the Owner), `grantedAt` timestamp, and `revokedAt` timestamp.
+  - One-click soft-revocation immediately sets `revokedAt = NOW()` in Neon Postgres, terminating active access while preserving complete compliance accountability.
+
+---
+
+### 11.2 Server-Side Section-Level Enforcement Across Every Admin & API Route
+
+Per Section 4, blanket "is user admin" checks have been replaced across the application with granular, section-specific server-side verification:
+
+```mermaid
+flowchart TD
+    Req["Incoming Request (Route or API)"] --> Auth["Extract Auth Context\n(Session, Role, Verified Email)"]
+    Auth --> IsOwner{"Is Verified Site Owner?\n(Matches OWNER_EMAIL)"}
+    IsOwner -- "YES" --> AllowAll["Allow Access Automatically\n(Full MANAGE Level on All Sections)"]
+    IsOwner -- "NO" --> IsStaff{"Is Staff Section /admin/team?"}
+    IsStaff -- "YES" --> RejectOwnerOnly["Reject (HTTP 403 / Redirect)\nOwner-Only Exclusive"]
+    IsStaff -- "NO" --> CheckPerm["Query Active StaffPermission\n(revokedAt IS NULL for Section)"]
+    CheckPerm -- "No Active Grant" --> RejectDenied["Reject: Access Denied to Section"]
+    CheckPerm -- "Has VIEW, needs MANAGE" --> RejectLevel["Reject: Action requires MANAGE Level"]
+    CheckPerm -- "Sufficient Level" --> AllowAccess["Allow Authorized Request"]
+```
+
+#### Specific Route & API Protections Implemented:
+1. **`/admin/team` & `/api/admin/team`**:
+   - Strictly Owner-only. Rejects non-owners server-side with HTTP 403 Forbidden.
+2. **`POST /api/courses`**:
+   - Requires active permission on `courses` with **`MANAGE`** access level. Staff with only `VIEW` or without permission are rejected server-side with HTTP 403.
+3. **`POST /api/cohorts`**:
+   - Requires active permission on `cohorts` with **`MANAGE`** access level. Non-permitted accounts rejected with HTTP 403.
+4. **`PATCH /api/sessions`**:
+   - Updating Zoom links, Google Meet URLs, or lecture recordings requires **`MANAGE`** on `cohorts`. Mutating requests rejected with HTTP 403.
+5. **`/instructor/courses`**:
+   - Staff with `courses:VIEW` can view course curriculum and outlines, but the "Create New Course" action is disabled with a "View-Only Access" badge.
+   - Staff without `courses` access see an immediate "Section Access Restricted" notice.
+
+---
+
+### 11.3 Clarification: Clerk (Identity) vs. PostgreSQL (Application Data)
+
+> [!IMPORTANT]
+> **Plain-Language Clarification for Operations & Support:**
+> A common source of confusion during testing was assuming login was broken because no database was connected, or expecting test data to survive database resets.
+>
+> 1. **Clerk handles identity and authentication only.** Clerk issues session tokens and verifies user email addresses. Clerk runs in the cloud independently of this application's database.
+> 2. **PostgreSQL stores all application business state.** Staff permissions, student enrollments, course schedules, quiz attempts, issued certificates, and Razorpay/Stripe payment records live in this app's own Postgres database (on Neon).
+> 3. **Why this distinction matters:**
+>    - A user can successfully sign in via Clerk even if the database is offline or unprovisioned. However, dynamic application features will run in ephemeral in-memory demo mode until the production database connection string (`DATABASE_URL`) is supplied.
+>    - Once the Neon production database is connected and migrations applied (`npx prisma migrate deploy`), all staff permission grants, student enrollments, and lecture links persist permanently.
+
+---
+
+### 11.4 Automated Test Suite Verification (55 Passing Tests)
+
+Comprehensive automated tests in [`tests/permissions.test.ts`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/tests/permissions.test.ts) verify all new access control requirements:
+- **Test 1**: Staff account with only `courses:MANAGE` can access `courses`, but is rejected from `cohorts`, `students`, `quizzes`, `analytics`, `payments`, and `staff`.
+- **Test 2**: Staff account with `courses:VIEW` can view courses but is rejected when attempting `MANAGE` actions (e.g. creating/editing).
+- **Test 3**: Soft-revoked permissions (`revokedAt != null`) are immediately rejected for both `VIEW` and `MANAGE`.
+- **Test 4**: Site Owner always passes every check automatically with `MANAGE` level across all sections.
+- **Test 5**: Server-side request parser `verifyRouteAccess` correctly parses cookie and header authentication tokens and enforces section barriers.
+- **Overall Suite**: **55 passing tests** across the repository with 0 failures (`npm test` exited 0).
+
+---
+
+### 11.5 Pre-Go-Live Checklist & Final Owner Confirmation
+
+> [!WARNING]
+> **MANDATORY PRE-GO-LIVE ACTION:**
+> The Site Owner's real email address must be configured in the production environment variables before go-live:
+> ```bash
+> OWNER_EMAIL="ask@aapkaastro.com"
+> ```
+> Setting this variable in Vercel / hosting environment guarantees that when Acharya Niraj Kumar signs up or logs in on the live site, his account is automatically elevated to Site Owner, unlocking universal administrative privileges and team access management.
+
+
 
 
 

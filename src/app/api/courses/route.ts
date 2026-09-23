@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { INITIAL_COURSES } from '@/lib/data';
 import { Course } from '@/lib/types';
+import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
 
 export async function GET(req: NextRequest) {
   try {
@@ -52,6 +53,24 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // Enforce Section-Level Permission: Mutating courses requires MANAGE on 'courses'
+    const auth = extractAuthFromRequest(req);
+    const accessCheck = checkStaffSectionAccess({
+      user: auth.userEmail || auth.userId || null,
+      section: 'courses',
+      requiredLevel: 'MANAGE',
+    });
+
+    if (!accessCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: accessCheck.reason || "Forbidden: MANAGE permission on 'courses' required.",
+        },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const { title, slug, description, priceInr, priceUsd, instructor } = body;
 
