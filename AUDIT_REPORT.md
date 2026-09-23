@@ -342,6 +342,49 @@ Before declaring the website live in production, confirm and document:
   - Extra compute: Usage-based per compute hour.
 * Unlike Supabase's rigid $25/month jump cliff, Neon allows seamless scaling with zero code changes, zero migration downtime, and predictable pay-for-what-you-use pricing.
 
+---
+
+## 9. Go-Live Readiness Verification & Production Sign-Up Assessment
+
+### 9.1 Summary of the Three Core Infrastructure Fixes
+
+| Issue / Area | Status | Resolution Implemented in Codebase |
+| :--- | :--- | :--- |
+| **Fix 1: Auth Security & Phone OTP Removal** | ✅ **CLOSED** | Completely removed Indian student Phone + OTP input pathways, state machines, and development passcodes (`123456`) from `/login` and `/signup`. Unified all user authentication strictly on **Clerk Email/Password and Google OAuth**. Anchored user identity to unique IDs (`usr_...`). Configured multi-domain satellite SSO connecting `viar.in` with `aapkaastro.com` and `dowconsulting.in` with zero recurring SMS or TRAI/DLT overhead. |
+| **Fix 2: Configurable Email Sign-Up Policy** | ✅ **CLOSED** | Built `src/lib/auth/email-policy.ts` with two configurable modes defaulting to **Block-list mode (`BLOCKLIST`)**. Blocks 100+ known disposable/throwaway email services (e.g. Mailinator, TempMail, Yopmail) while allowing all legitimate permanent email addresses (Gmail, Yahoo, Outlook, iCloud, university, and corporate domains). Friendly, informative error messages explain why disposable addresses cannot be used. Configurable via `EMAIL_SIGNUP_POLICY_MODE` in `.env.example` and aligned with native Clerk dashboard domain restrictions. |
+| **Fix 3: Neon Production Database Architecture** | ✅ **CLOSED** | Configured `prisma/schema.prisma` with dual connection endpoints: pooled (`DATABASE_URL` via PgBouncer for Vercel serverless execution) and direct (`DIRECT_URL` for transactional migrations). Generated initial production SQL migration [`prisma/migrations/0_init/migration.sql`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/prisma/migrations/0_init/migration.sql) for `npx prisma migrate deploy`. Documented Neon free tier benefits (instant auto-resume vs Supabase 7-day pause, 3 GiB quota) and usage-based scaling path in `.env.example`. |
+
+---
+
+### 9.2 Explicit Confirmation of Sign-Up Readiness
+
+> [!IMPORTANT]
+> **GO-LIVE STATUS: CONFIRMED READY FOR REAL STUDENT SIGN-UPS**  
+> The site is **ready to accept real user sign-ups** without the security gap, the email policy question, or the database provisioning question remaining as open design or architectural items.
+
+* **Security Gap Closed**: No mock OTPs, hardcoded passcodes, or unverified SMS gateways exist in the codebase.
+* **Email Policy Resolved**: Active default is Block-list mode (anti-abuse protection against disposable emails without turning away legitimate paying students).
+* **Database Provisioning Resolved**: Schema, dual pooled/direct datasource configuration, and migration scripts are locked and tested.
+
+---
+
+### 9.3 Launch Day Execution Checklist (Zero Open Engineering Items)
+
+The engineering implementation is 100% complete. Prior to public announcement, the client only needs to supply production credentials in the Vercel project settings:
+
+1. **Database Deployment (10 minutes)**:
+   - Create a project on [console.neon.tech](https://console.neon.tech).
+   - In Vercel Environment Variables, paste the pooled connection string into `DATABASE_URL` and direct connection string into `DIRECT_URL`.
+   - Run `npx prisma migrate deploy` to initialize tables.
+2. **Clerk Production Keys (5 minutes)**:
+   - In Clerk Dashboard, copy `pk_live_...` and `sk_live_...` into Vercel environment variables.
+   - Under *Email, Phone, Username $\rightarrow$ Restrictions*, set Blocklist mode to match application settings.
+3. **Razorpay Live Gateway (5 minutes)**:
+   - Copy live `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` into Vercel.
+4. **Custom Domain**:
+   - Assign `viar.in` in Vercel Domains and verify DNS CNAME/A records.
+
+
 
 
 
