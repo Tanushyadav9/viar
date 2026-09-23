@@ -660,6 +660,41 @@ To eliminate the severe trust risk of showing paying students an unverified or u
    - Under no circumstances was an arbitrary replacement ID guessed or inserted.
    - When Acharya Niraj Kumar or the client provides a positively verified YouTube URL or video ID, it can be seamlessly inserted into the designated `/* PLACEHOLDER */` locations.
 
+---
+
+## 13. Exact Content Changes: Before (Incorrect/Unverified) vs After (Corrected/Honest)
+
+The following tables document every modified location in the codebase, contrasting the exact old text against the new text so reviewers can verify all changes at a glance without inspecting raw git diffs.
+
+### 13.1 Problem 1: Contradictory Consultation / Chart Interpretation Statistics
+
+| Location | Old (Incorrect / Unverified) Text | New (Corrected / Honest) Text | Developer Note / Placeholder |
+| :--- | :--- | :--- | :--- |
+| **`src/app/page.tsx`**<br>(Hero Subtitle, Line 91) | `35,000+ client consultations lineage` | `trusted by students and clients across India and abroad` | `/* PLACEHOLDER: Replace with verified consultation/student count once confirmed across both sites */` |
+| **`src/app/page.tsx`**<br>(Key Trust Metric, Line 128) | `35,000+ Consultations`<br>`Lineage across Aapka Astro` | `Aapka Astro`<br>`Trusted by students & clients across India and abroad` | `/* PLACEHOLDER: Replace with verified consultation/student count once confirmed across both sites */` |
+| **`src/app/page.tsx`**<br>(Instructor Bio, Line 419) | `his practice spans over two decades and more than 15,000 personal chart interpretations.` | `his practice spans over two decades, trusted by students and clients across India and abroad.` | `/* PLACEHOLDER: Replace with verified consultation/interpretation count once confirmed across both sites */` |
+| **`src/app/page.tsx`**<br>(Sister Services, Line 815) | `{SISTER_SERVICES.aapkaAstro.domain} • 15,000+ Consultations • +91 93112 15564` | `{SISTER_SERVICES.aapkaAstro.domain} • Trusted Across India & Abroad • +91 93112 15564` | `/* PLACEHOLDER: Replace with verified consultation count once confirmed across both sites */` |
+| **`src/app/verify/page.tsx`**<br>(Lineage Card, Line 97) | `Authenticated by master astrologer with 35,000+ readings.` | `Authenticated by master astrologer trusted by students and clients across India and abroad.` | `/* PLACEHOLDER: Replace with verified reading/consultation count once confirmed across both sites */` |
+| **`src/app/about/page.tsx`**<br>(Bio Paragraph, Line 145) | `Over the last two decades, he has studied, practiced, and refined his approach across more than 15,000 personal chart analyses and numerous Vastu consultations.` | `Over the last two decades, he has studied, practiced, and refined his approach, trusted by students and clients across India and abroad through comprehensive chart interpretations and numerous Vastu consultations.` | `/* PLACEHOLDER: Replace with verified chart analysis count once confirmed across both sites */` |
+| **`src/app/about/page.tsx`**<br>(Stat Card, Line 158) | `15,000+`<br>`Charts Interpreted` | `Trusted`<br>`Across India & Abroad` | `/* PLACEHOLDER: Replace with verified chart count once confirmed across both sites */` |
+| **`src/lib/data.ts`**<br>(Flagship Course Bio, Line 106) | `Over two decades, he has conducted 15,000+ chart analyses and extensive Vastu audits.` | `Over two decades, he is trusted by students and clients across India and abroad for chart analyses and extensive Vastu audits.` | `/* PLACEHOLDER: Replace with verified chart analysis count once confirmed across both sites */` |
+| **`src/lib/data.ts`**<br>(Upcoming Courses, Lines 207, 249, 290) | `Over 20 years of practice, 15,000+ chart analyses, and extensive Vastu audits.` | `Over 20 years of practice, trusted by students and clients across India and abroad for chart analyses and extensive Vastu audits.` | `/* PLACEHOLDER: Replace with verified chart analysis count once confirmed across both sites */` |
+| **`src/app/instructor/courses/page.tsx`**<br>(Instructor Bio, Line 68) | `Over 20 years of practice and 15,000+ chart analyses.` | `Over 20 years of practice, trusted by students and clients across India and abroad.` | `/* PLACEHOLDER: Replace with verified chart analysis count once confirmed across both sites */` |
+| **`AUDIT_REPORT.md`**<br>(Table 2.2, Line 45) | `20+ years experience, Baidyanath Dham roots, Late Guru Shri B. B. Tiwari lineage, 15,000+ chart analyses` | `20+ years experience, Baidyanath Dham roots, Late Guru Shri B. B. Tiwari lineage, trusted across India & abroad` | Aligned with codebase-wide non-numeric trust statement |
+
+---
+
+### 13.2 Problem 2: Embedded YouTube Video (`hibDdoH5kbQ`)
+
+| Location | Old (Unverified / Risky) Content | New (Corrected / Honest) Content | Developer Note / Placeholder |
+| :--- | :--- | :--- | :--- |
+| **`src/app/page.tsx`**<br>(Homepage Preview, Lines 705–742) | `<iframe src="https://www.youtube-nocookie.com/embed/hibDdoH5kbQ?si=1fp_acyv9bs01pLm" title="Aapka Astro & Viar.in Masterclass Preview" ...></iframe>`<br>`<a href="https://www.youtube.com/watch?v=hibDdoH5kbQ">Aapka Astro on YouTube</a>` | **Embed Removed.** Replaced with honest, branded placeholder card:<br>• Icon: Video<br>• Title: *"Sample Lecture Video Coming Soon"*<br>• Copy: *"Official video excerpts demonstrating live chart analysis and syllabus methodology are currently being curated from the upcoming flagship cohort sessions."*<br>• CTAs: Link to *"View Full 18-Class Curriculum"* and download button for *"Download Syllabus (PDF)"*. | `/* PLACEHOLDER: Unverified video embed hibDdoH5kbQ removed. Client to provide verified official sample video URL. */` |
+| **`src/components/CourseDetailClient.tsx`**<br>(Course Sales Page, Lines 402–414) | `<iframe src="https://www.youtube-nocookie.com/embed/hibDdoH5kbQ?rel=0" title="Acharya Niraj Kumar Astrology Teaching Preview" ...></iframe>` | **Embed Removed.** Replaced with honest, branded preview card:<br>• Icon: Video<br>• Title: *"Sample Lecture Video Coming Soon"*<br>• Copy: *"Full preview excerpts from Batch 1 live classes will be published here prior to cohort launch."*<br>• CTA: Button for *"Download Complete Syllabus (PDF)"*. | `/* PLACEHOLDER: Unverified video embed hibDdoH5kbQ removed. Client to provide verified official sample video URL. */` |
+| **`src/lib/data.ts`**<br>(Social Links, Line 12) | `youtube: 'https://www.youtube.com/watch?v=hibDdoH5kbQ',` | **Key Removed.** Removed dead video link from `PLACEHOLDER_SOCIAL_LINKS`. | `/* PLACEHOLDER: Client to provide verified official YouTube channel link once confirmed */` |
+| **`src/components/Footer.tsx`**<br>(Footer Links, Lines 285–294) | `<li><a href="https://www.youtube.com/watch?v=hibDdoH5kbQ"><span>YouTube: Aapka Astro</span></a></li>` | **Link Removed.** Removed dead link to unverified video ID from footer navigation. | `/* PLACEHOLDER: YouTube channel link to be re-added once verified channel URL is confirmed by client */` |
+| **`AUDIT_REPORT.md`**<br>(Section 7 & Table 2.2/2.3) | `High-definition responsive YouTube video player (hibDdoH5kbQ) embedded directly into the flagship course sales page.` | Documented unverified origin, verified removal, and replacement with honest placeholder state. | Aligned with Section 12 forensic report |
+
+
 
 
 
