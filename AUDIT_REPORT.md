@@ -894,6 +894,108 @@ A thorough recursive search of all routes, components, and libraries was perform
 - **Fail-Closed Gateways**: Any unauthenticated or unauthorized access to `/dashboard`, `/instructor`, `/admin`, or `/admin/team` terminates at the edge with immediate redirect or HTTP 403 Forbidden.
 - **Real Clerk Session Enforcement**: Identity and role authorization are guaranteed exclusively via cryptographic token claims and verified server-side database records.
 
+---
+
+## 18. Forensic Post-Mortem, Aapka Astro Cross-Audit & Incognito Verification Runbook
+
+### 18.1 Honest Forensic Post-Mortem: How Did Role Simulation End Up in Production?
+A git archaeological analysis was performed across the entire repository history to trace the exact lineage of the simulation vulnerability:
+
+1. **Initial Genesis (Commit `9ddcd55`, Project Inception)**:
+   - Early in development, the team required a way to view and test both the Student Classroom and the Instructor/Admin portal locally before Clerk project keys, OAuth redirect URLs, and webhooks were fully wired up.
+   - A mock client-side store method `ViarStore.switchUserRole(role)` was added to `src/lib/store.ts`.
+   - To make switching convenient for local designers, a **"Simulate Role"** dropdown was placed directly in `src/components/Navbar.tsx`.
+   - Crucially, `ViarStore.getCurrentUser()` was coded with a default fallback: `localStorage['...'] || DEMO_USERS[0]` (`Aarav Sharma`). Consequently, any visitor with an empty browser cache was automatically treated as logged in, causing `Navbar.tsx` to render the simulation controls on public visits.
+
+2. **Feature Creep During RBAC Expansion (Commit `2688f8b` & `4a30135`)**:
+   - When the multi-role system (`OWNER`, `STAFF`, `STUDENT`) was implemented in later sprints, instead of removing the prototyping dropdown or gating it behind a separate dev server, developers expanded the dropdown to include:
+     - "Site Owner (Acharya Niraj Kumar)"
+     - "Staff Member (Priya Verma)"
+     - "Student (Aarav Sharma)"
+   - To show which account was active, the dropdown rendered `ask@aapkaastro.com` in plain text.
+   - In addition, an auto-elevation hook was added to `/instructor/page.tsx` (`if (user.role !== 'ADMIN') ViarStore.switchUserRole('ADMIN')`) to prevent developers from getting locked out while testing instructor pages.
+
+3. **Why It Slipped Past Production Builds**:
+   - The dropdown was implemented as standard React JSX in `Navbar.tsx` rather than being wrapped in an environment-conditional check (`process.env.NODE_ENV === 'development'`).
+   - Standard build tools (`next build`) treat all un-gated JSX as production code. Because no compile-time or CI lint rule prohibited `switchUserRole` or simulation dropdowns, the code was compiled and deployed to Vercel without warning.
+
+4. **Architectural Lessons & Structural Prevention Rules (for Aapka Astro & Dowconsulting.in)**:
+   - **Rule 1: Prototyping Controls Never Belong in Shared Layouts**: Never place demo switchers, role toggles, or impersonation menus inside `Navbar.tsx`, `Footer.tsx`, or shared layout wrappers.
+   - **Rule 2: Zero Fallback to Mock Identities**: An authentication store must strictly return `null` when no verified session exists. Never default unauthenticated visitors to a demo user.
+   - **Rule 3: Dual-Key Dev Gating with Static Dead-Code Elimination**: If a dev simulation tool is ever required locally, it must be gated behind `process.env.NODE_ENV === 'development'` AND an explicit environment variable (`ENABLE_LOCAL_DEV_SIMULATOR="true"`) that does not exist in production hosting environments. This ensures the Next.js compiler strips the code entirely from production artifacts.
+   - **Rule 4: Zero Trust on the Server**: The backend must never trust client cookies or headers claiming a role. Role resolution must always be determined server-side from cryptographic session tokens and verified database records.
+
+---
+
+### 18.2 Cross-Repository Audit: Aapka Astro Production Deployment
+To confirm that this class of vulnerability does not exist on the companion site, an audit of the live Aapka Astro production deployment (`https://aapkaastro.com/`) was executed:
+
+1. **Production Bundle Inspection**:
+   - The live production JavaScript bundle (`https://aapkaastro.com/assets/index-Ce5WTLTV.js`, 376 KB) was fetched and searched for all simulation, impersonation, and role-switching keywords.
+2. **Audit Findings**:
+   - `simulate`: **0 occurrences** (NOT FOUND)
+   - `switchUserRole`: **0 occurrences** (NOT FOUND)
+   - `impersonat`: **0 occurrences** (NOT FOUND)
+   - `role-switch`: **0 occurrences** (NOT FOUND)
+   - `Simulate Account`: **0 occurrences** (NOT FOUND)
+   - `devSimulation`: **0 occurrences** (NOT FOUND)
+   - `bypass`: **0 occurrences** (NOT FOUND)
+   - `cheat`: **0 occurrences** (NOT FOUND)
+   - `fake`: **0 occurrences** (NOT FOUND)
+   - `mock`: **0 occurrences** (NOT FOUND)
+   - `debug`: Only standard React internal library references (`useDebugValue`).
+3. **Conclusion**:
+   - **Aapka Astro is completely clean.** It operates as a public-facing consultation and Vedic astrology services portal with standard contact/booking workflows and contains zero role-simulation or impersonation tooling.
+
+---
+
+### 18.3 Incognito Verification Runbook
+
+Anyone can independently verify that all access-control vulnerabilities, fail-open bugs, and simulation tools are eliminated by executing the following manual verification steps in an **Incognito / Private Browsing window** (where no cookies or sessions exist):
+
+#### Step 1: Public Homepage & Navigation Check
+- **URL to Visit**: `https://viar-eight.vercel.app/` (or `https://viar.in/`)
+- **What MUST Appear**:
+  - Clean top navigation bar with: Logo, "Philosophy", "Curriculum", "Instructor", "Sister Services", **"Sign In"** button (linking to `/login`), and **"Enroll Now"** button.
+  - Honest non-numeric trust statement: *"trusted by students and clients across India and abroad"*.
+  - Sample Lecture Preview section showing the branded card: *"Sample Lecture Video Coming Soon"*.
+- **What MUST NOT Appear**:
+  - **NO** "Role Switcher Menu", "Instant Demo Testing", or "Simulate Account & Permissions" dropdown.
+  - **NO** role badges ("Site Owner", "Staff", "Student View") for unauthenticated visitors.
+  - **NO** exposure of `ask@aapkaastro.com` anywhere in navigation or debug controls.
+  - **NO** YouTube player embedding `hibDdoH5kbQ`.
+
+#### Step 2: Protected Student Dashboard Fail-Closed Check
+- **URL to Visit**: `https://viar-eight.vercel.app/dashboard`
+- **Expected Behavior**:
+  - You must be immediately redirected to `https://viar-eight.vercel.app/login?redirect=%2Fdashboard` (HTTP 307).
+  - The login form renders. Zero protected student content (classroom links, recordings, exams) is accessible.
+
+#### Step 3: Direct Fail-Open Exploit URL Check
+- **URL to Visit**: `https://viar-eight.vercel.app/dashboard?error=unauthorized_role`
+- **Expected Behavior**:
+  - You must be immediately redirected to `https://viar-eight.vercel.app/login?error=unauthorized_role`.
+  - The login page displays the notification banner:
+    > *"Access Restricted: You do not have the required role or authorization to access that section. Please sign in with an authorized account."*
+  - **Protected content MUST NEVER render under any circumstances.**
+
+#### Step 4: Protected Instructor & Admin Portal Checks
+- **URLs to Visit**:
+  - `https://viar-eight.vercel.app/instructor`
+  - `https://viar-eight.vercel.app/admin`
+  - `https://viar-eight.vercel.app/admin/team`
+- **Expected Behavior**:
+  - Every one of these URLs must immediately redirect to `https://viar-eight.vercel.app/login` (HTTP 307).
+  - Visiting without active credentials must never trigger auto-elevation to admin or render management portals.
+
+#### Step 5: Live Class & Curriculum Cleanliness Check
+- **URL to Visit**: `https://viar-eight.vercel.app/courses/what-is-astrology`
+- **Expected Behavior**:
+  - Course curriculum lists all 18 classes with clean subtitles (`Block 1 - History & Fundamentals`, `Block 2 - Reading a Birth Chart`, `Block 3 - Planets, Houses & Basic Predictions`).
+  - Class descriptions render clean text (e.g. *"Vedic cosmology, the eye of the Vedas..."* and *"Fire, Earth, Air, Water. Cardinal (Chara), Fixed (Sthira)..."*).
+  - **NO literal `"/* PLACEHOLDER */"` or `"/* PLACEHOLDER: ... */"` comment markers appear anywhere.**
+
+
 
 
 
