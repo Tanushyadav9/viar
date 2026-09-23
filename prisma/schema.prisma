@@ -57,15 +57,9 @@ enum PaymentStatus {
   REFUNDED
 }
 
-enum AdminSection {
-  COURSES
-  SCHEDULE
-  RECORDINGS
-  STUDENTS
-  REVENUE
-  CERTIFICATES
-  CONTENT
-  STAFF
+enum StaffAccessLevel {
+  VIEW
+  MANAGE
 }
 
 // ------------------------------------------------------------------------------
@@ -458,17 +452,21 @@ model CourseBundle {
 // ------------------------------------------------------------------------------
 
 model StaffPermission {
-  id        String       @id @default(cuid())
-  userId    String       @map("user_id")
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  section   AdminSection
-  grantedBy String?      @map("granted_by")
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
+  id              String           @id @default(cuid())
+  userId          String           @map("user_id")
+  section         String           // Specific admin area: courses, cohorts, students, quizzes, analytics, payments
+  accessLevel     StaffAccessLevel @default(MANAGE) @map("access_level")
+  grantedByUserId String           @map("granted_by_user_id")
+  grantedAt       DateTime         @default(now()) @map("granted_at")
+  revokedAt       DateTime?        @map("revoked_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
-  @@unique([userId, section])
+  user            User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([section])
+  @@index([revokedAt])
   @@map("staff_permissions")
 }
 

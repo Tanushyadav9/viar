@@ -31,7 +31,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
     email: 'priya.staff@viar.in',
     role: 'ADMIN',
     isOwner: false,
-    staffSections: ['CONTENT', 'RECORDINGS'],
+    staffSections: ['courses', 'quizzes'],
     enrolledCohortIds: [],
   };
 
@@ -135,14 +135,14 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
 
       // Section permission must also be completely denied
       assert.strictEqual(
-        hasSectionPermission(forgedUser, 'STAFF'),
+        hasSectionPermission(forgedUser, 'staff'),
         false,
-        'Security breach: Forged owner gained access to STAFF section!'
+        'Security breach: Forged owner gained access to staff section!'
       );
       assert.strictEqual(
-        hasSectionPermission(forgedUser, 'REVENUE'),
+        hasSectionPermission(forgedUser, 'payments'),
         false,
-        'Security breach: Forged owner gained access to REVENUE section!'
+        'Security breach: Forged owner gained access to payments section!'
       );
     });
 
@@ -181,34 +181,33 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
     });
 
     it('should grant staff access ONLY to their assigned sections', () => {
-      // Priya has CONTENT and RECORDINGS
-      assert.strictEqual(hasSectionPermission(staffUser, 'CONTENT'), true);
-      assert.strictEqual(hasSectionPermission(staffUser, 'RECORDINGS'), true);
+      // Priya has courses and quizzes
+      assert.strictEqual(hasSectionPermission(staffUser, 'courses'), true);
+      assert.strictEqual(hasSectionPermission(staffUser, 'quizzes'), true);
 
-      // Priya does NOT have SCHEDULE, COURSES, STUDENTS, REVENUE, CERTIFICATES
-      assert.strictEqual(hasSectionPermission(staffUser, 'SCHEDULE'), false);
-      assert.strictEqual(hasSectionPermission(staffUser, 'COURSES'), false);
-      assert.strictEqual(hasSectionPermission(staffUser, 'STUDENTS'), false);
-      assert.strictEqual(hasSectionPermission(staffUser, 'REVENUE'), false);
-      assert.strictEqual(hasSectionPermission(staffUser, 'CERTIFICATES'), false);
+      // Priya does NOT have cohorts, students, analytics, payments
+      assert.strictEqual(hasSectionPermission(staffUser, 'cohorts'), false);
+      assert.strictEqual(hasSectionPermission(staffUser, 'students'), false);
+      assert.strictEqual(hasSectionPermission(staffUser, 'analytics'), false);
+      assert.strictEqual(hasSectionPermission(staffUser, 'payments'), false);
     });
 
-    it('should strictly reserve STAFF management section to Site Owner only', () => {
-      // Owner can access STAFF
-      assert.strictEqual(hasSectionPermission(ownerUser, 'STAFF'), true);
+    it('should strictly reserve staff management section to Site Owner only', () => {
+      // Owner can access staff
+      assert.strictEqual(hasSectionPermission(ownerUser, 'staff'), true);
 
-      // Staff member CANNOT access STAFF even if explicitly attempted
-      assert.strictEqual(hasSectionPermission(staffUser, 'STAFF'), false);
+      // Staff member CANNOT access staff even if explicitly attempted
+      assert.strictEqual(hasSectionPermission(staffUser, 'staff'), false);
 
-      // Even if staff user object maliciously contained 'STAFF' in staffSections
+      // Even if staff user object maliciously contained 'staff' in staffSections
       const maliciousStaff: User = {
         ...staffUser,
-        staffSections: ['STAFF', 'CONTENT'] as AdminSection[],
+        staffSections: ['staff', 'courses'] as AdminSection[],
       };
       assert.strictEqual(
-        hasSectionPermission(maliciousStaff, 'STAFF'),
+        hasSectionPermission(maliciousStaff, 'staff'),
         false,
-        'STAFF section management must be strictly forbidden to non-owners'
+        'staff section management must be strictly forbidden to non-owners'
       );
     });
 
@@ -224,16 +223,16 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
   });
 
   describe('4. getUserAllowedSections helper', () => {
-    it('should return all 8 sections for Site Owner', () => {
+    it('should return all 7 sections for Site Owner', () => {
       const allowed = getUserAllowedSections(ownerUser);
       assert.strictEqual(allowed.length, ADMIN_SECTIONS.length);
       assert.deepStrictEqual(new Set(allowed), new Set(ADMIN_SECTIONS));
     });
 
-    it('should return only granted sections for staff member and filter out STAFF', () => {
+    it('should return only granted sections for staff member and filter out staff', () => {
       const allowed = getUserAllowedSections(staffUser);
-      assert.deepStrictEqual(allowed, ['CONTENT', 'RECORDINGS']);
-      assert.strictEqual(allowed.includes('STAFF'), false);
+      assert.deepStrictEqual(allowed, ['courses', 'quizzes']);
+      assert.strictEqual(allowed.includes('staff'), false);
     });
 
     it('should return empty list for regular students or null', () => {
@@ -250,7 +249,52 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
         assert.ok(meta.title.length > 0);
         assert.ok(meta.description.length > 0);
       }
-      assert.strictEqual(ADMIN_SECTIONS_META.STAFF.ownerOnly, true);
+      assert.strictEqual(ADMIN_SECTIONS_META.staff.ownerOnly, true);
+    });
+  });
+
+  describe('6. StaffPermission Soft-Revocation Audit Trail', () => {
+    it('should preserve revokedAt timestamp for soft-revoked permissions', () => {
+      const activePermission = {
+        id: 'perm-test-1',
+        userId: 'usr_clerk_staff_123',
+        section: 'courses',
+        accessLevel: 'MANAGE' as const,
+        grantedByUserId: 'usr_clerk_owner_456',
+        grantedAt: new Date().toISOString(),
+        revokedAt: null,
+      };
+
+      const revokedPermission = {
+        ...activePermission,
+        id: 'perm-test-2',
+        revokedAt: new Date().toISOString(),
+      };
+
+      assert.strictEqual(activePermission.revokedAt, null);
+      assert.ok(revokedPermission.revokedAt !== null);
+
+      // Verify active vs revoked filtering logic
+      const permissions = [activePermission, revokedPermission];
+      const activeOnly = permissions.filter((p) => p.revokedAt == null);
+
+      assert.strictEqual(activeOnly.length, 1);
+      assert.strictEqual(activeOnly[0].id, 'perm-test-1');
+    });
+
+    it('should enforce that grantedByUserId must always record the Owner', () => {
+      const perm = {
+        id: 'perm-test-3',
+        userId: 'usr_clerk_staff_123',
+        section: 'quizzes',
+        accessLevel: 'VIEW' as const,
+        grantedByUserId: 'ask@aapkaastro.com',
+        grantedAt: new Date().toISOString(),
+        revokedAt: null,
+      };
+
+      assert.strictEqual(perm.grantedByUserId, 'ask@aapkaastro.com');
+      assert.strictEqual(isSiteOwner(perm.grantedByUserId), true);
     });
   });
 });

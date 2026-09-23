@@ -20,7 +20,7 @@ CREATE TYPE "PaymentProvider" AS ENUM ('RAZORPAY', 'STRIPE');
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'COMPLETED', 'FAILED', 'REFUNDED');
 
 -- CreateEnum
-CREATE TYPE "AdminSection" AS ENUM ('COURSES', 'SCHEDULE', 'RECORDINGS', 'STUDENTS', 'REVENUE', 'CERTIFICATES', 'CONTENT', 'STAFF');
+CREATE TYPE "StaffAccessLevel" AS ENUM ('VIEW', 'MANAGE');
 
 -- CreateTable
 CREATE TABLE "users" (
@@ -245,8 +245,11 @@ CREATE TABLE "course_bundles" (
 CREATE TABLE "staff_permissions" (
     "id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
-    "section" "AdminSection" NOT NULL,
-    "granted_by" TEXT,
+    "section" TEXT NOT NULL,
+    "access_level" "StaffAccessLevel" NOT NULL DEFAULT 'MANAGE',
+    "granted_by_user_id" TEXT NOT NULL,
+    "granted_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "revoked_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -416,7 +419,7 @@ CREATE INDEX "staff_permissions_user_id_idx" ON "staff_permissions"("user_id");
 CREATE INDEX "staff_permissions_section_idx" ON "staff_permissions"("section");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "staff_permissions_user_id_section_key" ON "staff_permissions"("user_id", "section");
+CREATE INDEX "staff_permissions_revoked_at_idx" ON "staff_permissions"("revoked_at");
 
 -- AddForeignKey
 ALTER TABLE "cohorts" ADD CONSTRAINT "cohorts_course_id_fkey" FOREIGN KEY ("course_id") REFERENCES "courses"("id") ON DELETE CASCADE ON UPDATE CASCADE;

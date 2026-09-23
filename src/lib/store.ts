@@ -13,6 +13,7 @@ import {
   ClassDiscussionComment,
   AdminSection,
   StaffPermission,
+  StaffAccessLevel,
 } from './types';
 import {
   INITIAL_COURSES,
@@ -328,10 +329,9 @@ export const ViarStore = {
     // Deliberate Site Owner evaluation strictly against verified owner emails
     const isOwner = isSiteOwner(raw.email);
     
-    // Look up dynamically granted permissions
-    const allPerms = this.getStaffPermissions();
-    const userPerms = allPerms.filter((p) => p.userId === raw.id).map((p) => p.section);
-    const activePerms = userPerms.length > 0 ? userPerms : (raw.staffSections || []);
+    // Look up dynamically granted active permissions (soft-revoked ones excluded)
+    const activePerms = this.getActiveStaffPermissions(raw.id).map((p) => p.section as AdminSection);
+    const userPerms = activePerms.length > 0 ? activePerms : (raw.staffSections || []);
 
     // Prevent non-owners from possessing OWNER role
     const sanitizedRole: User['role'] = isOwner
@@ -342,7 +342,7 @@ export const ViarStore = {
       ...raw,
       isOwner,
       role: sanitizedRole,
-      staffSections: isOwner ? [...ADMIN_SECTIONS] : activePerms,
+      staffSections: isOwner ? [...ADMIN_SECTIONS] : userPerms,
     };
   },
 
@@ -379,12 +379,33 @@ export const ViarStore = {
   // --------------------------------------------------------------------------
   getStaffPermissions(userId?: string): StaffPermission[] {
     const defaultPerms: StaffPermission[] = [
-      { id: 'perm-1', userId: 'user-staff-content', section: 'CONTENT', createdAt: '2026-09-20T10:00:00.000Z', grantedBy: 'ask@aapkaastro.com' },
-      { id: 'perm-2', userId: 'user-staff-content', section: 'RECORDINGS', createdAt: '2026-09-20T10:00:00.000Z', grantedBy: 'ask@aapkaastro.com' },
+      {
+        id: 'perm-1',
+        userId: 'user-staff-content',
+        section: 'courses',
+        accessLevel: 'MANAGE',
+        grantedByUserId: 'ask@aapkaastro.com',
+        grantedAt: '2026-09-20T10:00:00.000Z',
+        revokedAt: null,
+      },
+      {
+        id: 'perm-2',
+        userId: 'user-staff-content',
+        section: 'quizzes',
+        accessLevel: 'MANAGE',
+        grantedByUserId: 'ask@aapkaastro.com',
+        grantedAt: '2026-09-20T10:00:00.000Z',
+        revokedAt: null,
+      },
     ];
     const all = getStorageItem<StaffPermission[]>(STORAGE_KEYS.STAFF_PERMISSIONS, defaultPerms);
     if (!userId) return all;
     return all.filter((p) => p.userId === userId);
+  },
+
+  getActiveStaffPermissions(userId?: string): StaffPermission[] {
+    const all = this.getStaffPermissions(userId);
+    return all.filter((p) => !p.revokedAt);
   },
 
   getStaffUsers(): User[] {
@@ -392,26 +413,55 @@ export const ViarStore = {
     return getStorageItem<User[]>(STORAGE_KEYS.STAFF_USERS, defaultStaff);
   },
 
-  setStaffSections(userId: string, sections: AdminSection[]): void {
+  setStaffSections(
+    userId: string,
+    sections: (AdminSection | string)[],
+    accessLevel: StaffAccessLevel = 'MANAGE',
+    grantedByUserId: string = 'ask@aapkaastro.com'
+  ): void {
     const allPerms = this.getStaffPermissions();
-    // Remove existing permissions for this user
-    const remaining = allPerms.filter((p) => p.userId !== userId);
-    // Add new permissions (filtering out 'STAFF' which is strictly Owner-only)
-    const validSections = sections.filter((s) => s !== 'STAFF');
-    const newPerms: StaffPermission[] = validSections.map((sec) => ({
-      id: `perm-${Date.now()}-${sec}`,
-      userId,
-      section: sec,
-      grantedBy: 'ask@aapkaastro.com',
-      createdAt: new Date().toISOString(),
-    }));
-    setStorageItem(STORAGE_KEYS.STAFF_PERMISSIONS, [...remaining, ...newPerms]);
+    const nowIso = new Date().toISOString();
+    const validSections = sections.filter((s) => s.toLowerCase() !== 'staff');
+    const validNormalized = validSections.map((s) => s.toLowerCase());
+
+    const otherUserPerms = allPerms.filter((p) => p.userId !== userId);
+    const existingUserPerms = allPerms.filter((p) => p.userId === userId);
+
+    // Soft-revoke permissions no longer in selected list; reactivate or update existing ones
+    const updatedUserPerms: StaffPermission[] = existingUserPerms.map((perm) => {
+      const norm = perm.section.toLowerCase();
+      if (!validNormalized.includes(norm)) {
+        return perm.revokedAt ? perm : { ...perm, revokedAt: nowIso };
+      } else {
+        return { ...perm, revokedAt: null, accessLevel };
+      }
+    });
+
+    // Add newly selected sections
+    for (const sec of validNormalized) {
+      const existing = updatedUserPerms.find((p) => p.section.toLowerCase() === sec);
+      if (!existing) {
+        updatedUserPerms.push({
+          id: `perm-${Date.now()}-${sec}`,
+          userId,
+          section: sec,
+          accessLevel,
+          grantedByUserId,
+          grantedAt: nowIso,
+          revokedAt: null,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        });
+      }
+    }
+
+    setStorageItem(STORAGE_KEYS.STAFF_PERMISSIONS, [...otherUserPerms, ...updatedUserPerms]);
 
     // Update staff users list
     const staffUsers = this.getStaffUsers();
     const updatedUsers = staffUsers.map((u) => {
       if (u.id === userId) {
-        return { ...u, staffSections: validSections };
+        return { ...u, staffSections: validNormalized as AdminSection[] };
       }
       return u;
     });
@@ -420,20 +470,45 @@ export const ViarStore = {
     // If current user is this user, update current user too
     const current = this.getCurrentUser();
     if (current.id === userId) {
-      this.setCurrentUser({ ...current, staffSections: validSections });
+      this.setCurrentUser({ ...current, staffSections: validNormalized as AdminSection[] });
     }
   },
 
-  addStaffMember(params: { name: string; email: string; sections: AdminSection[] }): User {
+  softRevokeStaffPermission(permissionId: string): boolean {
+    const allPerms = this.getStaffPermissions();
+    const nowIso = new Date().toISOString();
+    let updated = false;
+
+    const modified = allPerms.map((p) => {
+      if (p.id === permissionId && !p.revokedAt) {
+        updated = true;
+        return { ...p, revokedAt: nowIso };
+      }
+      return p;
+    });
+
+    if (updated) {
+      setStorageItem(STORAGE_KEYS.STAFF_PERMISSIONS, modified);
+    }
+    return updated;
+  },
+
+  addStaffMember(params: {
+    name: string;
+    email: string;
+    sections: (AdminSection | string)[];
+    accessLevel?: StaffAccessLevel;
+  }): User {
     const newId = `user-staff-${Date.now()}`;
-    const validSections = params.sections.filter((s) => s !== 'STAFF');
+    const validSections = params.sections.filter((s) => s.toLowerCase() !== 'staff');
+    const validNormalized = validSections.map((s) => s.toLowerCase()) as AdminSection[];
     const newUser: User = {
       id: newId,
       name: params.name,
       email: params.email.trim().toLowerCase(),
       role: 'ADMIN',
       isOwner: false,
-      staffSections: validSections,
+      staffSections: validNormalized,
       timezone: 'Asia/Kolkata',
       enrolledCohortIds: [],
     };
@@ -442,18 +517,26 @@ export const ViarStore = {
     staffUsers.push(newUser);
     setStorageItem(STORAGE_KEYS.STAFF_USERS, staffUsers);
 
-    // Set permissions
-    this.setStaffSections(newId, validSections);
+    // Set permissions with audit trail
+    this.setStaffSections(newId, validNormalized, params.accessLevel || 'MANAGE');
 
     return newUser;
   },
 
   removeStaffMember(userId: string): boolean {
+    const nowIso = new Date().toISOString();
+    // Soft-revoke rather than delete to preserve audit trail
+    const allPerms = this.getStaffPermissions();
+    const updatedPerms = allPerms.map((p) => {
+      if (p.userId === userId && !p.revokedAt) {
+        return { ...p, revokedAt: nowIso };
+      }
+      return p;
+    });
+    setStorageItem(STORAGE_KEYS.STAFF_PERMISSIONS, updatedPerms);
+
     const staffUsers = this.getStaffUsers().filter((u) => u.id !== userId);
     setStorageItem(STORAGE_KEYS.STAFF_USERS, staffUsers);
-
-    const allPerms = this.getStaffPermissions().filter((p) => p.userId !== userId);
-    setStorageItem(STORAGE_KEYS.STAFF_PERMISSIONS, allPerms);
     return true;
   },
 

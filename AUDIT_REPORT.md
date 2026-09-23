@@ -437,71 +437,78 @@ A non-owner account can **never** self-assign or be tricked into obtaining the O
 - **Forged Object Neutralization**: Even if a forged user object with `role: 'OWNER'` or `isOwner: true` exists in storage or a request, `isSiteOwner(user)` verifies that `user.email` strictly matches the designated owner address. If it does not match, `isSiteOwner` returns `false` and access is denied.
 - **Deceptive Email & Domain Spoofing Rejection**: Testing confirms that deceptive variations like `badadmin@gmail.com`, `admin@attacker.com`, `ask@aapkaastro.com.fake.com`, `ask@aapkaastro.com@evil.com`, or `fake-ask@aapkaastro.com` are strictly rejected.
 
-#### 3. Free Database-Backed Staff Permissions Schema
+#### 3. Free Database-Backed Staff Permissions Schema (`StaffPermission`)
 In [`prisma/schema.prisma`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/prisma/schema.prisma) and [`prisma/migrations/0_init/migration.sql`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/prisma/migrations/0_init/migration.sql):
 ```prisma
-enum AdminSection {
-  COURSES
-  SCHEDULE
-  RECORDINGS
-  STUDENTS
-  REVENUE
-  CERTIFICATES
-  CONTENT
-  STAFF
+enum StaffAccessLevel {
+  VIEW
+  MANAGE
 }
 
 model StaffPermission {
-  id        String       @id @default(cuid())
-  userId    String       @map("user_id")
-  section   AdminSection
-  grantedBy String?      @map("granted_by")
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
+  id              String           @id @default(cuid())
+  userId          String           @map("user_id") // the staff member's Clerk user ID
+  section         String           // specific admin area: courses, cohorts, students, quizzes, analytics, payments
+  accessLevel     StaffAccessLevel @default(MANAGE) @map("access_level") // VIEW or MANAGE
+  grantedByUserId String           @map("granted_by_user_id") // must always be an Owner
+  grantedAt       DateTime         @default(now()) @map("granted_at")
+  revokedAt       DateTime?        @map("revoked_at") // nullable — soft-revoke rather than delete, for an audit trail
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, section])
+  @@index([userId])
+  @@index([section])
+  @@index([revokedAt])
   @@map("staff_permissions")
 }
 ```
 
-#### 4. The 8 Granular Administrative Sections
+#### 4. Exact Section Names for Viar
+Per client specifications, the section names for the Viar platform are strictly standardized using lowercase identifiers:
 
-| Admin Section | Scope & Capabilities | Access Level |
+| Viar Section | Scope & Capabilities | Access Level |
 | :--- | :--- | :--- |
-| **`SCHEDULE`** | Manage class dates, live Zoom/Google Meet links, and meeting passcodes. | Owner + Authorized Staff |
-| **`RECORDINGS`** | Upload and update lecture replay embeds, Cloudflare/Mux links, and study notes. | Owner + Authorized Staff |
-| **`COURSES`** | Create and publish new courses, edit pricing (INR/USD), and syllabi. | Owner + Authorized Staff |
-| **`STUDENTS`** | View enrolled student roster, manual enrollments, and attendance status. | Owner + Authorized Staff |
-| **`REVENUE`** | Financial analytics, Razorpay / Stripe transaction receipts, and tuition earnings. | Owner + Authorized Staff |
-| **`CERTIFICATES`** | View issued certificates, student grades, and cryptographic verification codes. | Owner + Authorized Staff |
-| **`CONTENT`** | Curate marketing reels, student testimonials, reviews, and homepage FAQs. | Owner + Authorized Staff |
-| **`STAFF`** | Assign, modify, or revoke section permissions for team members. | **Site Owner ONLY** |
+| **`courses`** | Course catalog, 18-class syllabi, course additions, tuition pricing (INR/USD). | Owner + Authorized Staff (`VIEW` or `MANAGE`) |
+| **`cohorts`** | Batch start/end dates, live Zoom/Google Meet links, passcodes, and lecture recordings. | Owner + Authorized Staff (`VIEW` or `MANAGE`) |
+| **`students`** | Student roster, manual offline enrollments, and attendance tracking. | Owner + Authorized Staff (`VIEW` or `MANAGE`) |
+| **`quizzes`** | Certification exams, passing criteria, and cryptographic verification codes. | Owner + Authorized Staff (`VIEW` or `MANAGE`) |
+| **`analytics`** | Platform telemetry, student completion rate, video watch progress, and cohort engagement. | Owner + Authorized Staff (`VIEW` or `MANAGE`) |
+| **`payments`** | Financial analytics, Razorpay (INR) & Stripe (USD) receipts, and revenue breakdowns. | Owner + Authorized Staff (`VIEW` or `MANAGE`) |
+| **`staff`** | Staff delegation manager: grant, adjust, or soft-revoke staff section roles. | **Site Owner ONLY** |
 
-#### 5. Enforcement & Unauthorized Lockout UI
+#### 5. Soft-Revocation Mechanism & Audit Trail Integrity
+Instead of hard-deleting database records when permissions are revoked:
+- The system performs a **soft-revocation** by setting `revokedAt = new Date().toISOString()`.
+- Active permission queries filter on `revokedAt IS NULL`.
+- Historical records persist in PostgreSQL, providing an indisputable audit trail of who granted access, what level of access was granted, when it was granted, and when it was revoked.
+- An interactive **Postgres Audit Trail table** is rendered directly in the Owner's Staff Roles portal showing all historical grants and revocations.
+
+#### 6. Enforcement & Unauthorized Lockout UI
 - Evaluated centrally via `hasSectionPermission(user, section)` in `src/lib/auth/permissions.ts`.
-- The **Site Owner** has universal, permanent access to all 8 modules and is **never** subject to section-level restrictions.
-- The **`STAFF` section** is strictly reserved for the Site Owner. Regular staff members are blocked from viewing or mutating permissions.
+- The **Site Owner** has universal, permanent access to all sections and is **never** subject to section-level restrictions.
+- The **`staff` section** is strictly reserved for the Site Owner. Regular staff members are blocked from viewing or mutating permissions.
 - If a staff member visits or clicks an unassigned tab in `/admin`, the portal renders a polite, informative **"Section Access Restricted"** panel explaining that permissions are managed per-site by Acharya Niraj Kumar (`ask@aapkaastro.com`).
 
 ---
 
 ### 10.3 Verification & Testing Summary
 
-The entire permissions and anti-tamper architecture was verified using automated unit tests:
+The entire permissions, anti-tamper, and soft-revocation architecture was verified using automated unit tests:
 * **Test Suite:** [`tests/permissions.test.ts`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/tests/permissions.test.ts)
-* **Total Automated Tests:** 18 permission & owner unit tests (48 tests total across repository).
+* **Total Automated Tests:** 20 permission & owner unit tests (50 tests total across repository).
 * **Automated Test Scenarios:**
   1. Verified auto-assignment of `OWNER` role upon sign-up or login when email matches `OWNER_EMAIL`.
   2. Verified non-owner accounts attempting to pass `requestedRole: 'OWNER'` are coerced to `STUDENT`.
   3. Verified forged user objects with `role: 'OWNER'` or `isOwner: true` are rejected when email does not match `OWNER_EMAIL`.
   4. Verified domain spoofing attempts (`ask@aapkaastro.com.fake.com`, `fake-ask@...`, `...evil.com`) are rejected.
   5. Verified zero false-positive admin elevation for deceptive emails containing `"admin"`.
-  6. Verified section-by-section gating confirmed for staff members (e.g. `Priya Verma` permitted for `CONTENT` and `RECORDINGS`, denied for `SCHEDULE`, `COURSES`, `STUDENTS`, `REVENUE`, `CERTIFICATES`).
-  7. Verified `STAFF` delegation module confirmed strictly restricted to the Site Owner.
-  8. All 48 tests passing (`npm test` exited 0).
-  9. Next.js production build (`npm run build`) succeeded with 0 errors across all 30 routes.
+  6. Verified section-by-section gating confirmed for staff members using exact Viar identifiers (`courses`, `cohorts`, `students`, `quizzes`, `analytics`, `payments`).
+  7. Verified `staff` delegation module confirmed strictly restricted to the Site Owner.
+  8. Verified soft-revocation preserves `revokedAt` timestamp while filtering active permissions from revoked rows.
+  9. All 50 tests passing (`npm test` exited 0).
+  10. Next.js production build (`npm run build`) succeeded with 0 errors across all 30 routes.
 
 ---
 

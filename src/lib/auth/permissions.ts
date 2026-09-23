@@ -19,7 +19,7 @@
  * ==============================================================================
  */
 
-import type { AdminSection, User } from '../types.ts';
+import type { AdminSection, ViarSection, User } from '../types.ts';
 
 export interface AdminSectionMeta {
   key: AdminSection;
@@ -29,62 +29,68 @@ export interface AdminSectionMeta {
   ownerOnly?: boolean;
 }
 
+/**
+ * Exact section names for the Viar repository:
+ * courses, cohorts, students, quizzes, analytics, payments
+ */
+export const VIAR_SECTIONS: readonly ViarSection[] = [
+  'courses',
+  'cohorts',
+  'students',
+  'quizzes',
+  'analytics',
+  'payments',
+] as const;
+
 export const ADMIN_SECTIONS: readonly AdminSection[] = [
-  'SCHEDULE',
-  'RECORDINGS',
-  'COURSES',
-  'STUDENTS',
-  'REVENUE',
-  'CERTIFICATES',
-  'CONTENT',
-  'STAFF',
+  'courses',
+  'cohorts',
+  'students',
+  'quizzes',
+  'analytics',
+  'payments',
+  'staff',
 ] as const;
 
 export const ADMIN_SECTIONS_META: Record<AdminSection, AdminSectionMeta> = {
-  SCHEDULE: {
-    key: 'SCHEDULE',
-    title: 'Class Schedules & Live Links',
-    shortTitle: 'Schedule',
-    description: 'Set upcoming class dates, manage Zoom/Google Meet links, and meeting passcodes.',
-  },
-  RECORDINGS: {
-    key: 'RECORDINGS',
-    title: 'Session Recordings & Notes',
-    shortTitle: 'Recordings',
-    description: 'Upload lecture recordings, Cloudflare/Mux links, and study notes.',
-  },
-  COURSES: {
-    key: 'COURSES',
+  courses: {
+    key: 'courses',
     title: 'Course Catalog & Syllabi',
     shortTitle: 'Courses',
     description: 'Create and update courses, 18-class syllabi, bundles, and pricing.',
   },
-  STUDENTS: {
-    key: 'STUDENTS',
+  cohorts: {
+    key: 'cohorts',
+    title: 'Cohorts, Schedule & Live Class Links',
+    shortTitle: 'Cohorts & Schedule',
+    description: 'Manage cohort start/end dates, Zoom/Google Meet links, and lecture recordings.',
+  },
+  students: {
+    key: 'students',
     title: 'Student Roster & Enrollments',
     shortTitle: 'Students',
     description: 'View enrolled students, manual enrollment, and attendance records.',
   },
-  REVENUE: {
-    key: 'REVENUE',
-    title: 'Financial Analytics & Revenue',
-    shortTitle: 'Revenue',
+  quizzes: {
+    key: 'quizzes',
+    title: 'Quizzes, Exams & Certificate Registry',
+    shortTitle: 'Quizzes & Certificates',
+    description: 'Manage final 20-question certification exams, passing criteria, and cryptographic certificates.',
+  },
+  analytics: {
+    key: 'analytics',
+    title: 'Platform Telemetry & Academic Analytics',
+    shortTitle: 'Analytics',
+    description: 'Track student completion rates, video watch progress, and cohort engagement.',
+  },
+  payments: {
+    key: 'payments',
+    title: 'Financial Revenue & Payment Gateways',
+    shortTitle: 'Payments & Revenue',
     description: 'Track Razorpay & Stripe tuition receipts, cohort earnings, and payouts.',
   },
-  CERTIFICATES: {
-    key: 'CERTIFICATES',
-    title: 'Certificates & Public Registry',
-    shortTitle: 'Certificates',
-    description: 'Issue official completion certificates, grades, and verify cryptographic codes.',
-  },
-  CONTENT: {
-    key: 'CONTENT',
-    title: 'Marketing, FAQs & Content Curation',
-    shortTitle: 'Content',
-    description: 'Curate client testimonials, student reviews, FAQs, and social media embeds.',
-  },
-  STAFF: {
-    key: 'STAFF',
+  staff: {
+    key: 'staff',
     title: 'Staff Roles & Delegated Permissions',
     shortTitle: 'Staff Roles',
     description: 'Assign specific section access to team members and employees. (Owner Only)',
@@ -186,27 +192,29 @@ export function isStaffMember(user?: User | null): boolean {
  * Evaluates whether a user has permission to access a specific admin section.
  * 
  * Rules:
- * 1. Site Owner: Always granted access to ALL sections (including STAFF management).
- * 2. STAFF Section: Strictly Owner-only. Regular staff cannot modify permissions.
+ * 1. Site Owner: Always granted access to ALL sections (including staff management).
+ * 2. Staff Section: Strictly Owner-only. Regular staff cannot modify permissions.
  * 3. Specific Sections: Granted if the user has that section in their staffSections list.
  * 4. Regular Students: Denied.
  */
 export function hasSectionPermission(
   user: User | null,
-  section: AdminSection,
-  explicitSections?: AdminSection[]
+  section: AdminSection | string,
+  explicitSections?: (AdminSection | string)[]
 ): boolean {
   if (!user) return false;
 
   // Rule 1: Site Owner has universal access
   if (isSiteOwner(user)) return true;
 
+  const normalizedSection = section.toLowerCase();
+
   // Rule 2: Staff management is strictly reserved for the Site Owner
-  if (section === 'STAFF') return false;
+  if (normalizedSection === 'staff') return false;
 
   // Rule 3: Check explicit per-section permissions
-  const allowedSections = explicitSections || user.staffSections || [];
-  return allowedSections.includes(section);
+  const allowedSections = (explicitSections || user.staffSections || []).map((s) => s.toLowerCase());
+  return allowedSections.includes(normalizedSection);
 }
 
 /**
@@ -214,7 +222,7 @@ export function hasSectionPermission(
  */
 export function getUserAllowedSections(
   user: User | null,
-  explicitSections?: AdminSection[]
+  explicitSections?: (AdminSection | string)[]
 ): AdminSection[] {
   if (!user) return [];
 
@@ -223,7 +231,7 @@ export function getUserAllowedSections(
     return [...ADMIN_SECTIONS];
   }
 
-  const sections = explicitSections || user.staffSections || [];
-  // Ensure STAFF section is never granted to non-owners
-  return sections.filter((s) => s !== 'STAFF');
+  const sections = (explicitSections || user.staffSections || []).map((s) => s.toLowerCase() as AdminSection);
+  // Ensure staff section is never granted to non-owners
+  return sections.filter((s) => s !== 'staff');
 }

@@ -1047,11 +1047,11 @@ export const DEMO_USERS: User[] = [
   },
   {
     id: 'user-staff-content',
-    name: 'Priya Verma (Staff - Content Only)',
+    name: 'Priya Verma (Staff - Courses & Quizzes)',
     email: 'priya.staff@viar.in',
     role: 'ADMIN',
     isOwner: false,
-    staffSections: ['CONTENT', 'RECORDINGS'],
+    staffSections: ['courses', 'quizzes'],
     timezone: 'Asia/Kolkata',
     avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop',
     enrolledCohortIds: [],

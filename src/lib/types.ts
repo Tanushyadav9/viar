@@ -1,21 +1,31 @@
 export type UserRole = 'STUDENT' | 'ADMIN' | 'INSTRUCTOR' | 'OWNER';
 
-export type AdminSection =
-  | 'COURSES'
-  | 'SCHEDULE'
-  | 'RECORDINGS'
-  | 'STUDENTS'
-  | 'REVENUE'
-  | 'CERTIFICATES'
-  | 'CONTENT'
-  | 'STAFF';
+export type StaffAccessLevel = 'VIEW' | 'MANAGE';
+
+/**
+ * Exact section identifiers for Viar:
+ * courses, cohorts, students, quizzes, analytics, payments
+ */
+export type ViarSection =
+  | 'courses'
+  | 'cohorts'
+  | 'students'
+  | 'quizzes'
+  | 'analytics'
+  | 'payments';
+
+export type AdminSection = ViarSection | 'staff';
 
 export interface StaffPermission {
   id: string;
-  userId: string;
-  section: AdminSection;
-  grantedBy?: string;
-  createdAt: string;
+  userId: string; // the staff member's Clerk user ID (e.g. usr_...)
+  section: string; // specific admin area (e.g. courses, cohorts, students, quizzes, analytics, payments)
+  accessLevel: StaffAccessLevel; // VIEW or MANAGE
+  grantedByUserId: string; // must always be an Owner
+  grantedAt: string;
+  revokedAt?: string | null; // nullable — soft-revoke rather than delete, for an audit trail
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface User {
