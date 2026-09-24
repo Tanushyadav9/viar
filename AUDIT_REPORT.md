@@ -1135,6 +1135,41 @@ The footer's "Courses" section previously listed "Vimshottari Dasha & Transits" 
   - Structured log formatting and security alert emission.
 - Total automated tests passing: **77 tests across 23 test suites (0 failures)**.
 
+---
+
+## 23. Final Consolidated Status Matrix & Deliverables Status
+
+| Category / Requirement | Item Description | Status | Verification & Evidence | Blockers / External Dependencies |
+|---|---|:---:|---|---|
+| **Legal & Trust Pages** | `/refund-policy` (Cohort refund terms: 100% refund prior to Class 3, pro-rated before Class 6, no refunds after) | **DONE** | Page reachable, 308 redirect from `/refund`, verified via `verify-live.ts` | **None**. Formatted with placeholder legal text pending final client legal review. |
+| **Legal & Trust Pages** | `/terms` (User agreement, cohort eligibility, jurisdiction in New Delhi) | **DONE** | Page reachable, verified, linked in footer | **None**. Pending final legal counsel sign-off. |
+| **Legal & Trust Pages** | `/privacy-policy` (Student data collection, zero-sale commitment, payment security) | **DONE** | Page reachable, 308 redirect from `/privacy`, verified | **None**. |
+| **Legal & Trust Pages** | `/disclaimer` (Educational Jyotish scope, non-substitute for financial/medical advice) | **DONE** | Page reachable, verified, linked in footer | **None**. |
+| **Legal & Trust Pages** | `/pricing-policy` (Transparent one-time tuition ₹4,999 / $69 USD, zero hidden fees) | **DONE** | Page reachable, 308 redirect from `/pricing`, verified | **None**. |
+| **Transactional Emails** | Provider Abstraction (`EmailService` interface, Resend REST client, Mock provider) | **DONE** | `src/lib/email/`, passes `tests/email.test.ts` | **None**. Ready for production `RESEND_API_KEY`. |
+| **Transactional Emails** | Flow 1: Enrollment Confirmation Email | **DONE** | Verified in `scripts/verify-live.ts`, hooked into Razorpay & Stripe webhooks | **None**. |
+| **Transactional Emails** | Flow 2: Payment Receipt Email | **DONE** | Official invoice with order ID, date, amount, hooked into webhooks | **None**. |
+| **Transactional Emails** | Flow 3: Upcoming Live Class Reminders (24h & 1h) | **DONE** | Formats class title, Zoom link, local timezone, hooked into `/api/notifications` | **None**. |
+| **Transactional Emails** | Flow 4: Recording Available Notification Email | **DONE** | Formats class title, duration, dashboard link, hooked into `/api/sessions` | **None**. |
+| **Transactional Emails** | Flow 5: Certificate Issued Notification Email | **DONE** | Formats honors grade, score %, verification URL, hooked into `/api/certificates` | **None**. |
+| **Navigation Fix** | Footer Courses Consistency Fix | **DONE** | Replaced unmodeled courses with real catalog: *What is Astrology*, *Vastu Shastra for Your Home*, *Gemstone Science 101*, *Numerology Basics* | **None**. |
+| **Production Hardening** | Rate Limiting on Checkout (`/api/payments/create-order`) | **DONE** | Enforces 20 attempts/hr per IP; returns HTTP 429 with `Retry-After`; automated test passing | **None**. |
+| **Production Hardening** | Rate Limiting on Quiz Submission (`/api/quiz/submit` & `/api/certificates`) | **DONE** | Enforces 5 attempts/hr per student/IP; disables submit button & displays alert banner; test passing | **None**. |
+| **Production Hardening** | Structured Error Logging & Payment Alerts (`src/lib/logger.ts`) | **DONE** | JSON format for Vercel/Datadog; sensitive secrets scrubbed; `paymentError` & `securityAlert` hooks | **None**. |
+| **Production Hardening** | SEO Finalization (`sitemap.xml`, `robots.txt`, Schema.org cleanup) | **DONE** | Removed `4800` claim from Course JSON-LD; all 5 legal policies indexed; robots verified | **None**. |
+| **Production Hardening** | Mobile Responsiveness Pass | **DONE** | Touch targets >=48px, responsive grids on checkout, dashboard, and 16:9 video player | **None**. |
+
+### Launch Readiness & External Dependencies Summary
+1. **Codebase Health**:
+   - Zero compilation errors across 39 Next.js static and dynamic routes (`npm run build`).
+   - 77 unit & integration tests passing across 23 test suites (`npm test`).
+   - Clean git working tree pushed to `origin/main`.
+2. **Pending Client Configuration**:
+   - **Resend API Key**: Provide `RESEND_API_KEY` in production environment to switch from simulated dispatch to live inbox delivery.
+   - **Payment Gateway Secrets**: Provide production keys for Razorpay (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`) and Stripe (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`).
+   - **Legal Text Sign-Off**: Replace marked `{/* PLACEHOLDER: replace with client-approved legal text */}` blocks with finalized legal counsel text before opening public paid enrollments.
+
+
 
 
 
