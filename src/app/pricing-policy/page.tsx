@@ -130,7 +130,7 @@ export default function PricingPolicyPage() {
               &ldquo;Coming Soon&rdquo; Courses & Price Adjustments
             </h2>
             <p>
-              Programs listed in our catalog with the badge <strong>&ldquo;Coming Soon&rdquo;</strong> (such as <em>Vimshottari Dasha &amp; Transits</em> or <em>Nakshatra Wisdom</em>) are currently in active syllabus design.
+              Programs listed in our catalog with the badge <strong>&ldquo;Coming Soon&rdquo;</strong> (such as <em>Vastu Shastra for Your Home</em>, <em>Gemstone Science 101</em>, or <em>Numerology Basics</em>) are currently in active syllabus design.
             </p>
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-slate-300 space-y-1.5">
               <div className="font-semibold text-white flex items-center gap-2">

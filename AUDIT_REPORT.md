@@ -1081,6 +1081,23 @@ A complete, provider-swappable transactional email architecture was built under 
 - Created `tests/email.test.ts` covering all 5 email templates, mock history tracking, Resend fallback mode, and service factory contract.
 - Test suite expanded to 71 passing tests across 20 suites with zero failures.
 
+---
+
+## 21. Course Data Model Alignment & Footer Navigation Fix
+
+### 21.1 Issue Description
+The footer's "Courses" section previously listed "Vimshottari Dasha & Transits" and "Nakshatra Wisdom" as links pointing to the generic `/courses` catalog page. Neither corresponded to entries in the actual `INITIAL_COURSES` data model defined in `src/lib/data.ts`.
+
+### 21.2 Resolution
+- Removed the two unmodeled course names from `src/components/Footer.tsx`.
+- Replaced them with the three verified "Coming Soon" courses from `INITIAL_COURSES`:
+  1. **Vastu Shastra for Your Home** &rarr; [`/courses/vastu-shastra-for-your-home`](file:///courses/vastu-shastra-for-your-home)
+  2. **Gemstone Science 101** &rarr; [`/courses/gemstone-science-101`](file:///courses/gemstone-science-101)
+  3. **Numerology Basics** &rarr; [`/courses/numerology-basics`](file:///courses/numerology-basics)
+- Each link now points directly to that course's dedicated detail page (which renders syllabus previews and "Notify Me" waitlist forms).
+- Synchronized `src/app/pricing-policy/page.tsx` line 133 to reference the same real course titles, ensuring 100% platform-wide data model consistency.
+
+
 
 
 

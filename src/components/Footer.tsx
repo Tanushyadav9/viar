@@ -151,17 +151,22 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/courses" className="hover:text-amber-400 transition">
-                  Vimshottari Dasha & Transits
+                <Link href="/courses/vastu-shastra-for-your-home" className="hover:text-amber-400 transition">
+                  Vastu Shastra for Your Home
                 </Link>
               </li>
               <li>
-                <Link href="/courses" className="hover:text-amber-400 transition">
-                  Nakshatra Wisdom
+                <Link href="/courses/gemstone-science-101" className="hover:text-amber-400 transition">
+                  Gemstone Science 101
                 </Link>
               </li>
               <li>
-                <Link href="/courses" className="hover:text-amber-400 transition">
+                <Link href="/courses/numerology-basics" className="hover:text-amber-400 transition">
+                  Numerology Basics
+                </Link>
+              </li>
+              <li>
+                <Link href="/courses" className="hover:text-amber-400 transition text-slate-400">
                   View Full Catalog
                 </Link>
               </li>
