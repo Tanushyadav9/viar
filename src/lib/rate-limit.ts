@@ -113,4 +113,7 @@ export const RateLimiters = {
 
   /** 20 attempts per hour for checkout order creation */
   checkout: (ip: string) => checkRateLimit(`checkout:${ip}`, 20, 3600),
+
+  /** 5 quiz submissions per hour per student/IP to prevent brute-forcing */
+  quiz: (identifier: string) => checkRateLimit(`quiz:${identifier}`, 5, 3600),
 };

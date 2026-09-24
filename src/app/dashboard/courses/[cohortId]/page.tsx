@@ -182,7 +182,7 @@ export default function CohortClassByClassPage() {
             </div>
 
             {/* Progress & Final Quiz Unlock CTA */}
-            <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 min-w-[280px]">
+            <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 w-full sm:w-auto sm:min-w-[280px]">
               <div className="flex justify-between text-xs font-semibold mb-1.5">
                 <span className="text-slate-300">Course Completion</span>
                 <span className="text-amber-300">{progress.completedClasses} / {progress.totalClasses} ({progress.percentage}%)</span>

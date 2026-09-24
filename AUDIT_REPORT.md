@@ -1097,6 +1097,44 @@ The footer's "Courses" section previously listed "Vimshottari Dasha & Transits" 
 - Each link now points directly to that course's dedicated detail page (which renders syllabus previews and "Notify Me" waitlist forms).
 - Synchronized `src/app/pricing-policy/page.tsx` line 133 to reference the same real course titles, ensuring 100% platform-wide data model consistency.
 
+---
+
+## 22. Production Hardening Implementation
+
+### 22.1 Rate Limiting Architecture
+- **Dual-Layer Engine (`src/lib/rate-limit.ts`)**: Integrated sliding window rate limiter supporting atomic Redis sorted sets when `REDIS_URL` is configured, with automatic in-memory sliding-window fallback and periodic memory cleanup.
+- **Checkout Endpoint Protection (`/api/payments/create-order`)**:
+  - Enforced `RateLimiters.checkout` (20 attempts per hour per client IP).
+  - Emits security alerts and returns HTTP 429 with standard `Retry-After` header when threshold is breached, blocking script-driven bogus order flood attacks.
+- **Quiz Anti-Brute-Force & Certificate Protection**:
+  - Created `/api/quiz/submit` route with `RateLimiters.quiz` (maximum 5 attempts per hour per student/IP) to prevent brute-forcing answers on the 20-question final exam.
+  - Rate-limited `/api/certificates` (5 requests per hour) to halt automated email trigger abuse.
+  - Integrated interactive feedback and disabled submit states in student exam UI (`src/app/dashboard/courses/[cohortId]/quiz/page.tsx`).
+
+### 22.2 Structured Error Logging & Production Alerts
+- **Centralized Logger (`src/lib/logger.ts`)**: Standardized logging utility formatting machine-parseable JSON logs in production (compatible with Vercel function log ingestion, Datadog, AWS CloudWatch) and colored readable terminal output in local development.
+- **Automated PII & Secret Scrubbing**: Recursively sanitizes sensitive request contexts, ensuring passwords, webhook secrets, authorization headers, and payment details are never logged in cleartext.
+- **Critical Payment Alarms (`logger.paymentError`)**: Special alert hooks wrapping order creation (`/api/payments/create-order`) and webhooks (`/api/payments/webhook/razorpay`, `/api/payments/webhook/stripe`) to ensure payment failures surface immediately in system logs without relying on customer support complaints.
+- **Security Event Monitoring (`logger.securityAlert`)**: Flags invalid webhook HMAC signatures, rate limit saturation, and unauthorized access attempts.
+
+### 22.3 SEO Finalization & Schema.org Hygiene
+- **Unverified Metadata Purge**: Removed the unverified `totalHistoricalEnrollment: 4800` claim from Schema.org Course structured data (`src/app/courses/[slug]/page.tsx`).
+- **Sitemap Coverage (`src/app/sitemap.ts`)**: Confirmed sitemap accurately indexes all live static routes (including the 5 newly implemented legal policies: `/refund-policy`, `/terms`, `/privacy-policy`, `/disclaimer`, `/pricing-policy`) and dynamic course catalog pages.
+- **Robots Directives (`src/app/robots.ts`)**: Validated robots policy allowing root and course indexing while disallowing `/api/`, `/dashboard/`, `/admin/`, and `/checkout/`.
+
+### 22.4 Mobile Responsiveness Verification
+- **Checkout Flow (`/checkout/[cohortId]`)**: Single-column responsive stacking for mobile viewports, full-width touch-friendly CTA buttons (minimum 48px height), responsive currency selectors, and clean mobile keyboard input handling.
+- **Student Dashboard (`/dashboard`)**: Mobile-first navigation headers, sticky timezone selectors, responsive card padding, and full-width "Join Live on Zoom" CTA buttons.
+- **Video Classroom (`/dashboard/courses/[cohortId]`)**: Fluid 16:9 aspect ratio (`aspect-video`) preventing horizontal scrolling or overflow on mobile devices, responsive progress card, and mobile-friendly syllabus checklist.
+
+### 22.5 Automated Verification Suite
+- Added `tests/production-hardening.test.ts` testing:
+  - Rate limiter window and limit enforcement.
+  - Checkout preset enforcement.
+  - Quiz brute-force blocking.
+  - Structured log formatting and security alert emission.
+- Total automated tests passing: **77 tests across 23 test suites (0 failures)**.
+
 
 
 

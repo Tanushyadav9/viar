@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { env } from '@/config/env';
 import { emailService } from '@/lib/email';
+import { logger } from '@/lib/logger';
 
 /**
  * Stripe Webhook Handler
@@ -33,7 +34,10 @@ export async function POST(req: NextRequest) {
           .digest('hex');
 
         if (expectedSignature !== signature) {
-          console.error('Invalid Stripe webhook signature');
+          logger.securityAlert('Invalid Stripe webhook signature', {
+            event: 'invalid_signature',
+            endpoint: '/api/payments/webhook/stripe',
+          });
           return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
         }
       }
@@ -51,7 +55,14 @@ export async function POST(req: NextRequest) {
       const cohortId = metadata.cohortId || 'cohort-wia-batch-1';
       const studentName = metadata.studentName || 'Student';
 
-      console.log(`[Stripe Webhook] Verified payment ${paymentIntentId} for ${studentName} (${email}) in cohort ${cohortId} (Amount: $${amount} USD)`);
+      logger.info('Verified Stripe payment successfully', {
+        service: 'payments',
+        provider: 'stripe',
+        paymentId: String(paymentIntentId),
+        amount,
+        studentEmail: email,
+        cohortId,
+      });
 
       // Dispatch Transactional Emails
       const courseTitle = 'What is Astrology — Foundations of Vedic Astrology';
@@ -66,7 +77,14 @@ export async function POST(req: NextRequest) {
         amountPaid: amount,
         currency: '$',
         dashboardUrl: `${env.appUrl}/dashboard`,
-      }).catch((err) => console.error('[Stripe Webhook] Enrollment confirmation email failed:', err));
+      }).catch((err) => {
+        logger.error('Failed to send enrollment confirmation email after Stripe payment', err, {
+          service: 'payments',
+          provider: 'stripe',
+          paymentId: String(paymentIntentId),
+          studentEmail: email,
+        });
+      });
 
       await emailService.sendPaymentReceipt({
         receiptNumber: `REC-STP-${Date.now().toString().slice(-6)}`,
@@ -81,17 +99,21 @@ export async function POST(req: NextRequest) {
         paymentMethod: 'Stripe (Cards / Apple Pay / Google Pay)',
         status: 'PAID',
         dashboardUrl: `${env.appUrl}/dashboard/payments`,
-      }).catch((err) => console.error('[Stripe Webhook] Payment receipt email failed:', err));
-
-      // In production with PostgreSQL / Prisma:
-      // await prisma.payment.upsert({ ... })
-      // await prisma.enrollment.upsert({ ... })
-      // await prisma.cohort.update({ where: { id: cohortId }, data: { enrolledCount: { increment: 1 } } })
+      }).catch((err) => {
+        logger.error('Failed to send payment receipt email after Stripe payment', err, {
+          service: 'payments',
+          provider: 'stripe',
+          paymentId: String(paymentIntentId),
+          studentEmail: email,
+        });
+      });
     }
 
     return NextResponse.json({ status: 'ok', received: true });
   } catch (error) {
-    console.error('Stripe webhook handler error:', error);
+    logger.paymentError('Stripe webhook handler critical error', {
+      provider: 'stripe',
+    }, error);
     return NextResponse.json({ error: 'Internal webhook error' }, { status: 500 });
   }
 }

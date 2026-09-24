@@ -86,7 +86,6 @@ export default function CourseDetailPage({ params }: Props) {
     },
     educationalCredentialAwarded: 'Certificate of Completion in Vedic Astrology',
     occupationalCredentialAwarded: 'Jyotish Foundations Accredited Certificate',
-    totalHistoricalEnrollment: 4800,
     coursePrerequisites: 'None. Open to passionate beginners worldwide.',
     offers: [
       {

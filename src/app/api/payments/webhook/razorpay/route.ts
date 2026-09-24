@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { env } from '@/config/env';
 import { emailService } from '@/lib/email';
+import { logger } from '@/lib/logger';
 
 /**
  * Razorpay Webhook Handler
@@ -23,7 +24,10 @@ export async function POST(req: NextRequest) {
         .digest('hex');
 
       if (expectedSignature !== signature) {
-        console.error('Invalid Razorpay webhook signature');
+        logger.securityAlert('Invalid Razorpay webhook signature', {
+          event: 'invalid_signature',
+          endpoint: '/api/payments/webhook/razorpay',
+        });
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
       }
     }
@@ -42,7 +46,15 @@ export async function POST(req: NextRequest) {
       const cohortId = notes.cohortId || 'cohort-wia-batch-1';
       const studentName = notes.studentName || 'Student';
 
-      console.log(`[Razorpay Webhook] Verified payment ${paymentId} (Order: ${orderId}, Amount: ${amount}) for ${studentName} (${email}) in cohort ${cohortId}`);
+      logger.info('Verified Razorpay payment successfully', {
+        service: 'payments',
+        provider: 'razorpay',
+        paymentId: String(paymentId),
+        orderId: String(orderId),
+        amount,
+        studentEmail: email,
+        cohortId,
+      });
 
       // Dispatch Transactional Emails
       const courseTitle = 'What is Astrology — Foundations of Vedic Astrology';
@@ -57,7 +69,15 @@ export async function POST(req: NextRequest) {
         amountPaid: amount,
         currency: '₹',
         dashboardUrl: `${env.appUrl}/dashboard`,
-      }).catch((err) => console.error('[Razorpay Webhook] Enrollment confirmation email failed:', err));
+      }).catch((err) => {
+        logger.error('Failed to send enrollment confirmation email after Razorpay payment', err, {
+          service: 'payments',
+          provider: 'razorpay',
+          paymentId: String(paymentId),
+          orderId: String(orderId),
+          studentEmail: email,
+        });
+      });
 
       await emailService.sendPaymentReceipt({
         receiptNumber: `REC-RZP-${Date.now().toString().slice(-6)}`,
@@ -72,17 +92,22 @@ export async function POST(req: NextRequest) {
         paymentMethod: 'Razorpay (UPI / Cards / NetBanking)',
         status: 'PAID',
         dashboardUrl: `${env.appUrl}/dashboard/payments`,
-      }).catch((err) => console.error('[Razorpay Webhook] Payment receipt email failed:', err));
-
-      // In production with PostgreSQL / Prisma:
-      // await prisma.payment.upsert({ ... })
-      // await prisma.enrollment.upsert({ ... })
-      // await prisma.cohort.update({ where: { id: cohortId }, data: { enrolledCount: { increment: 1 } } })
+      }).catch((err) => {
+        logger.error('Failed to send payment receipt email after Razorpay payment', err, {
+          service: 'payments',
+          provider: 'razorpay',
+          paymentId: String(paymentId),
+          orderId: String(orderId),
+          studentEmail: email,
+        });
+      });
     }
 
     return NextResponse.json({ status: 'ok', received: true });
   } catch (error) {
-    console.error('Razorpay webhook handler error:', error);
+    logger.paymentError('Razorpay webhook handler critical error', {
+      provider: 'razorpay',
+    }, error);
     return NextResponse.json({ error: 'Internal webhook error' }, { status: 500 });
   }
 }

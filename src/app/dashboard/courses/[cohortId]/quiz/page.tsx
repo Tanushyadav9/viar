@@ -28,6 +28,8 @@ export default function FinalQuizPage() {
   const [percentage, setPercentage] = useState(0);
   const [isPassed, setIsPassed] = useState(false);
   const [certificate, setCertificate] = useState<Certificate | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null);
 
   useEffect(() => {
     const t = ViarStore.getFinalTest(cohortId);
@@ -51,9 +53,34 @@ export default function FinalQuizPage() {
     }));
   };
 
-  const handleSubmitQuiz = (e: React.FormEvent) => {
+  const handleSubmitQuiz = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!test || !currentUser) return;
+    if (!test || !currentUser || submitting) return;
+
+    setRateLimitError(null);
+    setSubmitting(true);
+
+    try {
+      const res = await fetch('/api/quiz/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cohortId,
+          studentId: currentUser.id,
+          studentEmail: currentUser.email,
+          answers,
+        }),
+      });
+
+      if (res.status === 429) {
+        const data = await res.json();
+        setRateLimitError(data.error || 'Too many quiz attempts. Please wait an hour before trying again.');
+        setSubmitting(false);
+        return;
+      }
+    } catch {
+      // Continue to local scoring if network unavailable
+    }
 
     const result = ViarStore.submitFinalTest({
       cohortId,
@@ -68,14 +95,29 @@ export default function FinalQuizPage() {
     setIsPassed(result.submission.isPassed);
     if (result.certificate) {
       setCertificate(result.certificate);
+      // Dispatch email notification via certificates API asynchronously
+      fetch('/api/certificates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentName: currentUser.name,
+          studentEmail: currentUser.email,
+          courseTitle: 'What is Astrology — Foundations of Vedic Astrology',
+          grade: result.certificate.grade,
+          scorePercentage: result.submission.scorePercentage,
+          certificateCode: result.certificate.verificationCode,
+        }),
+      }).catch(() => {});
     }
     setIsSubmitted(true);
+    setSubmitting(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleRetake = () => {
     setIsSubmitted(false);
     setCertificate(null);
+    setRateLimitError(null);
   };
 
   if (!test || !cohort) {
@@ -320,14 +362,23 @@ export default function FinalQuizPage() {
             );
           })}
 
+          {/* Rate Limit Error Alert */}
+          {rateLimitError && (
+            <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/50 text-red-200 text-xs text-center flex items-center justify-center gap-2">
+              <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+              <span>{rateLimitError}</span>
+            </div>
+          )}
+
           {/* Submit Button */}
           {!isSubmitted ? (
             <div className="pt-4 text-center">
               <button
                 type="submit"
-                className="gold-button px-10 py-4 rounded-xl text-sm font-bold shadow-2xl shadow-amber-500/30 inline-flex items-center gap-2"
+                disabled={submitting}
+                className="gold-button px-10 py-4 rounded-xl text-sm font-bold shadow-2xl shadow-amber-500/30 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span>Submit 20-Question Final Exam</span>
+                <span>{submitting ? 'Verifying & Grading...' : 'Submit 20-Question Final Exam'}</span>
                 <CheckCircle2 className="w-4 h-4" />
               </button>
               <p className="text-[11px] text-slate-400 mt-2">
