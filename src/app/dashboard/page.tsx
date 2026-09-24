@@ -146,6 +146,21 @@ function StudentDashboardContent() {
           spread: 80,
           origin: { y: 0.6 },
         });
+
+        // Trigger certificate issuance transactional email
+        fetch('/api/certificates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            studentName: newCert.studentName,
+            studentEmail: newCert.studentEmail,
+            courseTitle: newCert.courseTitle,
+            grade: newCert.grade,
+            scorePercentage: newCert.scorePercentage,
+            certificateCode: newCert.verificationCode,
+            cohortId: cohort.id,
+          }),
+        }).catch((err) => console.error('Certificate email dispatch error:', err));
       }
     }, 1000);
   };

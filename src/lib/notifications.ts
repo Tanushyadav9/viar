@@ -4,6 +4,8 @@
  * via Email (Resend / SendGrid) and SMS / WhatsApp (Gupshup / Twilio).
  */
 
+import { emailService } from '@/lib/email';
+
 export interface ClassReminderPayload {
   studentName: string;
   studentEmail: string;
@@ -14,6 +16,7 @@ export interface ClassReminderPayload {
   scheduledAtUtc: string;
   studentTimezone?: string;
   joinLink: string;
+  reminderType?: '24h' | '1h';
 }
 
 export interface ReminderResult {
@@ -26,47 +29,35 @@ export interface ReminderResult {
 
 export async function sendClassReminder(payload: ClassReminderPayload): Promise<ReminderResult[]> {
   const results: ReminderResult[] = [];
-  const scheduledDate = new Date(payload.scheduledAtUtc);
   
-  // Format local time for the student
-  const tz = payload.studentTimezone || 'Asia/Kolkata';
-  const timeFormatted = new Intl.DateTimeFormat('en-IN', {
-    timeZone: tz,
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: true,
-  }).format(scheduledDate);
+  // 1. Email Channel via Transactional Email Service (Resend / Mock)
+  const emailRes = await emailService.sendClassReminder({
+    studentName: payload.studentName,
+    studentEmail: payload.studentEmail,
+    courseTitle: payload.courseTitle,
+    sessionNumber: payload.sessionNumber,
+    sessionTitle: payload.sessionTitle,
+    scheduledAtUtc: payload.scheduledAtUtc,
+    studentTimezone: payload.studentTimezone,
+    joinLink: payload.joinLink,
+    reminderType: payload.reminderType || '1h',
+  }).catch((err) => {
+    console.error('[Notification Service] Email dispatch error:', err);
+    return {
+      success: false,
+      messageId: undefined,
+      error: (err as Error).message,
+      provider: 'RESEND',
+      dispatchedAt: new Date().toISOString(),
+    };
+  });
 
-  const emailSubject = `Reminder: Class ${payload.sessionNumber} starts in 1 hour — ${payload.courseTitle}`;
-  const emailBody = `
-Dear ${payload.studentName},
-
-Your upcoming live masterclass with Acharya Niraj Kumar begins in 1 hour:
-
-• Course: ${payload.courseTitle}
-• Class ${payload.sessionNumber}: ${payload.sessionTitle}
-• Scheduled Time: ${timeFormatted} (${tz})
-• Join URL: ${payload.joinLink}
-
-Please test your microphone and audio before joining. 
-Recordings will be made available in your student dashboard within 24 hours of session conclusion.
-
-Warm regards,
-Academic Operations Desk
-Vedic Institute of Astrological Research (Viar.in) & Aapka Astro
-  `.trim();
-
-  // 1. Email Channel
-  console.log(`[Notification Service] Dispatching Email (${emailBody.length} chars) to ${payload.studentEmail}: "${emailSubject}"`);
   results.push({
-    success: true,
-    messageId: `email-rem-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+    success: emailRes.success,
+    messageId: emailRes.messageId || `email-rem-${Date.now()}`,
     recipient: payload.studentEmail,
     channel: 'email',
-    dispatchedAt: new Date().toISOString(),
+    dispatchedAt: emailRes.dispatchedAt,
   });
 
   // 2. WhatsApp / SMS Channel (if phone is provided)

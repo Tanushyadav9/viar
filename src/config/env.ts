@@ -65,6 +65,14 @@ export interface AppEnvConfig {
       tokenSecret: string;
     };
   };
+
+  // Transactional Email (Resend or Mock)
+  email: {
+    provider: 'resend' | 'mock';
+    apiKey: string;
+    fromAddress: string;
+    replyTo: string;
+  };
 }
 
 function getEnvVar(key: string, fallback: string = ''): string {
@@ -148,5 +156,13 @@ export const env: AppEnvConfig = {
       tokenId: getEnvVar('MUX_TOKEN_ID', ''),
       tokenSecret: getEnvVar('MUX_TOKEN_SECRET', ''),
     },
+  },
+
+  email: {
+    provider: (getEnvVar('EMAIL_PROVIDER', 'resend') as 'resend' | 'mock'),
+    apiKey: getEnvVar('RESEND_API_KEY', ''),
+    // PLACEHOLDER: replace with client-approved sender details
+    fromAddress: getEnvVar('EMAIL_FROM', 'Viar Academy <admissions@viar.in>'),
+    replyTo: getEnvVar('EMAIL_REPLY_TO', 'ask@aapkaastro.com'),
   },
 };

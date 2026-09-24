@@ -1045,6 +1045,43 @@ Five dedicated legal and trust pages were implemented with clean, accessible cos
 - All 5 routes are indexed in `src/app/sitemap.ts`.
 - Every legal page includes `{/* PLACEHOLDER: replace with client-approved legal text */}` in source code and a prominent top disclaimer banner clarifying that terms are draft operational guidelines pending formal client/counsel sign-off.
 
+---
+
+## 20. Transactional Email System Architecture & Integration
+
+### 20.1 Overview & Provider Abstraction
+A complete, provider-swappable transactional email architecture was built under `src/lib/email/` to ensure all key educational and transactional touchpoints dispatch verified notifications to scholars.
+- **Provider Interface (`EmailService`)**: Abstract interface defining methods for sending raw emails as well as 5 dedicated transactional notifications.
+- **Resend Integration (`ResendEmailService`)**: High-performance HTTP client utilizing Resend's REST API (`https://api.resend.com/emails`), enabling zero runtime dependencies and compatibility with Edge and serverless functions.
+- **Mock Provider (`MockEmailService`)**: Memory-backed testing implementation for local development and test runs with full dispatch history assertions.
+- **Dynamic Factory (`getEmailService()`)**: Automatically resolves between `ResendEmailService` (when `RESEND_API_KEY` is present) and `MockEmailService` (in development/test environments or when credentials are not configured).
+- **Sender Placeholder Configurations**:
+  - `/* PLACEHOLDER: replace with client-approved sender details */`
+  - Default From: `Viar Academy <admissions@viar.in>` (configurable via `EMAIL_FROM`)
+  - Default Reply-To: `ask@aapkaastro.com` (configurable via `EMAIL_REPLY_TO`)
+
+### 20.2 Five Supported Transactional Email Flows
+1. **Enrollment Confirmation**:
+   - Dispatched immediately upon verified payment in Razorpay (`payment.captured`) or Stripe (`checkout.session.completed`).
+   - Details: Student name, course title, cohort batch name, start date, amount paid, and direct student dashboard URL.
+2. **Payment Receipt**:
+   - Clean, formal receipt formatted for personal student tax and expense accounting.
+   - Details: Receipt number, gateway order ID, transaction date, item description, payment method, amount paid, and status `PAID IN FULL`.
+3. **Upcoming Live Class Reminders (24 Hours & 1 Hour)**:
+   - Dispatched via automated scheduling engine (`src/app/api/notifications/route.ts`).
+   - Details: Class number, topic/session title, local timezone-converted start time (e.g. IST / EDT / GMT), join URL (Zoom/Meet), and zero-penalty recording reassurance.
+4. **Recording Available Notification**:
+   - Triggered when instructor uploads a lecture recording or updates `recordingUrl` via `/api/sessions`.
+   - Details: Class number, title, recording duration, and direct link to the dashboard recording player.
+5. **Certificate Issued Notification**:
+   - Triggered upon passing the 20-question final examination with >=70% score (`/api/certificates`).
+   - Details: Student name, honors grade (Pass / Merit / Distinction), score %, unique certificate code (e.g. `VIAR-2026-WIA-XXXX`), download link, and tamper-proof public verification URL (`/verify/${code}`).
+
+### 20.3 Verification & Automated Tests
+- Created `tests/email.test.ts` covering all 5 email templates, mock history tracking, Resend fallback mode, and service factory contract.
+- Test suite expanded to 71 passing tests across 20 suites with zero failures.
+
+
 
 
 

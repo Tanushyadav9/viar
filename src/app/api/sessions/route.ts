@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { SCHEDULED_CLASSES_FLAGSHIP } from '@/lib/data';
 import { ScheduledClass } from '@/lib/types';
 import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import { emailService } from '@/lib/email';
+import { env } from '@/config/env';
 
 export async function GET(req: NextRequest) {
   try {
@@ -89,9 +91,39 @@ export async function PATCH(req: NextRequest) {
         },
       });
 
+      // If recording URL is updated, notify enrolled scholars
+      if (recordingUrl) {
+        const studentEmail = body.notifyEmail || 'student@example.com';
+        const studentName = body.studentName || 'Scholar';
+        await emailService.sendRecordingAvailable({
+          studentName,
+          studentEmail,
+          courseTitle: body.courseTitle || 'What is Astrology — Foundations of Vedic Astrology',
+          sessionNumber: Number(body.sessionNumber) || 1,
+          sessionTitle: body.sessionTitle || 'Class Recording',
+          durationMinutes: Number(body.durationMinutes) || 90,
+          dashboardWatchUrl: `${env.appUrl}/dashboard/courses/cohort-wia-batch-1?tab=recordings`,
+        }).catch((err) => console.error('[Sessions API] Recording email dispatch failed:', err));
+      }
+
       return NextResponse.json({ success: true, session: updated });
     } catch (dbError) {
       console.warn('Database update for session skipped:', (dbError as Error).message);
+    }
+
+    // Fallback response with recording email trigger
+    if (recordingUrl) {
+      const studentEmail = body.notifyEmail || 'student@example.com';
+      const studentName = body.studentName || 'Scholar';
+      await emailService.sendRecordingAvailable({
+        studentName,
+        studentEmail,
+        courseTitle: body.courseTitle || 'What is Astrology — Foundations of Vedic Astrology',
+        sessionNumber: Number(body.sessionNumber) || 1,
+        sessionTitle: body.sessionTitle || 'Class Recording',
+        durationMinutes: Number(body.durationMinutes) || 90,
+        dashboardWatchUrl: `${env.appUrl}/dashboard/courses/cohort-wia-batch-1?tab=recordings`,
+      }).catch((err) => console.error('[Sessions API] Fallback recording email dispatch failed:', err));
     }
 
     // Fallback response

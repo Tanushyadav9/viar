@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { env } from '@/config/env';
+import { emailService } from '@/lib/email';
 
 /**
  * Stripe Webhook Handler
@@ -51,6 +52,36 @@ export async function POST(req: NextRequest) {
       const studentName = metadata.studentName || 'Student';
 
       console.log(`[Stripe Webhook] Verified payment ${paymentIntentId} for ${studentName} (${email}) in cohort ${cohortId} (Amount: $${amount} USD)`);
+
+      // Dispatch Transactional Emails
+      const courseTitle = 'What is Astrology — Foundations of Vedic Astrology';
+      const cohortName = cohortId === 'cohort-wia-batch-1' ? 'Batch 1 (Starting October 2026)' : cohortId;
+
+      await emailService.sendEnrollmentConfirmation({
+        studentName,
+        studentEmail: email,
+        courseTitle,
+        cohortName,
+        startDate: 'October 15, 2026',
+        amountPaid: amount,
+        currency: '$',
+        dashboardUrl: `${env.appUrl}/dashboard`,
+      }).catch((err) => console.error('[Stripe Webhook] Enrollment confirmation email failed:', err));
+
+      await emailService.sendPaymentReceipt({
+        receiptNumber: `REC-STP-${Date.now().toString().slice(-6)}`,
+        orderId: String(paymentIntentId),
+        paymentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+        studentName,
+        studentEmail: email,
+        courseTitle,
+        cohortName,
+        amount,
+        currency: '$',
+        paymentMethod: 'Stripe (Cards / Apple Pay / Google Pay)',
+        status: 'PAID',
+        dashboardUrl: `${env.appUrl}/dashboard/payments`,
+      }).catch((err) => console.error('[Stripe Webhook] Payment receipt email failed:', err));
 
       // In production with PostgreSQL / Prisma:
       // await prisma.payment.upsert({ ... })
