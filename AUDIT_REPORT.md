@@ -995,6 +995,57 @@ Anyone can independently verify that all access-control vulnerabilities, fail-op
   - Class descriptions render clean text (e.g. *"Vedic cosmology, the eye of the Vedas..."* and *"Fire, Earth, Air, Water. Cardinal (Chara), Fixed (Sthira)..."*).
   - **NO literal `"/* PLACEHOLDER */"` or `"/* PLACEHOLDER: ... */"` comment markers appear anywhere.**
 
+---
+
+## 19. Legal & Trust Policies Infrastructure (Production Launch Compliance)
+
+### 19.1 Overview & Gap Remediation
+Prior to this implementation pass, the repository lacked formal legal and trust pages required by payment gateways (Razorpay, Stripe) and online education compliance standards in India and abroad. While Aapka Astro contained basic terms and privacy policies for 1-on-1 consultations, Viar Academy required dedicated, cohort-specific educational policies.
+
+### 19.2 Implemented Policy Pages
+Five dedicated legal and trust pages were implemented with clean, accessible cosmic UI styling matching the platform design language:
+
+1. **Refund & Cancellation Policy (`/refund-policy`)**:
+   - Course/cohort-specific terms rather than per-minute consultation rates.
+   - **Pre-Cohort Window**: 100% refund (>72 hours prior to Class 1) minus 2–3% payment processing fee; 85% refund or 100% credit transfer within 72 hours of Class 1.
+   - **Early Review Window (Classes 1–2)**: 50% prorated refund or 100% credit transfer voucher valid for 12 months, requested before Class 3.
+   - **Post-Class 2 Policy**: Zero monetary refunds once Class 3 commences due to unlocked proprietary slides, calculation workbooks, and replay archives (emergency deferrals available upon petition).
+   - Academy-initiated rescheduling (>30 days) guarantees 100% full refund or priority seat reservation.
+   - Clear refund instructions via `ask@aapkaastro.com` and WhatsApp (+91 93112 15564) with 5–7 business day gateway turnaround.
+
+2. **Terms of Service & Student Agreement (`/terms`)**:
+   - Minimum eligibility (18+ or parental consent).
+   - Accurate-information pledge for tamper-proof certificate issuance.
+   - Cohort enrollment rules, live Zoom/Meet classroom decorum, and zero tolerance for harassment.
+   - Strict intellectual property protections for lecture videos, proprietary workbooks, and astronomical slide decks (strictly personal, non-commercial use; redistribution prohibited).
+   - Verifiable certificate issuance criteria (attendance + quizzes + >=70% exam score).
+   - Governing law: Laws of India; exclusive jurisdiction of courts in New Delhi / Gurugram.
+
+3. **Privacy Policy (`/privacy-policy`)**:
+   - Comprehensive inventory of collected data: Identity/Contact details, billing transaction references (zero raw card/bank/UPI PIN storage; processed by PCI-DSS Level 1 Razorpay & Stripe), academic attendance/quiz/exam records, and essential session cookies.
+   - Clear data usage terms for course delivery, calendar invites, and public certificate verification lookup (`/verify`).
+   - **Zero-Sale Pledge**: Strict commitment that student data is never sold, rented, or traded to advertisers or data syndicates.
+   - Third-party partners documented: Clerk, Razorpay, Stripe, Vercel, Supabase.
+
+4. **Educational Disclaimer (`/disclaimer`)**:
+   - Strictly educational, historical, and philosophical scope of Vedic Jyotish instruction.
+   - Clear professional boundary disclaimers: astrological teachings are NOT medical/psychiatric diagnoses, legal advice, or financial/investment guidance.
+   - Non-deterministic nature of astrology; zero guarantees of personal predictive outcomes.
+   - Explicit distinction between Viar Academy group education and Aapka Astro 1-on-1 private consultations (`aapkaastro.com`).
+
+5. **Pricing Policy & Tuition Transparency (`/pricing-policy`)**:
+   - Transparent one-time tuition model with zero hidden recurring subscriptions or auto-debits.
+   - Comprehensive inclusions itemized: 18 live sessions, 1080p replay vault, study workbooks, quizzes, final exam, and verifiable certificate.
+   - Multi-currency transparency: INR (₹) via UPI/Netbanking for India; USD ($) via Stripe/cards for international students, with itemized GST.
+   - Policy for "Coming Soon" courses: provisional pricing subject to curriculum calibration prior to batch registration launch.
+
+### 19.3 Footer Integration & Navigation
+- All 5 legal policies are linked in `src/components/Footer.tsx` in a dedicated, prominent Legal & Trust Policies bar with accessible hover states and Lucide icons.
+- URL aliases and short links (`/privacy` -> `/privacy-policy`, `/refund` -> `/refund-policy`, `/pricing` -> `/pricing-policy`) are configured as permanent 308 redirects in `next.config.mjs`.
+- All 5 routes are indexed in `src/app/sitemap.ts`.
+- Every legal page includes `{/* PLACEHOLDER: replace with client-approved legal text */}` in source code and a prominent top disclaimer banner clarifying that terms are draft operational guidelines pending formal client/counsel sign-off.
+
+
 
 
 

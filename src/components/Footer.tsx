@@ -286,8 +286,33 @@ export default function Footer() {
           </div>
         </div>
 
+        {/* Legal & Trust Policies Navigation */}
+        <div className="pt-8 pb-8 border-t border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+          <div className="flex items-center gap-2 text-slate-400">
+            <ShieldCheck className="w-4 h-4 text-amber-400" />
+            <span className="font-semibold text-slate-300">Legal & Trust Policies</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-slate-400">
+            <Link href="/terms" className="hover:text-amber-400 transition">
+              Terms of Service
+            </Link>
+            <Link href="/privacy-policy" className="hover:text-amber-400 transition">
+              Privacy Policy
+            </Link>
+            <Link href="/refund-policy" className="hover:text-amber-400 transition">
+              Refund & Cancellation
+            </Link>
+            <Link href="/disclaimer" className="hover:text-amber-400 transition">
+              Educational Disclaimer
+            </Link>
+            <Link href="/pricing-policy" className="hover:text-amber-400 transition">
+              Pricing Policy
+            </Link>
+          </div>
+        </div>
+
         {/* Bottom bar */}
-        <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-4">
+        <div className="pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-4">
           <p>© {new Date().getFullYear()} Viar.in (Viar Academy). All rights reserved.</p>
           <div className="flex items-center space-x-6">
             <span>Powered by Aapka Astro Network</span>

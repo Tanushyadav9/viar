@@ -8,6 +8,25 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/privacy',
+        destination: '/privacy-policy',
+        permanent: true,
+      },
+      {
+        source: '/refund',
+        destination: '/refund-policy',
+        permanent: true,
+      },
+      {
+        source: '/pricing',
+        destination: '/pricing-policy',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
