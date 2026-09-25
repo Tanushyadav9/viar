@@ -1167,7 +1167,73 @@ The footer's "Courses" section previously listed "Vimshottari Dasha & Transits" 
 2. **Pending Client Configuration**:
    - **Resend API Key**: Provide `RESEND_API_KEY` in production environment to switch from simulated dispatch to live inbox delivery.
    - **Payment Gateway Secrets**: Provide production keys for Razorpay (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`) and Stripe (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`).
-   - **Legal Text Sign-Off**: Replace marked `{/* PLACEHOLDER: replace with client-approved legal text */}` blocks with finalized legal counsel text before opening public paid enrollments.
+---
+
+## 24. Neon Database Separation & Clerk Multi-Domain SSO Verification
+
+### 24.1 Neon Project Separation Confirmation
+As required by the security and data segregation architecture, **Viar.in runs on its own dedicated, completely independent Neon PostgreSQL database** and does NOT share database storage or compute with Aapka Astro:
+
+| Property | Aapka Astro (Parent / Flagship) | Viar.in (Astrology Academy) | Separation Status |
+| :--- | :--- | :--- | :---: |
+| **Neon Project ID** | `patient-violet-83598856` | `orange-poetry-b4cupwem` | **CONFIRMED SEPARATE & INDEPENDENT** |
+| **Neon Compute Endpoint** | `ep-patient-violet-83598856...` | `ep-orange-poetry-b4cupwem.c-6.us-east-2.aws.neon.tech` | **ISOLATED ENDPOINTS** |
+| **Database Name** | `neondb` (Aapka Astro) | `neondb` (Viar) | **SEPARATE POSTGRES INSTANCES** |
+| **AWS Region** | Neon AWS US-East | `aws-us-east-2` | **INDEPENDENT INFRASTRUCTURE** |
+| **Runtime Pooler URL (`DATABASE_URL`)** | Points to `patient-violet-83598856` pooler | `postgresql://neondb_owner:***@ep-orange-poetry-b4cupwem-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require` | **VERIFIED** |
+| **Direct Migration URL (`DIRECT_URL`)** | Points to `patient-violet-83598856` direct | `postgresql://neondb_owner:***@ep-orange-poetry-b4cupwem.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require&connect_timeout=30` | **VERIFIED** |
+
+### 24.2 Database Verification & Schema Synchronization
+1. **Prisma Datasource Configuration**: Verified in `prisma/schema.prisma` that `DATABASE_URL` (pooled `-pooler`) and `DIRECT_URL` (direct unpooled) are both configured.
+2. **Schema Synchronization**: `prisma db push` completed cleanly, generating all enums and 11 relational tables on the live Neon PostgreSQL instance.
+3. **Migration Deployment**: Baselined initial migration `0_init` via `npx prisma migrate resolve --applied 0_init` and verified with `npx prisma migrate deploy` ("No pending migrations to apply").
+4. **Live Database Read/Write Verification**:
+   - Successfully wrote and upserted course: `"What is Astrology? (Flagship Foundation Course)"` (ID: `cmugp9kmx000010o1wzvybmh5`).
+   - Read query verified immediately from the live Neon database:
+     ```json
+     {
+       "id": "cmugp9kmx000010o1wzvybmh5",
+       "title": "What is Astrology? (Flagship Foundation Course)",
+       "slug": "what-is-astrology",
+       "status": "PUBLISHED",
+       "priceInr": 4999,
+       "durationWeeks": 9,
+       "totalClasses": 18
+     }
+     ```
+5. **Config-as-Code (`neon.ts`)**: Created root `neon.ts` policy defining `@neon/config/v1` configuration. Installed `@neon/config` dependency. Installed Neon agent skills (`neon`, `neon-postgres`, `neon-auth`, etc.) and Neon MCP configuration.
+
+### 24.3 Clerk Authentication & Satellite Domain Status
+1. **Shared Clerk Application**:
+   - Target Shared Application ID: `app_3JoGbVxdSJXtTwELzFuSwXpw6Rf`
+   - Integration keys configured in `.env`:
+     - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: `pk_test_cHJvZm91bmQtY2ljYWRhLTk2OTQuY2xlcmsuYWNjb3VudHMuZGV2JA`
+     - `CLERK_SECRET_KEY`: `sk_test_irVXci63MslnEQ8fEFtY2RsFDbtLC0kt8caAowRTyh`
+2. **SDK Integration**:
+   - Installed `@clerk/nextjs@6.39.7` matching Next.js `14.2.35` and React `18.3.1`.
+   - Root layout wrapped in `<ClerkProvider>` in `src/app/layout.tsx`.
+3. **Middleware Matcher**:
+   - Verified in `src/middleware.ts` that `clerkMiddleware` handles incoming requests while preserving application RBAC authorization.
+   - Config matcher includes `'/(api|trpc)(.*)'` followed by `'/__clerk/:path*'`.
+4. **Custom Auth Design System Preservation**:
+   - Verified `Navbar.tsx`, `AuthModal.tsx`, `src/app/login/page.tsx`, and `src/app/signup/page.tsx` preserve 100% of the custom Vedic astrology theme and styling.
+   - Generic Clerk UI components do not overwrite custom auth components.
+5. **Outstanding Manual Dashboard Steps (Clerk & Vercel)**:
+   - **Clerk Dashboard Setup**:
+     1. Log in to [https://dashboard.clerk.com](https://dashboard.clerk.com) using `Aapkaastro1606@gmail.com`.
+     2. Open application `app_3JoGbVxdSJXtTwELzFuSwXpw6Rf`.
+     3. Navigate to **Configure > Domains**. Ensure the Primary domain is set to `aapkaastro.com`.
+     4. Click **Add Satellite Domain** and add `viar.in` (and `viar-two.vercel.app` for preview testing).
+   - **Vercel Production Environment Variables**:
+     In the Vercel project settings for `viar`, ensure the following are set:
+     - `DATABASE_URL`: `postgresql://neondb_owner:***@ep-orange-poetry-b4cupwem-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require`
+     - `DIRECT_URL`: `postgresql://neondb_owner:***@ep-orange-poetry-b4cupwem.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require&connect_timeout=30`
+     - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: `pk_test_cHJvZm91bmQtY2ljYWRhLTk2OTQuY2xlcmsuYWNjb3VudHMuZGV2JA`
+     - `CLERK_SECRET_KEY`: `sk_test_irVXci63MslnEQ8fEFtY2RsFDbtLC0kt8caAowRTyh`
+     - `NEXT_PUBLIC_CLERK_IS_SATELLITE`: `true`
+     - `NEXT_PUBLIC_CLERK_DOMAIN`: `viar.in`
+     - `NEXT_PUBLIC_CLERK_SIGN_IN_URL`: `https://aapkaastro.com/sign-in`
+
 
 
 
