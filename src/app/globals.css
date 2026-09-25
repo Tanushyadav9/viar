@@ -32,51 +32,18 @@
 /* --------------------------------------------------------------------------
  * Base Elements & Typography
  * -------------------------------------------------------------------------- */
+/* --------------------------------------------------------------------------
+ * Base Elements & Typography: Default to Light Mode
+ * -------------------------------------------------------------------------- */
 body {
-  color: #e2e8f0;
-  background-color: #07090e;
+  color: #0f172a;
+  background-color: #faf9f5;
   font-family: var(--font-sans);
   overflow-x: hidden;
   min-height: 100vh;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* --------------------------------------------------------------------------
- * Dark Mode Theme (Default & .dark)
- * -------------------------------------------------------------------------- */
-.dark body,
-html.dark body {
-  background-color: #07090e;
-  color: #e2e8f0;
-}
-
-.dark .cosmic-bg,
-html.dark .cosmic-bg,
-.cosmic-bg {
-  background-color: #07090e;
-  background-image: 
-    radial-gradient(circle at 15% 15%, rgba(212, 175, 55, 0.04) 0%, transparent 40%),
-    radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.05) 0%, transparent 45%),
-    radial-gradient(circle at 50% 85%, rgba(217, 119, 6, 0.03) 0%, transparent 50%);
-}
-
-.dark .cosmic-card,
-html.dark .cosmic-card,
-.cosmic-card {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.dark .cosmic-card:hover,
-html.dark .cosmic-card:hover,
-.cosmic-card:hover {
-  border-color: rgba(245, 158, 11, 0.3);
-}
-
-/* --------------------------------------------------------------------------
- * Light Mode Theme (.light, html[data-theme="light"])
- * -------------------------------------------------------------------------- */
 html.light,
 html[data-theme="light"],
 body.light {
@@ -85,10 +52,11 @@ body.light {
 
 html.light body,
 html[data-theme="light"] body {
-  background-color: #fbfbf9;
+  background-color: #faf9f5;
   color: #0f172a;
 }
 
+.cosmic-bg,
 html.light .cosmic-bg,
 html[data-theme="light"] .cosmic-bg {
   background-color: #faf9f5;
@@ -98,6 +66,22 @@ html[data-theme="light"] .cosmic-bg {
     radial-gradient(circle at 50% 85%, rgba(245, 158, 11, 0.06) 0%, transparent 50%);
 }
 
+.cosmic-card,
+html.light .cosmic-card,
+html[data-theme="light"] .cosmic-card {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+.cosmic-card:hover,
+html.light .cosmic-card:hover,
+html[data-theme="light"] .cosmic-card:hover {
+  border-color: rgba(217, 119, 6, 0.4);
+  box-shadow: 0 10px 25px -4px rgba(217, 119, 6, 0.1);
+}
+
 html.light header,
 html[data-theme="light"] header {
   background-color: rgba(255, 255, 255, 0.92) !important;
@@ -105,18 +89,70 @@ html[data-theme="light"] header {
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
 }
 
-html.light .cosmic-card,
-html[data-theme="light"] .cosmic-card {
-  background: rgba(255, 255, 255, 0.96) !important;
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 232, 240, 0.9) !important;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+html.light footer,
+html[data-theme="light"] footer,
+html.light .bg-\[\#05070a\],
+html[data-theme="light"] .bg-\[\#05070a\] {
+  background-color: #f8fafc !important;
+  border-color: rgba(226, 232, 240, 0.9) !important;
+  color: #475569 !important;
 }
 
-html.light .cosmic-card:hover,
-html[data-theme="light"] .cosmic-card:hover {
-  border-color: rgba(217, 119, 6, 0.4) !important;
-  box-shadow: 0 10px 25px -4px rgba(217, 119, 6, 0.1) !important;
+/* --------------------------------------------------------------------------
+ * Dark Mode Theme (.dark, html[data-theme="dark"])
+ * -------------------------------------------------------------------------- */
+html.dark,
+html[data-theme="dark"],
+body.dark {
+  color-scheme: dark;
+}
+
+.dark body,
+html.dark body,
+html[data-theme="dark"] body {
+  background-color: #07090e;
+  color: #e2e8f0;
+}
+
+.dark .cosmic-bg,
+html.dark .cosmic-bg,
+html[data-theme="dark"] .cosmic-bg {
+  background-color: #07090e;
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(212, 175, 55, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.05) 0%, transparent 45%),
+    radial-gradient(circle at 50% 85%, rgba(217, 119, 6, 0.03) 0%, transparent 50%);
+}
+
+.dark .cosmic-card,
+html.dark .cosmic-card,
+html[data-theme="dark"] .cosmic-card {
+  background: rgba(15, 23, 42, 0.75) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  box-shadow: none !important;
+}
+
+.dark .cosmic-card:hover,
+html.dark .cosmic-card:hover,
+html[data-theme="dark"] .cosmic-card:hover {
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+.dark header,
+html.dark header,
+html[data-theme="dark"] header {
+  background-color: rgba(7, 9, 14, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none;
+}
+
+.dark footer,
+html.dark footer,
+html[data-theme="dark"] footer {
+  background-color: #05070a !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #94a3b8 !important;
 }
 
 /* Light mode text contrast overrides */

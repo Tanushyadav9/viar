@@ -46,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" data-theme="dark" suppressHydrationWarning>
+    <html lang="en" className="light" data-theme="light" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -54,8 +54,8 @@ export default function RootLayout({
               (function() {
                 try {
                   var saved = localStorage.getItem('viar_theme');
-                  var supportDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                  var theme = saved || (supportDark ? 'dark' : 'light');
+                  // Default to 'light' mode unless user explicitly selected 'dark'
+                  var theme = (saved === 'dark' || saved === 'light') ? saved : 'light';
                   document.documentElement.classList.remove('light', 'dark');
                   document.documentElement.classList.add(theme);
                   document.documentElement.setAttribute('data-theme', theme);

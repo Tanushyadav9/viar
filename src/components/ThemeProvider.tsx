@@ -17,7 +17,7 @@ const ThemeContext = createContext<ThemeContextType>({
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('dark');
+  const [theme, setThemeState] = useState<Theme>('light');
 
   useEffect(() => {
     try {
@@ -26,13 +26,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setThemeState(savedTheme);
         applyThemeToDocument(savedTheme);
       } else {
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const initial = prefersDark ? 'dark' : 'light';
-        setThemeState(initial);
-        applyThemeToDocument(initial);
+        // Default to light mode for all new visitors
+        setThemeState('light');
+        applyThemeToDocument('light');
       }
     } catch {
-      applyThemeToDocument('dark');
+      applyThemeToDocument('light');
     }
   }, []);
 
