@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "postinstall": "prisma generate",
+    "postinstall": "node scripts/prisma-generate.mjs",
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "node scripts/prisma-generate.mjs && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "node --experimental-strip-types --test tests/webhooks.test.ts tests/quiz-certificate.test.ts tests/timezone.test.ts tests/email-policy.test.ts tests/permissions.test.ts tests/email.test.ts tests/production-hardening.test.ts"
@@ -19,7 +19,7 @@
     "ioredis": "^6.0.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.47.0",
-    "next": "14.2.15",
+    "next": "^14.2.35",
     "react": "^18",
     "react-dom": "^18",
     "tailwind-merge": "^3.7.0"
@@ -31,7 +31,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",
-    "eslint-config-next": "14.2.15",
+    "eslint-config-next": "^14.2.35",
     "postcss": "^8",
     "prisma": "5.22.0",
     "tailwindcss": "^3.4.1",
