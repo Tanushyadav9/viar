@@ -9,9 +9,9 @@ import { Course, Cohort, ScheduledClass, FinalTest, User, Certificate, Enrollmen
  */
 
 export const PLACEHOLDER_SOCIAL_LINKS = {
-  /* PLACEHOLDER: Client to provide verified official YouTube channel link once confirmed */
   instagram: 'https://www.instagram.com/aapkaastrologer/',
   facebook: 'https://www.facebook.com/aapkaastro',
+  youtube: 'https://www.youtube.com/@aapkaastro7900',
   whatsapp: 'https://wa.me/919311215564',
   aapkaAstro: 'https://aapkaastro.com',
   phone: '+91 93112 15564',

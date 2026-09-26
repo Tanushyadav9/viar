@@ -1250,3 +1250,33 @@ As required by the security and data segregation architecture, **Viar.in runs on
 
 
 
+
+
+### 24.4 Clerk Webhook Configuration & Database Synchronization
+1. **Endpoint Implementation**:
+   - Location: `/api/webhooks/clerk` (`src/app/api/webhooks/clerk/route.ts`).
+   - Package: `svix` for cryptographic signature verification.
+   - Env Var: `CLERK_WEBHOOK_SECRET` (Svix secret formatted as `whsec_...`).
+   - Supported Events:
+     - `user.created`: Inserts a row into Prisma `User` table with `clerkId`, `email`, `name`, `avatarUrl`, `phone`, `role`, and `isOwner`. Automatically recognizes Site Owner if email matches `OWNER_EMAIL` (`ask@aapkaastro.com`).
+     - `user.updated`: Synchronizes profile changes (`email`, `name`, `avatarUrl`) directly to Prisma `User`.
+     - `user.deleted`: Deletes the matching row from Prisma `User`.
+
+2. **Required Clerk Dashboard Setup**:
+   1. Open [Clerk Dashboard](https://dashboard.clerk.com) -> Application `app_3JoGbVxdSJXtTwELzFuSwXpw6Rf`.
+   2. Navigate to **Configure > Webhooks** in the left sidebar.
+   3. Click **Add Endpoint**.
+   4. **Endpoint URL**: `https://viar.in/api/webhooks/clerk` (or `https://your-deployment.vercel.app/api/webhooks/clerk`).
+   5. **Subscribe to events**: Select:
+      - `user.created`
+      - `user.updated`
+      - `user.deleted`
+   6. Click **Create**.
+   7. Copy the **Signing Secret** (starts with `whsec_...`).
+   8. In Vercel / `.env`: Set `CLERK_WEBHOOK_SECRET="whsec_..."`.
+
+3. **Automated Verification**:
+   - Added test suite in `tests/webhooks.test.ts` verifying:
+     - Valid Svix payload and signature verification.
+     - Tampered or malformed signature rejection.
+     - Role and ownership mapping for regular students and site owners.

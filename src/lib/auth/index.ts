@@ -93,6 +93,17 @@ class DefaultAuthProvider implements AuthProvider {
       document.cookie = `viar_user_role=${user.role}; path=/; max-age=2592000; SameSite=Lax`;
       document.cookie = `viar_user_email=${encodeURIComponent(user.email || '')}; path=/; max-age=2592000; SameSite=Lax`;
       window.dispatchEvent(new Event('user-role-changed'));
+
+      // Asynchronously ensure database row exists in Prisma
+      fetch('/api/users/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clerkId: user.id,
+          email: user.email,
+          name: user.name,
+        }),
+      }).catch((e) => console.warn('[Auth] Database sync error:', e));
     }
 
     return { success: true, user };
@@ -149,45 +160,29 @@ class DefaultAuthProvider implements AuthProvider {
       document.cookie = `viar_user_role=${user.role}; path=/; max-age=2592000; SameSite=Lax`;
       document.cookie = `viar_user_email=${encodeURIComponent(user.email || '')}; path=/; max-age=2592000; SameSite=Lax`;
       window.dispatchEvent(new Event('user-role-changed'));
+
+      // Asynchronously ensure database row exists in Prisma
+      fetch('/api/users/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clerkId: user.id,
+          email: user.email,
+          name: user.name,
+        }),
+      }).catch((e) => console.warn('[Auth] Database sync error:', e));
     }
 
     return { success: true, user };
   }
 
   async signInWithGoogle(): Promise<{ success: boolean; redirectUrl?: string }> {
-    // Clerk Google OAuth Single Sign-On
-    const googleEmail = 'elena.rostova@gmail.com';
-    const { role, isOwner } = assignRoleForUser(googleEmail);
-
-    const user: AuthUser = {
-      id: 'usr_clerk_google_sso',
-      name: isOwner ? 'Acharya Niraj Kumar' : 'Elena Rostova',
-      email: googleEmail,
-      role,
-      isOwner,
-      timezone: 'America/New_York',
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-      enrolledCohortIds: ['cohort-wia-batch-1'],
-    };
-
+    // Direct browser redirect to Clerk Sign-In with OAuth
     if (typeof window !== 'undefined') {
-      ViarStore.setCurrentUser({
-        id: user.id,
-        name: user.name,
-        email: user.email || '',
-        role: user.role,
-        isOwner: user.isOwner,
-        timezone: user.timezone,
-        avatarUrl: user.avatarUrl,
-        enrolledCohortIds: user.enrolledCohortIds,
-      });
-      document.cookie = `viar_session=${user.id}; path=/; max-age=2592000; SameSite=Lax`;
-      document.cookie = `viar_user_role=${user.role}; path=/; max-age=2592000; SameSite=Lax`;
-      document.cookie = `viar_user_email=${encodeURIComponent(user.email || '')}; path=/; max-age=2592000; SameSite=Lax`;
-      window.dispatchEvent(new Event('user-role-changed'));
+      window.location.href = '/sign-in';
+      return { success: true, redirectUrl: '/sign-in' };
     }
-
-    return { success: true, redirectUrl: '/dashboard' };
+    return { success: true, redirectUrl: '/sign-in' };
   }
 
   /**

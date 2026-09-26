@@ -309,14 +309,19 @@ export const ViarStore = {
       setStorageItem(STORAGE_KEYS.COHORTS, cohorts);
     }
 
-    // Also auto set as current active student user
+    // Also update current active student user, preserving existing session ID if same user
+    const existing = this.getCurrentUser();
+    const existingCohorts = existing?.email === params.studentEmail && existing.enrolledCohortIds ? existing.enrolledCohortIds : [];
+    const updatedCohorts = Array.from(new Set([...existingCohorts, params.cohortId]));
+
     const newUser: User = {
-      id: newEnrollment.studentId,
-      name: newEnrollment.studentName,
-      email: newEnrollment.studentEmail,
-      role: 'STUDENT',
+      id: existing && existing.email === params.studentEmail ? existing.id : newEnrollment.studentId,
+      name: params.studentName,
+      email: params.studentEmail,
+      role: existing && existing.email === params.studentEmail ? existing.role : 'STUDENT',
+      isOwner: existing?.isOwner,
       timezone: this.getTimezone(),
-      enrolledCohortIds: [params.cohortId],
+      enrolledCohortIds: updatedCohorts,
     };
     this.setCurrentUser(newUser);
 

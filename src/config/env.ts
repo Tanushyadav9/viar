@@ -24,6 +24,7 @@ export interface AppEnvConfig {
   auth: {
     clerkPublishableKey: string;
     clerkSecretKey: string;
+    clerkWebhookSecret: string;
     clerkDomain: string;
     clerkIsSatellite: boolean;
     clerkSignInUrl: string;
@@ -101,6 +102,7 @@ export const env: AppEnvConfig = {
   auth: {
     clerkPublishableKey: getEnvVar('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY', ''),
     clerkSecretKey: getEnvVar('CLERK_SECRET_KEY', ''),
+    clerkWebhookSecret: getEnvVar('CLERK_WEBHOOK_SECRET', ''),
     clerkDomain: getEnvVar('NEXT_PUBLIC_CLERK_DOMAIN', 'viar.in'),
     clerkIsSatellite: getBooleanEnvVar('NEXT_PUBLIC_CLERK_IS_SATELLITE', true),
     clerkSignInUrl: getEnvVar('NEXT_PUBLIC_CLERK_SIGN_IN_URL', '/sign-in'),

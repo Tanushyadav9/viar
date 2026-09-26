@@ -286,7 +286,17 @@ export default function Footer() {
                   <ExternalLink className="w-3 h-3 inline" />
                 </a>
               </li>
-              {/* PLACEHOLDER: YouTube channel link to be re-added once verified channel URL is confirmed by client */}
+              <li>
+                <a
+                  href="https://www.youtube.com/@aapkaastro7900"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-amber-400 transition flex items-center gap-1.5"
+                >
+                  <span>YouTube: @aapkaastro7900</span>
+                  <ExternalLink className="w-3 h-3 inline" />
+                </a>
+              </li>
             </ul>
           </div>
         </div>

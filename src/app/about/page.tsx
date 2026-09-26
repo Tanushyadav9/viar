@@ -124,6 +124,37 @@ export default function AboutPage() {
                   <span>ask@aapkaastro.com</span>
                 </a>
               </div>
+
+              {/* Official Social Media Channels */}
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs">
+                <a
+                  href="https://www.youtube.com/@aapkaastro7900"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-red-600/15 border border-red-500/30 text-red-300 text-[11px] font-semibold inline-flex items-center gap-1 hover:bg-red-600/25 transition"
+                >
+                  <span>YouTube: @aapkaastro7900</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+                <a
+                  href="https://www.facebook.com/aapkaastro"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-blue-600/15 border border-blue-500/30 text-blue-300 text-[11px] font-semibold inline-flex items-center gap-1 hover:bg-blue-600/25 transition"
+                >
+                  <span>Facebook: /aapkaastro</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+                <a
+                  href="https://www.instagram.com/aapkaastrologer/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-pink-600/15 border border-pink-500/30 text-pink-300 text-[11px] font-semibold inline-flex items-center gap-1 hover:bg-pink-600/25 transition"
+                >
+                  <span>Instagram: @aapkaastrologer</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              </div>
             </div>
 
             <div className="lg:col-span-7 space-y-6 text-slate-300 text-sm sm:text-base leading-relaxed">
