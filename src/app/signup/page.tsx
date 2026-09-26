@@ -50,12 +50,13 @@ function SignupContent() {
   const handleGoogleSignUp = async () => {
     setErrorMsg('');
     setLoading(true);
-    const res = await authProvider.signInWithGoogle();
-    setLoading(false);
-    if (res.success) {
-      router.push('/dashboard');
-    } else {
-      setErrorMsg(res.error || 'Google sign up failed.');
+    const res = await authProvider.signInWithGoogle({
+      redirectUrl: '/signup/sso-callback',
+      redirectUrlComplete: '/dashboard',
+    });
+    if (!res.success && res.error) {
+      setLoading(false);
+      setErrorMsg(res.error);
     }
   };
 

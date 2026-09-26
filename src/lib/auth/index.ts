@@ -176,13 +176,46 @@ class DefaultAuthProvider implements AuthProvider {
     return { success: true, user };
   }
 
-  async signInWithGoogle(): Promise<{ success: boolean; redirectUrl?: string }> {
-    // Direct browser redirect to Clerk Sign-In with OAuth
+  async signInWithGoogle(options?: {
+    redirectUrl?: string;
+    redirectUrlComplete?: string;
+  }): Promise<{ success: boolean; redirectUrl?: string; error?: string }> {
+    const redirectUrl = options?.redirectUrl || '/login/sso-callback';
+    const redirectUrlComplete = options?.redirectUrlComplete || '/dashboard';
+
     if (typeof window !== 'undefined') {
-      window.location.href = '/sign-in';
-      return { success: true, redirectUrl: '/sign-in' };
+      const globalWindow = window as unknown as {
+        Clerk?: {
+          client?: {
+            signIn?: {
+              authenticateWithRedirect: (params: {
+                strategy: string;
+                redirectUrl: string;
+                redirectUrlComplete: string;
+              }) => Promise<void>;
+            };
+          };
+        };
+      };
+      const clerk = globalWindow.Clerk;
+      if (clerk?.client?.signIn) {
+        try {
+          await clerk.client.signIn.authenticateWithRedirect({
+            strategy: 'oauth_google',
+            redirectUrl,
+            redirectUrlComplete,
+          });
+          return { success: true, redirectUrl };
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : 'Google sign in failed.';
+          console.warn('[Auth] Clerk authenticateWithRedirect error:', err);
+          return { success: false, error: errorMessage };
+        }
+      }
+      window.location.href = redirectUrl;
+      return { success: true, redirectUrl };
     }
-    return { success: true, redirectUrl: '/sign-in' };
+    return { success: true, redirectUrl };
   }
 
   /**

@@ -43,12 +43,13 @@ function LoginContent() {
   const handleGoogleSignIn = async () => {
     setErrorMsg('');
     setLoading(true);
-    const res = await authProvider.signInWithGoogle();
-    setLoading(false);
-    if (res.success) {
-      router.push(returnUrl);
-    } else {
-      setErrorMsg(res.error || 'Google sign in failed.');
+    const res = await authProvider.signInWithGoogle({
+      redirectUrl: '/login/sso-callback',
+      redirectUrlComplete: returnUrl || '/dashboard',
+    });
+    if (!res.success && res.error) {
+      setLoading(false);
+      setErrorMsg(res.error);
     }
   };
 

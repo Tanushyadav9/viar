@@ -175,11 +175,18 @@ describe('Payment Webhook Verification Logic', () => {
       assert.strictEqual(studentRoleInfo.role, 'STUDENT');
       assert.strictEqual(studentRoleInfo.isOwner, false);
 
-      // Test owner user creation mapping
+      // Test owner user creation mapping (only recognized when OWNER_EMAIL is set)
       const ownerEmail = 'ask@aapkaastro.com';
-      const ownerRoleInfo = assignRoleForUser(ownerEmail);
-      assert.strictEqual(ownerRoleInfo.role, 'OWNER');
-      assert.strictEqual(ownerRoleInfo.isOwner, true);
+      const origOwner = process.env.OWNER_EMAIL;
+      try {
+        process.env.OWNER_EMAIL = ownerEmail;
+        const ownerRoleInfo = assignRoleForUser(ownerEmail);
+        assert.strictEqual(ownerRoleInfo.role, 'OWNER');
+        assert.strictEqual(ownerRoleInfo.isOwner, true);
+      } finally {
+        if (origOwner !== undefined) process.env.OWNER_EMAIL = origOwner;
+        else delete process.env.OWNER_EMAIL;
+      }
     });
   });
 });

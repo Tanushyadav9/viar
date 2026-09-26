@@ -108,18 +108,20 @@ export const ADMIN_SECTIONS_META: Record<AdminSection, AdminSectionMeta> = {
 };
 
 /**
- * Returns the primary Site Owner email address configured via OWNER_EMAIL.
- * Defaults to Acharya Niraj Kumar's verified email.
+ * Returns the primary Site Owner email address configured strictly via OWNER_EMAIL.
+ * Returns empty string if unset or empty (fail-closed). Zero hardcoded fallbacks.
  */
 export function getPrimaryOwnerEmail(): string {
-  return process.env.OWNER_EMAIL?.trim().toLowerCase() || 'ask@aapkaastro.com';
+  return process.env.OWNER_EMAIL?.trim().toLowerCase() || '';
 }
 
 export const primaryOwnerEmail = getPrimaryOwnerEmail();
 
 /**
  * Returns the list of designated Site Owner / Superadmin email addresses.
- * Configurable via environment variables with verified fallback to Acharya Niraj Kumar's address.
+ * Reads strictly from process.env.OWNER_EMAIL and process.env.SUPERADMIN_EMAILS.
+ * Zero hardcoded fallback strings or default arrays.
+ * If unset or empty, returns an empty array (fail-closed).
  */
 export function getOwnerEmails(): string[] {
   const envOwner = process.env.OWNER_EMAIL?.trim().toLowerCase();
@@ -127,16 +129,9 @@ export function getOwnerEmails(): string[] {
     ? process.env.SUPERADMIN_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
     : [];
 
-  const defaults = [
-    'ask@aapkaastro.com',
-    'admin@viar.in',
-    'niraj@aapkaastro.com',
-  ];
-
   const set = new Set<string>();
   if (envOwner) set.add(envOwner);
   for (const s of envSuperadmins) set.add(s);
-  for (const d of defaults) set.add(d);
 
   return Array.from(set);
 }
@@ -319,7 +314,7 @@ export function checkStaffSectionAccess(params: {
         userId: userObj.id,
         section: normalizedSection,
         accessLevel: 'MANAGE',
-        grantedByUserId: 'ask@aapkaastro.com',
+        grantedByUserId: getPrimaryOwnerEmail() || 'system',
         grantedAt: new Date().toISOString(),
         revokedAt: null,
       };

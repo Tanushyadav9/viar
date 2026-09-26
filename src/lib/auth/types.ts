@@ -46,7 +46,10 @@ export interface AuthProvider {
   /**
    * Initiate Google OAuth Single Sign-On via Clerk
    */
-  signInWithGoogle(): Promise<{ success: boolean; redirectUrl?: string; error?: string }>;
+  signInWithGoogle(options?: {
+    redirectUrl?: string;
+    redirectUrlComplete?: string;
+  }): Promise<{ success: boolean; redirectUrl?: string; error?: string }>;
 
   /**
    * Dormant / Optional extension point: Request OTP to phone number

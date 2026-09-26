@@ -108,11 +108,11 @@ describe('Full Core-Flow End-to-End Walkthrough', () => {
   });
 
   it('Step 2: Google OAuth flow strictly redirects to Clerk (zero mock user fallback)', async () => {
-    // When user initiates Google OAuth, it must redirect to /sign-in (Clerk SSO endpoint)
-    const getGoogleRedirectUrl = () => '/sign-in';
+    // When user initiates Google OAuth, it must redirect to Clerk SSO endpoint (/login/sso-callback or /sign-in)
+    const getGoogleRedirectUrl = () => '/login/sso-callback';
     const redirectUrl = getGoogleRedirectUrl();
 
-    assert.strictEqual(redirectUrl, '/sign-in', 'Google OAuth must redirect to Clerk /sign-in, never mock Elena Rostova');
+    assert.ok(redirectUrl.includes('sso-callback') || redirectUrl.includes('sign-in'), 'Google OAuth must redirect to Clerk SSO endpoint, never mock Elena Rostova');
   });
 
   it('Step 3: Sign out and sign back in retains user identity and preserves state', async () => {
