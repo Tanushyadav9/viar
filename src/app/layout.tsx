@@ -70,7 +70,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased cosmic-bg flex flex-col min-h-screen selection:bg-amber-500 selection:text-black`}
       >
-        <ClerkProvider>
+        <ClerkProvider
+          publishableKey={
+            process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+            'pk_test_cHJvZm91bmQtY2ljYWRhLTk2OTQuY2xlcmsuYWNjb3VudHMuZGV2JA'
+          }
+        >
           <ThemeProvider>
           <Navbar />
           <main className="flex-grow">{children}</main>

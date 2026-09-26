@@ -5,17 +5,37 @@ import { env } from '@/config/env';
 import { logger } from '@/lib/logger';
 import { assignRoleForUser } from '@/lib/auth/permissions';
 
+interface ClerkEmailAddress {
+  id: string;
+  email_address: string;
+}
+
+interface ClerkPhoneNumber {
+  id: string;
+  phone_number: string;
+}
+
+interface ClerkUserData {
+  id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  image_url?: string | null;
+  profile_image_url?: string | null;
+  primary_email_address_id?: string | null;
+  primary_phone_number_id?: string | null;
+  email_addresses?: ClerkEmailAddress[];
+  phone_numbers?: ClerkPhoneNumber[];
+}
+
+interface ClerkWebhookEvent {
+  type: 'user.created' | 'user.updated' | 'user.deleted' | string;
+  data: ClerkUserData;
+}
+
 /**
  * Clerk Webhook Handler: /api/webhooks/clerk
  * 
  * Synchronizes Clerk users into the local PostgreSQL/Neon `User` table via Prisma.
- * Supported events:
- * - user.created: Creates a local User row with clerkId, email, name, avatar, role, isOwner.
- * - user.updated: Updates email, name, avatarUrl.
- * - user.deleted: Safely removes or disassociates the local user.
- * 
- * Cryptographic verification:
- * Uses `svix` with `CLERK_WEBHOOK_SECRET` (whsec_...) from env.
  */
 export async function POST(req: NextRequest) {
   const webhookSecret = env.auth.clerkWebhookSecret || process.env.CLERK_WEBHOOK_SECRET;
@@ -39,7 +59,7 @@ export async function POST(req: NextRequest) {
 
   if (!svixId || !svixTimestamp || !svixSignature) {
     logger.securityAlert('Clerk webhook missing required Svix signature headers', {
-      event: 'invalid_signature_headers',
+      event: 'invalid_signature',
       endpoint: '/api/webhooks/clerk',
     });
     return NextResponse.json(
@@ -50,7 +70,7 @@ export async function POST(req: NextRequest) {
 
   const rawPayload = await req.text();
 
-  let evt: any;
+  let evt: ClerkWebhookEvent;
   try {
     const wh = new Webhook(webhookSecret);
     wh.verify(rawPayload, {
@@ -58,12 +78,13 @@ export async function POST(req: NextRequest) {
       'svix-timestamp': svixTimestamp,
       'svix-signature': svixSignature,
     });
-    evt = JSON.parse(rawPayload);
-  } catch (err: any) {
+    evt = JSON.parse(rawPayload) as ClerkWebhookEvent;
+  } catch (err: unknown) {
+    const errMessage = err instanceof Error ? err.message : 'Invalid signature';
     logger.securityAlert('Invalid Clerk webhook signature', {
-      event: 'invalid_clerk_signature',
+      event: 'invalid_signature',
       endpoint: '/api/webhooks/clerk',
-      error: err?.message,
+      error: errMessage,
     });
     return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 400 });
   }
@@ -75,7 +96,7 @@ export async function POST(req: NextRequest) {
     if (eventType === 'user.created') {
       const clerkId = data.id;
       const primaryEmailObj = data.email_addresses?.find(
-        (e: any) => e.id === data.primary_email_address_id
+        (e) => e.id === data.primary_email_address_id
       ) || data.email_addresses?.[0];
       const email = primaryEmailObj?.email_address?.trim().toLowerCase() || null;
 
@@ -85,7 +106,7 @@ export async function POST(req: NextRequest) {
       const avatarUrl = data.image_url || data.profile_image_url || null;
 
       const phoneObj = data.phone_numbers?.find(
-        (p: any) => p.id === data.primary_phone_number_id
+        (p) => p.id === data.primary_phone_number_id
       ) || data.phone_numbers?.[0];
       const phone = phoneObj?.phone_number || null;
 
@@ -131,7 +152,7 @@ export async function POST(req: NextRequest) {
     if (eventType === 'user.updated') {
       const clerkId = data.id;
       const primaryEmailObj = data.email_addresses?.find(
-        (e: any) => e.id === data.primary_email_address_id
+        (e) => e.id === data.primary_email_address_id
       ) || data.email_addresses?.[0];
       const email = primaryEmailObj?.email_address?.trim().toLowerCase() || null;
 
@@ -188,14 +209,15 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ received: true, ignored: true, type: eventType });
-  } catch (error: any) {
-    logger.error('Failed to process Clerk webhook event in local database', error, {
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : 'Database sync failed';
+    logger.error('Failed to process Clerk webhook event in local database', error instanceof Error ? error : new Error(String(error)), {
       service: 'auth',
       eventType,
       clerkId: data?.id,
     });
     return NextResponse.json(
-      { error: 'Database synchronization failed', details: error?.message },
+      { error: 'Database synchronization failed', details: errMessage },
       { status: 500 }
     );
   }

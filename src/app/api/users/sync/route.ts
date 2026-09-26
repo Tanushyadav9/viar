@@ -68,13 +68,14 @@ export async function POST(req: NextRequest) {
         isOwner: user.isOwner,
       },
     });
-  } catch (error: any) {
-    logger.error('Failed to sync user session to database', error, {
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : 'Database sync error';
+    logger.error('Failed to sync user session to database', error instanceof Error ? error : new Error(String(error)), {
       service: 'auth',
       endpoint: '/api/users/sync',
     });
     return NextResponse.json(
-      { success: false, error: error?.message || 'Database sync error' },
+      { success: false, error: errMessage },
       { status: 500 }
     );
   }
