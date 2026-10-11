@@ -25,9 +25,12 @@ export const metadata: Metadata = {
   description:
     'Vihangam Institute of Astrology and Research (VIAR, viar.in) is the premier Vedic astrology institute founded by Acharya Niraj Kumar (Jyotish Acharya, Bharatiya Vidya Bhavan). Comprehensive 23-module self-paced video masterclasses, practical chart workshops, and verifiable certification.',
   icons: {
-    icon: '/images/favicon.png',
+    icon: [
+      { url: '/images/favicon.png', type: 'image/png' },
+      { url: '/favicon.ico' },
+    ],
     shortcut: '/images/favicon.png',
-    apple: '/images/logo-icon.png',
+    apple: '/images/favicon.png',
   },
   keywords: [
     'vihangam institute of astrology and research',
