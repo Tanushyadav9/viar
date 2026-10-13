@@ -233,27 +233,20 @@ export const ViarStore = {
     }
 
     // 3. Check paid enrollments registry
-    const enrollments = this.getEnrollments();
-    const hasPaidEnrollment = enrollments.some((e) => {
-      const matchesTarget = e.cohortId === targetCohortId || e.courseId === targetCourseId;
-      const isPaid = e.paymentStatus === 'PAID';
-      if (!isPaid || !matchesTarget) return false;
+    if (user) {
+      const enrollments = this.getEnrollments();
+      const hasPaidEnrollment = enrollments.some((e) => {
+        const matchesTarget = e.cohortId === targetCohortId || e.courseId === targetCourseId;
+        const isPaid = e.paymentStatus === 'PAID';
+        if (!isPaid || !matchesTarget) return false;
 
-      if (user && (e.studentEmail?.toLowerCase() === user.email?.toLowerCase() || e.studentId === user.id)) {
-        return true;
-      }
-      return false;
-    });
+        return (
+          e.studentEmail?.toLowerCase() === user.email?.toLowerCase() ||
+          e.studentId === user.id
+        );
+      });
 
-    if (hasPaidEnrollment) return true;
-
-    // 4. Session fallback: If an anonymous visitor just completed checkout in this browser session
-    const recentEnrollments = getStorageItem<Enrollment[]>(STORAGE_KEYS.ENROLLMENTS, []);
-    const sessionMatch = recentEnrollments.find(
-      (e) => (e.cohortId === targetCohortId || e.courseId === targetCourseId) && e.paymentStatus === 'PAID'
-    );
-    if (sessionMatch && !user) {
-      return true;
+      if (hasPaidEnrollment) return true;
     }
 
     return false;
