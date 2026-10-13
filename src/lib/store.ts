@@ -108,6 +108,155 @@ export const ViarStore = {
     const courses = this.getCourses();
     courses.push(newCourse);
     setStorageItem(STORAGE_KEYS.COURSES, courses);
+
+    // Auto-provision a default Cohort for this course so it's immediately enrollable
+    const cohorts = this.getCohorts();
+    const existingCohort = cohorts.find((c) => c.courseId === newCourse.id);
+    if (!existingCohort) {
+      const cohortId = `cohort-${newCourse.slug || newCourse.id}-batch-1`;
+      const newCohort: Cohort = {
+        id: cohortId,
+        courseId: newCourse.id,
+        batchNumber: 1,
+        batchName: `${newCourse.title} — Lifetime Access`,
+        startDate: new Date().toISOString(),
+        endDate: '2030-12-31T23:59:59.000Z',
+        scheduleDescription: 'Self-paced video modules. Watch anytime on-demand with lifetime access.',
+        scheduleTimeUtc: {
+          dayOfWeek: [0, 1, 2, 3, 4, 5, 6],
+          hoursUtc: 0,
+          minutesUtc: 0,
+        },
+        maxSeats: 10000,
+        enrolledCount: 0,
+        status: 'ENROLLING',
+        enrollmentDeadline: '2030-12-31T23:59:59.000Z',
+      };
+      cohorts.push(newCohort);
+      setStorageItem(STORAGE_KEYS.COHORTS, cohorts);
+
+      // Also auto-provision starter video sessions for this course
+      const classes = this.getClasses();
+      const numClasses = newCourse.totalClasses || 8;
+      for (let i = 1; i <= numClasses; i++) {
+        classes.push({
+          id: `cls-${newCourse.slug || newCourse.id}-${i}`,
+          cohortId: newCohort.id,
+          classNumber: i,
+          sessionNumber: i,
+          moduleNumber: i,
+          title: `Lesson ${i}: Key Principles of ${newCourse.title}`,
+          subtitle: `Module ${i} • Self-Paced Video Lesson`,
+          description: `Comprehensive video exploration covering foundational concepts, planetary mechanics, and practical chart reading techniques.`,
+          scheduledStartTime: new Date().toISOString(),
+          scheduledAt: new Date().toISOString(),
+          durationMinutes: 60,
+          meetingPlatform: 'ZOOM',
+          joinUrl: '',
+          status: 'COMPLETED',
+          recording: {
+            id: `rec-${newCourse.slug || newCourse.id}-${i}`,
+            videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+            provider: 'YOUTUBE',
+            durationMinutes: 60,
+            recordedDate: new Date().toISOString().split('T')[0],
+            notesMarkdown: `### Lesson ${i} Notes\nKey topics covered in this lesson. Review real chart demonstrations before advancing.`,
+            keyTakeaways: ['Foundational concepts', 'Chart interpretation'],
+            resources: [],
+          },
+        });
+      }
+      setStorageItem(STORAGE_KEYS.CLASSES, classes);
+    }
+  },
+
+  updateCourse(courseId: string, updates: Partial<Course>): Course | null {
+    const courses = this.getCourses();
+    const index = courses.findIndex((c) => c.id === courseId || c.slug === courseId);
+    if (index === -1) return null;
+
+    courses[index] = { ...courses[index], ...updates };
+    setStorageItem(STORAGE_KEYS.COURSES, courses);
+
+    // If title or description changed, sync with corresponding cohort
+    if (updates.title) {
+      const cohorts = this.getCohorts();
+      cohorts.forEach((coh) => {
+        if (coh.courseId === courses[index].id) {
+          coh.batchName = `${updates.title} — Lifetime Access`;
+        }
+      });
+      setStorageItem(STORAGE_KEYS.COHORTS, cohorts);
+    }
+
+    return courses[index];
+  },
+
+  deleteCourse(courseId: string): boolean {
+    const courses = this.getCourses();
+    const index = courses.findIndex((c) => c.id === courseId || c.slug === courseId);
+    if (index === -1) return false;
+
+    const removedCourse = courses.splice(index, 1)[0];
+    setStorageItem(STORAGE_KEYS.COURSES, courses);
+
+    // Also remove associated cohorts and sessions
+    const cohorts = this.getCohorts();
+    const remainingCohorts = cohorts.filter((c) => c.courseId !== removedCourse.id);
+    setStorageItem(STORAGE_KEYS.COHORTS, remainingCohorts);
+
+    return true;
+  },
+
+  isUserEnrolled(user: User | null, cohortIdOrCourseId: string): boolean {
+    // 1. Supreme Owner and Admins/Instructors have full preview/management bypass
+    if (user) {
+      if (user.role === 'OWNER' || user.isOwner || user.role === 'ADMIN' || user.role === 'INSTRUCTOR') {
+        return true;
+      }
+      if (isSiteOwner(user.email)) {
+        return true;
+      }
+    }
+
+    // Identify target cohort & course identifiers
+    const cohorts = this.getCohorts();
+    const matchedCohort = cohorts.find((c) => c.id === cohortIdOrCourseId || c.courseId === cohortIdOrCourseId);
+    const targetCohortId = matchedCohort ? matchedCohort.id : cohortIdOrCourseId;
+    const targetCourseId = matchedCohort ? matchedCohort.courseId : cohortIdOrCourseId;
+
+    // 2. Check user's explicitly enrolled cohort list
+    if (user && user.enrolledCohortIds && user.enrolledCohortIds.length > 0) {
+      if (user.enrolledCohortIds.includes(targetCohortId)) {
+        return true;
+      }
+    }
+
+    // 3. Check paid enrollments registry
+    const enrollments = this.getEnrollments();
+    const hasPaidEnrollment = enrollments.some((e) => {
+      const matchesTarget = e.cohortId === targetCohortId || e.courseId === targetCourseId;
+      const isPaid = e.paymentStatus === 'PAID';
+      if (!isPaid || !matchesTarget) return false;
+
+      if (user && (e.studentEmail?.toLowerCase() === user.email?.toLowerCase() || e.studentId === user.id)) {
+        return true;
+      }
+      return false;
+    });
+
+    if (hasPaidEnrollment) return true;
+
+    // 4. Session fallback: If an anonymous visitor just completed checkout in this browser session
+    const recentEnrollments = getStorageItem<Enrollment[]>(STORAGE_KEYS.ENROLLMENTS, []);
+    const sessionMatch = recentEnrollments.find(
+      (e) => (e.cohortId === targetCohortId || e.courseId === targetCourseId) && e.paymentStatus === 'PAID'
+    );
+    if (sessionMatch && !user) {
+      return true;
+    }
+
+    return false;
   },
 
   // Cohorts

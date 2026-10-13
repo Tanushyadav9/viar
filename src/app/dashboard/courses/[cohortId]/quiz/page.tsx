@@ -128,6 +128,44 @@ export default function FinalQuizPage() {
     );
   }
 
+  const isEnrolled = ViarStore.isUserEnrolled(currentUser, cohort.id);
+  if (!isSubmitted && !isEnrolled) {
+    return (
+      <div className="cosmic-bg min-h-screen py-16 px-4">
+        <div className="max-w-lg mx-auto text-center cosmic-card p-8 sm:p-10 rounded-3xl border border-amber-500/40 shadow-2xl space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+              Enrollment Required
+            </span>
+            <h2 className="text-2xl font-black text-white mt-1">
+              Final Certification Exam is Locked
+            </h2>
+            <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+              Taking this 20-question final examination and earning your verifiable VIAR certificate requires active enrollment in this course.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href={`/checkout/${cohort.id}`}
+              className="gold-button px-6 py-3 rounded-xl text-xs font-bold block shadow-lg shadow-amber-500/20"
+            >
+              Enroll Now to Unlock Exam
+            </Link>
+            <Link
+              href="/courses"
+              className="px-5 py-3 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
+            >
+              Back to Catalog
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const quizUnlock = ViarStore.isQuizUnlocked(cohort.id);
 
   if (!isSubmitted && !quizUnlock.isUnlocked) {
