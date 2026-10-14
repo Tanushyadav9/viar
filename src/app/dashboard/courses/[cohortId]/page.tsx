@@ -16,7 +16,7 @@ import {
   Send
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
-import { Course, Cohort, ScheduledClass, ClassDiscussionComment, User } from '@/lib/types';
+import { Course, Cohort, ScheduledClass, ClassDiscussionComment } from '@/lib/types';
 import { getUserLocalTimezone } from '@/lib/timezones';
 
 export default function CohortClassByClassPage() {
@@ -31,8 +31,6 @@ export default function CohortClassByClassPage() {
   const [userTz, setUserTz] = useState<string>('Asia/Kolkata');
   const [comments, setComments] = useState<ClassDiscussionComment[]>([]);
   const [commentText, setCommentText] = useState('');
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isEnrolled, setIsEnrolled] = useState<boolean>(true);
 
   useEffect(() => {
     if (activeClass) {
@@ -43,21 +41,19 @@ export default function CohortClassByClassPage() {
   const handlePostComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim() || !activeClass) return;
-    const authorName = currentUser?.name || 'Viar Scholar';
+    const user = ViarStore.getCurrentUser();
+    const authorName = user?.name || 'Viar Scholar';
     const newC = ViarStore.addDiscussionComment({
       sessionId: activeClass.id,
       authorName,
       comment: commentText.trim(),
-      authorRole: currentUser?.role === 'ADMIN' || currentUser?.role === 'OWNER' ? 'ADMIN' : 'STUDENT',
+      authorRole: user?.role === 'ADMIN' || user?.role === 'OWNER' ? 'ADMIN' : 'STUDENT',
     });
     setComments((prev) => [...prev, newC]);
     setCommentText('');
   };
 
   useEffect(() => {
-    const user = ViarStore.getCurrentUser();
-    setCurrentUser(user);
-
     const c = ViarStore.getCohortById(cohortId) || ViarStore.getCohorts()[0];
     if (c) {
       setCohort(c);
@@ -67,10 +63,6 @@ export default function CohortClassByClassPage() {
       const clsList = ViarStore.getClasses(c.id);
       setClasses(clsList);
       if (clsList.length > 0) setActiveClass(clsList[0]);
-
-      // Check whether user is enrolled in this course/cohort
-      const enrolled = ViarStore.isUserEnrolled(user, c.id);
-      setIsEnrolled(enrolled);
     }
 
     const watched = new Set(ViarStore.getWatchedClassIds());
@@ -91,6 +83,7 @@ export default function CohortClassByClassPage() {
     const updated = new Set(ViarStore.getWatchedClassIds());
     setWatchedSet(updated);
 
+    const currentUser = ViarStore.getCurrentUser();
     if (currentUser) {
       fetch('/api/progress', {
         method: 'POST',
@@ -110,109 +103,6 @@ export default function CohortClassByClassPage() {
     return (
       <div className="min-h-screen cosmic-bg flex items-center justify-center p-4">
         <Sparkles className="w-8 h-8 text-amber-400 animate-spin" />
-      </div>
-    );
-  }
-
-  // Paywall & Access Gate: Full masterclass video content is reserved for enrolled students
-  if (!isEnrolled) {
-    return (
-      <div className="cosmic-bg min-h-screen py-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4 mb-6">
-            <Link
-              href={`/courses/${course.slug}`}
-              className="text-xs text-slate-400 hover:text-white inline-flex items-center gap-1.5 transition"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Course Overview</span>
-            </Link>
-            <Link
-              href="/courses"
-              className="text-xs text-amber-300 hover:text-white transition"
-            >
-              Explore All Courses
-            </Link>
-          </div>
-
-          <div className="cosmic-card p-8 sm:p-12 rounded-3xl border border-amber-500/40 bg-gradient-to-b from-[#111827] to-[#0a0f1a] text-center shadow-2xl relative overflow-hidden">
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto mb-6 shadow-inner">
-              <Lock className="w-8 h-8" />
-            </div>
-
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-bold uppercase tracking-wider mb-4">
-              <span>Enrollment Required</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-4xl font-black text-white mb-3">
-              {course.title}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto leading-relaxed mb-6">
-              This course material, on-demand video masterclasses, lesson notes, and final certification exam are reserved exclusively for enrolled students.
-            </p>
-
-            <div className="max-w-md mx-auto p-4 rounded-2xl bg-white/[0.03] border border-white/10 text-left space-y-2.5 mb-8 text-xs text-slate-300">
-              <div className="flex items-center gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>All {classes.length || course.totalClasses || 23} On-Demand HD Video Masterclasses</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>2 Bonus Practical Workshops (Career &amp; Marriage Chart Analysis)</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>Downloadable Study Notes &amp; Planetary Reference Guides</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>20-Question Final Certification Exam &amp; Accredited VIAR Certificate</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
-              <Link
-                href={`/checkout/${cohort.id}`}
-                className="gold-button w-full sm:w-auto px-8 py-3.5 rounded-2xl font-black text-sm uppercase tracking-wider shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2"
-              >
-                <span>Enroll Now • ₹{course.priceInr.toLocaleString()} / ${course.priceUsd}</span>
-              </Link>
-              <Link
-                href={`/courses/${course.slug}`}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl font-semibold text-xs text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 transition text-center"
-              >
-                View Syllabus Outline
-              </Link>
-            </div>
-
-            <p className="text-[11px] text-slate-400">
-              Already enrolled?{' '}
-              <Link href={`/login?returnUrl=/dashboard/courses/${cohort.id}`} className="text-amber-400 font-bold hover:underline">
-                Sign in with your registered email &rarr;
-              </Link>
-            </p>
-          </div>
-
-          {/* Locked Curriculum Preview */}
-          <div className="mt-12 space-y-3">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 text-center mb-4">
-              Curriculum Modules Included in this Course
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {classes.map((cls) => (
-                <div key={cls.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-lg bg-white/5 text-slate-400 flex items-center justify-center text-[10px] font-bold">
-                      {cls.classNumber}
-                    </span>
-                    <span className="text-white font-medium line-clamp-1">{cls.title}</span>
-                  </div>
-                  <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
       </div>
     );
   }

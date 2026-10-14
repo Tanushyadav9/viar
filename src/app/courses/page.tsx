@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Sparkles, Clock, CheckCircle2, ArrowRight, BookOpen, Bell, Mail, X, Plus } from 'lucide-react';
+import { Sparkles, Clock, CheckCircle2, ArrowRight, BookOpen, Bell, Mail, X } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Course } from '@/lib/types';
 
@@ -65,32 +65,21 @@ export default function CoursesPage() {
             All courses at Vihangam Institute of Astrology and Research (VIAR) are delivered as structured, self-paced video modules with comprehensive notes, real chart walkthroughs, and verifiable certification.
           </p>
 
-          {/* Level Filter Tabs & Instructor Action */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
-            <div className="flex items-center justify-center gap-2 flex-wrap">
-              {['All', 'Beginner', 'Intermediate', 'Advanced'].map((lvl) => (
-                <button
-                  key={lvl}
-                  onClick={() => setSelectedLevel(lvl)}
-                  className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
-                    selectedLevel === lvl
-                      ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
-                      : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
-                  }`}
-                >
-                  {lvl === 'All' ? 'All Courses' : `${lvl} Level`}
-                </button>
-              ))}
-            </div>
-
-            <Link
-              href="/admin?tab=courses"
-              className="gold-button px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-md shadow-amber-500/20"
-              title="Open Admin Portal to Add or Manage Courses"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Admin: + Add New Course</span>
-            </Link>
+          {/* Level Filter Tabs */}
+          <div className="flex items-center justify-center gap-2 mt-8 flex-wrap">
+            {['All', 'Beginner', 'Intermediate', 'Advanced'].map((lvl) => (
+              <button
+                key={lvl}
+                onClick={() => setSelectedLevel(lvl)}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
+                  selectedLevel === lvl
+                    ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
+                    : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
+                }`}
+              >
+                {lvl === 'All' ? 'All Courses' : `${lvl} Level`}
+              </button>
+            ))}
           </div>
         </div>
 

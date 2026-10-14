@@ -7,12 +7,7 @@ import {
   Calendar,
   ExternalLink,
   Award,
-  CheckCircle2,
-  Edit,
-  Trash2,
-  Video,
-  Save,
-  X,
+  CheckCircle2
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
 import { ViarStore } from '@/lib/store';
@@ -32,21 +27,6 @@ export default function InstructorCoursesPage() {
   const [totalClasses, setTotalClasses] = useState('23');
   const [quizUnlockCondition, setQuizUnlockCondition] = useState<'ALL_SESSIONS_COMPLETED' | 'COHORT_END_DATE_PASSED'>('ALL_SESSIONS_COMPLETED');
   const [isSuccess, setIsSuccess] = useState('');
-
-  // Edit Course Modal State
-  const [isEditingOpen, setIsEditingOpen] = useState(false);
-  const [editingCourseId, setEditingCourseId] = useState('');
-  const [editTitle, setEditTitle] = useState('');
-  const [editTagline, setEditTagline] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editPriceInr, setEditPriceInr] = useState('5100');
-  const [editPriceUsd, setEditPriceUsd] = useState('69');
-  const [editDurationWeeks, setEditDurationWeeks] = useState('8');
-  const [editTotalClasses, setEditTotalClasses] = useState('23');
-  const [editIsPublished, setEditIsPublished] = useState(true);
-
-  // Delete Course State
-  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
 
   useEffect(() => {
     setCourses(ViarStore.getCourses());
@@ -112,61 +92,6 @@ export default function InstructorCoursesPage() {
     setTagline('');
     setDescription('');
     setIsSuccess(`Course "${title}" created successfully!`);
-    setTimeout(() => setIsSuccess(''), 3000);
-  };
-
-  const handleOpenEdit = (crs: Course) => {
-    setEditingCourseId(crs.id);
-    setEditTitle(crs.title);
-    setEditTagline(crs.tagline || '');
-    setEditDescription(crs.description || '');
-    setEditPriceInr(String(crs.priceInr || 5100));
-    setEditPriceUsd(String(crs.priceUsd || 69));
-    setEditDurationWeeks(String(crs.durationWeeks || 8));
-    setEditTotalClasses(String(crs.totalClasses || 23));
-    setEditIsPublished(crs.isPublished !== false);
-    setIsEditingOpen(true);
-  };
-
-  const handleSaveEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCourseId || !editTitle) return;
-
-    const updates: Partial<Course> = {
-      title: editTitle,
-      tagline: editTagline,
-      description: editDescription,
-      priceInr: parseInt(editPriceInr) || 5100,
-      priceUsd: parseInt(editPriceUsd) || 69,
-      durationWeeks: parseInt(editDurationWeeks) || 8,
-      totalClasses: parseInt(editTotalClasses) || 23,
-      isPublished: editIsPublished,
-    };
-
-    ViarStore.updateCourse(editingCourseId, updates);
-    fetch('/api/courses', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: editingCourseId, ...updates }),
-    }).catch((err) => console.warn('Courses API PATCH fallback:', err));
-
-    setCourses(ViarStore.getCourses());
-    setIsEditingOpen(false);
-    setIsSuccess(`Course "${editTitle}" updated successfully!`);
-    setTimeout(() => setIsSuccess(''), 3000);
-  };
-
-  const handleConfirmDelete = () => {
-    if (!courseToDelete) return;
-    const deletedTitle = courseToDelete.title;
-    ViarStore.deleteCourse(courseToDelete.id);
-    fetch(`/api/courses?id=${courseToDelete.id}`, {
-      method: 'DELETE',
-    }).catch((err) => console.warn('Courses API DELETE fallback:', err));
-
-    setCourses(ViarStore.getCourses());
-    setCourseToDelete(null);
-    setIsSuccess(`Course "${deletedTitle}" removed from catalog.`);
     setTimeout(() => setIsSuccess(''), 3000);
   };
 
@@ -413,55 +338,26 @@ export default function InstructorCoursesPage() {
                   </div>
 
                   {/* Actions Column */}
-                  <div className="flex flex-col sm:flex-row lg:flex-col gap-2 shrink-0">
-                    {canManage && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleOpenEdit(crs)}
-                          className="flex-1 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/15 inline-flex items-center justify-center gap-1.5 transition"
-                        >
-                          <Edit className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Edit Course</span>
-                        </button>
-
-                        <button
-                          onClick={() => setCourseToDelete(crs)}
-                          className="px-3 py-2 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 inline-flex items-center justify-center gap-1 transition"
-                          title="Delete course"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-
+                  <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0">
                     <Link
                       href={`/instructor/courses/${crs.id}/cohorts`}
-                      className="gold-button px-4 py-2 rounded-xl text-xs font-bold text-center inline-flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20"
+                      className="gold-button px-4 py-2.5 rounded-xl text-xs font-bold text-center inline-flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20"
                     >
                       <Calendar className="w-3.5 h-3.5" />
                       <span>Manage Cohort Batches</span>
                     </Link>
 
                     <Link
-                      href={`/instructor/courses/${crs.id}/cohorts/cohort-wia-batch-1/sessions`}
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 text-center inline-flex items-center justify-center gap-1.5 transition"
-                    >
-                      <Video className="w-3.5 h-3.5" />
-                      <span>Manage Videos &amp; Lessons</span>
-                    </Link>
-
-                    <Link
                       href={`/instructor/courses/${crs.id}/quiz`}
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-center inline-flex items-center justify-center gap-1.5 transition"
+                      className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/15 text-center inline-flex items-center justify-center gap-1.5 transition"
                     >
                       <Award className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Edit Final Exam</span>
+                      <span>Edit Final Exam (Quiz)</span>
                     </Link>
 
                     <Link
                       href={`/courses/${crs.slug}`}
-                      target="_blank"
-                      className="px-4 py-1.5 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-white text-center inline-flex items-center justify-center gap-1 transition"
+                      className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white text-center inline-flex items-center justify-center gap-1 transition"
                     >
                       <span>Preview Live Page</span>
                       <ExternalLink className="w-3 h-3" />
@@ -473,167 +369,6 @@ export default function InstructorCoursesPage() {
             );
           })}
         </div>
-
-        {/* EDIT COURSE MODAL */}
-        {isEditingOpen && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-[#0f172a] border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl my-8">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Edit className="w-5 h-5 text-amber-400" />
-                  <h3 className="text-lg font-bold text-white">Edit Course Details</h3>
-                </div>
-                <button
-                  onClick={() => setIsEditingOpen(false)}
-                  className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
-                <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Course Title</label>
-                  <input
-                    type="text"
-                    required
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Tagline</label>
-                  <input
-                    type="text"
-                    value={editTagline}
-                    onChange={(e) => setEditTagline(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Description</label>
-                  <textarea
-                    rows={3}
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                  ></textarea>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Tuition (INR ₹)</label>
-                    <input
-                      type="number"
-                      required
-                      value={editPriceInr}
-                      onChange={(e) => setEditPriceInr(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Tuition (USD $)</label>
-                    <input
-                      type="number"
-                      required
-                      value={editPriceUsd}
-                      onChange={(e) => setEditPriceUsd(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Duration (Weeks)</label>
-                    <input
-                      type="number"
-                      value={editDurationWeeks}
-                      onChange={(e) => setEditDurationWeeks(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Total Classes</label>
-                    <input
-                      type="number"
-                      value={editTotalClasses}
-                      onChange={(e) => setEditTotalClasses(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
-                  <div>
-                    <span className="font-semibold text-white block">Course Published</span>
-                    <span className="text-[11px] text-slate-400">Available to prospective students online</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={editIsPublished}
-                    onChange={(e) => setEditIsPublished(e.target.checked)}
-                    className="w-4 h-4 accent-amber-500 rounded"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingOpen(false)}
-                    className="px-4 py-2 rounded-xl text-slate-300 bg-white/5 hover:bg-white/10"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="gold-button px-5 py-2 rounded-xl font-bold flex items-center gap-1.5"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Save Changes</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* DELETE COURSE CONFIRMATION */}
-        {courseToDelete && (
-          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-[#0f172a] border border-red-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto text-red-400">
-                <Trash2 className="w-7 h-7" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-white">Delete Course?</h3>
-                <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                  Are you sure you want to delete <strong className="text-white">&ldquo;{courseToDelete.title}&rdquo;</strong>?
-                  This action will permanently remove it from your institute catalog.
-                </p>
-              </div>
-              <div className="pt-2 flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setCourseToDelete(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmDelete}
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition"
-                >
-                  Yes, Delete Course
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
       </div>
     </div>

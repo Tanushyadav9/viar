@@ -19,8 +19,7 @@ import {
   AlertCircle,
   Share2,
   Globe,
-  BookOpen,
-  Lock,
+  BookOpen
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { ViarStore } from '@/lib/store';
@@ -55,7 +54,6 @@ function StudentDashboardContent() {
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [selectedClassForNotes, setSelectedClassForNotes] = useState<ScheduledClass | null>(null);
   const [userTz, setUserTz] = useState<string>('Asia/Kolkata');
-  const [isEnrolled, setIsEnrolled] = useState(true);
 
   // Exam States
   const [examAnswers, setExamAnswers] = useState<Record<string, number>>({});
@@ -90,8 +88,6 @@ function StudentDashboardContent() {
 
       const cert = ViarStore.getStudentCertificate(user.id, c.id);
       if (cert) setCertificate(cert);
-
-      setIsEnrolled(ViarStore.isUserEnrolled(user, c.id));
     }
 
     setUserTz(ViarStore.getTimezone() || getUserLocalTimezone());
@@ -221,28 +217,6 @@ function StudentDashboardContent() {
                 </p>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Course Enrollment Needed Banner */}
-        {!isEnrolled && (
-          <div className="mb-8 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-amber-500/15 via-[#111827] to-[#0a0f1a] border border-amber-500/40 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[11px] font-bold uppercase tracking-wider">
-                <Lock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Active Enrollment Required</span>
-              </div>
-              <h3 className="text-xl font-bold text-white">Unlock Full Astrology Masterclass</h3>
-              <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
-                You are currently viewing preview materials. Complete your enrollment to stream all 23 on-demand HD video lessons, downloadable study guides, and earn your verified certificate.
-              </p>
-            </div>
-            <Link
-              href={`/checkout/${cohort?.id || 'cohort-wia-batch-1'}`}
-              className="gold-button px-6 py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider shrink-0 text-center shadow-lg shadow-amber-500/25"
-            >
-              Enroll Now • Start Learning
-            </Link>
           </div>
         )}
 

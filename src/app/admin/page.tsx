@@ -89,34 +89,10 @@ export default function AdminPortalPage() {
   const [isNewCourseOpen, setIsNewCourseOpen] = useState(false);
   const [newCourseTitle, setNewCourseTitle] = useState('');
   const [newCourseTagline, setNewCourseTagline] = useState('');
-  const [newCourseDescription, setNewCourseDescription] = useState('');
-  const [newCourseLevel, setNewCourseLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels'>('Beginner');
-  const [newCourseDeliveryMode, setNewCourseDeliveryMode] = useState<'SELF_PACED' | 'LIVE_COHORT'>('SELF_PACED');
-  const [newCoursePriceInr, setNewCoursePriceInr] = useState('5100');
-  const [newCoursePriceUsd, setNewCoursePriceUsd] = useState('69');
+  const [newCoursePriceInr, setNewCoursePriceInr] = useState('19999');
+  const [newCoursePriceUsd, setNewCoursePriceUsd] = useState('249');
   const [newCourseWeeks, setNewCourseWeeks] = useState('8');
-  const [newCourseClasses, setNewCourseClasses] = useState('23');
-  const [newCourseIsPublished, setNewCourseIsPublished] = useState(true);
-
-  // Edit Course Modal
-  const [isEditCourseOpen, setIsEditCourseOpen] = useState(false);
-  const [editingCourseId, setEditingCourseId] = useState('');
-  const [editCourseTitle, setEditCourseTitle] = useState('');
-  const [editCourseTagline, setEditCourseTagline] = useState('');
-  const [editCourseDescription, setEditCourseDescription] = useState('');
-  const [editCourseLevel, setEditCourseLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels'>('Beginner');
-  const [editCourseDeliveryMode, setEditCourseDeliveryMode] = useState<'SELF_PACED' | 'LIVE_COHORT'>('SELF_PACED');
-  const [editCoursePriceInr, setEditCoursePriceInr] = useState('5100');
-  const [editCoursePriceUsd, setEditCoursePriceUsd] = useState('69');
-  const [editCourseWeeks, setEditCourseWeeks] = useState('8');
-  const [editCourseClasses, setEditCourseClasses] = useState('23');
-  const [editCourseIsPublished, setEditCourseIsPublished] = useState(true);
-
-  // Delete Course Confirmation Modal
-  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
-
-  // Toast Notification
-  const [toastMessage, setToastMessage] = useState('');
+  const [newCourseClasses, setNewCourseClasses] = useState('16');
 
   // Add Staff Member Modal
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
@@ -230,52 +206,44 @@ export default function AdminPortalPage() {
     loadAdminData();
   };
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3500);
-  };
-
   const handleCreateCourse = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCourseTitle) return;
 
-    const slug = newCourseTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const slug = newCourseTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const newCourse: Course = {
       id: `course-${Date.now()}`,
       slug,
       title: newCourseTitle,
-      tagline: newCourseTagline || 'Authentic Vedic Astrology masterclass with Acharya Niraj Kumar.',
-      subtitle: `${newCourseClasses} Video Modules • Self-Paced • Graded Quiz & Certificate`,
-      description: newCourseDescription || 'Comprehensive curriculum expanding the course offerings of Vihangam Institute of Astrology and Research.',
-      level: newCourseLevel,
-      deliveryMode: newCourseDeliveryMode,
+      tagline: newCourseTagline || 'Advanced Vedic Jyotish Masterclass',
+      subtitle: `${newCourseClasses} Classes • ${newCourseWeeks}-Week Live Cohort`,
+      description: 'Comprehensive curriculum expanding the multi-course catalog of Viar.in academy.',
+      level: 'Advanced',
       durationWeeks: parseInt(newCourseWeeks) || 8,
-      totalClasses: parseInt(newCourseClasses) || 23,
-      classesPerWeek: 0,
-      priceInr: parseInt(newCoursePriceInr) || 5100,
-      priceUsd: parseInt(newCoursePriceUsd) || 69,
-      originalPriceInr: Math.round((parseInt(newCoursePriceInr) || 5100) * 2),
-      originalPriceUsd: Math.round((parseInt(newCoursePriceUsd) || 69) * 2),
-      isPublished: newCourseIsPublished,
+      totalClasses: parseInt(newCourseClasses) || 16,
+      classesPerWeek: 2,
+      priceInr: parseInt(newCoursePriceInr) || 19999,
+      priceUsd: parseInt(newCoursePriceUsd) || 249,
+      originalPriceInr: Math.round((parseInt(newCoursePriceInr) || 19999) * 1.5),
+      originalPriceUsd: Math.round((parseInt(newCoursePriceUsd) || 249) * 1.5),
+      isPublished: true,
       featured: false,
-      badge: newCourseDeliveryMode === 'SELF_PACED' ? 'Self-Paced Masterclass' : 'Live Cohort',
       instructor: {
         name: 'Acharya Niraj Kumar',
-        title: 'Jyotish Acharya (Bharatiya Vidya Bhavan) | Founder, VIAR & Aapka Astro',
-        bio: 'Acharya Niraj Kumar brings together deep traditional Vedic learning rooted in Baidyanath Dham (Deoghar) and corporate leadership experience. Over 20 years of practice, trusted by students and clients across India and abroad.',
-        experienceYears: 20,
+        title: 'Founder, Aapka Astro & Master Astrologer',
+        bio: 'Leading authentic Vedic Astrology mentor with 15+ years of institutional lineage.',
+        experienceYears: 15,
         avatarUrl: '/images/Acharya_Niraj_Kumar_Headshot.jpg',
         aapkaAstroUrl: 'https://aapkaastro.com',
       },
       highlights: [
-        `${newCourseClasses} Structured on-demand video modules`,
-        'Practical chart interpretations and case studies',
-        'Official accredited VIAR certificate',
+        '23 Structured on-demand video modules',
+        'Direct chart critique and oral exams',
       ],
-      prerequisites: ['Open to all students interested in Vedic astrology'],
+      prerequisites: ['Foundational understanding of 12 rashis and 9 grahas'],
       whatYouWillLearn: [
-        'Fundamental celestial mechanics and planetary karmic patterns',
-        'Practical chart reading blueprint and predictive timing',
+        'Advanced predictive rules',
+        'Special chart yogas and combinations',
       ],
       modules: [],
       faqs: [],
@@ -284,67 +252,7 @@ export default function AdminPortalPage() {
     ViarStore.addCourse(newCourse);
     setIsNewCourseOpen(false);
     setNewCourseTitle('');
-    setNewCourseTagline('');
-    setNewCourseDescription('');
     loadAdminData();
-    showToast(`✓ Course "${newCourse.title}" created successfully!`);
-  };
-
-  const handleOpenEditCourse = (crs: Course) => {
-    setEditingCourseId(crs.id);
-    setEditCourseTitle(crs.title);
-    setEditCourseTagline(crs.tagline || '');
-    setEditCourseDescription(crs.description || '');
-    setEditCourseLevel(crs.level || 'Beginner');
-    setEditCourseDeliveryMode(crs.deliveryMode || 'SELF_PACED');
-    setEditCoursePriceInr(String(crs.priceInr || 5100));
-    setEditCoursePriceUsd(String(crs.priceUsd || 69));
-    setEditCourseWeeks(String(crs.durationWeeks || 8));
-    setEditCourseClasses(String(crs.totalClasses || 23));
-    setEditCourseIsPublished(crs.isPublished !== false);
-    setIsEditCourseOpen(true);
-  };
-
-  const handleSaveEditCourse = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCourseId || !editCourseTitle) return;
-
-    const updates: Partial<Course> = {
-      title: editCourseTitle,
-      tagline: editCourseTagline,
-      description: editCourseDescription,
-      level: editCourseLevel,
-      deliveryMode: editCourseDeliveryMode,
-      priceInr: parseInt(editCoursePriceInr) || 5100,
-      priceUsd: parseInt(editCoursePriceUsd) || 69,
-      durationWeeks: parseInt(editCourseWeeks) || 8,
-      totalClasses: parseInt(editCourseClasses) || 23,
-      isPublished: editCourseIsPublished,
-    };
-
-    ViarStore.updateCourse(editingCourseId, updates);
-    fetch('/api/courses', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: editingCourseId, ...updates }),
-    }).catch((err) => console.warn('Courses API PATCH fallback:', err));
-
-    setIsEditCourseOpen(false);
-    loadAdminData();
-    showToast(`✓ Course "${editCourseTitle}" updated successfully!`);
-  };
-
-  const handleConfirmDeleteCourse = () => {
-    if (!courseToDelete) return;
-    const title = courseToDelete.title;
-    ViarStore.deleteCourse(courseToDelete.id);
-    fetch(`/api/courses?id=${courseToDelete.id}`, {
-      method: 'DELETE',
-    }).catch((err) => console.warn('Courses API DELETE fallback:', err));
-
-    setCourseToDelete(null);
-    loadAdminData();
-    showToast(`✓ Course "${title}" removed from catalog.`);
   };
 
   const handleToggleStaffSection = (userId: string, section: AdminSection) => {
@@ -714,126 +622,54 @@ export default function AdminPortalPage() {
         {/* TAB: COURSES */}
         {isCurrentTabAllowed && activeTab === 'courses' && (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <span>Astrology Course Catalog &amp; Studio</span>
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
-                    {courses.length} {courses.length === 1 ? 'Course' : 'Courses'}
-                  </span>
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Create new astrology masterclasses, update tuition and modules, or attach high-definition video lessons.
+                <h3 className="text-lg font-bold text-white">Multi-Course Catalog Engine</h3>
+                <p className="text-xs text-slate-400">
+                  The platform is built to support infinite courses and cohorts without changing codebase.
                 </p>
               </div>
 
               <button
                 onClick={() => setIsNewCourseOpen(true)}
-                className="gold-button px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 shadow-lg shadow-amber-500/20"
+                className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5"
               >
-                <Plus className="w-4 h-4" />
-                <span>Add New Course</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add New Course to Catalog</span>
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {courses.map((crs) => {
-                const targetCohort = cohorts.find((c) => c.courseId === crs.id) || cohorts[0];
-
-                return (
-                  <div key={crs.id} className="cosmic-card p-6 rounded-2xl border border-white/10 hover:border-amber-500/30 transition flex flex-col justify-between space-y-5">
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${
-                            crs.isPublished !== false
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
-                          }`}>
-                            {crs.isPublished !== false ? 'Published' : 'Draft'}
-                          </span>
-                          <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300">
-                            {crs.level || 'Beginner'}
-                          </span>
-                        </div>
-                        <span className="text-xs text-slate-400">
-                          {crs.durationWeeks || 8} Weeks • {crs.totalClasses || 23} Modules
-                        </span>
-                      </div>
-
-                      <div>
-                        <h4 className="text-base font-bold text-white hover:text-amber-300 transition">
-                          {crs.title}
-                        </h4>
-                        <p className="text-xs text-amber-200/80 italic mt-0.5">
-                          {crs.tagline}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-2 line-clamp-2 leading-relaxed">
-                          {crs.description}
-                        </p>
-                      </div>
-
-                      <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between text-xs">
-                        <div>
-                          <span className="text-slate-400">Tuition:</span>
-                          <span className="font-bold text-white ml-1.5">
-                            ₹{crs.priceInr.toLocaleString()} <span className="text-slate-500">/</span> ${crs.priceUsd}
-                          </span>
-                        </div>
-                        <span className="text-[11px] text-slate-400">
-                          {crs.deliveryMode === 'LIVE_COHORT' ? 'Live Cohort' : 'Self-Paced Lifetime Access'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Action Bar */}
-                    <div className="pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleOpenEditCourse(crs)}
-                          className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 font-semibold flex items-center gap-1.5 transition"
-                          title="Edit course details and pricing"
-                        >
-                          <Edit className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Edit</span>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            if (targetCohort) {
-                              setSelectedCohortId(targetCohort.id);
-                            }
-                            setActiveTab('cohorts');
-                          }}
-                          className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 font-semibold flex items-center gap-1.5 transition"
-                          title="Manage videos and module recordings"
-                        >
-                          <Video className="w-3.5 h-3.5" />
-                          <span>Videos</span>
-                        </button>
-
-                        <button
-                          onClick={() => setCourseToDelete(crs)}
-                          className="px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-semibold flex items-center gap-1 transition"
-                          title="Delete this course from catalog"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Delete</span>
-                        </button>
-                      </div>
-
-                      <Link
-                        href={`/courses/${crs.slug}`}
-                        target="_blank"
-                        className="text-amber-400 font-bold hover:underline inline-flex items-center gap-1 text-[11px]"
-                      >
-                        <span>Preview Page</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </Link>
-                    </div>
+              {courses.map((crs) => (
+                <div key={crs.id} className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-300">
+                      {crs.level}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      {crs.durationWeeks} Weeks • {crs.totalClasses} Classes
+                    </span>
                   </div>
-                );
-              })}
+
+                  <div>
+                    <h4 className="text-base font-bold text-white">{crs.title}</h4>
+                    <p className="text-xs text-slate-400 mt-1">{crs.description}</p>
+                  </div>
+
+                  <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-slate-400">Tuition:</span>
+                      <span className="font-bold text-white ml-1">₹{crs.priceInr.toLocaleString()} / ${crs.priceUsd}</span>
+                    </div>
+                    <Link
+                      href={`/courses/${crs.slug}`}
+                      className="text-amber-400 font-bold hover:underline"
+                    >
+                      View Live Page &rarr;
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -1591,364 +1427,93 @@ export default function AdminPortalPage() {
 
         {/* NEW COURSE MODAL */}
         {isNewCourseOpen && (
-          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-[#0f172a] border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl my-8">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center">
-                    <Plus className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Create New Astrology Course</h3>
-                    <p className="text-[11px] text-slate-400">Add an on-demand masterclass or live cohort to your institute catalog.</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsNewCourseOpen(false)}
-                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#0f172a] border border-amber-500/40 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
+              <h3 className="text-lg font-bold text-white mb-1">Add New Course to Viar.in</h3>
+              <p className="text-xs text-slate-400 mb-6">
+                Expands the multi-course catalog immediately.
+              </p>
 
               <form onSubmit={handleCreateCourse} className="space-y-4 text-xs">
                 <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Course Title *</label>
+                  <label className="block text-slate-300 mb-1 font-semibold">Course Title</label>
                   <input
                     type="text"
                     required
                     value={newCourseTitle}
                     onChange={(e) => setNewCourseTitle(e.target.value)}
-                    placeholder="e.g. Navamsha (D9) Chart Mastery & Marriage Timing"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                    placeholder="e.g. Nakshatra Deep Dive & Muhurta"
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Tagline / Short Hook</label>
+                  <label className="block text-slate-300 mb-1 font-semibold">Tagline</label>
                   <input
                     type="text"
                     value={newCourseTagline}
                     onChange={(e) => setNewCourseTagline(e.target.value)}
-                    placeholder="e.g. Unlock the hidden karmic blueprint of the 9th harmonic chart"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                    placeholder="e.g. Unlock the hidden secrets of the 27 lunar mansions"
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Full Course Description</label>
-                  <textarea
-                    rows={3}
-                    value={newCourseDescription}
-                    onChange={(e) => setNewCourseDescription(e.target.value)}
-                    placeholder="Comprehensive description of the curriculum, methods taught by Acharya Niraj Kumar, and practical benefits..."
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
-                  ></textarea>
-                </div>
-
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Level</label>
-                    <select
-                      value={newCourseLevel}
-                      onChange={(e) => setNewCourseLevel(e.target.value as 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels')}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#1e293b] border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                    >
-                      <option value="Beginner">Beginner</option>
-                      <option value="Intermediate">Intermediate</option>
-                      <option value="Advanced">Advanced</option>
-                      <option value="All Levels">All Levels</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Delivery Mode</label>
-                    <select
-                      value={newCourseDeliveryMode}
-                      onChange={(e) => setNewCourseDeliveryMode(e.target.value as 'SELF_PACED' | 'LIVE_COHORT')}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#1e293b] border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                    >
-                      <option value="SELF_PACED">Self-Paced Masterclass</option>
-                      <option value="LIVE_COHORT">Live Cohort Workshop</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Tuition (INR ₹)</label>
+                    <label className="block text-slate-300 mb-1 font-semibold">Tuition (INR)</label>
                     <input
                       type="number"
-                      required
                       value={newCoursePriceInr}
                       onChange={(e) => setNewCoursePriceInr(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Tuition (USD $)</label>
+                    <label className="block text-slate-300 mb-1 font-semibold">Tuition (USD)</label>
                     <input
                       type="number"
-                      required
                       value={newCoursePriceUsd}
                       onChange={(e) => setNewCoursePriceUsd(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Duration (Weeks)</label>
+                    <label className="block text-slate-300 mb-1 font-semibold">Weeks</label>
                     <input
                       type="number"
                       value={newCourseWeeks}
                       onChange={(e) => setNewCourseWeeks(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Total Video Modules</label>
+                    <label className="block text-slate-300 mb-1 font-semibold">Total Classes</label>
                     <input
                       type="number"
                       value={newCourseClasses}
                       onChange={(e) => setNewCourseClasses(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
                     />
                   </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
-                  <div>
-                    <span className="font-semibold text-white block">Publish Immediately</span>
-                    <span className="text-[11px] text-slate-400">Make visible in public catalog &amp; admissions page</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={newCourseIsPublished}
-                    onChange={(e) => setNewCourseIsPublished(e.target.checked)}
-                    className="w-4 h-4 accent-amber-500 rounded"
-                  />
                 </div>
 
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
                   <button
                     type="button"
                     onClick={() => setIsNewCourseOpen(false)}
-                    className="px-4 py-2.5 rounded-xl text-slate-300 bg-white/5 hover:bg-white/10 transition"
+                    className="px-4 py-2 rounded-xl text-slate-300 bg-white/5 hover:bg-white/10"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="gold-button px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-amber-500/20"
+                    className="gold-button px-5 py-2 rounded-xl font-bold"
                   >
-                    Save &amp; Publish Course
+                    Create Course
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        )}
-
-        {/* EDIT COURSE MODAL */}
-        {isEditCourseOpen && (
-          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-[#0f172a] border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl my-8">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center">
-                    <Edit className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Edit Astrology Course</h3>
-                    <p className="text-[11px] text-slate-400">Update pricing, curriculum details, or publication status.</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsEditCourseOpen(false)}
-                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSaveEditCourse} className="space-y-4 text-xs">
-                <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Course Title *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editCourseTitle}
-                    onChange={(e) => setEditCourseTitle(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Tagline / Short Hook</label>
-                  <input
-                    type="text"
-                    value={editCourseTagline}
-                    onChange={(e) => setEditCourseTagline(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Course Description</label>
-                  <textarea
-                    rows={3}
-                    value={editCourseDescription}
-                    onChange={(e) => setEditCourseDescription(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                  ></textarea>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Level</label>
-                    <select
-                      value={editCourseLevel}
-                      onChange={(e) => setEditCourseLevel(e.target.value as 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels')}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#1e293b] border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                    >
-                      <option value="Beginner">Beginner</option>
-                      <option value="Intermediate">Intermediate</option>
-                      <option value="Advanced">Advanced</option>
-                      <option value="All Levels">All Levels</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Delivery Mode</label>
-                    <select
-                      value={editCourseDeliveryMode}
-                      onChange={(e) => setEditCourseDeliveryMode(e.target.value as 'SELF_PACED' | 'LIVE_COHORT')}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#1e293b] border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                    >
-                      <option value="SELF_PACED">Self-Paced Masterclass</option>
-                      <option value="LIVE_COHORT">Live Cohort Workshop</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Tuition (INR ₹)</label>
-                    <input
-                      type="number"
-                      required
-                      value={editCoursePriceInr}
-                      onChange={(e) => setEditCoursePriceInr(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Tuition (USD $)</label>
-                    <input
-                      type="number"
-                      required
-                      value={editCoursePriceUsd}
-                      onChange={(e) => setEditCoursePriceUsd(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Duration (Weeks)</label>
-                    <input
-                      type="number"
-                      value={editCourseWeeks}
-                      onChange={(e) => setEditCourseWeeks(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Total Video Modules</label>
-                    <input
-                      type="number"
-                      value={editCourseClasses}
-                      onChange={(e) => setEditCourseClasses(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
-                  <div>
-                    <span className="font-semibold text-white block">Course Published</span>
-                    <span className="text-[11px] text-slate-400">Available to prospective students online</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={editCourseIsPublished}
-                    onChange={(e) => setEditCourseIsPublished(e.target.checked)}
-                    className="w-4 h-4 accent-amber-500 rounded"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditCourseOpen(false)}
-                    className="px-4 py-2.5 rounded-xl text-slate-300 bg-white/5 hover:bg-white/10 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="gold-button px-6 py-2.5 rounded-xl font-bold flex items-center gap-1.5 shadow-lg shadow-amber-500/20"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Save Changes</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* DELETE COURSE CONFIRMATION MODAL */}
-        {courseToDelete && (
-          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-[#0f172a] border border-red-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto text-red-400">
-                <Trash2 className="w-7 h-7" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-white">Delete Course?</h3>
-                <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                  Are you sure you want to delete <strong className="text-white">&ldquo;{courseToDelete.title}&rdquo;</strong>?
-                  This will remove the course and its cohort from your public catalog.
-                </p>
-              </div>
-              <div className="pt-2 flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setCourseToDelete(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmDeleteCourse}
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition shadow-lg shadow-red-600/30"
-                >
-                  Yes, Delete Course
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* FLOATING ACTION TOAST */}
-        {toastMessage && (
-          <div className="fixed bottom-6 right-6 z-50 animate-bounce">
-            <div className="px-5 py-3 rounded-2xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 text-xs font-bold shadow-2xl backdrop-blur-md flex items-center gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>{toastMessage}</span>
             </div>
           </div>
         )}
