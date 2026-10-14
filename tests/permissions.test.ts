@@ -540,7 +540,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
     it('verifyRouteAccess correctly parses cryptographic Clerk session tokens in production mode', () => {
       const originalEnv = process.env.NODE_ENV;
       try {
-        process.env.NODE_ENV = 'production';
+        (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
 
         // Helper to generate a realistic Clerk session JWT with cryptographic claims
         const makeClerkToken = (email: string, userId: string) => {
@@ -635,7 +635,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
           'Regular student must be denied on staff section'
         );
       } finally {
-        process.env.NODE_ENV = originalEnv;
+        (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
       }
     });
   });
@@ -645,7 +645,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
 
     it('in production, client-supplied viar_user_role and viar_user_email cookies are strictly ignored', () => {
       try {
-        process.env.NODE_ENV = 'production';
+        (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
 
         const spoofedReq = {
           cookies: {
@@ -665,13 +665,13 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
         assert.strictEqual(result.allowed, false, 'Spoofed cookie should NOT grant access in production');
         assert.strictEqual(result.isOwner, false, 'Spoofed cookie should NOT grant isOwner in production');
       } finally {
-        process.env.NODE_ENV = originalEnv;
+        (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
       }
     });
 
     it('in production, client-supplied x-user-role and x-user-email headers are strictly ignored', () => {
       try {
-        process.env.NODE_ENV = 'production';
+        (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
 
         const spoofedHeaderReq = {
           cookies: {
@@ -691,13 +691,13 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
         assert.strictEqual(result.allowed, false, 'Spoofed header should NOT grant access in production');
         assert.strictEqual(result.isOwner, false, 'Spoofed header should NOT grant isOwner in production');
       } finally {
-        process.env.NODE_ENV = originalEnv;
+        (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
       }
     });
 
     it('in production, verified Clerk session JWT is recognized', () => {
       try {
-        process.env.NODE_ENV = 'production';
+        (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
 
         // Mock valid Clerk JWT payload
         const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
@@ -722,7 +722,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
         assert.strictEqual(result.allowed, true, 'Verified Clerk session should grant access to Site Owner');
         assert.strictEqual(result.isOwner, true);
       } finally {
-        process.env.NODE_ENV = originalEnv;
+        (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
       }
     });
   });

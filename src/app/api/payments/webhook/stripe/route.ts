@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { prisma } from '@/lib/prisma';
 import { env } from '@/config/env';
 import { emailService } from '@/lib/email';
 import { logger } from '@/lib/logger';
@@ -82,6 +83,41 @@ export async function POST(req: NextRequest) {
         studentEmail: email,
         cohortId,
       });
+
+      // Synchronize with database
+      try {
+        let user = await prisma.user.findFirst({ where: { email } });
+        if (!user) {
+          user = await prisma.user.create({
+            data: { name: studentName, email, role: 'STUDENT' },
+          });
+        }
+        const cohort = await prisma.cohort.findUnique({ where: { id: cohortId } });
+        if (cohort) {
+          const payment = await prisma.payment.create({
+            data: {
+              userId: user.id,
+              cohortId,
+              provider: 'STRIPE',
+              providerReference: String(paymentIntentId),
+              amount,
+              currency: 'USD',
+              status: 'COMPLETED',
+            },
+          });
+          await prisma.enrollment.upsert({
+            where: { userId_cohortId: { userId: user.id, cohortId } },
+            update: { amountPaid: amount, currency: 'USD', status: 'ACTIVE', paymentId: payment.id },
+            create: { userId: user.id, cohortId, amountPaid: amount, currency: 'USD', status: 'ACTIVE', paymentId: payment.id },
+          });
+          await prisma.cohort.update({
+            where: { id: cohortId },
+            data: { enrolledCount: { increment: 1 } },
+          });
+        }
+      } catch (dbErr) {
+        logger.error('Stripe webhook DB enrollment sync non-fatal error', dbErr, { service: 'payments' });
+      }
 
       // Dispatch Transactional Emails
       const courseTitle = 'What is Astrology — Foundations of Vedic Astrology';

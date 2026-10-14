@@ -10,10 +10,12 @@ import {
   XCircle,
   ArrowLeft,
   RotateCcw,
-  Lock
+  Lock,
+  ArrowRight
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { FinalTest, Certificate, User, Cohort } from '@/lib/types';
+import { isSiteOwner } from '@/lib/auth/permissions';
 
 export default function FinalQuizPage() {
   const params = useParams();
@@ -31,17 +33,42 @@ export default function FinalQuizPage() {
   const [submitting, setSubmitting] = useState(false);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
 
+  const [isEnrolled, setIsEnrolled] = useState<boolean>(true);
+
   useEffect(() => {
-    const t = ViarStore.getFinalTest(cohortId);
-    setTest(t);
+    const u = ViarStore.getCurrentUser();
+    setCurrentUser(u);
+
+    const isStaff = u?.role === 'ADMIN' || u?.role === 'OWNER' || u?.role === 'INSTRUCTOR' || isSiteOwner(u);
+    const enrollments = ViarStore.getEnrollments();
+    const userEnrolled = Boolean(
+      isStaff ||
+      (u && (
+        u.enrolledCohortIds?.includes(cohortId) ||
+        enrollments.some((e) => e.cohortId === cohortId && (e.studentEmail === u.email || e.studentId === u.id))
+      ))
+    );
+    setIsEnrolled(userEnrolled);
+
+    // Fetch Quiz from Server API (Answer key stripped on server for students)
+    fetch(`/api/quizzes?cohortId=${cohortId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.quiz) {
+          setTest(data.quiz);
+          return;
+        }
+        setTest(ViarStore.getFinalTest(cohortId));
+      })
+      .catch(() => {
+        setTest(ViarStore.getFinalTest(cohortId));
+      });
 
     const c = ViarStore.getCohortById(cohortId) || ViarStore.getCohorts()[0];
     if (c) {
       setCohort(c);
     }
 
-    const u = ViarStore.getCurrentUser();
-    setCurrentUser(u);
     setAnswers({});
   }, [cohortId]);
 
@@ -68,6 +95,7 @@ export default function FinalQuizPage() {
           cohortId,
           studentId: currentUser.id,
           studentEmail: currentUser.email,
+          studentName: currentUser.name,
           answers,
         }),
       });
@@ -78,8 +106,27 @@ export default function FinalQuizPage() {
         setSubmitting(false);
         return;
       }
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setScore(data.score);
+          setPercentage(data.scorePercentage);
+          setIsPassed(data.isPassed);
+          if (data.certificate) {
+            setCertificate(data.certificate);
+            const certs = ViarStore.getCertificates();
+            certs.unshift(data.certificate);
+            if (typeof window !== 'undefined') localStorage.setItem('viar_certificates', JSON.stringify(certs));
+          }
+          setIsSubmitted(true);
+          setSubmitting(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+      }
     } catch {
-      // Continue to local scoring if network unavailable
+      // Fallback to local scoring if server endpoint unreachable
     }
 
     const result = ViarStore.submitFinalTest({
@@ -95,19 +142,6 @@ export default function FinalQuizPage() {
     setIsPassed(result.submission.isPassed);
     if (result.certificate) {
       setCertificate(result.certificate);
-      // Dispatch email notification via certificates API asynchronously
-      fetch('/api/certificates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          studentName: currentUser.name,
-          studentEmail: currentUser.email,
-          courseTitle: 'What is Astrology — Foundations of Vedic Astrology',
-          grade: result.certificate.grade,
-          scorePercentage: result.submission.scorePercentage,
-          certificateCode: result.certificate.verificationCode,
-        }),
-      }).catch(() => {});
     }
     setIsSubmitted(true);
     setSubmitting(false);
@@ -124,6 +158,38 @@ export default function FinalQuizPage() {
     return (
       <div className="min-h-screen cosmic-bg flex items-center justify-center p-4">
         <Sparkles className="w-8 h-8 text-amber-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isEnrolled) {
+    return (
+      <div className="cosmic-bg min-h-screen py-16 px-4">
+        <div className="max-w-lg mx-auto text-center cosmic-card p-8 rounded-3xl border border-amber-500/40 shadow-2xl space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+              Enrollment Required
+            </span>
+            <h2 className="text-2xl font-black text-white mt-1">
+              Certification Exam is Locked
+            </h2>
+            <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+              The 20-question certification assessment and verifiable digital certificate are exclusively reserved for enrolled students of this masterclass.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link
+              href={`/checkout/${cohort.id}`}
+              className="gold-button px-6 py-3 rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-lg shadow-amber-500/20 uppercase tracking-wider"
+            >
+              <span>Enroll Now to Access Course</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }

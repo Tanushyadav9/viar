@@ -93,6 +93,22 @@ function CheckoutContent() {
         paymentMethod: `${provider.name} (${order.orderId})`,
       });
 
+      // Synchronize with database
+      fetch('/api/enrollments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentName: fullName,
+          studentEmail: email,
+          studentPhone: phone,
+          courseId: course?.id || 'course-what-is-astrology',
+          cohortId: cohort?.id || 'cohort-wia-batch-1',
+          amount: price,
+          currency,
+          paymentMethod: `${provider.name} (${order.orderId})`,
+        }),
+      }).catch((err) => console.warn('Enrollment API sync failed:', err));
+
       setIsProcessing(false);
       router.push('/dashboard?enrolled=true');
     }).catch((err) => {

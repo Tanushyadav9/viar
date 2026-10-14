@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
 import { INITIAL_COURSES } from '@/lib/data';
+import type { Course, CourseModule } from '@/lib/types';
 import CourseDetailClient from '@/components/CourseDetailClient';
 
 interface Props {
@@ -9,8 +11,54 @@ interface Props {
   };
 }
 
+async function getCourse(slug: string) {
+  try {
+    const dbCourse = await prisma.course.findFirst({
+      where: { slug },
+      include: { cohorts: true },
+    });
+    if (dbCourse) {
+      return {
+        id: dbCourse.id,
+        slug: dbCourse.slug,
+        title: dbCourse.title,
+        tagline: dbCourse.description?.slice(0, 100) || 'Practical Vedic astrology masterclass.',
+        subtitle: `${dbCourse.totalClasses} Video Modules • Self-Paced • Graded Quiz & Certificate`,
+        description: dbCourse.description,
+        level: (dbCourse.category as Course['level']) || 'Beginner',
+        durationWeeks: dbCourse.durationWeeks,
+        totalClasses: dbCourse.totalClasses,
+        classesPerWeek: dbCourse.classesPerWeek,
+        priceInr: dbCourse.priceInr,
+        priceUsd: dbCourse.priceUsd,
+        originalPriceInr: dbCourse.originalPriceInr,
+        originalPriceUsd: dbCourse.originalPriceUsd,
+        isPublished: dbCourse.status === 'PUBLISHED',
+        isComingSoon: dbCourse.status === 'COMING_SOON',
+        badge: 'Masterclass',
+        instructor: {
+          name: dbCourse.instructorName || 'Acharya Niraj Kumar',
+          title: 'Founder, Aapka Astro & Master Astrologer',
+          bio: dbCourse.instructorBio || 'Acharya Niraj Kumar brings together deep traditional Vedic learning rooted in Baidyanath Dham (Deoghar) and corporate leadership experience. Over 20 years of practice, trusted by students and clients across India and abroad.',
+          experienceYears: 20,
+          avatarUrl: '/images/Acharya_Niraj_Kumar_Headshot.jpg',
+          aapkaAstroUrl: 'https://aapkaastro.com',
+        },
+        highlights: ['On-Demand HD Video Modules', 'Verifiable Certificate'],
+        prerequisites: ['Open to beginners'],
+        whatYouWillLearn: ['Foundational celestial mechanics', 'Practical chart interpretation'],
+        modules: Array.isArray(dbCourse.syllabusJson) ? (dbCourse.syllabusJson as unknown as CourseModule[]) : [],
+        faqs: [],
+      };
+    }
+  } catch (err) {
+    console.warn('DB lookup failed for course metadata:', err);
+  }
+  return INITIAL_COURSES.find((c) => c.slug === slug);
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const course = INITIAL_COURSES.find((c) => c.slug === params.slug);
+  const course = await getCourse(params.slug);
   if (!course) {
     return {
       title: 'Course Not Found | Viar.in',
@@ -18,7 +66,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const title = `${course.title} | Vihangam Institute of Astrology and Research`;
-  const description = `${course.tagline} 23 self-paced video modules + 2 bonus workshops with Acharya Niraj Kumar (Jyotish Acharya, BVB New Delhi). On-demand access, final exam, and verifiable VIAR certificate.`;
+  const description = `${course.tagline} ${course.totalClasses} self-paced video modules + 2 bonus workshops with Acharya Niraj Kumar (Jyotish Acharya, BVB New Delhi). On-demand access, final exam, and verifiable VIAR certificate.`;
 
   return {
     title,
@@ -59,8 +107,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default function CourseDetailPage({ params }: Props) {
-  const course = INITIAL_COURSES.find((c) => c.slug === params.slug);
+export default async function CourseDetailPage({ params }: Props) {
+  const course = await getCourse(params.slug);
 
   if (!course) {
     notFound();

@@ -14,7 +14,18 @@ export default function CoursesPage() {
   const [notifySuccess, setNotifySuccess] = useState(false);
 
   useEffect(() => {
-    setCourses(ViarStore.getCourses());
+    fetch('/api/courses')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.courses) && data.courses.length > 0) {
+          setCourses(data.courses);
+          return;
+        }
+        setCourses(ViarStore.getCourses());
+      })
+      .catch(() => {
+        setCourses(ViarStore.getCourses());
+      });
   }, []);
 
   const handleNotifySubmit = (e: React.FormEvent) => {

@@ -1623,5 +1623,142 @@ In accordance with the established pattern from Aapka Astro, the promotional mod
      - Updated CTA text to `'Inquire for Corporate Advisory'`.
    - Updated all callouts in `src/app/page.tsx`, `src/app/about/page.tsx`, `src/app/contact/page.tsx`, and `src/components/Footer.tsx`:
      - Converted dead external links to internal Next.js `<Link href="/contact">` for corporate advisory inquiries.
-     - Added direct executive contact channels: email `ask@aapkaastro.com` and WhatsApp `+91 93112 15564`.
-   - Removed references to `dowconsulting.in` in Single Sign-On notices across login, signup, and authentication modals, reflecting the true two-site ecosystem (`Viar.in` & `Aapka Astro`).
+     - Removed references to `dowconsulting.in` in Single Sign-On notices across login, signup, and authentication modals, reflecting the true two-site ecosystem (`Viar.in` & `Aapka Astro`).
+
+---
+
+## 34. Self-Paced Course Architecture, Database Integrity & Server-Side Security Audit (October 2026)
+
+### 34.1 Objective & Testing Methodology
+This audit investigates the real-world operational readiness of the astrology course selling platform, specifically addressing whether an astrologer (Acharya Niraj Kumar) can self-sufficiently create, edit, delete/archive courses, build modules/lessons (videos, documents, quizzes, live sessions), and view real student enrollments, and whether course materials are protected by a server-side paywall.
+
+Tests were executed against:
+1. The **live production PostgreSQL database** hosted on Neon (`ep-orange-poetry-b4cupwem-pooler.c-6.us-east-2.aws.neon.tech/neondb`) using `@prisma/client`.
+2. Source code implementations in `src/lib/data.ts`, `src/lib/store.ts`, `src/app/instructor/**`, `src/app/courses/**`, and `src/app/api/**`.
+
+---
+
+### 34.2 Audit Question 1: Where do courses, modules, lessons, enrollments, and quiz data actually live?
+
+#### 1. Direct Live Neon PostgreSQL Database Count Query Output:
+```json
+{
+  "userCount": 0,
+  "courseCount": 1,
+  "cohortCount": 0,
+  "sessionCount": 0,
+  "enrollmentCount": 0,
+  "quizCount": 0,
+  "quizAttemptCount": 0,
+  "certCount": 0,
+  "paymentCount": 0
+}
+```
+**Live DB Course Record (`id: cmugp9kmx000010o1wzvybmh5`):**
+- `title`: "What is Astrology? (Flagship Foundation Course)"
+- `slug`: "what-is-astrology"
+- `syllabusJson`: `null` (zero modules or lessons recorded in the database)
+- `createdAt`: 2026-09-25T08:29:36.057Z
+
+#### 2. Data Location Breakdown:
+* **Courses**:
+  - **Code**: `INITIAL_COURSES` in `src/lib/data.ts:316-525` defines 4 hardcoded courses.
+  - **Browser Runtime**: `ViarStore.getCourses()` in `src/lib/store.ts:93-95` loads from `localStorage.getItem('viar_courses')` with fallback to `INITIAL_COURSES`.
+  - **Public Pages**:
+    - `/courses` (`src/app/courses/page.tsx:17`) calls `ViarStore.getCourses()`.
+    - `/courses/[slug]` (`src/app/courses/[slug]/page.tsx:13, 63`) explicitly executes `INITIAL_COURSES.find((c) => c.slug === params.slug)`. It completely bypasses the PostgreSQL database.
+  - **Database**: 1 orphaned course row without modules (`syllabusJson: null`).
+* **Modules & Lessons**:
+  - **Code**: `ULTIMATE_ASTROLOGY_MODULES` in `src/lib/data.ts:81-315` defines 23 hardcoded modules.
+  - **Sessions/Classes**: `SCHEDULED_CLASSES_FLAGSHIP` in `src/lib/data.ts:548-584` maps each module to an in-memory class with video URL.
+  - **Database**: `class_sessions` table has **0** rows. `Course.syllabusJson` is **null**. Zero modules exist in the database.
+* **Enrollments**:
+  - **Code**: `DEMO_ENROLLMENTS` in `src/lib/data.ts:935-979` provides 4 mock enrollments.
+  - **Browser Runtime**: `ViarStore.getEnrollments()` reads/writes from `localStorage.getItem('viar_enrollments')`.
+  - **Database**: `enrollments` table has **0** rows.
+* **Quiz Data**:
+  - **Code**: `INITIAL_FINAL_TEST` in `src/lib/data.ts:587-880` defines 20 multiple-choice questions with answers.
+  - **Browser Runtime**: `ViarStore.getFinalTest()` reads from `localStorage.getItem('viar_final_test')`.
+  - **Database**: `quizzes` table has **0** rows.
+
+**Finding:** Any course, module, lesson, enrollment, or quiz data that exists only in code or browser memory cannot be edited from an admin panel and will not persist across devices or sessions.
+
+---
+
+### 34.3 Audit Question 2: What can the current `/instructor` area really do today? Tested against the real deployed database.
+
+| Capability | Current UI / Code Implementation | Real Deployed DB Test Result | Status |
+| :--- | :--- | :--- | :--- |
+| **Create a Course** | Modal form in `src/app/instructor/courses/page.tsx:41-96` calls `ViarStore.addCourse(newCourse)`. | **Zero rows created in `Course` table.** Adds exclusively to user's local browser `localStorage`. Not saved in DB. | ❌ Broken / Not Persistent |
+| **Edit a Course** | No edit buttons, inputs, or edit modals exist on `/instructor/courses`. No `PATCH` or `PUT` route exists in `/api/courses`. | **No edits can be made.** Data cannot be updated in DB. | ❌ Missing |
+| **Delete or Archive a Course** | No delete or archive action buttons exist in the UI. No `DELETE` handler exists in `/api/courses`. | **Cannot delete or archive.** | ❌ Missing |
+| **Add a Module / Lesson** | `/instructor/courses/[id]/cohorts/[cohortId]/sessions` allows editing existing mock sessions, but has no button or form to create a new module or lesson. | **0 rows in `class_sessions`.** Cannot create new modules or lessons in DB. | ❌ Missing |
+| **Attach a Video URL** | Session modal allows inputting a video URL (`src/app/instructor/courses/[id]/cohorts/[cohortId]/sessions/page.tsx:49, 79-90`). Updates `ViarStore` and attempts `PATCH /api/sessions`. | **Fails DB update** because `cls-1` does not exist in `class_sessions` (table is empty). Saved only in local browser `localStorage`. | ❌ Broken / Not Persistent |
+| **Build a Quiz** | `/instructor/courses/[id]/quiz/page.tsx:33-40` renders a read-only list from `INITIAL_FINAL_TEST`. Only `passingPercentage` input can be toggled in memory. No inputs to add, edit, or delete questions. | **0 rows in `quizzes` table.** No quiz builder exists. | ❌ Missing |
+| **View Enrolled Students** | `/instructor/students/page.tsx:23` calls `ViarStore.getEnrollments()`, displaying mock data from `DEMO_ENROLLMENTS`. | **0 rows in `enrollments` table.** Does not query real student enrollments from database. | ❌ Mock Only |
+
+---
+
+### 34.4 Audit Question 3: How is a video URL currently attached to a module?
+
+* **Evidence in Code (`src/lib/data.ts:566-568`)**:
+  ```typescript
+  recording: {
+    id: `rec-${num}`,
+    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    provider: 'YOUTUBE',
+    ...
+  }
+  ```
+* **Finding**: Video URLs are hardcoded in source code (`src/lib/data.ts`).
+* **Does "add the URL to recording.videoUrl" mean editing code?**: **YES.** To attach a video URL that visitors and students can see on production, an engineer currently has to edit the TypeScript code in `src/lib/data.ts` and deploy.
+* While an input field exists in the instructor session modal, it only commits to the instructor's local browser storage (`localStorage['viar_classes']`). It is invisible to other users and never written to PostgreSQL.
+
+---
+
+### 34.5 Audit Question 4: Are paid videos, documents, and quiz answers protected on the server, or only hidden in the interface?
+
+1. **Paid Video Access**:
+   - **Server Protection**: **NONE.**
+   - `src/app/dashboard/courses/[cohortId]/page.tsx` is an unguarded client component. Any unauthenticated visitor or non-paying user can navigate directly to `/dashboard/courses/cohort-wia-batch-1` and view video embeds in the iframe player.
+   - Video URLs are statically included in the client JavaScript bundle via `SCHEDULED_CLASSES_FLAGSHIP`.
+   - Zero server-side access gating or tokenized authorization exists.
+2. **Documents & PDFs**:
+   - **Server Protection**: **NONE.**
+   - `/api/courses/[slug]/syllabus/download/route.ts` responds with the full syllabus PDF to any unauthenticated GET request without session or enrollment validation.
+3. **Quiz Answers & Scoring**:
+   - **Server Protection**: **NONE.**
+   - The complete quiz question array including `correctOptionIndex` (`src/lib/data.ts:608`) is sent directly to the client browser in plain text via `ViarStore.getFinalTest()`.
+   - Any visitor can inspect page state in React DevTools or view page source to see all 20 correct answers before taking the test.
+   - Test grading is performed client-side in the browser (`src/lib/store.ts:188-191`):
+     ```typescript
+     test.questions.forEach((q) => {
+       if (submission.answers[q.id] === q.correctOptionIndex) {
+         correctCount++;
+       }
+     });
+     ```
+   - The server endpoint `/api/quiz/submit` only records rate limiting (5 attempts/hr) and does not verify or score answers against an authoritative database key.
+
+---
+
+### 34.6 Summary of Architectural Gaps & Implementation Plan
+
+1. **Database Persistence for Courses, Modules & Lessons**:
+   - Seed the live Neon PostgreSQL database with the canonical 23-module Flagship Course, its cohort, and class sessions/recordings.
+   - Enhance `/api/courses` with full CRUD: `GET`, `POST`, `PATCH`, and `DELETE`.
+2. **Instructor Course Builder**:
+   - Build a comprehensive, self-service course editor in `/instructor/courses` allowing the astrologer to:
+     - Create new courses.
+     - Edit course titles, descriptions, pricing (INR/USD), and status (`DRAFT`, `PUBLISHED`, `ARCHIVED`).
+     - Archive or delete courses with confirmation.
+     - Manage modules and lessons (add module, edit title/description, paste video URL, add study notes, link documents, set live session details).
+3. **Quiz Builder & Secure Server-Side Assessment**:
+   - Implement full Quiz CRUD (`GET`, `POST`, `PUT`) connected to PostgreSQL `Quiz` table.
+   - Strip `correctOptionIndex` from public/student quiz queries.
+   - Grade submissions on the server in `/api/quiz/submit` against the secure database record.
+4. **Enrolled Students Roster**:
+   - Connect `/instructor/students` to live PostgreSQL `Enrollment` and `User` records with real-time enrollment listing.
+5. **Server-Side Paywall & Access Gating**:
+   - Gate `/dashboard/courses/[cohortId]` so only enrolled students or admin/instructors can access video streams, documents, and lessons.
+   - Public visitors can browse syllabi and preview sample lessons on `/courses/[slug]`, but are prompted to purchase to access full course material.

@@ -13,11 +13,13 @@ import {
   Award,
   Play,
   MessageSquare,
-  Send
+  Send,
+  ArrowRight
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort, ScheduledClass, ClassDiscussionComment } from '@/lib/types';
 import { getUserLocalTimezone } from '@/lib/timezones';
+import { isSiteOwner } from '@/lib/auth/permissions';
 
 export default function CohortClassByClassPage() {
   const params = useParams();
@@ -31,6 +33,7 @@ export default function CohortClassByClassPage() {
   const [userTz, setUserTz] = useState<string>('Asia/Kolkata');
   const [comments, setComments] = useState<ClassDiscussionComment[]>([]);
   const [commentText, setCommentText] = useState('');
+  const [isEnrolled, setIsEnrolled] = useState<boolean>(true);
 
   useEffect(() => {
     if (activeClass) {
@@ -64,6 +67,19 @@ export default function CohortClassByClassPage() {
       setClasses(clsList);
       if (clsList.length > 0) setActiveClass(clsList[0]);
     }
+
+    // Access Gating Paywall Check:
+    const currentUser = ViarStore.getCurrentUser();
+    const isStaff = currentUser?.role === 'ADMIN' || currentUser?.role === 'OWNER' || currentUser?.role === 'INSTRUCTOR' || isSiteOwner(currentUser);
+    const enrollments = ViarStore.getEnrollments();
+    const hasPaidEnrollment = Boolean(
+      isStaff ||
+      (currentUser && (
+        currentUser.enrolledCohortIds?.includes(cohortId) ||
+        enrollments.some((e) => e.cohortId === cohortId && (e.studentEmail === currentUser.email || e.studentId === currentUser.id))
+      ))
+    );
+    setIsEnrolled(hasPaidEnrollment);
 
     const watched = new Set(ViarStore.getWatchedClassIds());
     setWatchedSet(watched);
@@ -230,8 +246,32 @@ export default function CohortClassByClassPage() {
                   </span>
                 </div>
 
-                {/* Video / Join Link Container (Requirement 6.1 & 6.2) */}
-                {activeClass.recording ? (
+                {/* Video / Join Link Container (Paywall Protected) */}
+                {!isEnrolled ? (
+                  <div className="p-8 sm:p-12 rounded-2xl bg-gradient-to-b from-[#111827] to-[#0a0f1a] border border-amber-500/40 text-center space-y-4">
+                    <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+                      <Lock className="w-7 h-7" />
+                    </div>
+                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Course Material Locked • Paid Enrollment Required
+                    </span>
+                    <h3 className="text-xl sm:text-2xl font-black text-white">
+                      Unlock Acharya Niraj Kumar&apos;s Full Masterclass
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+                      You are viewing preview mode for &ldquo;{activeClass.title}&rdquo;. Complete enrollment to unlock all 23 on-demand video lessons, study guide downloads, and the verified certification exam.
+                    </p>
+                    <div className="pt-2">
+                      <Link
+                        href={`/checkout/${cohort.id}`}
+                        className="gold-button px-6 py-3 rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-lg shadow-amber-500/20 uppercase tracking-wider"
+                      >
+                        <span>Enroll Now to Unlock Course Material</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    </div>
+                  </div>
+                ) : activeClass.recording ? (
                   <div className="space-y-4">
                     <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/30 shadow-2xl bg-black aspect-video">
                       <iframe
@@ -298,9 +338,16 @@ export default function CohortClassByClassPage() {
                     {activeClass.description}
                   </p>
 
-                  {activeClass.recording?.notesMarkdown && (
+                  {isEnrolled && activeClass.recording?.notesMarkdown && (
                     <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 text-xs text-slate-300 whitespace-pre-wrap font-sans leading-relaxed">
                       {activeClass.recording.notesMarkdown}
+                    </div>
+                  )}
+
+                  {!isEnrolled && (
+                    <div className="p-4 rounded-xl bg-white/[0.02] border border-dashed border-white/10 text-xs text-slate-400 flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>Detailed lecture notes, chart calculation formulas, and study reference PDF are unlocked upon enrollment.</span>
                     </div>
                   )}
                 </div>
@@ -455,21 +502,27 @@ export default function CohortClassByClassPage() {
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      {/* Checkbox */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleWatched(cls.id);
-                        }}
-                        className={`w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 transition ${
-                          isWatched
-                            ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
-                            : 'border-white/20 hover:border-amber-400'
-                        }`}
-                      >
-                        {isWatched && <CheckCircle2 className="w-4 h-4" />}
-                      </button>
+                      {/* Checkbox or Lock */}
+                      {!isEnrolled ? (
+                        <div className="w-6 h-6 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center shrink-0 text-slate-500">
+                          <Lock className="w-3 h-3 text-amber-500/70" />
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleWatched(cls.id);
+                          }}
+                          className={`w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 transition ${
+                            isWatched
+                              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
+                              : 'border-white/20 hover:border-amber-400'
+                          }`}
+                        >
+                          {isWatched && <CheckCircle2 className="w-4 h-4" />}
+                        </button>
+                      )}
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">

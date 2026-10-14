@@ -33,16 +33,35 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    const targetCourse = ViarStore.getCourseBySlug(slug);
-    if (targetCourse) {
-      setCourse(targetCourse);
-      const cohorts = ViarStore.getCohorts(targetCourse.id);
-      if (cohorts.length > 0) {
-        setCohort(cohorts[0]);
+    function loadFallback() {
+      const targetCourse = ViarStore.getCourseBySlug(slug);
+      if (targetCourse) {
+        setCourse(targetCourse);
+        const cohorts = ViarStore.getCohorts(targetCourse.id);
+        if (cohorts.length > 0) {
+          setCohort(cohorts[0]);
+        }
+      } else {
+        setNotFound(true);
       }
-    } else {
-      setNotFound(true);
     }
+
+    fetch(`/api/courses/${slug}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.course) {
+          setCourse(data.course);
+          if (data.course.cohorts && data.course.cohorts.length > 0) {
+            setCohort(data.course.cohorts[0]);
+          } else {
+            const cohorts = ViarStore.getCohorts(data.course.id);
+            if (cohorts.length > 0) setCohort(cohorts[0]);
+          }
+        } else {
+          loadFallback();
+        }
+      })
+      .catch(() => loadFallback());
 
     // Auto-detect currency based on geo-IP / timezone, overridable by the user
     const savedCurrency = (typeof window !== 'undefined' ? localStorage.getItem('viar_user_currency') : null) as 'INR' | 'USD' | null;
