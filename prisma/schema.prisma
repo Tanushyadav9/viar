@@ -25,7 +25,15 @@ enum UserRole {
 enum CourseStatus {
   DRAFT
   PUBLISHED
+  ARCHIVED
   COMING_SOON
+}
+
+enum LessonType {
+  VIDEO
+  DOCUMENT
+  LIVE_SESSION
+  QUIZ
 }
 
 enum CohortStatus {
@@ -64,7 +72,6 @@ enum StaffAccessLevel {
 
 // ------------------------------------------------------------------------------
 // 1. USER
-// Role: student / instructor / admin, name, email, phone, country, created_at
 // ------------------------------------------------------------------------------
 
 model User {
@@ -84,6 +91,7 @@ model User {
   // Relations
   enrollments      Enrollment[]
   sessionProgress  SessionProgress[]
+  lessonProgress   LessonProgress[]
   quizAttempts     QuizAttempt[]
   certificates     Certificate[]
   payments         Payment[]
@@ -98,50 +106,119 @@ model User {
 
 // ------------------------------------------------------------------------------
 // 2. COURSE
-// Title, slug, description, syllabus_json, category, thumbnail_url, status: draft/published/coming_soon
 // ------------------------------------------------------------------------------
 
 model Course {
-  id               String         @id @default(cuid())
-  title            String
-  slug             String         @unique
-  description      String         @db.Text
-  syllabusJson     Json?          @map("syllabus_json")
-  category         String         @default("Vedic Astrology")
-  thumbnailUrl     String?        @map("thumbnail_url")
-  status           CourseStatus   @default(PUBLISHED)
+  id                 String         @id @default(cuid())
+  title              String
+  slug               String         @unique
+  shortDescription   String?        @db.Text @map("short_description")
+  description        String         @db.Text
+  syllabusJson       Json?          @map("syllabus_json")
+  level              String         @default("Beginner")
+  category           String         @default("Vedic Astrology")
+  thumbnailUrl       String?        @map("thumbnail_url")
+  status             CourseStatus   @default(PUBLISHED)
+  isComingSoon       Boolean        @default(false) @map("is_coming_soon")
+  displayOrder       Int            @default(0) @map("display_order")
+  passingScore       Int            @default(70) @map("passing_score")
+  certificateEnabled Boolean        @default(true) @map("certificate_enabled")
 
   // Tuition & Pricing details
-  priceInr         Int            @default(5100) @map("price_inr")
-  priceUsd         Int            @default(69) @map("price_usd")
-  originalPriceInr Int            @default(11000) @map("original_price_inr")
-  originalPriceUsd Int            @default(129) @map("original_price_usd")
+  priceInr           Int            @default(5100) @map("price_inr")
+  priceUsd           Int?           @map("price_usd")
+  originalPriceInr   Int            @default(11000) @map("original_price_inr")
+  originalPriceUsd   Int?           @map("original_price_usd")
 
   // Curricular helpers
-  durationWeeks    Int            @default(9) @map("duration_weeks")
-  totalClasses     Int            @default(23) @map("total_classes")
-  classesPerWeek   Int            @default(2) @map("classes_per_week")
+  durationWeeks      Int            @default(9) @map("duration_weeks")
+  totalClasses       Int            @default(23) @map("total_classes")
+  classesPerWeek     Int            @default(2) @map("classes_per_week")
 
   // Instructor metadata
-  instructorName   String         @default("Acharya Niraj Kumar") @map("instructor_name")
-  instructorBio    String?        @db.Text @map("instructor_bio")
+  instructorName     String         @default("Acharya Niraj Kumar") @map("instructor_name")
+  instructorBio      String?        @db.Text @map("instructor_bio")
 
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
 
   // Relations
-  cohorts          Cohort[]
-  quizzes          Quiz[]
-  testimonials     Testimonial[]
+  modules            Module[]
+  quizzes            Quiz[]
+  cohorts            Cohort[]
+  enrollments        Enrollment[]
+  certificates       Certificate[]
+  testimonials       Testimonial[]
+  activityLogs       ActivityLog[]
 
   @@index([slug])
   @@index([status])
+  @@index([displayOrder])
   @@map("courses")
 }
 
 // ------------------------------------------------------------------------------
+// 2A. MODULE
+// Belongs to a course, title, description, order
+// ------------------------------------------------------------------------------
+
+model Module {
+  id          String   @id @default(cuid())
+  courseId    String   @map("course_id")
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?  @db.Text
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  lessons     Lesson[]
+
+  @@index([courseId])
+  @@index([order])
+  @@map("modules")
+}
+
+// ------------------------------------------------------------------------------
+// 2B. LESSON
+// Belongs to a module, order, type (VIDEO / DOCUMENT / LIVE_SESSION / QUIZ), title, description, isFreePreview
+// ------------------------------------------------------------------------------
+
+model Lesson {
+  id               String          @id @default(cuid())
+  moduleId         String          @map("module_id")
+  module           Module          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  order            Int             @default(0)
+  type             LessonType      @default(VIDEO)
+  title            String
+  description      String?         @db.Text
+  isFreePreview    Boolean         @default(false) @map("is_free_preview")
+
+  // Type-specific fields
+  videoProviderId  String?         @map("video_provider_id") // Cloudflare Stream UID or YouTube/Vimeo ID or URL
+  videoDuration    Int?            @map("video_duration") // duration in seconds
+  documentKey      String?         @map("document_key") // Cloudflare R2 / S3 file key
+  documentUrl      String?         @map("document_url") // Public or presigned preview URL
+  liveScheduledAt  DateTime?       @map("live_scheduled_at")
+  liveTimezone     String?         @default("Asia/Kolkata") @map("live_timezone")
+  liveJoinLink     String?         @map("live_join_link")
+
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  quizzes          Quiz[]
+  progress         LessonProgress[]
+
+  @@index([moduleId])
+  @@index([order])
+  @@index([type])
+  @@map("lessons")
+}
+
+// ------------------------------------------------------------------------------
 // 3. COHORT
-// Course_id, batch_name, start_date, capacity, status: upcoming/active/completed
 // ------------------------------------------------------------------------------
 
 model Cohort {
@@ -174,8 +251,6 @@ model Cohort {
 
 // ------------------------------------------------------------------------------
 // 4. CLASS SESSION
-// Cohort_id, session_number, title, scheduled_at (store in UTC, render per-user timezone),
-// join_link, recording_url, recording_uploaded_at
 // ------------------------------------------------------------------------------
 
 model ClassSession {
@@ -185,7 +260,7 @@ model ClassSession {
   sessionNumber       Int               @map("session_number")
   title               String
   description         String?           @db.Text
-  scheduledAt         DateTime          @map("scheduled_at") // stored in UTC; rendered per user timezone
+  scheduledAt         DateTime          @map("scheduled_at")
   durationMinutes     Int               @default(90) @map("duration_minutes")
   meetingPlatform     MeetingPlatform   @default(ZOOM) @map("meeting_platform")
   joinLink            String?           @map("join_link")
@@ -210,31 +285,34 @@ model ClassSession {
 }
 
 // ------------------------------------------------------------------------------
-// 5. ENROLLMENT
-// User_id, cohort_id, payment_id, enrolled_at, amount_paid, currency
+// 5. ENROLLMENT (Never cascade deleted)
 // ------------------------------------------------------------------------------
 
 model Enrollment {
-  id             String      @id @default(cuid())
-  userId         String      @map("user_id")
-  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cohortId       String      @map("cohort_id")
-  cohort         Cohort      @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  paymentId      String?     @map("payment_id")
-  payment        Payment?    @relation(fields: [paymentId], references: [id], onDelete: SetNull)
-  enrolledAt     DateTime    @default(now()) @map("enrolled_at")
-  amountPaid     Int         @map("amount_paid")
-  currency       String      @default("INR")
-  status         String      @default("ACTIVE") // ACTIVE | CANCELLED | REFUNDED
-  bundleId       String?     @map("bundle_id")
-  bundle         CourseBundle? @relation(fields: [bundleId], references: [id], onDelete: SetNull)
-  discountAmount Int?        @default(0) @map("discount_amount")
+  id               String        @id @default(cuid())
+  userId           String        @map("user_id")
+  user             User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  courseId         String?       @map("course_id")
+  course           Course?       @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  cohortId         String?       @map("cohort_id")
+  cohort           Cohort?       @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  paymentId        String?       @map("payment_id")
+  payment          Payment?      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  enrolledAt       DateTime      @default(now()) @map("enrolled_at")
+  amountPaid       Int           @map("amount_paid")
+  currency         String        @default("INR")
+  paymentReference String?       @map("payment_reference")
+  status           String        @default("ACTIVE") // ACTIVE | ARCHIVED | REVOKED | REFUNDED
+  bundleId         String?       @map("bundle_id")
+  bundle           CourseBundle? @relation(fields: [bundleId], references: [id], onDelete: SetNull)
+  discountAmount   Int?          @default(0) @map("discount_amount")
 
-  createdAt      DateTime    @default(now()) @map("created_at")
-  updatedAt      DateTime    @updatedAt @map("updated_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
 
   @@unique([userId, cohortId])
   @@index([userId])
+  @@index([courseId])
   @@index([cohortId])
   @@index([paymentId])
   @@index([bundleId])
@@ -242,8 +320,7 @@ model Enrollment {
 }
 
 // ------------------------------------------------------------------------------
-// 6. SESSION PROGRESS
-// User_id, class_session_id, watched_at — used for simple completion checklist, not a strict attendance gate
+// 6. SESSION PROGRESS & LESSON PROGRESS
 // ------------------------------------------------------------------------------
 
 model SessionProgress {
@@ -261,41 +338,98 @@ model SessionProgress {
   @@map("session_progress")
 }
 
+model LessonProgress {
+  id             String    @id @default(cuid())
+  userId         String    @map("user_id")
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId       String    @map("lesson_id")
+  lesson         Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completed      Boolean   @default(false)
+  watchedSeconds Int       @default(0) @map("watched_seconds")
+  completedAt    DateTime? @map("completed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@index([lessonId])
+  @@map("lesson_progress")
+}
+
 // ------------------------------------------------------------------------------
-// 7. QUIZ
-// Course_id, questions_json
+// 7. QUIZ, QUESTION, OPTION
+// Scoped to a lesson or course final exam
 // ------------------------------------------------------------------------------
 
 model Quiz {
   id                String         @id @default(cuid())
-  courseId          String         @map("course_id")
-  course            Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId          String?        @map("course_id")
+  course            Course?        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonId          String?        @map("lesson_id")
+  lesson            Lesson?        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   title             String         @default("Certification Assessment")
-  questionsJson     Json           @map("questions_json")
+  questionsJson     Json?          @map("questions_json") // for legacy fallback
   passingPercentage Int            @default(70) @map("passing_percentage")
+  passingScore      Int            @default(70) @map("passing_score")
+  attemptsAllowed   Int            @default(3) @map("attempts_allowed")
   durationMinutes   Int            @default(45) @map("duration_minutes")
+  isFinalExam       Boolean        @default(false) @map("is_final_exam")
 
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
 
   // Relations
+  questions         Question[]
   attempts          QuizAttempt[]
 
   @@index([courseId])
+  @@index([lessonId])
   @@map("quizzes")
+}
+
+model Question {
+  id          String   @id @default(cuid())
+  quizId      String   @map("quiz_id")
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  order       Int      @default(0)
+  question    String   @db.Text
+  explanation String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  options     Option[]
+
+  @@index([quizId])
+  @@index([order])
+  @@map("questions")
+}
+
+model Option {
+  id         String   @id @default(cuid())
+  questionId String   @map("question_id")
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  order      Int      @default(0)
+  text       String   @db.Text
+  isCorrect  Boolean  @default(false) @map("is_correct")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([questionId])
+  @@index([order])
+  @@map("options")
 }
 
 // ------------------------------------------------------------------------------
 // 8. QUIZ ATTEMPT
-// User_id, cohort_id, score, passed boolean, attempted_at
 // ------------------------------------------------------------------------------
 
 model QuizAttempt {
   id              String      @id @default(cuid())
   userId          String      @map("user_id")
   user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cohortId        String      @map("cohort_id")
-  cohort          Cohort      @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  cohortId        String?     @map("cohort_id")
+  cohort          Cohort?     @relation(fields: [cohortId], references: [id], onDelete: SetNull)
   quizId          String?     @map("quiz_id")
   quiz            Quiz?       @relation(fields: [quizId], references: [id], onDelete: SetNull)
   score           Int
@@ -315,15 +449,16 @@ model QuizAttempt {
 
 // ------------------------------------------------------------------------------
 // 9. CERTIFICATE
-// User_id, cohort_id, certificate_number, issued_at, verify_slug
 // ------------------------------------------------------------------------------
 
 model Certificate {
   id                String      @id @default(cuid())
   userId            String      @map("user_id")
-  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cohortId          String      @map("cohort_id")
-  cohort            Cohort      @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  user              User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  courseId          String?     @map("course_id")
+  course            Course?     @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  cohortId          String?     @map("cohort_id")
+  cohort            Cohort?     @relation(fields: [cohortId], references: [id], onDelete: SetNull)
   certificateNumber String      @unique @map("certificate_number")
   verifySlug        String      @unique @map("verify_slug")
   issuedAt          DateTime    @default(now()) @map("issued_at")
@@ -331,11 +466,13 @@ model Certificate {
   // Certificate metadata
   grade             String?     // Distinction | Merit | Pass
   scorePercentage   Int?        @map("score_percentage")
+  pdfUrl            String?     @map("pdf_url")
   instructorName    String      @default("Acharya Niraj Kumar") @map("instructor_name")
 
   createdAt         DateTime    @default(now()) @map("created_at")
 
   @@index([userId])
+  @@index([courseId])
   @@index([cohortId])
   @@index([certificateNumber])
   @@index([verifySlug])
@@ -344,20 +481,19 @@ model Certificate {
 }
 
 // ------------------------------------------------------------------------------
-// 10. PAYMENT
-// User_id, cohort_id, provider: razorpay/stripe, provider_reference, amount, currency, status
+// 10. PAYMENT (Never cascade deleted)
 // ------------------------------------------------------------------------------
 
 model Payment {
   id                String          @id @default(cuid())
   userId            String          @map("user_id")
-  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cohortId          String          @map("cohort_id")
-  cohort            Cohort          @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  user              User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  cohortId          String?         @map("cohort_id")
+  cohort            Cohort?         @relation(fields: [cohortId], references: [id], onDelete: Restrict)
   provider          PaymentProvider
-  providerReference String          @map("provider_reference") // Razorpay payment_id / Stripe PaymentIntent ID
-  amount            Int             // stored in lowest currency denomination or base unit
-  currency          String          @default("INR") // INR | USD
+  providerReference String          @map("provider_reference")
+  amount            Int
+  currency          String          @default("INR")
   discountAmount    Int?            @default(0) @map("discount_amount")
   status            PaymentStatus   @default(PENDING)
 
@@ -377,17 +513,16 @@ model Payment {
 
 // ------------------------------------------------------------------------------
 // 11. TESTIMONIAL
-// User_id nullable for placeholder content, course_id, rating, comment, published boolean
 // ------------------------------------------------------------------------------
 
 model Testimonial {
   id               String       @id @default(cuid())
-  userId           String?      @map("user_id") // nullable for initial placeholder reviews
+  userId           String?      @map("user_id")
   user             User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
   courseId         String       @map("course_id")
   course           Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   authorName       String       @map("author_name")
-  authorLocation   String?      @map("author_location") // e.g. "Bengaluru, India" or "London, UK"
+  authorLocation   String?      @map("author_location")
   authorAvatarUrl  String?      @map("author_avatar_url")
   rating           Int          @default(5)
   comment          String       @db.Text
@@ -405,7 +540,6 @@ model Testimonial {
 
 // ------------------------------------------------------------------------------
 // 12. NOTIFY ME LEAD
-// For upcoming/coming-soon course registration and waitlists
 // ------------------------------------------------------------------------------
 
 model NotifyMeLead {
@@ -423,7 +557,6 @@ model NotifyMeLead {
 
 // ------------------------------------------------------------------------------
 // 13. COURSE BUNDLE
-// Bundled courses offering percentage or fixed tuition discounts
 // ------------------------------------------------------------------------------
 
 model CourseBundle {
@@ -448,13 +581,12 @@ model CourseBundle {
 
 // ------------------------------------------------------------------------------
 // 14. STAFF PERMISSION (Per-Section RBAC)
-// Granular permissions per admin section for staff members without Clerk Org costs
 // ------------------------------------------------------------------------------
 
 model StaffPermission {
   id              String           @id @default(cuid())
   userId          String           @map("user_id")
-  section         String           // Specific admin area: courses, cohorts, students, quizzes, analytics, payments
+  section         String
   accessLevel     StaffAccessLevel @default(MANAGE) @map("access_level")
   grantedByUserId String           @map("granted_by_user_id")
   grantedAt       DateTime         @default(now()) @map("granted_at")
@@ -470,5 +602,28 @@ model StaffPermission {
   @@map("staff_permissions")
 }
 
+// ------------------------------------------------------------------------------
+// 15. ACTIVITY & AUDIT LOG
+// Records all administrative actions, who changed what, and required reasons
+// ------------------------------------------------------------------------------
 
+model ActivityLog {
+  id         String   @id @default(cuid())
+  userId     String?  @map("user_id")
+  userEmail  String?  @map("user_email")
+  userName   String?  @map("user_name")
+  action     String   @map("action")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  reason     String?  @db.Text
+  details    Json?
+  createdAt  DateTime @default(now()) @map("created_at")
 
+  courseId   String?  @map("course_id")
+  course     Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("activity_logs")
+}

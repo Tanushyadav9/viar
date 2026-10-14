@@ -8,7 +8,8 @@ import {
   BookOpen,
   Users,
   BarChart3,
-  ArrowRight
+  ArrowRight,
+  History
 } from 'lucide-react';
 
 export default function InstructorNav() {
@@ -19,6 +20,7 @@ export default function InstructorNav() {
     { label: 'Courses & Cohorts', href: '/instructor/courses', icon: BookOpen },
     { label: 'Students & Roster', href: '/instructor/students', icon: Users },
     { label: 'Revenue & Analytics', href: '/instructor/analytics', icon: BarChart3 },
+    { label: 'Activity Log', href: '/instructor/activity', icon: History },
   ];
 
   return (

@@ -9,7 +9,7 @@ import {
 const prisma = new PrismaClient();
 
 async function seed() {
-  console.log('Seeding Neon PostgreSQL Database with Full Course Curriculum...');
+  console.log('Seeding Neon PostgreSQL Database with Granular Relational Curriculum...');
 
   // 1. Seed or Update Flagship Course
   const flagshipData = INITIAL_COURSES[0];
@@ -17,33 +17,48 @@ async function seed() {
     where: { slug: flagshipData.slug },
     update: {
       title: flagshipData.title,
+      shortDescription: flagshipData.tagline || 'Comprehensive self-paced foundational masterclass in Vedic astrology.',
       description: flagshipData.description,
+      level: flagshipData.level || 'Beginner',
       category: flagshipData.level || 'Vedic Astrology',
-      priceInr: flagshipData.priceInr,
-      priceUsd: flagshipData.priceUsd,
-      originalPriceInr: flagshipData.originalPriceInr,
-      originalPriceUsd: flagshipData.originalPriceUsd,
-      durationWeeks: flagshipData.durationWeeks,
-      totalClasses: flagshipData.totalClasses,
-      classesPerWeek: flagshipData.classesPerWeek,
+      thumbnailUrl: '/images/Acharya_Niraj_Kumar_Headshot.jpg',
+      priceInr: flagshipData.priceInr || 5100,
+      priceUsd: flagshipData.priceUsd || 69,
+      originalPriceInr: flagshipData.originalPriceInr || 11000,
+      originalPriceUsd: flagshipData.originalPriceUsd || 129,
+      durationWeeks: flagshipData.durationWeeks || 9,
+      totalClasses: flagshipData.totalClasses || 23,
+      classesPerWeek: flagshipData.classesPerWeek || 2,
       status: 'PUBLISHED',
+      isComingSoon: false,
+      displayOrder: 1,
+      passingScore: 70,
+      certificateEnabled: true,
       instructorName: flagshipData.instructor.name,
       instructorBio: flagshipData.instructor.bio,
       syllabusJson: ULTIMATE_ASTROLOGY_MODULES as any,
     },
     create: {
+      id: 'course-what-is-astrology',
       title: flagshipData.title,
       slug: flagshipData.slug,
+      shortDescription: flagshipData.tagline || 'Comprehensive self-paced foundational masterclass in Vedic astrology.',
       description: flagshipData.description,
+      level: flagshipData.level || 'Beginner',
       category: flagshipData.level || 'Vedic Astrology',
-      priceInr: flagshipData.priceInr,
-      priceUsd: flagshipData.priceUsd,
-      originalPriceInr: flagshipData.originalPriceInr,
-      originalPriceUsd: flagshipData.originalPriceUsd,
-      durationWeeks: flagshipData.durationWeeks,
-      totalClasses: flagshipData.totalClasses,
-      classesPerWeek: flagshipData.classesPerWeek,
+      thumbnailUrl: '/images/Acharya_Niraj_Kumar_Headshot.jpg',
+      priceInr: flagshipData.priceInr || 5100,
+      priceUsd: flagshipData.priceUsd || 69,
+      originalPriceInr: flagshipData.originalPriceInr || 11000,
+      originalPriceUsd: flagshipData.originalPriceUsd || 129,
+      durationWeeks: flagshipData.durationWeeks || 9,
+      totalClasses: flagshipData.totalClasses || 23,
+      classesPerWeek: flagshipData.classesPerWeek || 2,
       status: 'PUBLISHED',
+      isComingSoon: false,
+      displayOrder: 1,
+      passingScore: 70,
+      certificateEnabled: true,
       instructorName: flagshipData.instructor.name,
       instructorBio: flagshipData.instructor.bio,
       syllabusJson: ULTIMATE_ASTROLOGY_MODULES as any,
@@ -58,7 +73,9 @@ async function seed() {
       where: { slug: c.slug },
       update: {
         title: c.title,
+        shortDescription: c.tagline,
         description: c.description,
+        level: c.level || 'Beginner',
         category: c.level || 'Vedic Astrology',
         priceInr: c.priceInr,
         priceUsd: c.priceUsd,
@@ -68,14 +85,21 @@ async function seed() {
         totalClasses: c.totalClasses,
         classesPerWeek: c.classesPerWeek,
         status: c.isComingSoon ? 'COMING_SOON' : 'PUBLISHED',
+        isComingSoon: Boolean(c.isComingSoon),
+        displayOrder: i + 1,
+        passingScore: 70,
+        certificateEnabled: true,
         instructorName: c.instructor.name,
         instructorBio: c.instructor.bio,
         syllabusJson: (c.modules || []) as any,
       },
       create: {
+        id: c.id,
         title: c.title,
         slug: c.slug,
+        shortDescription: c.tagline,
         description: c.description,
+        level: c.level || 'Beginner',
         category: c.level || 'Vedic Astrology',
         priceInr: c.priceInr,
         priceUsd: c.priceUsd,
@@ -85,6 +109,10 @@ async function seed() {
         totalClasses: c.totalClasses,
         classesPerWeek: c.classesPerWeek,
         status: c.isComingSoon ? 'COMING_SOON' : 'PUBLISHED',
+        isComingSoon: Boolean(c.isComingSoon),
+        displayOrder: i + 1,
+        passingScore: 70,
+        certificateEnabled: true,
         instructorName: c.instructor.name,
         instructorBio: c.instructor.bio,
         syllabusJson: (c.modules || []) as any,
@@ -116,10 +144,91 @@ async function seed() {
   });
   console.log(`✓ Flagship Cohort synced: ${cohort.id}`);
 
-  // 4. Upsert 23 Class Sessions (Modules & Lessons)
+  // 4. Seed Granular Relational Modules and Lessons for Flagship Course
+  console.log('Seeding 23 Relational Modules and Lessons...');
+  for (const mod of ULTIMATE_ASTROLOGY_MODULES) {
+    const moduleId = `mod-${mod.moduleNumber}`;
+    const session = SCHEDULED_CLASSES_FLAGSHIP.find((s) => s.sessionNumber === mod.moduleNumber);
+
+    // Upsert Module
+    const dbModule = await prisma.module.upsert({
+      where: { id: moduleId },
+      update: {
+        courseId: flagshipCourse.id,
+        title: mod.title,
+        description: mod.description,
+        order: mod.moduleNumber,
+      },
+      create: {
+        id: moduleId,
+        courseId: flagshipCourse.id,
+        title: mod.title,
+        description: mod.description,
+        order: mod.moduleNumber,
+      },
+    });
+
+    // Lesson 1: On-Demand Video Lesson
+    const videoLessonId = `lesson-${mod.moduleNumber}-vid`;
+    const isFreePreview = mod.moduleNumber === 1; // Module 1 is Free Preview for prospective students
+    await prisma.lesson.upsert({
+      where: { id: videoLessonId },
+      update: {
+        moduleId: dbModule.id,
+        order: 1,
+        type: 'VIDEO',
+        title: `${mod.title} — Video Lecture`,
+        description: `Complete HD lecture session covering: ${mod.keyTopics?.join(', ') || mod.description || 'Core concepts'}.`,
+        isFreePreview,
+        videoProviderId: session?.recording?.videoUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        videoDuration: (mod.durationMinutes || 75) * 60,
+      },
+      create: {
+        id: videoLessonId,
+        moduleId: dbModule.id,
+        order: 1,
+        type: 'VIDEO',
+        title: `${mod.title} — Video Lecture`,
+        description: `Complete HD lecture session covering: ${mod.keyTopics?.join(', ') || mod.description || 'Core concepts'}.`,
+        isFreePreview,
+        videoProviderId: session?.recording?.videoUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        videoDuration: (mod.durationMinutes || 75) * 60,
+      },
+    });
+
+    // Lesson 2: Study Guide Document / Notes
+    const docLessonId = `lesson-${mod.moduleNumber}-doc`;
+    await prisma.lesson.upsert({
+      where: { id: docLessonId },
+      update: {
+        moduleId: dbModule.id,
+        order: 2,
+        type: 'DOCUMENT',
+        title: `Module ${mod.moduleNumber} Study Guide & Reference Notes`,
+        description: `Downloadable reference material and study guide for Module ${mod.moduleNumber}.`,
+        isFreePreview,
+        documentKey: `curriculum/module-${mod.moduleNumber}-guide.pdf`,
+        documentUrl: `https://viar.in/resources/module-${mod.moduleNumber}-study-notes.pdf`,
+      },
+      create: {
+        id: docLessonId,
+        moduleId: dbModule.id,
+        order: 2,
+        type: 'DOCUMENT',
+        title: `Module ${mod.moduleNumber} Study Guide & Reference Notes`,
+        description: `Downloadable reference material and study guide for Module ${mod.moduleNumber}.`,
+        isFreePreview,
+        documentKey: `curriculum/module-${mod.moduleNumber}-guide.pdf`,
+        documentUrl: `https://viar.in/resources/module-${mod.moduleNumber}-study-notes.pdf`,
+      },
+    });
+  }
+  console.log(`✓ Seeded ${ULTIMATE_ASTROLOGY_MODULES.length} modules and 46 lessons`);
+
+  // 5. Upsert 23 Class Sessions (for backward compatibility with cohort schedule)
   for (const session of SCHEDULED_CLASSES_FLAGSHIP) {
     const sNumber = session.sessionNumber ?? 1;
-    const s = await prisma.classSession.upsert({
+    await prisma.classSession.upsert({
       where: {
         cohortId_sessionNumber: {
           cohortId: cohort.id,
@@ -151,16 +260,19 @@ async function seed() {
       },
     });
   }
-  console.log(`✓ Synced ${SCHEDULED_CLASSES_FLAGSHIP.length} class sessions / module lessons`);
+  console.log(`✓ Synced ${SCHEDULED_CLASSES_FLAGSHIP.length} class sessions`);
 
-  // 5. Upsert Quiz
-  const quiz = await prisma.quiz.upsert({
+  // 6. Upsert Course Final Exam Quiz, Relational Questions, and Options
+  const finalQuiz = await prisma.quiz.upsert({
     where: { id: 'test-wia-final' },
     update: {
       courseId: flagshipCourse.id,
       title: INITIAL_FINAL_TEST.title,
       passingPercentage: INITIAL_FINAL_TEST.passingPercentage,
+      passingScore: INITIAL_FINAL_TEST.passingPercentage,
       durationMinutes: INITIAL_FINAL_TEST.durationMinutes,
+      attemptsAllowed: 3,
+      isFinalExam: true,
       questionsJson: INITIAL_FINAL_TEST.questions as any,
     },
     create: {
@@ -168,22 +280,84 @@ async function seed() {
       courseId: flagshipCourse.id,
       title: INITIAL_FINAL_TEST.title,
       passingPercentage: INITIAL_FINAL_TEST.passingPercentage,
+      passingScore: INITIAL_FINAL_TEST.passingPercentage,
       durationMinutes: INITIAL_FINAL_TEST.durationMinutes,
+      attemptsAllowed: 3,
+      isFinalExam: true,
       questionsJson: INITIAL_FINAL_TEST.questions as any,
     },
   });
-  console.log(`✓ Flagship Quiz synced: ${quiz.id} with ${INITIAL_FINAL_TEST.questions.length} questions`);
+
+  console.log(`Seeding 20 Questions and Options for Quiz ${finalQuiz.id}...`);
+  for (const q of INITIAL_FINAL_TEST.questions) {
+    const questionRecord = await prisma.question.upsert({
+      where: { id: q.id },
+      update: {
+        quizId: finalQuiz.id,
+        order: q.questionNumber,
+        question: q.question,
+        explanation: q.explanation,
+      },
+      create: {
+        id: q.id,
+        quizId: finalQuiz.id,
+        order: q.questionNumber,
+        question: q.question,
+        explanation: q.explanation,
+      },
+    });
+
+    // Seed 4 options per question
+    for (let optIdx = 0; optIdx < q.options.length; optIdx++) {
+      const optionId = `${q.id}-opt-${optIdx}`;
+      const optionText = q.options[optIdx];
+      const isCorrect = optIdx === q.correctOptionIndex;
+
+      await prisma.option.upsert({
+        where: { id: optionId },
+        update: {
+          questionId: questionRecord.id,
+          order: optIdx + 1,
+          text: optionText,
+          isCorrect,
+        },
+        create: {
+          id: optionId,
+          questionId: questionRecord.id,
+          order: optIdx + 1,
+          text: optionText,
+          isCorrect,
+        },
+      });
+    }
+  }
+  console.log(`✓ Seeded ${INITIAL_FINAL_TEST.questions.length} questions and 80 options for certification quiz`);
 
   // Print final summary counts
-  const [courseCount, cohortCount, sessionCount, quizCount] = await Promise.all([
+  const [courseCount, moduleCount, lessonCount, questionCount, optionCount, cohortCount, sessionCount, quizCount] = await Promise.all([
     prisma.course.count(),
+    prisma.module.count(),
+    prisma.lesson.count(),
+    prisma.question.count(),
+    prisma.option.count(),
     prisma.cohort.count(),
     prisma.classSession.count(),
     prisma.quiz.count(),
   ]);
 
-  console.log('\n--- SEED COMPLETE ---');
-  console.log({ courseCount, cohortCount, sessionCount, quizCount });
+  console.log('\n=======================================');
+  console.log('✓ RELATIONAL SEED COMPLETE TO NEON DB');
+  console.log('=======================================');
+  console.log({
+    courses: courseCount,
+    modules: moduleCount,
+    lessons: lessonCount,
+    quizzes: quizCount,
+    questions: questionCount,
+    options: optionCount,
+    cohorts: cohortCount,
+    sessions: sessionCount,
+  });
 }
 
 seed()

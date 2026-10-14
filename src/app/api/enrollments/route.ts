@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { DEMO_ENROLLMENTS } from '@/lib/data';
 import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
 import { emailService } from '@/lib/email';
 import { env } from '@/config/env';
@@ -25,21 +24,56 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
+    const courseId = searchParams.get('courseId');
     const cohortId = searchParams.get('cohortId');
+    const searchQuery = searchParams.get('q') || '';
 
     try {
+      const whereClause: Record<string, unknown> = {};
+      if (cohortId && cohortId !== 'all') whereClause.cohortId = cohortId;
+      if (courseId && courseId !== 'all') {
+        whereClause.OR = [
+          { courseId },
+          { cohort: { courseId } },
+        ];
+      }
+
+      if (searchQuery.trim()) {
+        whereClause.user = {
+          OR: [
+            { name: { contains: searchQuery.trim(), mode: 'insensitive' } },
+            { email: { contains: searchQuery.trim(), mode: 'insensitive' } },
+            { phone: { contains: searchQuery.trim(), mode: 'insensitive' } },
+          ],
+        };
+      }
+
       const dbEnrollments = await prisma.enrollment.findMany({
-        where: cohortId ? { cohortId } : {},
+        where: whereClause,
         include: {
           user: {
             include: {
               certificates: true,
-              quizAttempts: true,
+              quizAttempts: { orderBy: { attemptedAt: 'desc' } },
+              lessonProgress: { where: { completed: true } },
+            },
+          },
+          course: {
+            include: {
+              modules: {
+                include: { lessons: true },
+              },
             },
           },
           cohort: {
             include: {
-              course: true,
+              course: {
+                include: {
+                  modules: {
+                    include: { lessons: true },
+                  },
+                },
+              },
             },
           },
           payment: true,
@@ -49,8 +83,27 @@ export async function GET(req: NextRequest) {
 
       if (dbEnrollments && dbEnrollments.length > 0) {
         const roster = dbEnrollments.map((enr) => {
-          const cert = enr.user.certificates.find((c) => c.cohortId === enr.cohortId);
-          const attempt = enr.user.quizAttempts.find((a) => a.cohortId === enr.cohortId);
+          const associatedCourse = enr.course || enr.cohort?.course;
+          const totalLessonsInCourse = associatedCourse?.modules?.reduce((acc: number, m: { lessons: unknown[] }) => acc + m.lessons.length, 0) || associatedCourse?.totalClasses || 23;
+          const completedLessonsCount = enr.user.lessonProgress.length;
+          const progressPercentage = Math.min(100, Math.round((completedLessonsCount / Math.max(1, totalLessonsInCourse)) * 100));
+
+          const cert = enr.user.certificates.find((c) => c.cohortId === enr.cohortId || c.courseId === associatedCourse?.id);
+          const latestAttempt = enr.user.quizAttempts[0];
+
+          let quizResult = 'Not Attempted';
+          if (latestAttempt) {
+            quizResult = latestAttempt.passed
+              ? `Passed (${latestAttempt.scorePercentage}%)`
+              : `Failed (${latestAttempt.scorePercentage}%)`;
+          }
+
+          let certificateStatus = 'Not Issued';
+          if (cert) {
+            certificateStatus = `Issued (${cert.certificateNumber})`;
+          } else if (latestAttempt && latestAttempt.passed) {
+            certificateStatus = 'Eligible (Exam Passed)';
+          }
 
           return {
             id: enr.id,
@@ -58,18 +111,22 @@ export async function GET(req: NextRequest) {
             studentName: enr.user.name,
             studentEmail: enr.user.email || 'student@example.com',
             studentPhone: enr.user.phone || '',
-            courseId: enr.cohort.courseId,
-            courseTitle: enr.cohort.course.title,
-            cohortId: enr.cohortId,
-            cohortBatchName: enr.cohort.batchName,
+            courseId: associatedCourse?.id || 'course-what-is-astrology',
+            courseTitle: associatedCourse?.title || 'The Ultimate Vedic Astrology Course',
+            cohortId: enr.cohortId || '',
+            cohortBatchName: enr.cohort?.batchName || 'Self-Paced Access',
             enrolledAt: enr.enrolledAt.toISOString(),
-            paymentStatus: enr.status === 'ACTIVE' ? 'PAID' : enr.status,
-            paymentAmount: enr.amountPaid,
+            amountPaid: enr.amountPaid,
             currency: enr.currency,
-            paymentMethod: enr.payment?.provider ? `${enr.payment.provider} (${enr.payment.providerReference})` : 'Online Checkout',
-            watchedClassesCount: enr.cohort.course.totalClasses,
-            totalClassesCount: enr.cohort.course.totalClasses,
-            quizScorePercentage: attempt ? attempt.scorePercentage : undefined,
+            paymentStatus: enr.status,
+            paymentReference: enr.paymentReference || enr.payment?.providerReference || 'Direct Tuition',
+            paymentMethod: enr.payment?.provider ? `${enr.payment.provider}` : 'Offline / Manual Direct',
+            progressPercentage,
+            completedLessonsCount,
+            totalLessonsCount: totalLessonsInCourse,
+            quizResult,
+            quizScorePercentage: latestAttempt?.scorePercentage,
+            certificateStatus,
             certificateId: cert?.id,
             certificateVerificationCode: cert?.certificateNumber,
           };
@@ -81,8 +138,7 @@ export async function GET(req: NextRequest) {
       console.warn('Database query for enrollments failed:', (dbError as Error).message);
     }
 
-    // Fallback to demo roster if database is completely empty
-    return NextResponse.json({ success: true, enrollments: DEMO_ENROLLMENTS });
+    return NextResponse.json({ success: true, enrollments: [] });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: (error as Error).message },
@@ -93,6 +149,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = extractAuthFromRequest(req);
     const body = await req.json();
     const {
       studentName,
@@ -129,14 +186,17 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // 2. Ensure cohort exists
+      // 2. Ensure course and cohort exist
+      let targetCourse = await prisma.course.findFirst({
+        where: courseId ? { OR: [{ id: courseId }, { slug: courseId }] } : {},
+      });
+
       let cohort = await prisma.cohort.findFirst({
-        where: cohortId ? { id: cohortId } : (courseId ? { courseId } : {}),
+        where: cohortId ? { id: cohortId } : (targetCourse ? { courseId: targetCourse.id } : {}),
         include: { course: true },
       });
 
       if (!cohort) {
-        // Fallback to first available cohort
         cohort = await prisma.cohort.findFirst({
           include: { course: true },
         });
@@ -149,71 +209,83 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      targetCourse = cohort.course;
+
       // 3. Create payment record
-      const paymentRef = paymentMethod ? `pay_${paymentMethod.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}` : `pay_manual_${Date.now()}`;
+      const paymentRef = paymentMethod ? `pay_${paymentMethod.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}` : `pay_direct_${Date.now()}`;
       const payment = await prisma.payment.create({
         data: {
           userId: user.id,
           cohortId: cohort.id,
           provider: currency === 'USD' ? 'STRIPE' : 'RAZORPAY',
           providerReference: paymentRef,
-          amount: Number(amount) || cohort.course.priceInr || 5100,
+          amount: Number(amount) || targetCourse.priceInr || 5100,
           currency: currency || 'INR',
           status: 'COMPLETED',
         },
       });
 
-      // 4. Create or upsert enrollment
-      const enrollment = await prisma.enrollment.upsert({
-        where: {
-          userId_cohortId: {
-            userId: user.id,
-            cohortId: cohort.id,
-          },
-        },
-        update: {
-          amountPaid: Number(amount) || cohort.course.priceInr || 5100,
-          currency: currency || 'INR',
-          status: 'ACTIVE',
-          paymentId: payment.id,
-        },
-        create: {
+      // 4. Create enrollment (historical price paid is immutably stored in amountPaid)
+      const enrollment = await prisma.enrollment.create({
+        data: {
           userId: user.id,
+          courseId: targetCourse.id,
           cohortId: cohort.id,
-          amountPaid: Number(amount) || cohort.course.priceInr || 5100,
+          paymentId: payment.id,
+          paymentReference: paymentRef,
+          amountPaid: Number(amount) || targetCourse.priceInr || 5100,
           currency: currency || 'INR',
           status: 'ACTIVE',
-          paymentId: payment.id,
         },
       });
 
-      // 5. Increment enrolled count
+      // 5. Update cohort enrolled count
       await prisma.cohort.update({
         where: { id: cohort.id },
         data: { enrolledCount: { increment: 1 } },
       });
 
-      // 6. Send transactional confirmation email
+      // 6. Log enrollment creation
+      await prisma.activityLog.create({
+        data: {
+          userId: auth.userId || user.id,
+          userEmail: auth.userEmail || user.email,
+          action: 'ENROLLMENT_CREATED',
+          entityType: 'ENROLLMENT',
+          entityId: enrollment.id,
+          courseId: targetCourse.id,
+          reason: `Student enrollment created via ${paymentMethod || 'Checkout'}`,
+          details: { studentName, studentEmail, amountPaid: enrollment.amountPaid, currency: enrollment.currency },
+        },
+      });
+
+      // 7. Dispatch Welcome Enrollment Email
       await emailService.sendEnrollmentConfirmation({
         studentName,
         studentEmail,
-        courseTitle: cohort.course.title,
+        courseTitle: targetCourse.title,
         cohortName: cohort.batchName,
-        startDate: 'Immediate Lifetime Access',
-        amountPaid: Number(amount) || cohort.course.priceInr,
-        currency: currency === 'USD' ? '$' : '₹',
-        dashboardUrl: `${env.appUrl}/dashboard`,
-      }).catch((err) => console.error('[Enrollments API] Email dispatch failed:', err));
+        startDate: cohort.startDate.toLocaleDateString('en-IN', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        }),
+        amountPaid: enrollment.amountPaid,
+        currency: enrollment.currency,
+        dashboardUrl: `${env.appUrl}/dashboard/courses/${cohort.id}`,
+      }).catch((err) => console.error('Enrollment email failed:', err));
 
       return NextResponse.json({
         success: true,
-        message: 'Enrollment recorded successfully in database',
-        enrollment,
+        enrollmentId: enrollment.id,
+        userId: user.id,
+        cohortId: cohort.id,
+        courseId: targetCourse.id,
       }, { status: 201 });
-    } catch (dbError) {
-      console.warn('Database write for enrollment failed:', (dbError as Error).message);
+    } catch (dbErr) {
+      console.error('Enrollment DB creation error:', dbErr);
       return NextResponse.json(
-        { success: false, error: (dbError as Error).message },
+        { success: false, error: (dbErr as Error).message },
         { status: 500 }
       );
     }

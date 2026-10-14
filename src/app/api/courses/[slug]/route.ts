@@ -3,14 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { INITIAL_COURSES } from '@/lib/data';
 import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
 
-function formatCourse(course: Record<string, unknown> | null) {
-  if (!course) return null;
-  return {
-    ...course,
-    modules: Array.isArray(course.syllabusJson) ? course.syllabusJson : [],
-  };
-}
-
 export async function GET(
   req: NextRequest,
   { params }: { params: { slug: string } }
@@ -23,11 +15,42 @@ export async function GET(
         where: {
           OR: [{ slug: slugOrId }, { id: slugOrId }],
         },
-        include: { cohorts: true, quizzes: true },
+        include: {
+          cohorts: true,
+          modules: {
+            orderBy: { order: 'asc' },
+            include: {
+              lessons: {
+                orderBy: { order: 'asc' },
+              },
+            },
+          },
+          quizzes: {
+            include: {
+              questions: {
+                orderBy: { order: 'asc' },
+                include: {
+                  options: {
+                    orderBy: { order: 'asc' },
+                  },
+                },
+              },
+            },
+          },
+          enrollments: {
+            select: { id: true },
+          },
+        },
       });
 
       if (course) {
-        return NextResponse.json({ success: true, course: formatCourse(course) });
+        return NextResponse.json({
+          success: true,
+          course: {
+            ...course,
+            enrollmentCount: course.enrollments.length,
+          },
+        });
       }
     } catch (dbError) {
       console.warn('Database query for course slug failed:', (dbError as Error).message);
@@ -75,25 +98,7 @@ export async function PATCH(
     const slugOrId = params.slug;
     const body = await req.json();
 
-    const dataToUpdate: Record<string, unknown> = {};
-    if (body.title !== undefined) dataToUpdate.title = body.title;
-    if (body.description !== undefined) dataToUpdate.description = body.description;
-    if (body.priceInr !== undefined) dataToUpdate.priceInr = Number(body.priceInr);
-    if (body.priceUsd !== undefined) dataToUpdate.priceUsd = Number(body.priceUsd);
-    if (body.originalPriceInr !== undefined) dataToUpdate.originalPriceInr = Number(body.originalPriceInr);
-    if (body.originalPriceUsd !== undefined) dataToUpdate.originalPriceUsd = Number(body.originalPriceUsd);
-    if (body.durationWeeks !== undefined) dataToUpdate.durationWeeks = Number(body.durationWeeks);
-    if (body.totalClasses !== undefined) dataToUpdate.totalClasses = Number(body.totalClasses);
-    if (body.status !== undefined) dataToUpdate.status = body.status;
-    if (body.category !== undefined) dataToUpdate.category = body.category;
-    if (body.instructorName !== undefined) dataToUpdate.instructorName = body.instructorName;
-    if (body.instructorBio !== undefined) dataToUpdate.instructorBio = body.instructorBio;
-    if (body.modules !== undefined) {
-      dataToUpdate.syllabusJson = body.modules;
-      dataToUpdate.totalClasses = body.modules.length;
-    }
-
-    // Find course first to obtain its id
+    // 1. Find course first to obtain its current data
     const existing = await prisma.course.findFirst({
       where: {
         OR: [{ slug: slugOrId }, { id: slugOrId }],
@@ -104,14 +109,98 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
     }
 
+    // 2. Rule: Publish and unpublish are OWNER-ONLY
+    if (body.status !== undefined && body.status !== existing.status) {
+      if (!accessCheck.isOwner) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Forbidden: Publishing, unpublishing, or archiving courses is restricted to the Site Owner only.',
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    // 3. Rule: Price changes are OWNER-ONLY
+    const isPriceAltered =
+      (body.priceInr !== undefined && Number(body.priceInr) !== existing.priceInr) ||
+      (body.priceUsd !== undefined && Number(body.priceUsd) !== existing.priceUsd) ||
+      (body.originalPriceInr !== undefined && Number(body.originalPriceInr) !== existing.originalPriceInr) ||
+      (body.originalPriceUsd !== undefined && Number(body.originalPriceUsd) !== existing.originalPriceUsd);
+
+    if (isPriceAltered && !accessCheck.isOwner) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Forbidden: Modifying course tuition prices is restricted to the Site Owner only.',
+        },
+        { status: 403 }
+      );
+    }
+
+    // 4. Build update payload
+    const dataToUpdate: Record<string, unknown> = {};
+    if (body.title !== undefined) dataToUpdate.title = body.title;
+    if (body.shortDescription !== undefined) dataToUpdate.shortDescription = body.shortDescription;
+    if (body.description !== undefined) dataToUpdate.description = body.description;
+    if (body.level !== undefined) dataToUpdate.level = body.level;
+    if (body.category !== undefined) dataToUpdate.category = body.category;
+    if (body.thumbnailUrl !== undefined) dataToUpdate.thumbnailUrl = body.thumbnailUrl;
+    if (body.displayOrder !== undefined) dataToUpdate.displayOrder = Number(body.displayOrder);
+    if (body.passingScore !== undefined) dataToUpdate.passingScore = Number(body.passingScore);
+    if (body.certificateEnabled !== undefined) dataToUpdate.certificateEnabled = Boolean(body.certificateEnabled);
+    if (body.isComingSoon !== undefined) dataToUpdate.isComingSoon = Boolean(body.isComingSoon);
+    if (body.status !== undefined) dataToUpdate.status = body.status;
+
+    // Owner price updates (never changes existing historical enrollments)
+    if (body.priceInr !== undefined) dataToUpdate.priceInr = Number(body.priceInr);
+    if (body.priceUsd !== undefined) dataToUpdate.priceUsd = Number(body.priceUsd);
+    if (body.originalPriceInr !== undefined) dataToUpdate.originalPriceInr = Number(body.originalPriceInr);
+    if (body.originalPriceUsd !== undefined) dataToUpdate.originalPriceUsd = Number(body.originalPriceUsd);
+
+    if (body.durationWeeks !== undefined) dataToUpdate.durationWeeks = Number(body.durationWeeks);
+    if (body.totalClasses !== undefined) dataToUpdate.totalClasses = Number(body.totalClasses);
+    if (body.instructorName !== undefined) dataToUpdate.instructorName = body.instructorName;
+    if (body.instructorBio !== undefined) dataToUpdate.instructorBio = body.instructorBio;
+    if (body.syllabusJson !== undefined) dataToUpdate.syllabusJson = body.syllabusJson;
+
     const updated = await prisma.course.update({
       where: { id: existing.id },
       data: dataToUpdate,
-      include: { cohorts: true },
+      include: {
+        modules: {
+          orderBy: { order: 'asc' },
+          include: {
+            lessons: {
+              orderBy: { order: 'asc' },
+            },
+          },
+        },
+        quizzes: true,
+      },
     });
 
-    return NextResponse.json({ success: true, course: formatCourse(updated) });
+    // 5. Record Activity Log
+    await prisma.activityLog.create({
+      data: {
+        userId: auth.userId || null,
+        userEmail: auth.userEmail || null,
+        action: body.status !== undefined && body.status !== existing.status ? `COURSE_STATUS_${body.status}` : 'COURSE_UPDATED',
+        entityType: 'COURSE',
+        entityId: updated.id,
+        courseId: updated.id,
+        reason: body.status !== undefined && body.status !== existing.status ? `Status changed from ${existing.status} to ${body.status}` : 'Course details modified',
+        details: {
+          updatedFields: Object.keys(dataToUpdate),
+          title: updated.title,
+        },
+      },
+    });
+
+    return NextResponse.json({ success: true, course: updated });
   } catch (error) {
+    console.error('Course update error:', error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
       { status: 500 }
@@ -131,11 +220,12 @@ export async function DELETE(
       requiredLevel: 'MANAGE',
     });
 
-    if (!accessCheck.allowed) {
+    // Rule: Delete is Owner-only
+    if (!accessCheck.isOwner) {
       return NextResponse.json(
         {
           success: false,
-          error: accessCheck.reason || "Forbidden: MANAGE permission on 'courses' required.",
+          error: 'Forbidden: Deleting or archiving courses is strictly restricted to the Site Owner only.',
         },
         { status: 403 }
       );
@@ -143,11 +233,17 @@ export async function DELETE(
 
     const slugOrId = params.slug;
     const { searchParams } = new URL(req.url);
-    const archive = searchParams.get('archive') === 'true';
+    const requestedArchive = searchParams.get('archive') === 'true';
 
     const existing = await prisma.course.findFirst({
       where: {
         OR: [{ slug: slugOrId }, { id: slugOrId }],
+      },
+      include: {
+        enrollments: true,
+        cohorts: {
+          include: { enrollments: true },
+        },
       },
     });
 
@@ -155,24 +251,117 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
     }
 
-    if (archive) {
+    // Count all direct or cohort enrollments
+    const directEnrollments = existing.enrollments.length;
+    const cohortEnrollments = existing.cohorts.reduce((acc, c) => acc + c.enrollments.length, 0);
+    const totalEnrollments = directEnrollments + cohortEnrollments;
+
+    // Rule: "Deleting is protected. A course or module with enrolled students can only be archived, never hard-deleted.
+    // Archived courses disappear from the public catalog but remain fully accessible to students who already bought them.
+    // Hard delete is allowed only for drafts with zero enrollments, and only after a clear confirmation."
+    if (totalEnrollments > 0) {
+      // Hard delete is completely disallowed!
+      if (!requestedArchive) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Course "${existing.title}" has ${totalEnrollments} enrolled scholar(s) and cannot be hard-deleted. It can only be archived to preserve student access.`,
+            canArchive: true,
+            enrollmentCount: totalEnrollments,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Safe Archive operation
       const archived = await prisma.course.update({
         where: { id: existing.id },
-        data: { status: 'DRAFT' },
+        data: { status: 'ARCHIVED' },
       });
+
+      await prisma.activityLog.create({
+        data: {
+          userId: auth.userId || null,
+          userEmail: auth.userEmail || null,
+          action: 'COURSE_ARCHIVED',
+          entityType: 'COURSE',
+          entityId: existing.id,
+          courseId: existing.id,
+          reason: `Course with ${totalEnrollments} enrolled students archived by Owner to preserve student access while unpublishing from public catalog.`,
+          details: { title: existing.title, slug: existing.slug, enrollmentCount: totalEnrollments },
+        },
+      });
+
       return NextResponse.json({
         success: true,
-        message: 'Course archived successfully',
+        message: `Course "${existing.title}" has been moved to ARCHIVED status. It is hidden from the catalog but remains accessible to all ${totalEnrollments} enrolled students.`,
         course: archived,
       });
     }
+
+    // If zero enrollments, check if archive was explicitly requested
+    if (requestedArchive) {
+      const archived = await prisma.course.update({
+        where: { id: existing.id },
+        data: { status: 'ARCHIVED' },
+      });
+
+      await prisma.activityLog.create({
+        data: {
+          userId: auth.userId || null,
+          userEmail: auth.userEmail || null,
+          action: 'COURSE_ARCHIVED',
+          entityType: 'COURSE',
+          entityId: existing.id,
+          courseId: existing.id,
+          reason: 'Course moved to ARCHIVED status by Site Owner.',
+          details: { title: existing.title, slug: existing.slug },
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Course "${existing.title}" archived successfully.`,
+        course: archived,
+      });
+    }
+
+    // Zero enrollments: Must be DRAFT to hard delete
+    if (existing.status !== 'DRAFT') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Only draft courses with zero enrollments can be hard-deleted. Please unpublish or archive "${existing.title}" first.`,
+          canArchive: true,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Hard delete draft course
+    await prisma.activityLog.create({
+      data: {
+        userId: auth.userId || null,
+        userEmail: auth.userEmail || null,
+        action: 'COURSE_HARD_DELETED',
+        entityType: 'COURSE',
+        entityId: existing.id,
+        courseId: null,
+        reason: `Draft course "${existing.title}" with zero enrollments permanently deleted by Site Owner.`,
+        details: { title: existing.title, slug: existing.slug },
+      },
+    });
 
     await prisma.course.delete({
       where: { id: existing.id },
     });
 
-    return NextResponse.json({ success: true, message: 'Course deleted permanently' });
+    return NextResponse.json({
+      success: true,
+      message: `Draft course "${existing.title}" permanently deleted.`,
+    });
   } catch (error) {
+    console.error('Course deletion error:', error);
     return NextResponse.json(
       { success: false, error: (error as Error).message },
       { status: 500 }

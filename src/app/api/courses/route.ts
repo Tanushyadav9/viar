@@ -7,7 +7,7 @@ function formatCourseResponse(course: Record<string, unknown> | null) {
   if (!course) return null;
   return {
     ...course,
-    modules: Array.isArray(course.syllabusJson) ? course.syllabusJson : [],
+    modules: Array.isArray(course.syllabusJson) ? course.syllabusJson : (course.modules || []),
   };
 }
 
@@ -16,26 +16,91 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const slug = searchParams.get('slug');
     const id = searchParams.get('id');
+    const searchQuery = searchParams.get('q') || '';
+    const statusParam = searchParams.get('status');
 
-    // Attempt to query database if available
+    // Check staff access to determine if draft/archived courses may be viewed
+    const auth = extractAuthFromRequest(req);
+    const isStaffOrOwner = checkStaffSectionAccess({
+      user: auth.userEmail || auth.userId || null,
+      section: 'courses',
+      requiredLevel: 'VIEW',
+    }).allowed;
+
+    // Database lookup
     try {
       if (slug || id) {
         const course = await prisma.course.findFirst({
           where: slug ? { slug } : (id ? { id } : {}),
-          include: { cohorts: true, quizzes: true },
+          include: {
+            cohorts: true,
+            quizzes: true,
+            modules: {
+              orderBy: { order: 'asc' },
+              include: {
+                lessons: {
+                  orderBy: { order: 'asc' },
+                },
+              },
+            },
+            enrollments: { select: { id: true } },
+          },
         });
         if (course) {
-          return NextResponse.json({ success: true, course: formatCourseResponse(course) });
+          // If not staff, hidden courses (DRAFT/ARCHIVED) are 404
+          if (!isStaffOrOwner && course.status !== 'PUBLISHED' && course.status !== 'COMING_SOON') {
+            return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
+          }
+          return NextResponse.json({
+            success: true,
+            course: {
+              ...formatCourseResponse(course),
+              enrollmentCount: course.enrollments.length,
+            },
+          });
         }
       } else {
+        const whereClause: Record<string, unknown> = {};
+
+        // If not staff, strictly only show published courses to public visitors
+        if (!isStaffOrOwner) {
+          whereClause.status = { in: ['PUBLISHED', 'COMING_SOON'] };
+        } else if (statusParam && statusParam !== 'ALL') {
+          whereClause.status = statusParam;
+        }
+
+        if (searchQuery.trim()) {
+          whereClause.OR = [
+            { title: { contains: searchQuery.trim(), mode: 'insensitive' } },
+            { description: { contains: searchQuery.trim(), mode: 'insensitive' } },
+            { slug: { contains: searchQuery.trim(), mode: 'insensitive' } },
+          ];
+        }
+
         const courses = await prisma.course.findMany({
-          orderBy: { createdAt: 'desc' },
-          include: { cohorts: true },
+          where: whereClause,
+          orderBy: [{ displayOrder: 'asc' }, { createdAt: 'desc' }],
+          include: {
+            cohorts: true,
+            modules: {
+              orderBy: { order: 'asc' },
+              include: {
+                lessons: {
+                  orderBy: { order: 'asc' },
+                },
+              },
+            },
+            enrollments: { select: { id: true } },
+          },
         });
+
         if (courses && courses.length > 0) {
           return NextResponse.json({
             success: true,
-            courses: courses.map(formatCourseResponse),
+            courses: courses.map((c) => ({
+              ...formatCourseResponse(c),
+              enrollmentCount: c.enrollments.length,
+            })),
           });
         }
       }
@@ -84,6 +149,7 @@ export async function POST(req: NextRequest) {
     const {
       title,
       slug,
+      shortDescription,
       description,
       priceInr,
       priceUsd,
@@ -93,6 +159,11 @@ export async function POST(req: NextRequest) {
       totalClasses,
       status,
       category,
+      level,
+      displayOrder,
+      passingScore,
+      certificateEnabled,
+      thumbnailUrl,
       instructorName,
       instructorBio,
       modules,
@@ -105,6 +176,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Only Owner can publish directly upon creation or set custom prices
+    const initialStatus = accessCheck.isOwner ? (status || 'DRAFT') : 'DRAFT';
+
     const finalSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
     // Attempt Prisma persistence
@@ -113,23 +187,29 @@ export async function POST(req: NextRequest) {
         data: {
           title,
           slug: finalSlug,
-          description: description || 'Comprehensive Vedic astrology masterclass.',
-          priceInr: Number(priceInr) || 5100,
-          priceUsd: Number(priceUsd) || 69,
-          originalPriceInr: Number(originalPriceInr) || (Number(priceInr) || 5100) * 2,
-          originalPriceUsd: Number(originalPriceUsd) || (Number(priceUsd) || 69) * 2,
-          durationWeeks: Number(durationWeeks) || 8,
-          totalClasses: Number(totalClasses) || 23,
-          classesPerWeek: 0,
-          status: status || 'PUBLISHED',
+          shortDescription: shortDescription || 'Practical self-paced Vedic astrology masterclass.',
+          description: description || 'Comprehensive Vedic astrology curriculum.',
+          level: level || 'Beginner',
           category: category || 'Vedic Astrology',
+          thumbnailUrl: thumbnailUrl || '/images/Acharya_Niraj_Kumar_Headshot.jpg',
+          priceInr: Number(priceInr) || 5100,
+          priceUsd: priceUsd ? Number(priceUsd) : 69,
+          originalPriceInr: Number(originalPriceInr) || (Number(priceInr) || 5100) * 2,
+          originalPriceUsd: originalPriceUsd ? Number(originalPriceUsd) : 129,
+          durationWeeks: Number(durationWeeks) || 8,
+          totalClasses: Number(totalClasses) || (modules?.length || 0),
+          classesPerWeek: 0,
+          displayOrder: Number(displayOrder) || 0,
+          passingScore: Number(passingScore) || 70,
+          certificateEnabled: certificateEnabled !== undefined ? Boolean(certificateEnabled) : true,
+          status: initialStatus,
           instructorName: instructorName || 'Acharya Niraj Kumar',
           instructorBio: instructorBio || null,
           syllabusJson: modules || [],
         },
       });
 
-      // Automatically create self-paced cohort for this new course
+      // Automatically create a cohort for self-paced enrollment
       const cohort = await prisma.cohort.create({
         data: {
           courseId: created.id,
@@ -138,6 +218,20 @@ export async function POST(req: NextRequest) {
           capacity: 500,
           status: 'ACTIVE',
           scheduleDescription: '100% On-Demand Self-Paced Video Learning with Verifiable Certification',
+        },
+      });
+
+      // Log activity
+      await prisma.activityLog.create({
+        data: {
+          userId: auth.userId || null,
+          userEmail: auth.userEmail || null,
+          action: 'COURSE_CREATED',
+          entityType: 'COURSE',
+          entityId: created.id,
+          courseId: created.id,
+          reason: `Course created in ${initialStatus} status`,
+          details: { title: created.title, slug: created.slug },
         },
       });
 
@@ -153,130 +247,6 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, error: (error as Error).message },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PATCH(req: NextRequest) {
-  try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'courses',
-      requiredLevel: 'MANAGE',
-    });
-
-    if (!accessCheck.allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: accessCheck.reason || "Forbidden: MANAGE permission on 'courses' required.",
-        },
-        { status: 403 }
-      );
-    }
-
-    const body = await req.json();
-    const { id, slug, ...updates } = body;
-
-    if (!id && !slug) {
-      return NextResponse.json(
-        { success: false, error: 'Course id or slug is required for update' },
-        { status: 400 }
-      );
-    }
-
-    const dataToUpdate: Record<string, unknown> = {};
-    if (updates.title !== undefined) dataToUpdate.title = updates.title;
-    if (updates.description !== undefined) dataToUpdate.description = updates.description;
-    if (updates.priceInr !== undefined) dataToUpdate.priceInr = Number(updates.priceInr);
-    if (updates.priceUsd !== undefined) dataToUpdate.priceUsd = Number(updates.priceUsd);
-    if (updates.originalPriceInr !== undefined) dataToUpdate.originalPriceInr = Number(updates.originalPriceInr);
-    if (updates.originalPriceUsd !== undefined) dataToUpdate.originalPriceUsd = Number(updates.originalPriceUsd);
-    if (updates.durationWeeks !== undefined) dataToUpdate.durationWeeks = Number(updates.durationWeeks);
-    if (updates.totalClasses !== undefined) dataToUpdate.totalClasses = Number(updates.totalClasses);
-    if (updates.status !== undefined) dataToUpdate.status = updates.status;
-    if (updates.category !== undefined) dataToUpdate.category = updates.category;
-    if (updates.instructorName !== undefined) dataToUpdate.instructorName = updates.instructorName;
-    if (updates.instructorBio !== undefined) dataToUpdate.instructorBio = updates.instructorBio;
-    if (updates.modules !== undefined) {
-      dataToUpdate.syllabusJson = updates.modules;
-      dataToUpdate.totalClasses = updates.modules.length;
-    }
-
-    const updated = await prisma.course.update({
-      where: id ? { id } : { slug },
-      data: dataToUpdate,
-      include: { cohorts: true },
-    });
-
-    return NextResponse.json({
-      success: true,
-      course: formatCourseResponse(updated),
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, error: (error as Error).message },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(req: NextRequest) {
-  try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'courses',
-      requiredLevel: 'MANAGE',
-    });
-
-    if (!accessCheck.allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: accessCheck.reason || "Forbidden: MANAGE permission on 'courses' required.",
-        },
-        { status: 403 }
-      );
-    }
-
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    const slug = searchParams.get('slug');
-    const archive = searchParams.get('archive') === 'true';
-
-    if (!id && !slug) {
-      return NextResponse.json(
-        { success: false, error: 'Course id or slug query parameter is required' },
-        { status: 400 }
-      );
-    }
-
-    if (archive) {
-      const archived = await prisma.course.update({
-        where: id ? { id } : { slug: slug! },
-        data: { status: 'DRAFT' },
-      });
-      return NextResponse.json({
-        success: true,
-        message: 'Course archived successfully',
-        course: archived,
-      });
-    }
-
-    await prisma.course.delete({
-      where: id ? { id } : { slug: slug! },
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Course deleted permanently',
-    });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: (error as Error).message },
