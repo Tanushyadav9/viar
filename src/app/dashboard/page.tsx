@@ -245,11 +245,18 @@ function StudentDashboardContent() {
 
           <div className="flex flex-wrap items-center gap-2.5">
             <Link
-              href={`/dashboard/courses/${cohort?.id || 'cohort-wia-batch-1'}`}
+              href="/dashboard/courses"
               className="gold-button px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-amber-500/20"
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span>All 23 Video Modules &amp; Masterclasses</span>
+              <span>My Courses</span>
+            </Link>
+            <Link
+              href={`/dashboard/courses/${cohort?.id || 'cohort-wia-batch-1'}`}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 transition flex items-center gap-1.5"
+            >
+              <Play className="w-3.5 h-3.5 fill-current text-amber-400" />
+              <span>Continue Learning</span>
             </Link>
             <Link
               href="/dashboard/certificates"

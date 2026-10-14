@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Sparkles,
@@ -14,7 +14,7 @@ import {
   Play,
   MessageSquare,
   Send,
-  ArrowRight
+  ArrowRight,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort, ScheduledClass, ClassDiscussionComment } from '@/lib/types';
@@ -56,37 +56,117 @@ export default function CohortClassByClassPage() {
     setCommentText('');
   };
 
+  const searchParams = useSearchParams();
+  const targetLessonId = searchParams?.get('lesson');
+
   useEffect(() => {
-    const c = ViarStore.getCohortById(cohortId) || ViarStore.getCohorts()[0];
-    if (c) {
-      setCohort(c);
-      const crs = ViarStore.getCourseById(c.courseId);
-      if (crs) setCourse(crs);
-
-      const clsList = ViarStore.getClasses(c.id);
-      setClasses(clsList);
-      if (clsList.length > 0) setActiveClass(clsList[0]);
-    }
-
-    // Access Gating Paywall Check:
-    const currentUser = ViarStore.getCurrentUser();
-    const isStaff = currentUser?.role === 'ADMIN' || currentUser?.role === 'OWNER' || currentUser?.role === 'INSTRUCTOR' || isSiteOwner(currentUser);
-    const enrollments = ViarStore.getEnrollments();
-    const hasPaidEnrollment = Boolean(
-      isStaff ||
-      (currentUser && (
-        currentUser.enrolledCohortIds?.includes(cohortId) ||
-        enrollments.some((e) => e.cohortId === cohortId && (e.studentEmail === currentUser.email || e.studentId === currentUser.id))
-      ))
-    );
-    setIsEnrolled(hasPaidEnrollment);
-
-    const watched = new Set(ViarStore.getWatchedClassIds());
-    setWatchedSet(watched);
-
     const tz = ViarStore.getTimezone() || getUserLocalTimezone();
     setUserTz(tz);
-  }, [cohortId]);
+
+    const currentUser = ViarStore.getCurrentUser();
+    const isStaff = currentUser?.role === 'ADMIN' || currentUser?.role === 'OWNER' || currentUser?.role === 'INSTRUCTOR' || isSiteOwner(currentUser);
+
+    // 1. Fetch live Course Data from server API (with server-side gating)
+    fetch(`/api/courses/${cohortId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.course) {
+          const crs = data.course;
+          setCourse(crs);
+          setIsEnrolled(Boolean(data.isUserEnrolled || isStaff));
+
+          if (crs.cohorts && crs.cohorts.length > 0) {
+            setCohort(crs.cohorts[0]);
+          } else {
+            const fallbackCohort = ViarStore.getCohortById(cohortId) || ViarStore.getCohorts()[0];
+            if (fallbackCohort) setCohort(fallbackCohort);
+          }
+
+          // If relational modules exist, map them to class sessions
+          if (Array.isArray(crs.modules) && crs.modules.length > 0) {
+            const mappedClasses: ScheduledClass[] = [];
+            let lessonIdx = 1;
+
+            for (const mod of crs.modules) {
+              if (Array.isArray(mod.lessons)) {
+                for (const l of mod.lessons) {
+                  mappedClasses.push({
+                    id: l.id,
+                    cohortId: cohortId,
+                    classNumber: l.order || lessonIdx,
+                    moduleNumber: mod.order || 1,
+                    title: l.title,
+                    subtitle: mod.title,
+                    description: l.description || `${mod.title} lecture material.`,
+                    scheduledStartTime: l.liveScheduledAt || new Date().toISOString(),
+                    durationMinutes: Math.round((l.videoDuration || 3600) / 60),
+                    meetingPlatform: 'ZOOM',
+                    joinUrl: l.liveJoinLink || '',
+                    status: 'UPCOMING',
+                    recording: l.playbackUrl ? {
+                      id: `rec-${l.id}`,
+                      videoUrl: l.playbackUrl,
+                      provider: 'DIRECT',
+                      durationMinutes: Math.round((l.videoDuration || 3600) / 60),
+                      recordedDate: new Date().toISOString(),
+                      notesMarkdown: l.documentDownloadUrl
+                        ? `Official Study Reference PDF: [Download Study Guide](${l.documentDownloadUrl})`
+                        : `${mod.title} lecture notes.`,
+                      keyTakeaways: [mod.title, l.title],
+                      resources: l.documentDownloadUrl ? [
+                        { id: `res-${l.id}`, title: 'Official Study Guide', type: 'PDF', url: l.documentDownloadUrl }
+                      ] : [],
+                    } : undefined,
+                  });
+                  lessonIdx++;
+                }
+              }
+            }
+
+            if (mappedClasses.length > 0) {
+              setClasses(mappedClasses);
+              const target = targetLessonId ? mappedClasses.find((c) => c.id === targetLessonId) : null;
+              setActiveClass(target || mappedClasses[0]);
+              return;
+            }
+          }
+        }
+
+        // Fallback to local store if API had no modules
+        const c = ViarStore.getCohortById(cohortId) || ViarStore.getCohorts()[0];
+        if (c) {
+          setCohort(c);
+          const crs = ViarStore.getCourseById(c.courseId);
+          if (crs) setCourse(crs);
+
+          const clsList = ViarStore.getClasses(c.id);
+          setClasses(clsList);
+          const target = targetLessonId ? clsList.find((cl) => cl.id === targetLessonId) : null;
+          if (clsList.length > 0) setActiveClass(target || clsList[0]);
+        }
+      })
+      .catch((err) => {
+        console.warn('Classroom API fetch fallback:', err);
+      });
+
+    // 2. Fetch live progress from PostgreSQL API
+    if (currentUser?.id) {
+      fetch(`/api/progress?userId=${currentUser.id}`)
+        .then((res) => res.json())
+        .then((pData) => {
+          if (pData.success && Array.isArray(pData.completedLessonIds)) {
+            setWatchedSet(new Set(pData.completedLessonIds));
+          } else {
+            setWatchedSet(new Set(ViarStore.getWatchedClassIds()));
+          }
+        })
+        .catch(() => {
+          setWatchedSet(new Set(ViarStore.getWatchedClassIds()));
+        });
+    } else {
+      setWatchedSet(new Set(ViarStore.getWatchedClassIds()));
+    }
+  }, [cohortId, targetLessonId]);
 
   const [, setCurrentTime] = useState(Date.now());
   useEffect(() => {
@@ -95,9 +175,16 @@ export default function CohortClassByClassPage() {
   }, []);
 
   const handleToggleWatched = (classId: string) => {
-    const isWatched = ViarStore.toggleClassWatched(classId);
-    const updated = new Set(ViarStore.getWatchedClassIds());
+    const updated = new Set(watchedSet);
+    const willBeWatched = !updated.has(classId);
+
+    if (willBeWatched) {
+      updated.add(classId);
+    } else {
+      updated.delete(classId);
+    }
     setWatchedSet(updated);
+    ViarStore.toggleClassWatched(classId);
 
     const currentUser = ViarStore.getCurrentUser();
     if (currentUser) {
@@ -106,8 +193,10 @@ export default function CohortClassByClassPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: currentUser.id,
+          lessonId: classId,
           classSessionId: classId,
-          watched: isWatched,
+          completed: willBeWatched,
+          watched: willBeWatched,
         }),
       }).catch((err) => console.warn('Progress API sync failed:', err));
     }

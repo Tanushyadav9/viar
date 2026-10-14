@@ -14,6 +14,7 @@ import {
   Bell,
   Download,
   Video,
+  Lock,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort } from '@/lib/types';
@@ -525,6 +526,42 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                                 <span>{topic}</span>
                               </div>
                             ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Detailed Lessons Outline */}
+                      {Array.isArray(module.lessons) && module.lessons.length > 0 && (
+                        <div className="space-y-2 pt-2">
+                          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                            Lessons in this Module
+                          </span>
+                          <div className="space-y-1.5">
+                            {module.lessons.map((lesson) => {
+                              const isPreview = Boolean(lesson.isFreePreview);
+                              return (
+                                <div
+                                  key={lesson.id}
+                                  className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between gap-3 text-xs"
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    {isPreview ? (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                        Free Preview
+                                      </span>
+                                    ) : (
+                                      <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                                    )}
+                                    <span className={`font-medium truncate ${isPreview ? 'text-amber-200' : 'text-slate-300'}`}>
+                                      {lesson.title}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-500 shrink-0">
+                                    {isPreview ? 'Sample Available' : 'Enrolled Access'}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}

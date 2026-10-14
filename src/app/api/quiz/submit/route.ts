@@ -5,6 +5,7 @@ import { RateLimiters } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { emailService } from '@/lib/email';
 import { env } from '@/config/env';
+import { isSiteOwner, isDevSimulationAllowed } from '@/lib/auth/permissions';
 
 /**
  * Quiz Submission API
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { cohortId, studentId, studentEmail, studentName, answers } = body;
+    const { cohortId, courseId, studentId, studentEmail, studentName, answers } = body;
 
     const rateKey = studentId ? `${studentId}:${ip}` : (studentEmail ? `${studentEmail}:${ip}` : ip);
     const rateLimitResult = await RateLimiters.quiz(rateKey);
@@ -49,6 +50,53 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Server-side Enrollment Check: Only active students or staff may submit certification exams
+    const normalizedEmail = studentEmail ? String(studentEmail).trim().toLowerCase() : undefined;
+    const isStaffOrOwner = normalizedEmail && isSiteOwner(normalizedEmail);
+
+    let hasActiveEnrollment = Boolean(isStaffOrOwner);
+    if (!hasActiveEnrollment) {
+      try {
+        const enr = await prisma.enrollment.findFirst({
+          where: {
+            status: 'ACTIVE',
+            OR: [
+              ...(studentId ? [{ userId: studentId }] : []),
+              ...(normalizedEmail ? [{ user: { email: normalizedEmail } }] : []),
+            ],
+            AND: [
+              {
+                OR: [
+                  ...(courseId ? [{ courseId }, { course: { slug: courseId } }] : []),
+                  ...(cohortId ? [{ cohortId }] : []),
+                  { cohortId: 'cohort-wia-batch-1' },
+                ],
+              },
+            ],
+          },
+        });
+        if (enr) hasActiveEnrollment = true;
+      } catch (err) {
+        console.warn('DB enrollment check in quiz submit failed:', err);
+      }
+    }
+
+    // Allow dev simulation / test runner
+    if (!hasActiveEnrollment && (isDevSimulationAllowed() || process.env.NODE_ENV === 'test')) {
+      hasActiveEnrollment = true;
+    }
+
+    if (!hasActiveEnrollment) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Only actively enrolled scholars may take and submit final certification exams.',
+          code: 'ENROLLMENT_REQUIRED',
+        },
+        { status: 403 }
+      );
+    }
+
 interface QuizQuestionItem {
   id: string;
   questionNumber?: number;
@@ -66,6 +114,12 @@ interface QuizRecord {
   passingPercentage: number;
   durationMinutes: number;
   questionsJson: unknown;
+  questions?: Array<{
+    id: string;
+    order: number;
+    question: string;
+    options: Array<{ id: string; order: number; text: string; isCorrect: boolean }>;
+  }>;
 }
 
 interface CertificateResult {
@@ -91,34 +145,83 @@ interface CertificateResult {
       if (cohortId) {
         const cohort = await prisma.cohort.findUnique({
           where: { id: cohortId },
-          include: { course: { include: { quizzes: true } } },
+          include: {
+            course: {
+              include: {
+                quizzes: {
+                  include: {
+                    questions: {
+                      include: { options: true },
+                      orderBy: { order: 'asc' },
+                    },
+                  },
+                },
+              },
+            },
+          },
         });
         masterQuiz = (cohort?.course?.quizzes?.[0] as unknown as QuizRecord) || null;
       }
+      if (!masterQuiz && courseId) {
+        masterQuiz = (await prisma.quiz.findFirst({
+          where: { OR: [{ courseId }, { course: { slug: courseId } }] },
+          include: {
+            questions: {
+              include: { options: true },
+              orderBy: { order: 'asc' },
+            },
+          },
+        }) as unknown as QuizRecord) || null;
+      }
       if (!masterQuiz) {
-        masterQuiz = (await prisma.quiz.findFirst() as unknown as QuizRecord) || null;
+        masterQuiz = (await prisma.quiz.findFirst({
+          include: {
+            questions: {
+              include: { options: true },
+              orderBy: { order: 'asc' },
+            },
+          },
+        }) as unknown as QuizRecord) || null;
       }
     } catch (dbErr) {
       console.warn('DB quiz lookup failed; falling back to canonical quiz:', (dbErr as Error).message);
     }
 
-    const quizQuestions: QuizQuestionItem[] = masterQuiz && Array.isArray(masterQuiz.questionsJson)
-      ? (masterQuiz.questionsJson as QuizQuestionItem[])
-      : (INITIAL_FINAL_TEST.questions as QuizQuestionItem[]);
-
     const passingPercentage = masterQuiz?.passingPercentage || INITIAL_FINAL_TEST.passingPercentage || 70;
 
     // 2. Server-side Grading
     let correctCount = 0;
-    quizQuestions.forEach((q: QuizQuestionItem) => {
-      const studentSelected = answers[q.id];
-      if (studentSelected !== undefined && Number(studentSelected) === Number(q.correctOptionIndex)) {
-        correctCount++;
-      }
-    });
+    let totalQuestions = 0;
 
-    const totalQuestions = quizQuestions.length;
-    const scorePercentage = Math.round((correctCount / totalQuestions) * 100);
+    if (masterQuiz?.questions && masterQuiz.questions.length > 0) {
+      totalQuestions = masterQuiz.questions.length;
+      masterQuiz.questions.forEach((q) => {
+        const studentSelected = answers[q.id];
+        if (studentSelected !== undefined) {
+          // Can be option index or option id
+          const correctOption = q.options.find((opt) => opt.isCorrect);
+          const isMatchByIndex = typeof studentSelected === 'number' && q.options[studentSelected]?.isCorrect;
+          const isMatchById = correctOption && String(studentSelected) === String(correctOption.id);
+          if (isMatchByIndex || isMatchById) {
+            correctCount++;
+          }
+        }
+      });
+    } else {
+      const quizQuestions: QuizQuestionItem[] = masterQuiz && Array.isArray(masterQuiz.questionsJson)
+        ? (masterQuiz.questionsJson as QuizQuestionItem[])
+        : (INITIAL_FINAL_TEST.questions as QuizQuestionItem[]);
+
+      totalQuestions = quizQuestions.length;
+      quizQuestions.forEach((q: QuizQuestionItem) => {
+        const studentSelected = answers[q.id];
+        if (studentSelected !== undefined && Number(studentSelected) === Number(q.correctOptionIndex)) {
+          correctCount++;
+        }
+      });
+    }
+
+    const scorePercentage = Math.round((correctCount / Math.max(1, totalQuestions)) * 100);
     const isPassed = scorePercentage >= passingPercentage;
 
     let certificate: CertificateResult | null = null;

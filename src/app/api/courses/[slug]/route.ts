@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { INITIAL_COURSES } from '@/lib/data';
 import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import {
+  verifyUserCourseAccess,
+  generateSignedPlaybackToken,
+  generateSignedDocumentToken,
+} from '@/lib/auth/course-access';
 
 export async function GET(
   req: NextRequest,
@@ -9,6 +14,8 @@ export async function GET(
 ) {
   try {
     const slugOrId = params.slug;
+    const access = await verifyUserCourseAccess(req, slugOrId);
+    const isAuthorized = access.isEnrolled || access.isStaffOrOwner;
 
     try {
       const course = await prisma.course.findFirst({
@@ -38,17 +45,136 @@ export async function GET(
             },
           },
           enrollments: {
-            select: { id: true },
+            select: { id: true, userId: true },
           },
         },
       });
 
       if (course) {
+        // Status Visibility Protection:
+        // DRAFT courses are only accessible to Staff / Owner
+        if (course.status === 'DRAFT' && !access.isStaffOrOwner) {
+          return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
+        }
+
+        // ARCHIVED courses are only accessible to enrolled students or Staff / Owner
+        if (course.status === 'ARCHIVED' && !isAuthorized) {
+          return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
+        }
+
+        // Content Gating: sanitize lessons and quizzes based on enrollment status
+        const sanitizedModules = course.modules.map((m) => ({
+          ...m,
+          lessons: m.lessons.map((lesson) => {
+            const isFree = Boolean(lesson.isFreePreview);
+
+            if (isAuthorized) {
+              // Authorized student or staff: issue signed playback and document tokens
+              let playbackUrl = lesson.videoProviderId || null;
+              let signedToken: string | undefined;
+
+              if (lesson.type === 'VIDEO' && lesson.videoProviderId) {
+                const tokenData = generateSignedPlaybackToken(lesson.id, access.userId || 'staff');
+                signedToken = tokenData.token;
+                playbackUrl = `/api/courses/${course.slug}/lessons/${lesson.id}/play?token=${tokenData.token}`;
+              }
+
+              let docDownloadUrl = lesson.documentUrl || null;
+              if (lesson.type === 'DOCUMENT' && (lesson.documentKey || lesson.documentUrl)) {
+                const docTokenData = generateSignedDocumentToken(
+                  lesson.id,
+                  lesson.documentKey || 'study-guide',
+                  access.userId || 'staff'
+                );
+                docDownloadUrl = docTokenData.downloadPath;
+              }
+
+              return {
+                ...lesson,
+                isLocked: false,
+                playbackUrl,
+                signedPlaybackToken: signedToken,
+                documentDownloadUrl: docDownloadUrl,
+              };
+            }
+
+            // Public Visitor / Non-Enrolled:
+            if (isFree) {
+              return {
+                ...lesson,
+                isLocked: false,
+                playbackUrl: lesson.videoProviderId,
+              };
+            }
+
+            // Paid lesson strictly stripped on the server
+            return {
+              id: lesson.id,
+              moduleId: lesson.moduleId,
+              order: lesson.order,
+              type: lesson.type,
+              title: lesson.title,
+              description: lesson.description,
+              isFreePreview: false,
+              videoDuration: lesson.videoDuration,
+              isLocked: true,
+              // Strictly nullify secret keys and URLs on server
+              videoProviderId: null,
+              playbackUrl: null,
+              documentKey: null,
+              documentUrl: null,
+              liveJoinLink: null,
+              signedPlaybackToken: null,
+              documentDownloadUrl: null,
+            };
+          }),
+        }));
+
+        // Quizzes protection: Never leak correct answers to clients before submission
+        const sanitizedQuizzes = course.quizzes.map((q) => {
+          if (!isAuthorized) {
+            // Locked preview for non-enrolled visitors
+            return {
+              id: q.id,
+              title: q.title,
+              passingPercentage: q.passingPercentage,
+              durationMinutes: q.durationMinutes,
+              totalQuestions: q.questions.length,
+              isLocked: true,
+              questions: [],
+            };
+          }
+
+          // Enrolled students receive questions and options with isCorrect stripped
+          return {
+            ...q,
+            isLocked: false,
+            questions: q.questions.map((qn) => ({
+              id: qn.id,
+              order: qn.order,
+              question: qn.question,
+              // Explanation stripped if not staff to prevent answer leakage
+              explanation: access.isStaffOrOwner ? qn.explanation : undefined,
+              options: qn.options.map((opt) => ({
+                id: opt.id,
+                order: opt.order,
+                text: opt.text,
+                // Only staff sees correct answer on fetch; students are graded on server
+                isCorrect: access.isStaffOrOwner ? opt.isCorrect : undefined,
+              })),
+            })),
+          };
+        });
+
         return NextResponse.json({
           success: true,
+          isUserEnrolled: access.isEnrolled,
+          isStaffOrOwner: access.isStaffOrOwner,
           course: {
             ...course,
             enrollmentCount: course.enrollments.length,
+            modules: sanitizedModules,
+            quizzes: sanitizedQuizzes,
           },
         });
       }
@@ -61,7 +187,12 @@ export async function GET(
     );
 
     if (fallback) {
-      return NextResponse.json({ success: true, course: fallback });
+      return NextResponse.json({
+        success: true,
+        isUserEnrolled: isAuthorized,
+        isStaffOrOwner: access.isStaffOrOwner,
+        course: fallback,
+      });
     }
 
     return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });

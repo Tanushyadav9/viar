@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { INITIAL_FINAL_TEST } from '@/lib/data';
 import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import { verifyUserCourseAccess } from '@/lib/auth/course-access';
 
 export async function GET(req: NextRequest) {
   try {
@@ -49,6 +50,28 @@ export async function GET(req: NextRequest) {
       ? (quizData.questionsJson as unknown as Array<Record<string, unknown>>)
       : [];
 
+    const courseSlugOrId = courseId || cohortId || quizData.courseId || 'course-what-is-astrology';
+    const access = await verifyUserCourseAccess(req, courseSlugOrId);
+    const isAuthorized = isStaff || access.isEnrolled;
+
+    // Security Gate: Non-enrolled public visitors get locked state with zero questions
+    if (!isAuthorized) {
+      return NextResponse.json({
+        success: true,
+        quiz: {
+          id: quizData.id,
+          courseId: quizData.courseId,
+          title: quizData.title,
+          passingPercentage: quizData.passingPercentage,
+          durationMinutes: quizData.durationMinutes,
+          totalQuestions: rawQuestions.length,
+          isLocked: true,
+          questions: [],
+          isAnswerKeyProtected: true,
+        },
+      });
+    }
+
     // Security Gate: Protect Answer Key on Server
     // If not staff, strip correctOptionIndex & explanation so answer key cannot be extracted
     const sanitizedQuestions = isStaff
@@ -70,6 +93,7 @@ export async function GET(req: NextRequest) {
         passingPercentage: quizData.passingPercentage,
         durationMinutes: quizData.durationMinutes,
         totalQuestions: rawQuestions.length,
+        isLocked: false,
         questions: sanitizedQuestions,
         isAnswerKeyProtected: !isStaff,
       },

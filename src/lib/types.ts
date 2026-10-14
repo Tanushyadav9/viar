@@ -56,6 +56,7 @@ export interface CourseModule {
   keyTopics?: string[];
   isBonus?: boolean;
   resources?: ClassResource[];
+  lessons?: Array<{ id: string; title: string; isFreePreview?: boolean; order?: number; type?: string }>;
 }
 
 export interface Course {
@@ -79,6 +80,7 @@ export interface Course {
   isPublished: boolean;
   featured: boolean;
   isComingSoon?: boolean;
+  thumbnailUrl?: string;
   badge?: string;
   instructor: {
     name: string;
