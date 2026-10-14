@@ -54,22 +54,34 @@ export async function GET(req: NextRequest) {
     const access = await verifyUserCourseAccess(req, courseSlugOrId);
     const isAuthorized = isStaff || access.isEnrolled;
 
-    // Security Gate: Non-enrolled public visitors get locked state with zero questions
+    // Security Gate: Non-enrolled public visitors get 403 Forbidden on direct calls
     if (!isAuthorized) {
-      return NextResponse.json({
-        success: true,
-        quiz: {
-          id: quizData.id,
-          courseId: quizData.courseId,
-          title: quizData.title,
-          passingPercentage: quizData.passingPercentage,
-          durationMinutes: quizData.durationMinutes,
-          totalQuestions: rawQuestions.length,
+      if (searchParams.get('mode') === 'preview' || searchParams.get('preview') === 'true') {
+        return NextResponse.json({
+          success: true,
+          quiz: {
+            id: quizData.id,
+            courseId: quizData.courseId,
+            title: quizData.title,
+            passingPercentage: quizData.passingPercentage,
+            durationMinutes: quizData.durationMinutes,
+            totalQuestions: rawQuestions.length,
+            isLocked: true,
+            questions: [],
+            isAnswerKeyProtected: true,
+          },
+        });
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Forbidden: Active enrollment or staff access required to view quiz questions.',
+          code: 'ENROLLMENT_REQUIRED',
           isLocked: true,
-          questions: [],
-          isAnswerKeyProtected: true,
         },
-      });
+        { status: 403 }
+      );
     }
 
     // Security Gate: Protect Answer Key on Server

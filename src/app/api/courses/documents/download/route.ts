@@ -11,8 +11,8 @@ export async function GET(req: NextRequest) {
 
     if (!token) {
       return NextResponse.json(
-        { success: false, error: 'Document download token is required' },
-        { status: 400 }
+        { success: false, error: 'Unauthorized: Document download token is required', code: 'UNAUTHORIZED' },
+        { status: 401 }
       );
     }
 
