@@ -85,7 +85,8 @@ export default function AdminDiagnosticsPage() {
     setLoading(true);
     setErrorMsg('');
     try {
-      const res = await fetch('/api/admin/diagnostics', {
+      const search = typeof window !== 'undefined' ? window.location.search : '';
+      const res = await fetch(`/api/admin/diagnostics${search}`, {
         cache: 'no-store',
       });
       if (res.status === 403) {
