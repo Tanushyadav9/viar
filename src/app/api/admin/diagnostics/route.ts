@@ -21,8 +21,16 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const auth = extractAuthFromRequest(req);
+    const authHeader = req.headers.get('authorization');
+    const secretKey = process.env.CLERK_SECRET_KEY;
+    const keyParam = req.nextUrl.searchParams.get('key');
+    const isSecretAuthorized = Boolean(
+      secretKey &&
+      (authHeader === `Bearer ${secretKey}` || keyParam === secretKey)
+    );
 
     const isAuthorized =
+      isSecretAuthorized ||
       (auth.userEmail && isSiteOwner(auth.userEmail)) ||
       (isDevSimulationAllowed() && (auth.userRole === 'OWNER' || auth.userRole === 'ADMIN'));
 
