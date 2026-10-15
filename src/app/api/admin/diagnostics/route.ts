@@ -110,67 +110,34 @@ export async function GET(req: NextRequest) {
     };
 
     if (dbReachable) {
-      const fetchCount = async (model: string): Promise<number> => {
+      const models = [
+        ['users', 'user'],
+        ['courses', 'course'],
+        ['modules', 'module'],
+        ['lessons', 'lesson'],
+        ['cohorts', 'cohort'],
+        ['classSessions', 'classSession'],
+        ['enrollments', 'enrollment'],
+        ['sessionProgress', 'sessionProgress'],
+        ['quizzes', 'quiz'],
+        ['quizAttempts', 'quizAttempt'],
+        ['certificates', 'certificate'],
+        ['payments', 'payment'],
+        ['staffPermissions', 'staffPermission'],
+        ['activityLogs', 'activityLog'],
+        ['clerkWebhookEvents', 'clerkWebhookEvent'],
+      ] as const;
+
+      for (const [key, model] of models) {
         try {
           const delegate = (prisma as unknown as Record<string, { count: () => Promise<number> }>)[model];
           if (delegate && typeof delegate.count === 'function') {
-            return await delegate.count();
+            tableCounts[key] = await delegate.count();
           }
         } catch {
-          return 0;
+          tableCounts[key] = 0;
         }
-        return 0;
-      };
-
-      const [
-        users,
-        courses,
-        modules,
-        lessons,
-        cohorts,
-        classSessions,
-        enrollments,
-        sessionProgress,
-        quizzes,
-        quizAttempts,
-        certificates,
-        payments,
-        staffPermissions,
-        activityLogs,
-        clerkWebhookEvents,
-      ] = await Promise.all([
-        fetchCount('user'),
-        fetchCount('course'),
-        fetchCount('module'),
-        fetchCount('lesson'),
-        fetchCount('cohort'),
-        fetchCount('classSession'),
-        fetchCount('enrollment'),
-        fetchCount('sessionProgress'),
-        fetchCount('quiz'),
-        fetchCount('quizAttempt'),
-        fetchCount('certificate'),
-        fetchCount('payment'),
-        fetchCount('staffPermission'),
-        fetchCount('activityLog'),
-        fetchCount('clerkWebhookEvent'),
-      ]);
-
-      tableCounts.users = users;
-      tableCounts.courses = courses;
-      tableCounts.modules = modules;
-      tableCounts.lessons = lessons;
-      tableCounts.cohorts = cohorts;
-      tableCounts.classSessions = classSessions;
-      tableCounts.enrollments = enrollments;
-      tableCounts.sessionProgress = sessionProgress;
-      tableCounts.quizzes = quizzes;
-      tableCounts.quizAttempts = quizAttempts;
-      tableCounts.certificates = certificates;
-      tableCounts.payments = payments;
-      tableCounts.staffPermissions = staffPermissions;
-      tableCounts.activityLogs = activityLogs;
-      tableCounts.clerkWebhookEvents = clerkWebhookEvents;
+      }
     }
 
     // 4. Clerk Configuration & Mode (Never print secrets!)

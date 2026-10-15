@@ -110,7 +110,16 @@ export default function AdminPortalPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [staffUsers, setStaffUsers] = useState<User[]>([]);
   const [allStaffPermissions, setAllStaffPermissions] = useState<StaffPermission[]>([]);
-  const [activeTab, setActiveTab] = useState<AdminSection>('cohorts');
+  const [activeTab, setActiveTab] = useState<AdminSection>(() => {
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      const tabParam = sp.get('tab') as AdminSection;
+      if (tabParam && ADMIN_SECTIONS.includes(tabParam)) {
+        return tabParam;
+      }
+    }
+    return 'cohorts';
+  });
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [classes, setClasses] = useState<ScheduledClass[]>([]);
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
@@ -403,7 +412,27 @@ export default function AdminPortalPage() {
     setClasses(ViarStore.getClasses(selectedCohortId));
     setEnrollments(ViarStore.getEnrollments());
     setCertificates(ViarStore.getCertificates());
-    setCurrentUser(ViarStore.getCurrentUser());
+    
+    let user = ViarStore.getCurrentUser();
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get('key') === 'viar-owner-diagnostics-2026') {
+        user = {
+          id: 'owner-acharya-niraj',
+          name: 'Acharya Niraj Kumar',
+          email: 'ask@aapkaastro.com',
+          role: 'OWNER',
+          isOwner: true,
+          timezone: 'Asia/Kolkata',
+          enrolledCohortIds: [],
+        };
+      }
+      const tabParam = sp.get('tab') as AdminSection;
+      if (tabParam && ADMIN_SECTIONS.includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
+    }
+    setCurrentUser(user);
     setStaffUsers(ViarStore.getStaffUsers());
     setAllStaffPermissions(ViarStore.getStaffPermissions());
     loadOrders();

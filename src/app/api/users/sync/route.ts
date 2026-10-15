@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { assignRoleForUser } from '@/lib/auth/permissions';
+import { assignRoleForUser, extractAuthFromRequest } from '@/lib/auth/permissions';
 import { logger } from '@/lib/logger';
 
 /**
@@ -80,3 +80,44 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+/**
+ * Get current authenticated user session from database
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const auth = extractAuthFromRequest(req);
+    if (!auth.userEmail && !auth.userId) {
+      return NextResponse.json({ success: false, user: null }, { status: 200 });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(auth.userEmail ? [{ email: auth.userEmail }] : []),
+          ...(auth.userId ? [{ clerkId: auth.userId }] : []),
+        ],
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json({ success: false, user: null }, { status: 200 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        clerkId: user.clerkId,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        role: user.role,
+        isOwner: user.isOwner,
+      },
+    });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Database session lookup failed' }, { status: 500 });
+  }
+}
+

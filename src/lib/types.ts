@@ -37,6 +37,7 @@ export interface User {
   staffSections?: AdminSection[];
   timezone?: string;
   avatarUrl?: string;
+  phone?: string;
   enrolledCohortIds: string[];
 }
 

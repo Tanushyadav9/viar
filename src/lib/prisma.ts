@@ -7,15 +7,20 @@ declare global {
   var prismaGlobal: PrismaClient | undefined;
 }
 
-const dbUrl = (
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_PRISMA_URL ||
-  process.env.POSTGRES_URL ||
+const rawUrl = (
   process.env.DIRECT_URL ||
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL ||
+  process.env.POSTGRES_PRISMA_URL ||
   process.env.POSTGRES_URL_NON_POOLING ||
   env.database?.url ||
   ''
 ).trim();
+
+// In Neon serverless environments, if -pooler endpoint is unreachable and DIRECT_URL is provided, use DIRECT_URL
+const dbUrl = rawUrl.includes('-pooler.') && process.env.DIRECT_URL
+  ? process.env.DIRECT_URL.trim()
+  : rawUrl;
 
 export const prisma =
   globalThis.prismaGlobal ??

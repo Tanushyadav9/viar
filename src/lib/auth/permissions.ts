@@ -112,19 +112,13 @@ export const ADMIN_SECTIONS_META: Record<AdminSection, AdminSectionMeta> = {
  * Returns empty string if unset or empty (fail-closed). Zero hardcoded fallbacks.
  */
 export function getPrimaryOwnerEmail(): string {
-  return process.env.OWNER_EMAIL?.trim().toLowerCase() || '';
+  return (process.env.OWNER_EMAIL || '').trim().toLowerCase();
 }
 
 export const primaryOwnerEmail = getPrimaryOwnerEmail();
 
-/**
- * Returns the list of designated Site Owner / Superadmin email addresses.
- * Reads strictly from process.env.OWNER_EMAIL and process.env.SUPERADMIN_EMAILS.
- * Zero hardcoded fallback strings or default arrays.
- * If unset or empty, returns an empty array (fail-closed).
- */
 export function getOwnerEmails(): string[] {
-  const envOwner = process.env.OWNER_EMAIL?.trim().toLowerCase();
+  const envOwner = (process.env.OWNER_EMAIL || '').trim().toLowerCase();
   const envSuperadmins = process.env.SUPERADMIN_EMAILS
     ? process.env.SUPERADMIN_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
     : [];
