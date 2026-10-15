@@ -94,9 +94,9 @@ export const ADMIN_SECTIONS_META: Record<AdminSection, AdminSectionMeta> = {
   },
   payments: {
     key: 'payments',
-    title: 'Financial Revenue & Payment Gateways',
+    title: 'Financial Revenue & UPI Transactions',
     shortTitle: 'Payments & Revenue',
-    description: 'Track Razorpay & Stripe tuition receipts, cohort earnings, and payouts.',
+    description: 'Track direct UPI tuition receipts, UTR verifications, cohort earnings, and payouts.',
   },
   staff: {
     key: 'staff',
@@ -500,14 +500,14 @@ export function evaluateRouteAccess(params: {
 
   const isOwner = userEmail ? isSiteOwner(userEmail) : false;
 
-  // 4. /admin/team: Strictly Site Owner-Only
-  if (pathname.startsWith('/admin/team')) {
+  // 4. /admin/team & /admin/diagnostics: Strictly Site Owner-Only
+  if (pathname.startsWith('/admin/team') || pathname.startsWith('/admin/diagnostics')) {
     if (!isOwner) {
       return {
         action: 'redirect',
         redirectUrl: '/admin?error=owner_only',
         statusCode: 307,
-        reason: 'Restricted: Team management is reserved exclusively for the Site Owner',
+        reason: 'Restricted: Diagnostics and team management are reserved exclusively for the Site Owner',
       };
     }
   }

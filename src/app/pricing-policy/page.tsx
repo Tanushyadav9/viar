@@ -104,21 +104,15 @@ export default function PricingPolicyPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs">3</span>
-              Domestic & International Currency Support
+              Direct UPI QR Payment with Zero Gateway Commission Fees
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-2">
-              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-1">
-                <div className="font-semibold text-white">Domestic Students (India)</div>
-                <p className="text-xs text-slate-400">
-                  Priced transparently in <strong>Indian Rupees (₹ INR)</strong>. Payable via UPI, Google Pay, PhonePe, Paytm, Net Banking, and domestic Debit/Credit Cards via Razorpay. Applicable GST is itemized at checkout.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-1">
-                <div className="font-semibold text-white">International Students (Global)</div>
-                <p className="text-xs text-slate-400">
-                  Priced transparently in <strong>United States Dollars ($ USD)</strong>. Payable via international credit/debit cards (Visa, Mastercard, Amex), Apple Pay, and Google Pay via Stripe with local currency conversion.
-                </p>
+            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+              <div className="font-semibold text-white">Direct UPI Tuition Fee (₹5,100 INR)</div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                All tuition fees on viar.in are priced transparently in <strong>Indian Rupees (₹ INR)</strong>. Third-party payment gateways charge steep 2% to 3% intermediary commission fees. To ensure student tuition remains fully dedicated to genuine Vedic instruction, VIAR receives all payments directly via <strong>UPI QR Code</strong> (Google Pay, PhonePe, Paytm, BHIM, and bank UPI apps).
+              </p>
+              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200">
+                <strong>Official Academy UPI ID:</strong> <code className="font-mono bg-black/40 px-2 py-0.5 rounded text-amber-300">aapkaastro@okaxis</code> (Vihangam Institute of Astrology and Research)
               </div>
             </div>
           </section>
@@ -147,10 +141,10 @@ export default function PricingPolicyPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs">5</span>
-              Payment Security & Compliance
+              Payment Security & Account Access
             </h2>
             <p>
-              All online checkout transactions are encrypted using TLS 1.3 / 256-bit encryption. Payment gateways utilized by Vihangam Institute of Astrology and Research adhere strictly to the Payment Card Industry Data Security Standard (PCI-DSS Level 1). No sensitive cardholder information is ever processed or stored on our servers.
+              UPI transactions are authenticated securely within your own banking application with two-factor authorization. Upon completing payment, simply send the payment confirmation screenshot along with your transaction reference (UTR) to our admissions WhatsApp (+91 93112 15564). Once verified by the academy, access to all course recordings, syllabus materials, and quizzes is automatically activated under your registered login.
             </p>
           </section>
 

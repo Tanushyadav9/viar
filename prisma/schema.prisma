@@ -54,14 +54,24 @@ enum ClassStatus {
 }
 
 enum PaymentProvider {
-  RAZORPAY
-  STRIPE
+  UPI_QR
+  MANUAL_VERIFICATION
+  BANK_TRANSFER
 }
 
 enum PaymentStatus {
   PENDING
   COMPLETED
   FAILED
+  REFUNDED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAYMENT_CLAIMED
+  APPROVED
+  REJECTED
+  EXPIRED
   REFUNDED
 }
 
@@ -95,6 +105,7 @@ model User {
   quizAttempts     QuizAttempt[]
   certificates     Certificate[]
   payments         Payment[]
+  orders           Order[]
   testimonials     Testimonial[]
   staffPermissions StaffPermission[]
 
@@ -111,9 +122,12 @@ model User {
 model Course {
   id                 String         @id @default(cuid())
   title              String
+  titleHi            String?        @map("title_hi")
   slug               String         @unique
   shortDescription   String?        @db.Text @map("short_description")
+  shortDescriptionHi String?        @db.Text @map("short_description_hi")
   description        String         @db.Text
+  descriptionHi      String?        @db.Text @map("description_hi")
   syllabusJson       Json?          @map("syllabus_json")
   level              String         @default("Beginner")
   category           String         @default("Vedic Astrology")
@@ -150,6 +164,8 @@ model Course {
   certificates       Certificate[]
   testimonials       Testimonial[]
   activityLogs       ActivityLog[]
+  payments           Payment[]
+  orders             Order[]
 
   @@index([slug])
   @@index([status])
@@ -163,14 +179,16 @@ model Course {
 // ------------------------------------------------------------------------------
 
 model Module {
-  id          String   @id @default(cuid())
-  courseId    String   @map("course_id")
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  title       String
-  description String?  @db.Text
-  order       Int      @default(0)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(cuid())
+  courseId      String   @map("course_id")
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title         String
+  titleHi       String?  @map("title_hi")
+  description   String?  @db.Text
+  descriptionHi String?  @db.Text @map("description_hi")
+  order         Int      @default(0)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   // Relations
   lessons     Lesson[]
@@ -192,7 +210,9 @@ model Lesson {
   order            Int             @default(0)
   type             LessonType      @default(VIDEO)
   title            String
+  titleHi          String?         @map("title_hi")
   description      String?         @db.Text
+  descriptionHi    String?         @db.Text @map("description_hi")
   isFreePreview    Boolean         @default(false) @map("is_free_preview")
 
   // Type-specific fields
@@ -242,6 +262,7 @@ model Cohort {
   quizAttempts        QuizAttempt[]
   certificates        Certificate[]
   payments            Payment[]
+  orders              Order[]
 
   @@index([courseId])
   @@index([status])
@@ -306,6 +327,7 @@ model Enrollment {
   bundleId         String?       @map("bundle_id")
   bundle           CourseBundle? @relation(fields: [bundleId], references: [id], onDelete: SetNull)
   discountAmount   Int?          @default(0) @map("discount_amount")
+  order            Order?
 
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
@@ -490,12 +512,21 @@ model Payment {
   user              User            @relation(fields: [userId], references: [id], onDelete: Restrict)
   cohortId          String?         @map("cohort_id")
   cohort            Cohort?         @relation(fields: [cohortId], references: [id], onDelete: Restrict)
-  provider          PaymentProvider
-  providerReference String          @map("provider_reference")
+  courseId          String?         @map("course_id")
+  course            Course?         @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  provider          PaymentProvider @default(UPI_QR)
+  providerReference String?         @map("provider_reference")
   amount            Int
   currency          String          @default("INR")
   discountAmount    Int?            @default(0) @map("discount_amount")
   status            PaymentStatus   @default(PENDING)
+  studentName       String?         @map("student_name")
+  studentEmail      String?         @map("student_email")
+  studentPhone      String?         @map("student_phone")
+  screenshotUrl     String?         @map("screenshot_url")
+  notes             String?         @db.Text
+  verifiedBy        String?         @map("verified_by")
+  verifiedAt        DateTime?       @map("verified_at")
 
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
@@ -505,10 +536,76 @@ model Payment {
 
   @@index([userId])
   @@index([cohortId])
+  @@index([courseId])
   @@index([status])
   @@index([providerReference])
   @@index([createdAt])
   @@map("payments")
+}
+
+// ------------------------------------------------------------------------------
+// 10A. ORDER (Manual UPI Workflow)
+// ------------------------------------------------------------------------------
+
+model Order {
+  id               String        @id @default(cuid())
+  orderReference   String        @unique @map("order_reference")
+  userId           String        @map("user_id")
+  user             User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  courseId         String        @map("course_id")
+  course           Course        @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  cohortId         String?       @map("cohort_id")
+  cohort           Cohort?       @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  amount           Int           // Locked price in INR
+  currency         String        @default("INR")
+  status           OrderStatus   @default(PENDING_PAYMENT)
+  studentName      String?       @map("student_name")
+  studentEmail     String?       @map("student_email")
+  studentPhone     String        @map("student_phone")
+  utr              String?       // 12-digit transaction ID
+  claimedAt        DateTime?     @map("claimed_at")
+  notes            String?       @db.Text
+  expiresAt        DateTime      @map("expires_at")
+  reviewedBy       String?       @map("reviewed_by")
+  reviewedAt       DateTime?     @map("reviewed_at")
+  rejectionReason  String?       @db.Text @map("rejection_reason")
+  bankConfirmed    Boolean       @default(false) @map("bank_confirmed")
+  refundedAt       DateTime?     @map("refunded_at")
+  refundReason     String?       @db.Text @map("refund_reason")
+  enrollmentId     String?       @unique @map("enrollment_id")
+  enrollment       Enrollment?   @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([cohortId])
+  @@index([status])
+  @@index([orderReference])
+  @@index([utr])
+  @@index([expiresAt])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+// ------------------------------------------------------------------------------
+// 10B. PAYMENT SETTINGS (Owner-editable in DB)
+// ------------------------------------------------------------------------------
+
+model PaymentSettings {
+  id              String   @id @default("default")
+  upiId           String   @default("aapkaastro@okaxis") @map("upi_id")
+  payeeName       String   @default("Vihangam Institute of Astrology and Research") @map("payee_name")
+  qrImageUrl      String?  @map("qr_image_url")
+  whatsappNumber  String   @default("919311215564") @map("whatsapp_number")
+  orderExpiryDays Int      @default(3) @map("order_expiry_days")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  updatedBy       String?  @map("updated_by")
+
+  @@map("payment_settings")
 }
 
 // ------------------------------------------------------------------------------
@@ -627,3 +724,23 @@ model ActivityLog {
   @@index([createdAt])
   @@map("activity_logs")
 }
+
+// ------------------------------------------------------------------------------
+// 16. CLERK WEBHOOK EVENT LOG
+// Audit table tracking all incoming Clerk webhook dispatches for diagnostics
+// ------------------------------------------------------------------------------
+
+model ClerkWebhookEvent {
+  id           String    @id @default(cuid())
+  eventId      String?   @map("event_id")
+  eventType    String    @map("event_type")
+  payload      Json?
+  status       String    @default("PROCESSED") // PROCESSED | ERROR
+  errorMessage String?   @map("error_message") @db.Text
+  receivedAt   DateTime  @default(now()) @map("received_at")
+
+  @@index([eventType])
+  @@index([receivedAt])
+  @@map("clerk_webhook_events")
+}
+

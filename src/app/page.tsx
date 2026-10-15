@@ -331,7 +331,6 @@ export default function HomePage() {
                       <div className="flex items-baseline gap-2 mt-1">
                         <span className="text-3xl sm:text-4xl font-black text-white">₹5,100</span>
                         <span className="text-sm text-slate-500 line-through">₹11,000</span>
-                        <span className="text-xs font-bold text-amber-400">/ $69 USD</span>
                       </div>
                     </div>
                     <span className="px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
@@ -514,7 +513,7 @@ export default function HomePage() {
               <div className="pt-6 border-t border-white/10 flex items-center justify-between">
                 <div>
                   <span className="text-xs text-slate-400 block">Tuition</span>
-                  <span className="text-lg font-bold text-white">₹5,100 <span className="text-xs text-amber-400">/ $69 USD</span></span>
+                  <span className="text-lg font-bold text-white">₹5,100</span>
                 </div>
                 <Link
                   href="/courses/what-is-astrology"
@@ -554,7 +553,7 @@ export default function HomePage() {
               <div className="pt-6 border-t border-white/10 flex items-center justify-between">
                 <div>
                   <span className="text-xs text-slate-400 block">Expected Tuition</span>
-                  <span className="text-lg font-bold text-white">₹5,999 <span className="text-xs text-purple-400">/ $79 USD</span></span>
+                  <span className="text-lg font-bold text-white">₹5,999</span>
                 </div>
                 {/* PLACEHOLDER: Not yet open for enrollment */}
                 <button
@@ -595,7 +594,7 @@ export default function HomePage() {
               <div className="pt-6 border-t border-white/10 flex items-center justify-between">
                 <div>
                   <span className="text-xs text-slate-400 block">Expected Tuition</span>
-                  <span className="text-lg font-bold text-white">₹3,999 <span className="text-xs text-purple-400">/ $55 USD</span></span>
+                  <span className="text-lg font-bold text-white">₹3,999</span>
                 </div>
                 {/* PLACEHOLDER: Not yet open for enrollment */}
                 <button
@@ -636,7 +635,7 @@ export default function HomePage() {
               <div className="pt-6 border-t border-white/10 flex items-center justify-between">
                 <div>
                   <span className="text-xs text-slate-400 block">Expected Tuition</span>
-                  <span className="text-lg font-bold text-white">₹3,499 <span className="text-xs text-purple-400">/ $49 USD</span></span>
+                  <span className="text-lg font-bold text-white">₹3,499</span>
                 </div>
                 {/* PLACEHOLDER: Not yet open for enrollment */}
                 <button

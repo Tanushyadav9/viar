@@ -10,7 +10,6 @@ import {
   ChevronDown,
   ChevronUp,
   Star,
-  Globe,
   Bell,
   Download,
   Video,
@@ -28,7 +27,6 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
   const [course, setCourse] = useState<Course | null>(null);
   const [cohort, setCohort] = useState<Cohort | null>(null);
   const [openModule, setOpenModule] = useState<number | null>(1);
-  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
   const [notifyEmail, setNotifyEmail] = useState('');
   const [notifySuccess, setNotifySuccess] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -63,24 +61,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
         }
       })
       .catch(() => loadFallback());
-
-    // Auto-detect currency based on geo-IP / timezone, overridable by the user
-    const savedCurrency = (typeof window !== 'undefined' ? localStorage.getItem('viar_user_currency') : null) as 'INR' | 'USD' | null;
-    if (savedCurrency) {
-      setCurrency(savedCurrency);
-    } else {
-      const tz = ViarStore.getTimezone();
-      const isIndiaTimezone = tz ? (tz.toLowerCase().includes('kolkata') || tz.toLowerCase().includes('calcutta') || tz.toLowerCase().includes('india')) : true;
-      setCurrency(isIndiaTimezone ? 'INR' : 'USD');
-    }
   }, [slug]);
-
-  const handleCurrencySwitch = (newCurr: 'INR' | 'USD') => {
-    setCurrency(newCurr);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('viar_user_currency', newCurr);
-    }
-  };
 
   const handleNotifySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,18 +106,12 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
   }
 
   const isComingSoon = course.isComingSoon || !course.isPublished;
-  const price = currency === 'INR' ? `₹${course.priceInr.toLocaleString('en-IN')}` : `$${course.priceUsd} USD`;
-  const originalPrice = currency === 'INR' ? `₹${course.originalPriceInr.toLocaleString('en-IN')}` : `$${course.originalPriceUsd} USD`;
-  const savings = currency === 'INR' 
-    ? `Save ₹${(course.originalPriceInr - course.priceInr).toLocaleString('en-IN')}` 
-    : `Save $${course.originalPriceUsd - course.priceUsd} USD`;
-  const discountPercent = currency === 'INR'
-    ? (course.originalPriceInr > course.priceInr
-        ? Math.round(((course.originalPriceInr - course.priceInr) / course.originalPriceInr) * 100)
-        : 0)
-    : (course.originalPriceUsd > course.priceUsd
-        ? Math.round(((course.originalPriceUsd - course.priceUsd) / course.originalPriceUsd) * 100)
-        : 0);
+  const price = `₹${(course.priceInr || 5100).toLocaleString('en-IN')}`;
+  const originalPrice = `₹${(course.originalPriceInr || 11000).toLocaleString('en-IN')}`;
+  const savings = `Save ₹${((course.originalPriceInr || 11000) - (course.priceInr || 5100)).toLocaleString('en-IN')}`;
+  const discountPercent = course.originalPriceInr > course.priceInr
+    ? Math.round(((course.originalPriceInr - course.priceInr) / course.originalPriceInr) * 100)
+    : 54;
 
   return (
     <div className="cosmic-bg min-h-screen py-12">
@@ -236,34 +211,15 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
               
               <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-              {/* Currency Selector Toggle */}
+              {/* Payment Mode Header */}
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                  <Globe className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Currency:</span>
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Tuition Payment:</span>
                 </div>
-                <div className="flex items-center bg-white/5 p-1 rounded-xl border border-white/10 text-xs">
-                  <button
-                    onClick={() => handleCurrencySwitch('INR')}
-                    className={`px-3 py-1 rounded-lg font-bold transition ${
-                      currency === 'INR'
-                        ? 'bg-amber-500 text-black shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    ₹ INR (India)
-                  </button>
-                  <button
-                    onClick={() => handleCurrencySwitch('USD')}
-                    className={`px-3 py-1 rounded-lg font-bold transition ${
-                      currency === 'USD'
-                        ? 'bg-amber-500 text-black shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    $ USD (Intl)
-                  </button>
-                </div>
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                  Direct UPI QR (₹ INR)
+                </span>
               </div>
 
               {/* Pricing Display */}
@@ -348,7 +304,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
               ) : cohort ? (
                 <div className="space-y-3">
                   <Link
-                    href={`/checkout/${cohort.id}?currency=${currency}`}
+                    href={`/checkout/${cohort.id}`}
                     className="gold-button w-full py-3.5 rounded-2xl text-center font-black text-sm block shadow-lg shadow-amber-500/20 tracking-wide uppercase"
                   >
                     Start Learning Today • {price}
@@ -356,7 +312,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
 
                   <p className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1.5">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Secure checkout via {currency === 'INR' ? 'Razorpay (UPI / Cards / NetBanking)' : 'Stripe (International Cards)'}</span>
+                    <span>Direct UPI Payment • Zero Gateway Fee • Fast Verification</span>
                   </p>
                 </div>
               ) : null}

@@ -217,11 +217,15 @@ export async function POST(req: NextRequest) {
         data: {
           userId: user.id,
           cohortId: cohort.id,
-          provider: currency === 'USD' ? 'STRIPE' : 'RAZORPAY',
+          courseId: targetCourse.id,
+          provider: 'MANUAL_VERIFICATION',
           providerReference: paymentRef,
           amount: Number(amount) || targetCourse.priceInr || 5100,
-          currency: currency || 'INR',
+          currency: 'INR',
           status: 'COMPLETED',
+          studentName: user.name,
+          studentEmail: user.email,
+          studentPhone: user.phone,
         },
       });
 

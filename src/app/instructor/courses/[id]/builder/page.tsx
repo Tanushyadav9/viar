@@ -57,7 +57,9 @@ interface ApiLesson {
   order?: number;
   type?: 'VIDEO' | 'DOCUMENT' | 'LIVE_SESSION' | 'QUIZ';
   title: string;
+  titleHi?: string;
   description?: string;
+  descriptionHi?: string;
   isFreePreview?: boolean;
   videoProviderId?: string;
   videoDuration?: number;
@@ -73,7 +75,9 @@ interface ApiModule {
   order?: number;
   moduleNumber?: number;
   title: string;
+  titleHi?: string;
   description?: string;
+  descriptionHi?: string;
   lessons?: ApiLesson[];
 }
 
@@ -85,7 +89,9 @@ interface LessonItem {
   order: number;
   type: 'VIDEO' | 'DOCUMENT' | 'LIVE_SESSION' | 'QUIZ';
   title: string;
+  titleHi?: string;
   description?: string;
+  descriptionHi?: string;
   isFreePreview: boolean;
   videoProviderId?: string;
   videoDuration?: number;
@@ -103,7 +109,9 @@ interface ModuleItem {
   courseId: string;
   order: number;
   title: string;
+  titleHi?: string;
   description?: string;
+  descriptionHi?: string;
   lessons: LessonItem[];
 }
 
@@ -125,9 +133,12 @@ export default function ComprehensiveCourseEditorPage() {
 
   // Tab 1: Details state
   const [title, setTitle] = useState('');
+  const [titleHi, setTitleHi] = useState('');
   const [slug, setSlug] = useState('');
   const [shortDescription, setShortDescription] = useState('');
+  const [shortDescriptionHi, setShortDescriptionHi] = useState('');
   const [description, setDescription] = useState('');
+  const [descriptionHi, setDescriptionHi] = useState('');
   const [level, setLevel] = useState('Beginner');
   const [status, setStatus] = useState<'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'COMING_SOON'>('DRAFT');
   const [thumbnailUrl, setThumbnailUrl] = useState('/images/Acharya_Niraj_Kumar_Headshot.jpg');
@@ -168,9 +179,12 @@ export default function ComprehensiveCourseEditorPage() {
         const c = data.course;
         setCourse(c);
         setTitle(c.title || '');
+        setTitleHi(c.titleHi || '');
         setSlug(c.slug || '');
         setShortDescription(c.shortDescription || c.tagline || '');
+        setShortDescriptionHi(c.shortDescriptionHi || '');
         setDescription(c.description || '');
+        setDescriptionHi(c.descriptionHi || '');
         setLevel(c.level || 'Beginner');
         setStatus((c.status as 'PUBLISHED' | 'DRAFT' | 'ARCHIVED' | 'COMING_SOON') || 'PUBLISHED');
         setThumbnailUrl(c.thumbnailUrl || '/images/Acharya_Niraj_Kumar_Headshot.jpg');
@@ -189,7 +203,9 @@ export default function ComprehensiveCourseEditorPage() {
             courseId: c.id,
             order: m.order || m.moduleNumber || mIdx + 1,
             title: m.title,
+            titleHi: m.titleHi || '',
             description: m.description,
+            descriptionHi: m.descriptionHi || '',
             lessons: Array.isArray(m.lessons) && m.lessons.length > 0
               ? m.lessons.map((l: ApiLesson, lIdx: number) => ({
                   id: l.id || `lesson-${mIdx + 1}-${lIdx + 1}`,
@@ -197,7 +213,9 @@ export default function ComprehensiveCourseEditorPage() {
                   order: l.order || lIdx + 1,
                   type: l.type || 'VIDEO',
                   title: l.title,
+                  titleHi: l.titleHi || '',
                   description: l.description,
+                  descriptionHi: l.descriptionHi || '',
                   isFreePreview: Boolean(l.isFreePreview),
                   videoProviderId: l.videoProviderId,
                   videoDuration: l.videoDuration,
@@ -391,8 +409,11 @@ export default function ComprehensiveCourseEditorPage() {
       // 1. Update Course details & pricing
       const payload: Record<string, unknown> = {
         title: title.trim(),
+        titleHi: titleHi.trim() || null,
         shortDescription: shortDescription.trim(),
+        shortDescriptionHi: shortDescriptionHi.trim() || null,
         description: description.trim(),
+        descriptionHi: descriptionHi.trim() || null,
         level,
         thumbnailUrl,
         displayOrder: Number(displayOrder) || 1,
@@ -419,7 +440,45 @@ export default function ComprehensiveCourseEditorPage() {
         throw new Error(data.error || 'Failed to save course details');
       }
 
-      setSuccessMsg('All course details, curriculum, and settings saved to Neon PostgreSQL!');
+      // 2. Persist modules & lessons with bilingual titles/descriptions
+      for (const m of modules) {
+        if (m.id && !m.id.startsWith('mod-')) {
+          await fetch(`/api/courses/${course?.slug || courseId}/curriculum`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              itemType: 'MODULE',
+              id: m.id,
+              title: m.title,
+              titleHi: m.titleHi || null,
+              description: m.description,
+              descriptionHi: m.descriptionHi || null,
+              order: m.order,
+            }),
+          }).catch(() => {});
+
+          for (const l of m.lessons) {
+            if (l.id && !l.id.startsWith('lesson-')) {
+              await fetch(`/api/courses/${course?.slug || courseId}/curriculum`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  itemType: 'LESSON',
+                  id: l.id,
+                  title: l.title,
+                  titleHi: l.titleHi || null,
+                  description: l.description,
+                  descriptionHi: l.descriptionHi || null,
+                  order: l.order,
+                  isFreePreview: l.isFreePreview,
+                }),
+              }).catch(() => {});
+            }
+          }
+        }
+      }
+
+      setSuccessMsg('All course details, curriculum, and bilingual metadata saved to Neon PostgreSQL!');
       setTimeout(() => setSuccessMsg(''), 4000);
       await fetchCourseData();
     } catch (err: unknown) {
@@ -526,7 +585,7 @@ export default function ComprehensiveCourseEditorPage() {
                 Course Editor
               </span>
               <span className="text-slate-500">•</span>
-              <span className="text-xs text-slate-400">{course?.slug}</span>
+              <span className="text-xs text-slate-400">{slug || course?.slug}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">
               {title || 'Untitled Course'}
@@ -598,7 +657,7 @@ export default function ComprehensiveCourseEditorPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Course Title</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Course Title (English)</label>
                 <input
                   type="text"
                   value={title}
@@ -608,36 +667,65 @@ export default function ComprehensiveCourseEditorPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Course Slug</label>
+                <label className="block text-xs font-semibold text-amber-400 mb-1">Course Title (Hindi / हिन्दी)</label>
                 <input
                   type="text"
-                  disabled
-                  value={slug}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-500 text-xs cursor-not-allowed"
+                  value={titleHi}
+                  placeholder="उदा. ज्योतिष क्या है — वैदिक ज्योतिष की आधारशिला"
+                  onChange={(e) => setTitleHi(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-amber-400/30 text-white text-xs focus:outline-none focus:border-amber-400"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Short Description / Tagline (1-2 sentences)
-              </label>
-              <input
-                type="text"
-                value={shortDescription}
-                onChange={(e) => setShortDescription(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Short Tagline (English)
+                </label>
+                <input
+                  type="text"
+                  value={shortDescription}
+                  onChange={(e) => setShortDescription(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-amber-400 mb-1">
+                  Short Tagline (Hindi / हिन्दी)
+                </label>
+                <input
+                  type="text"
+                  value={shortDescriptionHi}
+                  placeholder="उदा. 23 सुव्यवस्थित वीडियो मॉड्यूल और प्रामाणिक प्रमाणपत्र"
+                  onChange={(e) => setShortDescriptionHi(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-amber-400/30 text-white text-xs focus:outline-none focus:border-amber-400"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Comprehensive Course Description</label>
-              <textarea
-                rows={4}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Comprehensive Description (English)</label>
+                <textarea
+                  rows={4}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-amber-400 mb-1">Comprehensive Description (Hindi / हिन्दी)</label>
+                <textarea
+                  rows={4}
+                  value={descriptionHi}
+                  placeholder="आचार्य नीरज कुमार द्वारा निर्देशित शास्त्रीय पाराशरी ज्योतिष का आधारभूत मास्टरक्लास..."
+                  onChange={(e) => setDescriptionHi(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-amber-400/30 text-white text-xs focus:outline-none focus:border-amber-400"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -755,16 +843,30 @@ export default function ComprehensiveCourseEditorPage() {
                       <span className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center justify-center shrink-0">
                         {mIdx + 1}
                       </span>
-                      <input
-                        type="text"
-                        value={mod.title}
-                        onChange={(e) => {
-                          const updated = [...modules];
-                          updated[mIdx].title = e.target.value;
-                          setModules(updated);
-                        }}
-                        className="bg-transparent text-sm font-bold text-white focus:outline-none border-b border-transparent focus:border-amber-400 w-full"
-                      />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1">
+                        <input
+                          type="text"
+                          placeholder="Module Title (English)"
+                          value={mod.title}
+                          onChange={(e) => {
+                            const updated = [...modules];
+                            updated[mIdx].title = e.target.value;
+                            setModules(updated);
+                          }}
+                          className="bg-transparent text-sm font-bold text-white focus:outline-none border-b border-transparent focus:border-amber-400 w-full"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Module Title (Hindi / हिन्दी)"
+                          value={mod.titleHi || ''}
+                          onChange={(e) => {
+                            const updated = [...modules];
+                            updated[mIdx].titleHi = e.target.value;
+                            setModules(updated);
+                          }}
+                          className="bg-transparent text-sm font-medium text-amber-300 focus:outline-none border-b border-transparent focus:border-amber-400 w-full"
+                        />
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -803,18 +905,35 @@ export default function ComprehensiveCourseEditorPage() {
                   {/* Module Content */}
                   {isOpen && (
                     <div className="p-6 space-y-6">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1">Module Overview</label>
-                        <textarea
-                          rows={2}
-                          value={mod.description || ''}
-                          onChange={(e) => {
-                            const updated = [...modules];
-                            updated[mIdx].description = e.target.value;
-                            setModules(updated);
-                          }}
-                          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-400 mb-1">Module Overview (English)</label>
+                          <textarea
+                            rows={2}
+                            value={mod.description || ''}
+                            onChange={(e) => {
+                              const updated = [...modules];
+                              updated[mIdx].description = e.target.value;
+                              setModules(updated);
+                            }}
+                            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-amber-400 mb-1">Module Overview (Hindi / हिन्दी)</label>
+                          <textarea
+                            rows={2}
+                            value={mod.descriptionHi || ''}
+                            placeholder="इस सत्र में आप..."
+                            onChange={(e) => {
+                              const updated = [...modules];
+                              updated[mIdx].descriptionHi = e.target.value;
+                              setModules(updated);
+                            }}
+                            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-amber-400/30 text-white text-xs focus:outline-none focus:border-amber-400"
+                          />
+                        </div>
                       </div>
 
                       {/* Lessons in Module */}
@@ -852,12 +971,13 @@ export default function ComprehensiveCourseEditorPage() {
                             className="p-4 rounded-xl bg-black/30 border border-white/10 space-y-3"
                           >
                             <div className="flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-2 flex-1">
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/10 text-amber-300">
+                              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/10 text-amber-300 self-start sm:self-auto shrink-0">
                                   {lesson.type}
                                 </span>
                                 <input
                                   type="text"
+                                  placeholder="Lesson Title (English)"
                                   value={lesson.title}
                                   onChange={(e) => {
                                     const updated = [...modules];
@@ -865,6 +985,17 @@ export default function ComprehensiveCourseEditorPage() {
                                     setModules(updated);
                                   }}
                                   className="bg-transparent text-xs font-bold text-white focus:outline-none border-b border-transparent focus:border-amber-400 flex-1"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Lesson Title (Hindi / हिन्दी)"
+                                  value={lesson.titleHi || ''}
+                                  onChange={(e) => {
+                                    const updated = [...modules];
+                                    updated[mIdx].lessons[lIdx].titleHi = e.target.value;
+                                    setModules(updated);
+                                  }}
+                                  className="bg-transparent text-xs font-medium text-amber-300 focus:outline-none border-b border-transparent focus:border-amber-400 flex-1"
                                 />
                               </div>
 

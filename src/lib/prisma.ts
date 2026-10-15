@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { env } from '@/config/env';
+import { env } from '../config/env.ts';
 
 declare global {
   // allow global `var` declarations
@@ -7,17 +7,13 @@ declare global {
   var prismaGlobal: PrismaClient | undefined;
 }
 
+const dbUrl = (process.env.DATABASE_URL || env.database?.url || '').trim();
+
 export const prisma =
   globalThis.prismaGlobal ??
   new PrismaClient({
-    datasources: {
-      db: {
-        url: env.database.url,
-      },
-    },
-    log: env.nodeEnv === 'development' ? ['warn', 'error'] : ['error'],
+    ...(dbUrl ? { datasources: { db: { url: dbUrl } } } : {}),
+    log: (process.env.NODE_ENV || env.nodeEnv) === 'development' ? ['warn', 'error'] : ['error'],
   });
 
-if (env.nodeEnv !== 'production') {
-  globalThis.prismaGlobal = prisma;
-}
+globalThis.prismaGlobal = prisma;

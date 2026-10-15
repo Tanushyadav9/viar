@@ -1,35 +1,24 @@
-export interface CreateOrderParams {
+export type PaymentProviderType = 'UPI_QR' | 'MANUAL_VERIFICATION' | 'BANK_TRANSFER';
+
+export interface CreateUpiOrderParams {
   cohortId: string;
   courseId: string;
   studentName: string;
   studentEmail: string;
   studentPhone?: string;
   amount: number;
-  currency: 'INR' | 'USD';
+  utr?: string;
+  screenshotUrl?: string;
+  notes?: string;
 }
 
-export interface PaymentOrderResult {
+export interface UpiOrderResult {
   orderId: string;
   amount: number;
-  currency: 'INR' | 'USD';
-  provider: 'RAZORPAY' | 'STRIPE';
-  checkoutKey: string;
-  clientSecret?: string; // For Stripe payment intent
-  metadata?: Record<string, unknown>;
-}
-
-export interface VerifyPaymentParams {
-  orderId: string;
-  paymentId: string;
-  signature?: string;
-}
-
-export interface PaymentProvider {
-  readonly id: 'RAZORPAY' | 'STRIPE';
-  readonly name: string;
-  readonly supportedCurrencies: Array<'INR' | 'USD'>;
-  
-  isConfigured(): boolean;
-  createOrder(params: CreateOrderParams): Promise<PaymentOrderResult>;
-  verifyPayment(params: VerifyPaymentParams): Promise<boolean>;
+  currency: 'INR';
+  provider: 'UPI_QR';
+  vpa: string;
+  payeeName: string;
+  upiUrl: string;
+  whatsAppSubmissionUrl: string;
 }

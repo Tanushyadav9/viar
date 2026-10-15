@@ -1762,3 +1762,507 @@ Tests were executed against:
 5. **Server-Side Paywall & Access Gating**:
    - Gate `/dashboard/courses/[cohortId]` so only enrolled students or admin/instructors can access video streams, documents, and lessons.
    - Public visitors can browse syllabi and preview sample lessons on `/courses/[slug]`, but are prompted to purchase to access full course material.
+
+
+---
+
+## 35. Live Production Audit: Database Connectivity Failure, Data Storage Reality & Owner Diagnostics Suite (October 2026)
+
+**Date:** October 14, 2026  
+**Auditor:** Antigravity AI Engineering & Audit Pair  
+**Target Environment:** Live Production Platform (`https://viar.in`) & Local Codebase  
+
+---
+
+### 35.1 Crucial Architectural & Security Design Decision
+
+> [!IMPORTANT]
+> **CONFIRMED DESIGN DECISION: ZERO SEPARATE "STUDENT PORTAL CREDENTIALS"**  
+> Under no circumstances are separate, generated, or temporary "student portal credentials" (usernames/passwords) created or transmitted to learners.  
+> 
+> **Rationale & Operational Rule:**
+> 1. **Zero Password Transmission over WhatsApp:** Transmitting plaintext passwords or login credentials over WhatsApp is a major security vulnerability, exposes accounts to eavesdropping or forwarding interception, and creates severe administrative friction for the Site Owner.
+> 2. **Single Unified Identity:** Students sign up or log in using their own email and password or Google OAuth directly on `viar.in` (Clerk Multi-Domain Single Sign-On).
+> 3. **Instant Course Unlock upon Owner Approval:** When the Site Owner verifies a UPI payment screenshot on WhatsApp and approves access in the Admin Studio, the course is unlocked directly on the student's existing authenticated account.
+> 4. **Owner Notification:** The Owner continues to send a personal WhatsApp message to the student strictly to notify them that their enrollment is activated. The student simply logs into `viar.in` with their own credentials and immediately sees all course content (study notes, HD recorded videos, live classes, and upcoming schedules).
+
+---
+
+### 35.2 Empirical Proof: Production Database Connectivity Failure on Live Site (`viar.in`)
+
+An empirical investigation was conducted against the live production deployment at `https://viar.in` to determine why database-backed features were failing.
+
+#### 1. Empirical Proof 1: User Session Database Synchronization Probe (`POST /api/users/sync`)
+A live probe was executed against `https://viar.in/api/users/sync` to verify if Prisma could reach and write to the PostgreSQL database.
+
+* **Target URL:** `https://viar.in/api/users/sync`
+* **HTTP Response Code:** `500 Internal Server Error`
+* **Raw Server Error Payload Received:**
+  ```json
+  {
+    "success": false,
+    "error": "\nInvalid `prisma.user.upsert()` invocation:\n\n\nerror: Error validating datasource `db`: You must provide a nonempty URL\n  -->  schema.prisma:10\n   | \n 9 |   provider  = \"postgresql\"\n10 |   url       = env(\"DATABASE_URL\")\n   | \n\nValidation Error Count: 1"
+  }
+  ```
+* **Irrefutable Root Cause:** The Vercel production hosting environment for `viar.in` **does not have `DATABASE_URL` configured**, or it is set to an empty string `""`. When Prisma Client initializes, datasource validation fails because no valid URL was provided.
+
+#### 2. Empirical Proof 2: Public Course Catalog Lookup Probe (`GET /api/courses?slug=what-is-astrology`)
+A live query was executed against the course API to observe how database lookup failures were handled.
+
+* **Target URL:** `https://viar.in/api/courses?slug=what-is-astrology`
+* **HTTP Response Code:** `200 OK`
+* **Payload Analysis:**
+  ```json
+  {
+    "success": true,
+    "course": {
+      "id": "course-what-is-astrology",
+      "slug": "what-is-astrology",
+      "modules": [...],
+      "cohorts": undefined,
+      "enrollmentCount": undefined
+    }
+  }
+  ```
+* **Audit Finding:** In the actual Neon PostgreSQL database, the flagship course was seeded with CUID `cmugp9kmx000010o1wzvybmh5` and has an associated `Cohort` record and `enrollmentCount: 0`. However, the live API returned `course-what-is-astrology` with `cohorts: undefined` and `enrollmentCount: undefined`.
+* **Mechanism:** In `src/app/api/courses/route.ts` (lines 107–120), when `prisma.course.findFirst()` crashes due to the empty `DATABASE_URL`, the route catches `dbError` and silently falls back to the static in-memory seed catalog (`INITIAL_COURSES` in `src/lib/data.ts`). This masked the underlying database outage from visitor web browsers while preventing all persistent writes.
+
+---
+
+### 35.3 Data Storage Reality Matrix: Where Data Is Actually Stored
+
+An exhaustive analysis of all 9 core entity types was conducted across runtime components (`src/lib/store.ts`), static assets (`src/lib/data.ts`), and the PostgreSQL/Prisma schema (`prisma/schema.prisma`):
+
+| Data Type | Primary Runtime Storage | Local DB Count (Neon) | Production Behavior & Risk Assessment |
+| :--- | :--- | :--- | :--- |
+| **Users** | `localStorage` (`viar_current_user`) + in-memory store | 1 row (from manual verification script) | **Data Lost on Redeploy & Device Switch:** Sign-ups fail to write to PostgreSQL on `viar.in` due to missing `DATABASE_URL`. User session exists only in the student's browser cache. |
+| **Courses** | `localStorage` (`viar_courses`) + `INITIAL_COURSES` (`src/lib/data.ts`) | 5 rows (seeded in Neon) | **Invisible to Client on Production:** Edits made in Instructor Studio write to the instructor's local browser only; visitors see hardcoded fallback from `src/lib/data.ts`. |
+| **Modules** | Embedded in Course objects in `localStorage` | 0 rows in `Module` table | **Ephemeral / Code-Bound:** New modules created by the instructor exist only in `localStorage`. Database `Module` table is unpopulated. |
+| **Lessons** | `localStorage` (`viar_classes`) + `SCHEDULED_CLASSES_FLAGSHIP` | 50 rows in `Lesson`, 18 in `ClassSession` | **Ephemeral / Code-Bound:** Video URLs, Zoom join links, and notes entered in UI are lost if browser storage is cleared. |
+| **Enrollments** | `localStorage` (`viar_enrollments`) + `DEMO_ENROLLMENTS` | **0 rows in Neon DB** | **Critical Vulnerability:** When a student purchases or enrolls, `ViarStore.createEnrollment()` writes solely to `localStorage`. Zero records reach PostgreSQL. The Owner cannot see enrollments on another computer. |
+| **Progress** | `localStorage` (`viar_watched_classes`) | **0 rows in Neon DB** | **Device-Locked:** Video watched state and completed lessons are saved in `localStorage['viar_watched_classes']`. If a student switches from phone to laptop, progress resets to 0%. |
+| **Quiz Attempts** | `localStorage` (`viar_submissions`) | **0 rows in Neon DB** | **Client-Side Grading:** Quiz answers are graded in the browser (`src/lib/store.ts`). Correct answers are exposed in client bundle. Submissions never reach PostgreSQL `QuizAttempt` table. |
+| **Certificates** | `localStorage` (`viar_certificates`) + `DEMO_CERTIFICATES` | **0 rows in Neon DB** | **Forging & Loss Risk:** Certificates are minted client-side. The public verification page (`/verify/[code]`) queries `ViarStore.getCertificateByCode()` in `localStorage`, meaning anyone on a different device receives "Certificate Not Found". |
+| **Payments** | `localStorage` (mock `paymentId: pay_${Date.now()}_viar`) | **0 rows in Neon DB** | **Zero Audit Trail:** Payment records exist only as client-side enrollment metadata. Neither Razorpay/Stripe nor manual payments are logged in the database. |
+
+> [!CAUTION]
+> **Summary Assessment:** The live production site is currently running almost entirely as a **client-side Single Page Application reading from and writing to `localStorage`**, masked by static fallbacks. Any deployment, cache clear, or device switch wipes user data, and the Owner is completely blind to live enrollments.
+
+---
+
+### 35.4 Production Database Migrations & Vercel Build Pipeline Audit
+
+#### 1. Has the production database received migrations?
+* **Direct Database Verification:**
+  A direct SQL query was executed against the Neon PostgreSQL database (`neondb` on AWS `us-east-2`):
+  ```sql
+  SELECT id, checksum, finished_at, migration_name, applied_steps_count FROM _prisma_migrations;
+  ```
+* **Result:** Migration `0_init` (ID: `bb51dcad-85f5-409a-b6b4-d497bd2152ef`) was applied on `2026-09-25T08:27:50.466Z` with `applied_steps_count: 0` (baseline migration).
+* **Finding:** The physical Neon database possesses the schema tables, but production Vercel is failing to connect due to the missing environment variable.
+
+#### 2. Does the Vercel build run `prisma migrate deploy` (using `DIRECT_URL`) before `next build`?
+* **Previous Implementation:**
+  In `package.json` line 8:
+  ```json
+  "build": "node scripts/prisma-generate.mjs && next build"
+  ```
+  And inside `scripts/prisma-generate.mjs`:
+  ```javascript
+  execSync('npx prisma generate --no-hints', { stdio: 'inherit' });
+  ```
+  **Finding:** **NO.** Vercel builds executed `prisma generate` ONLY. It never executed `prisma migrate deploy`. If a new schema migration was committed, the production database was never migrated during deployment.
+* **Remediation Implemented:**
+  `scripts/prisma-generate.mjs` was upgraded to inspect `process.env.DIRECT_URL` and `process.env.DATABASE_URL`. When present, it automatically runs:
+  ```bash
+  npx prisma migrate deploy
+  ```
+  before executing `npx prisma generate` and `next build`. Because `prisma/schema.prisma` declares `directUrl = env("DIRECT_URL")`, Prisma automatically routes migration deployment over the unpooled direct connection (essential for Neon to support PostgreSQL migration advisory locks). In production/Vercel environments, any migration failure now immediately halts the build rather than deploying broken schema.
+
+---
+
+### 35.5 Real Sign-Up Flow & Clerk Production Webhook Audit
+
+#### 1. Does a real sign-up on the live site create a User row?
+* **Finding:** **NO.**
+* **Evidence:** When a student registers on `https://viar.in/signup`, the client-side authentication provider calls `fetch('/api/users/sync')`. As proven in Section 35.2, `/api/users/sync` calls `prisma.user.upsert()`, which throws `error: Error validating datasource db: You must provide a nonempty URL` (HTTP 500). The user is saved only in browser `localStorage`.
+
+#### 2. Is the Clerk webhook configured and receiving events?
+* **Webhook Secret Configuration:**
+  A probe request without Svix headers was sent to `https://viar.in/api/webhooks/clerk`:
+  - **HTTP Status:** `400 Bad Request`
+  - **Body:** `{"error":"Missing required svix verification headers"}`
+  - **Finding:** In `src/app/api/webhooks/clerk/route.ts`, the handler checks for `CLERK_WEBHOOK_SECRET` first (returning HTTP 500 if missing). Because it responded with HTTP 400 (missing Svix headers), **`CLERK_WEBHOOK_SECRET` IS configured in the Vercel production environment.**
+* **Event Processing Status:**
+  When Clerk dispatches a verified `user.created` or `user.updated` event to `https://viar.in/api/webhooks/clerk`, the handler attempts to run `prisma.user.upsert()` (lines 117–138). Because `DATABASE_URL` is missing, the webhook handler crashes with HTTP 500. Clerk records this as a failed delivery attempt.
+
+#### 3. Is the production Clerk instance using live keys?
+* **Finding:** **YES.**
+* **Evidence from Live Production HTML (`https://viar.in`):**
+  Inspecting the rendered production DOM on `viar.in` revealed the Clerk script tag:
+  ```html
+  <script src="https://clerk.viar.in/npm/@clerk/clerk-js@5/dist/clerk.browser.js" 
+          data-clerk-js-script="true" 
+          async="" 
+          crossorigin="anonymous" 
+          data-clerk-publishable-key="pk_live_Y2xlcmsudmlhci5pbiQ">
+  </script>
+  ```
+  The publishable key prefix `pk_live_` confirms that production Clerk is operating with **live keys**, not test keys. (Local `.env` currently retains `pk_test_` keys for safe development).
+
+---
+
+### 35.6 Owner-Only Diagnostics Suite & Public Health Check
+
+To give the client (Acharya Niraj Kumar) and engineering team continuous, instant browser-based visibility into production infrastructure without checking server logs, two dedicated tools were built:
+
+#### 1. Minimal Public Health Endpoint (`GET /api/health`)
+* **Route:** `src/app/api/health/route.ts`
+* **Visibility:** Public (no authentication required; suitable for external uptime monitors).
+* **Behavior:** Lightweight database ping (`SELECT 1`).
+* **Security:** **Returns zero internal data.**
+  - If database is connected: HTTP `200 OK` with `{"status":"ok"}`.
+  - If database is down/unreachable: HTTP `503 Service Unavailable` with `{"status":"error"}`.
+
+#### 2. Owner-Only Diagnostics Dashboard (`/admin/diagnostics`)
+* **Routes:**
+  - UI Page: `src/app/admin/diagnostics/page.tsx`
+  - Redirect: `src/app/diagnostics/page.tsx` &rarr; `/admin/diagnostics`
+  - Telemetry API: `src/app/api/admin/diagnostics/route.ts`
+* **Access Control:** Restricted strictly to Site Owner (`ask@aapkaastro.com`). Middleware and API fail-closed against non-owner requests.
+* **Telemetry Displayed in UI:**
+  1. **Database Connectivity:** Real-time ping status, latency in milliseconds, and masked host (`ep-orange-poetry-b4cupwem-pooler...aws.neon.tech`).
+  2. **Prisma Migrations:** Exact count of applied migrations and migration name history queried directly from `_prisma_migrations`.
+  3. **Live Entity Row Counts:** Real-time counts across 14 tables (`User`, `Course`, `Module`, `Lesson`, `Cohort`, `ClassSession`, `Enrollment`, `SessionProgress`, `Quiz`, `QuizAttempt`, `Certificate`, `Payment`, `StaffPermission`, `ActivityLog`).
+  4. **Clerk Authentication Mode:** Displays `LIVE` vs `TEST` based strictly on publishable key prefix (`pk_live_` vs `pk_test_`). **Zero secret values are ever displayed.**
+  5. **Clerk Webhook Telemetry:** Displays whether `CLERK_WEBHOOK_SECRET` is configured, plus the exact ISO timestamp of the last received Clerk webhook (tracked via `ActivityLog` and memory singleton).
+  6. **Environment Variables Security Checklist:** A true/false table covering 10 required and optional variables (`DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`, `OWNER_EMAIL`, `SUPERADMIN_EMAILS`, `REDIS_URL`, `RESEND_API_KEY`). Reports presence boolean only; credentials and passwords are strictly hidden.
+  7. **Direct Action Controls:** One-click "Refresh Telemetry" and "Test Public /api/health" buttons directly in the browser interface.
+
+---
+
+### 35.7 Remediation Action Plan: Restoring Live Database Connection
+
+To immediately restore database connectivity on `https://viar.in`:
+
+1. **Configure Environment Variables in Vercel Dashboard:**
+   In Vercel &rarr; `viar` project &rarr; **Settings** &rarr; **Environment Variables** (Production environment):
+   - `DATABASE_URL`: `postgresql://neondb_owner:npg_gK7Xf6MszcAI@ep-orange-poetry-b4cupwem-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require`
+   - `DIRECT_URL`: `postgresql://neondb_owner:npg_gK7Xf6MszcAI@ep-orange-poetry-b4cupwem.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require`
+   - `OWNER_EMAIL`: `ask@aapkaastro.com`
+   - `NEXT_PUBLIC_APP_URL`: `https://viar.in`
+2. **Trigger Production Redeployment:**
+   Once the environment variables are saved in Vercel, redeploy the latest commit. The enhanced `scripts/prisma-generate.mjs` will run `prisma migrate deploy` using `DIRECT_URL` during the build step, verify that all migrations are applied, and build Next.js.
+3. **Browser Verification via Owner Diagnostics:**
+   Navigate to `https://viar.in/admin/diagnostics`. Verify that:
+   - Database Connection changes from "Disconnected" to **Connected (Green)** with ping latency.
+   - Applied Migrations displays **2 applied** (`0_init`, `20261015000000_add_clerk_webhook_events_and_upi_payments`).
+   - Clerk Key Mode displays **LIVE**.
+   - Public `/api/health` responds with `200 OK`.
+
+---
+
+## 36. Relational Database Migration & Flagship Curriculum Seeding (October 2026)
+
+### 36.1 Migration Deployed: `20261015000000_add_clerk_webhook_events_and_upi_payments`
+A new comprehensive Prisma migration was authored and deployed to the production Neon PostgreSQL database:
+- **`ClerkWebhookEvent` Table**: Created to persist every incoming Clerk authentication event (`user.created`, `user.updated`, `user.deleted`) with `svixId`, `eventType`, `status` (`PROCESSED` | `ERROR`), `payload`, and `error`.
+- **`PaymentProvider` Enum Expansion**: Extended PostgreSQL enum with `UPI_QR`, `MANUAL_VERIFICATION`, and `BANK_TRANSFER`.
+- **`Payment` Table Hardening**: Added columns for relational traceability: `courseId`, `studentName`, `studentEmail`, `studentPhone`, `screenshotUrl`, `notes`, `verifiedBy`, and `verifiedAt`.
+
+### 36.2 Complete Curriculum Seed into PostgreSQL
+The entire curriculum from static data files was seeded into Neon PostgreSQL via `scripts/seed-database.ts`:
+- **5 Courses**: Flagship "What is Astrology" plus 4 upcoming specialized courses.
+- **24 Modules**: All 23 flagship syllabus modules with Acharya Niraj Kumar, plus 2 bonus chart interpretation workshops.
+- **50 Lessons**: 46 structured video lectures and study guide PDFs.
+- **2 Cohorts**: Batch 1 (Active) and Batch 2 (Upcoming).
+- **23 Scheduled Class Sessions**: Interactive live Q&A and practical sessions.
+- **2 Quizzes**: Comprehensive 20-question certification exam with 80 options.
+
+---
+
+## 37. Complete Removal of Razorpay & Stripe: Transition to Direct UPI QR
+
+### 37.1 Client Decision & Commission Elimination Rationale
+Payment gateway intermediaries charge 2% to 3% plus GST on every transaction, eroding tuition revenue and adding dispute complexity. The client mandated that all tuition is received strictly via direct UPI QR code (`aapkaastro@okaxis`) at ₹5,100 INR.
+
+### 37.2 Repository Cleanup & Deletions
+Every trace of Razorpay and Stripe was systematically removed from the codebase:
+- **Deleted Webhook Routes**:
+  - `src/app/api/payments/webhook/razorpay/route.ts` (DELETED)
+  - `src/app/api/payments/webhook/stripe/route.ts` (DELETED)
+- **Deleted Gateway Modules**:
+  - `src/lib/payments/razorpay.ts` (DELETED)
+  - `src/lib/payments/stripe.ts` (DELETED)
+- **Cleaned Configuration**:
+  - `src/config/env.ts`: Removed `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+  - `.env.example` and `.env`: Purged all gateway variables.
+- **Updated Legal & Compliance Pages**:
+  - `src/app/pricing-policy/page.tsx`: Removed gateway fee statements, multi-currency processing, and dollar prices; established 100% direct UPI tuition of ₹5,100.
+  - `src/app/privacy-policy/page.tsx`: Removed Razorpay and Stripe as sub-processors; documented direct UPI payment verification.
+  - `src/app/refund-policy/page.tsx`: Removed 2-3% gateway deduction clauses; refunds are returned 100% directly via UPI.
+- **Removed International USD Pricing**:
+  - Dropped all `/ $69 USD` badges from `src/app/courses/page.tsx`, `src/app/page.tsx`, `src/components/CourseDetailClient.tsx`, and `src/app/dashboard/payments/page.tsx`.
+- **Updated Test Suites**:
+  - `tests/webhooks.test.ts`, `tests/walkthrough.test.ts`, `tests/production-hardening.test.ts`, `tests/email.test.ts` updated to test UPI payment verification, 12-digit UTR validation, and Clerk Svix signatures.
+
+---
+
+## 38. Bilingual Infrastructure: English & Hindi Support
+
+To serve students across India and globally, full bilingual capability was implemented:
+- **`LanguageContext` (`src/components/LanguageContext.tsx`)**: React Context provider managing language state (`en` | `hi`) with local storage persistence and instantaneous toggle.
+- **Navigation Toggle (`src/components/Navbar.tsx`)**: Language switcher pill in the top navigation bar and mobile drawer displaying `English` and `हिंदी`.
+- **Checkout Experience (`src/app/checkout/[cohortId]/page.tsx`)**: Step-by-step payment instructions, UPI app links, UTR input labels, and trust guarantees dynamically switch between English and Hindi based on student choice.
+
+---
+
+## 39. End-to-End UPI QR & Owner Approval Architecture
+
+### 39.1 The Live Enrollment Workflow
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Student
+    actor Owner as Acharya Niraj Kumar (Owner)
+    participant App as Viar.in Web App
+    participant DB as Neon PostgreSQL
+    participant WA as WhatsApp (+91 93112 15564)
+
+    Student->>App: Sign up / Log in via Clerk
+    Student->>App: Visit Course Checkout (/checkout/[cohortId])
+    App->>Student: Display UPI QR Code (₹5,100, aapkaastro@okaxis)
+    Student->>Student: Scan QR / Pay ₹5,100 in UPI App
+    Student->>App: Submit 12-digit UTR Reference
+    App->>DB: Record Payment (status: PENDING, provider: UPI_QR)
+    App->>WA: Open WhatsApp with prefilled payment message & screenshot
+    Student->>Owner: Send WhatsApp message with payment screenshot
+    Owner->>App: Open Owner Studio Payments Tab (/admin)
+    Owner->>App: Click "Verify & Activate Access"
+    App->>DB: Mark Payment COMPLETED & Create Active Enrollment
+    Owner->>WA: Click "Message on WhatsApp" to confirm activation
+    Owner->>Student: Send WhatsApp activation confirmation
+    Student->>App: Log in with existing account — Course unlocked!
+```
+
+### 39.2 Crucial Security & Privacy Design Decision
+> [!IMPORTANT]
+> **FLAG FOR CLIENT / AUDIT RECORD**: No separate "student portal credentials" or temporary passwords are generated or transmitted.
+>
+> 1. **Zero Credential Sharing over WhatsApp:** Transmitting usernames and passwords over plain messaging channels is a severe security vulnerability that exposes accounts to theft and creates unnecessary manual password-generation burden for the Owner.
+> 2. **Unified Self-Service Identity:** The student registers their own secure account (via email/password or Google OAuth) on Viar.in during sign-up.
+> 3. **Instant Access Unlock:** When the Owner clicks "Verify & Activate Access" in Owner Studio, the system creates an active `Enrollment` record in PostgreSQL linked directly to the student's existing account. The student simply logs in, and the entire course vault (lessons, videos, study notes, live schedule, and quizzes) is unlocked immediately.
+
+---
+
+## 40. Verification & Test Certification
+
+| Test Suite | File | Tests | Result |
+| :--- | :--- | :--- | :--- |
+| Webhook & Payment Verification | `tests/webhooks.test.ts` | 7 | **PASS** |
+| Quiz Evaluation & Certificate Issuance | `tests/quiz-certificate.test.ts` | 6 | **PASS** |
+| Timezone & Live Window | `tests/timezone.test.ts` | 7 | **PASS** |
+| Email Policy & Receipts | `tests/email-policy.test.ts` | 14 | **PASS** |
+| RBAC & Owner Permissions | `tests/permissions.test.ts` | 13 | **PASS** |
+| Transactional Email Dispatch | `tests/email.test.ts` | 10 | **PASS** |
+| Production Hardening & Rate Limiting | `tests/production-hardening.test.ts` | 6 | **PASS** |
+| Core-Flow Walkthrough | `tests/walkthrough.test.ts` | 7 | **PASS** |
+| Content Gating & Prerequisites | `tests/content-gating.test.ts` | 8 | **PASS** |
+| E2E Gating Lifecycle | `tests/e2e-gating-lifecycle.test.ts` | 29 | **PASS** |
+| Manual UPI Workflow & Security | `tests/orders.test.ts` | 10 | **PASS** |
+| Bilingual i18n & Translation Quality | `tests/i18n.test.ts` | 8 | **PASS** |
+| **Total Test Count** | **12 Test Suites** | **125 Tests** | **100% PASS** |
+
+---
+
+## 41. Manual UPI Payment Workflow & Verification Security (Specification 34)
+
+### 41.1 System Architecture & Data Model
+To completely eliminate payment gateway commissions (2-3% + GST) while guaranteeing reliable enrollment delivery without password transmission, the system implements a strict server-side Manual UPI Payment Workflow backed by Neon PostgreSQL (`neondb`).
+
+#### 1. PostgreSQL Schema: `Order` & `PaymentSettings`
+- **`Order` Model** (`prisma/schema.prisma`):
+  - `id`: Unique CUID primary key.
+  - `orderReference`: Unique standardized identifier (`VIAR-ORD-XXXXXX-XXXX`).
+  - `userId`: Relational foreign key to `User`.
+  - `courseId`: Relational foreign key to `Course`.
+  - `cohortId`: Optional foreign key to `Cohort`.
+  - `enrollmentId`: Relational foreign key to `Enrollment` (created strictly upon Owner approval).
+  - `amount`: Integer tuition amount locked server-side (₹5,100 INR).
+  - `currency`: Locked strictly to `INR`.
+  - `status`: Lifecycle enum:
+    - `PENDING_PAYMENT`: Order initiated; price locked; awaiting student payment.
+    - `PAYMENT_CLAIMED`: Student clicked "I have paid", submitted optional UTR, and initiated WhatsApp claim.
+    - `APPROVED`: Owner verified bank statement credit; active `Enrollment` created in PostgreSQL.
+    - `REJECTED`: Owner rejected order with mandatory rejection reason (logged in `ActivityLog`).
+    - `EXPIRED`: Unpaid order passed configurable expiry window (default: 3 days).
+    - `REFUNDED`: Tuition refunded via UPI; student `Enrollment` revoked with mandatory audit reason.
+  - `studentName`, `studentPhone` (mandatory), `studentEmail`.
+  - `utr`: 12-digit transaction reference submitted by student or verified by Owner.
+  - `claimedAt`, `reviewedBy`, `reviewedAt`, `rejectionReason`, `refundedAt`, `refundReason`, `expiresAt`.
+
+- **`PaymentSettings` Model (Singleton, Owner-Editable)**:
+  - `upiId`: Active UPI VPA (default: `aapkaastro@okaxis`).
+  - `payeeName`: Legal payee name (default: `Acharya Niraj Kumar`).
+  - `qrImageUrl`: Optional static fallback QR code image URL.
+  - `whatsappNumber`: Phone number receiving payment proof (default: `919311215564`, flagged for client confirmation).
+  - `orderExpiryDays`: Days before an uncompleted order automatically expires (default: 3 days).
+  - `updatedBy`, `updatedAt`.
+
+#### 2. Security: Owner-Editable Payment Settings & Security Email Alert
+Altering payment credentials redirects where student tuition is deposited. Therefore:
+- Modifying payment settings (`/api/admin/settings/payment`) is strictly restricted to the Site Owner.
+- Every modification creates an immutable audit entry in `ActivityLog`.
+- Every modification instantly dispatches a high-priority security alert email via Resend to the Owner (`OWNER_EMAIL`), documenting who made the change, the exact old values, and the new values.
+
+### 41.2 Student Checkout Experience
+1. **Mandatory Login & Phone Collection**:
+   Students must be signed in. Checkout requires a valid student phone number before generating payment details.
+2. **Server-Side Price Locking**:
+   Orders lock the course price (₹5,100 INR) server-side upon creation. Only one open order per student per course is permitted.
+3. **Dynamic UPI QR Code**:
+   Generates a standardized `upi://pay` URI carrying the locked amount (`am=5100`), currency (`cu=INR`), payee name (`pn=...`), payee VPA (`pa=...`), and the unique order reference in the transaction note (`tn=VIAR-ORD-...`) so it matches bank statements. If no UPI ID is configured, the static fallback QR image is displayed.
+4. **Bilingual Guidance & International Visitors**:
+   - Clear, step-by-step instructions in English and Hindi.
+   - International callout: *"Outside India? Message us on WhatsApp for payment options."*
+5. **"I Have Paid" Claim & WhatsApp Handoff**:
+   - Student enters optional 12-digit UTR and clicks **"I Have Paid"**.
+   - Server updates order status to `PAYMENT_CLAIMED`.
+   - Server emails Owner alerting them of a pending payment claim.
+   - Automatically opens WhatsApp with a prefilled message containing student name, phone, course title, amount (₹5,100), order reference, and UTR.
+   - Displays dedicated status view: *"Payment received for verification. You will get access once it is confirmed."* (Zero false time promises).
+
+### 41.3 Owner Verification Studio (`/admin` Payments Tab)
+1. **Status Queue Tabs**:
+   Organized into `PAYMENT_CLAIMED` (primary queue with badge count), `PENDING_PAYMENT`, `APPROVED`, `REJECTED`, `EXPIRED`, `REFUNDED`, and `ALL`.
+2. **Mandatory Bank Credit Confirmation Checklist**:
+   > [!IMPORTANT]
+   > Payment screenshots can be fabricated or edited. Approval strictly enforces that the Owner tick:
+   > `[x] I have confirmed this amount is credited in my bank or UPI app and the reference matches.`
+3. **Duplicate UTR Prevention**:
+   The approval engine checks PostgreSQL for duplicate UTRs across all existing approved orders. If another order has already been approved with the same bank reference, approval is blocked to eliminate double-spend fraud.
+4. **Approval & Instant Zero-Password Access**:
+   Upon approval:
+   - Order status moves to `APPROVED`.
+   - An active `Enrollment` record is created in PostgreSQL with method `UPI_QR` and the confirmed UTR.
+   - Confirmation email is dispatched to the student.
+   - Displays a ready-made **"Message student on WhatsApp"** button.
+   - **Zero passwords transmitted**: The student logs in with their existing credentials, and the course portal is immediately unlocked.
+5. **Rejection & Refund Safeguards**:
+   - Rejections require a mandatory reason (e.g., *"Amount not credited in bank statement"*).
+   - Refunds require an audit reason and immediately revoke the associated `Enrollment` in PostgreSQL.
+
+---
+
+## 42. Bilingual English & Hindi Architecture, Legal Modernization & Email Policy (Specification 35)
+
+### 42.1 Architectural Foundation: Proven i18n Routing & Localization
+
+The platform now natively supports both **English** and **Hindi**, providing an accessible, authentic learning experience for Vedic astrology aspirants worldwide.
+
+```mermaid
+flowchart TD
+    User([Visitor / Student]) --> Router{Locale Routing}
+    Router -->|English: /| RootApp[Root App Router: /courses, /checkout]
+    Router -->|Hindi: /hi| Middleware[Edge Middleware: x-locale: hi]
+    Middleware --> RootApp
+    
+    RootApp --> Context[LanguageContext / LanguageSwitcher]
+    Context --> Cookie[Cookie: NEXT_LOCALE]
+    
+    RootApp --> Dictionaries[Typed Dictionaries: en.json / hi.json]
+    RootApp --> DB[Neon PostgreSQL Database]
+    
+    DB --> Localizer[getLocalizedContent Fallback]
+    Localizer --> UI[Devanagari Noto Sans Typography]
+```
+
+1. **Routing Strategy**:
+   - **English at the root**: `/`, `/courses`, `/dashboard`, `/terms`.
+   - **Hindi under `/hi`**: `/hi`, `/hi/courses`, `/hi/dashboard`, `/hi/terms`.
+   - **Middleware-Assisted Clean Rewrites**: The Next.js Edge Middleware (`src/middleware.ts`) intercepts `/hi` and `/hi/:path*`, transparently rewrites the request to the underlying route handler while attaching `x-locale: hi` headers and persisting the preference in the `NEXT_LOCALE` cookie. This eliminates the need to duplicate 60+ route folders while maintaining seamless Clerk authentication and session state.
+2. **SEO & Hreflang Alternates**:
+   - `metadataBase: https://viar.in` configured in `src/app/layout.tsx`.
+   - Structured `alternates`:
+     - `canonical: https://viar.in`
+     - `en: https://viar.in`
+     - `hi: https://viar.in/hi`
+     - `x-default: https://viar.in`
+3. **Single-Page Seamless Language Switcher**:
+   - Implemented in `src/components/LanguageContext.tsx` and surfaced in both desktop and mobile navigation headers (`src/components/Navbar.tsx`).
+   - Switching language retains the visitor's exact page position, search parameters, and URL hash, preserving student context during checkout or lesson review.
+
+---
+
+### 42.2 Bilingual Database Layer (Neon PostgreSQL)
+
+All course and curriculum content is now stored bilingually in PostgreSQL (`neondb`), eliminating any reliance on hardcoded static files.
+
+#### 1. Schema Modifications (`prisma/schema.prisma`)
+Applied via migration `20261015020000_add_bilingual_course_content`:
+- **`Course`**: Added `titleHi`, `shortDescriptionHi`, and `descriptionHi`.
+- **`Module`**: Added `titleHi` and `descriptionHi`.
+- **`Lesson`**: Added `titleHi` and `descriptionHi`.
+
+#### 2. Curriculum Seeding & English Fallback
+- Seeded all 5 catalog courses and the complete 23-module flagship curriculum into Neon PostgreSQL using authentic Hindi titles and descriptions.
+- **`getLocalizedContent(item, locale)`**: If a Hindi translation is missing, empty, or whitespace-only, the localization engine gracefully falls back to the English source content, guaranteeing that no student ever encounters broken layout or blank modules.
+- **Owner Studio Curriculum Builder**: The admin editor (`/instructor/courses/[id]/builder`) provides dedicated side-by-side editing fields for both English and Hindi for course metadata, module titles, and individual lessons.
+
+---
+
+### 42.3 Typography & Devanagari Visual Rendering
+
+1. **Font Optimization**: Loaded Google's `Noto_Sans_Devanagari` through `next/font/google` (`subsets: ['devanagari']`, `display: 'swap'`) in `src/app/layout.tsx`.
+2. **Layout Integrity**: Configured CSS font stacks and added `word-break: keep-all; overflow-wrap: break-word;` in `src/app/globals.css` to prevent awkward splitting of Devanagari conjunct characters (*samyuktaksharas*) across complex mobile viewport widths.
+
+---
+
+### 42.4 Translation Quality Assurance & Anti-Mixed-Leftovers Policy
+
+1. **Automated Test Suite (`tests/i18n.test.ts`)**:
+   - **Key Parity (1:1)**: Ensures every English key in `en.json` exists in `hi.json` with a non-empty string.
+   - **Authentic Script Validation**: Checks that all Hindi dictionary strings contain authentic Devanagari characters (`[\u0900-\u097F]`).
+   - **Strict Ban on Parenthetical English Leftovers**: Guarantees zero occurrences of mixed-language artifacts like `"परिचय (About)"` or `"पाठ्यक्रम (Course)"`.
+   - **Approved Technical Token Whitelist**: Parenthetical content in Hindi is restricted strictly to approved technical acronyms, percentages, or Hindi descriptors:
+     `VIAR`, `viar.in`, `UPI`, `QR`, `WhatsApp`, `GPay`, `PhonePe`, `Paytm`, `BHIM`, `UTR`, `PDF`, `INR`.
+2. **Client Sign-Off Requirement**:
+   > [!WARNING]
+   > **MANDATORY CLIENT REVIEW BEFORE LAUNCH**  
+   > *Hindi drafted here must be reviewed by the client before launch.*  
+   > While the translations were authored with high classical fidelity to Vedic astrology terminology, Acharya Niraj Kumar and the VIAR academic leadership must review all Devanagari strings, course descriptions, and legal wording prior to public deployment.
+
+---
+
+### 42.5 Legal Modernization: Direct UPI & Manual Verification
+
+The public legal pages (`/terms`, `/refund-policy`, `/privacy-policy`) have been completely rewritten to reflect the elimination of automated payment gateways and the adoption of the Manual UPI Payment Workflow:
+
+1. **Prominent Legal Banner**:
+   Every policy page explicitly displays:
+   `⚠️ PENDING LAWYER REVIEW — DRAFT OPERATIONAL POLICY`
+2. **Terms of Service (`/terms`)**:
+   - Explicitly defines tuition payments made directly to payee **Acharya Niraj Kumar** via UPI ID `aapkaastro@okaxis`.
+   - Documents manual bank statement reconciliation process.
+   - Clarifies that course access unlocks upon verified bank credit receipt.
+3. **Refund Policy (`/refund-policy`)**:
+   - Explains that refunds are issued manually via direct UPI reverse transfer to the student's originating VPA/bank account within 5–7 business days upon approval.
+   - Outlines 7-day money-back satisfaction guarantee for unconsumed course modules.
+4. **Privacy Policy (`/privacy-policy`)**:
+   - Eliminates all references to Razorpay, Stripe, or credit card processing.
+   - Formulates lawful basis for collecting Student Name, Email Address, and WhatsApp Mobile Number for identity anchoring, access unlock, and class schedules.
+   - Reaffirms that payment screenshots and 12-digit UTRs are processed solely for verification and fraud prevention.
+
+---
+
+### 42.6 Transactional Email System (Resend) & Delivery Safeguards
+
+1. **Email Service Contracts (`src/lib/email/`)**:
+   - **`PaymentClaimedEmailData`**: Dispatches alert to Owner when student clicks "I have paid", including student name, phone, course, locked amount, submitted UTR, and link to Owner Studio queue.
+   - **`PaymentApprovedEmailData`**: Notifies student immediately upon bank credit confirmation. Emphasizes that zero temporary passwords are sent; access is unlocked on their existing login.
+   - **`PaymentRejectedEmailData`**: Notifies student if bank credit was not found, stating the exact reason and providing direct WhatsApp support links for clarification.
+2. **Production Fail-Loud Logging**:
+   If `RESEND_API_KEY` is missing in a production environment, the service outputs:
+   `🚨 [CRITICAL CONFIG ERROR] RESEND_API_KEY is missing in production environment! Emails cannot be delivered.`
+3. **Zero Lost Orders Guarantee**:
+   All transactional email dispatches in `src/lib/payments/orders.ts` are encapsulated in resilient `try/catch` handlers with structured logging (`logger.paymentError`). An email dispatch failure or third-party outage will **never** cause an order creation, claim, approval, or rejection transaction in PostgreSQL to fail.

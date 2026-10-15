@@ -2,13 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Mukta:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Yatra+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Mukta:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Yatra+One&display=swap');
 
 :root {
   --font-cinzel: 'Cinzel', serif;
   --font-yatra: 'Yatra One', cursive;
   --font-mukta: 'Mukta', sans-serif;
   --font-poppins: 'Poppins', sans-serif;
+  --font-devanagari: 'Noto Sans Devanagari', 'Mukta', 'Kohinoor Devanagari', -apple-system, sans-serif;
   --font-sans: var(--font-mukta), var(--font-poppins), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-serif: var(--font-cinzel), serif;
 
@@ -42,6 +43,19 @@ body {
   overflow-x: hidden;
   min-height: 100vh;
   transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+html[lang="hi"], [lang="hi"], .font-devanagari {
+  font-family: var(--font-devanagari), var(--font-mukta), var(--font-sans);
+  line-height: 1.6;
+}
+
+/* Ensure buttons, badges, and links with Hindi script don't break awkwardly */
+[lang="hi"] button,
+[lang="hi"] .badge,
+[lang="hi"] a {
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 html.light,

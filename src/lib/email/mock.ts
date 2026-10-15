@@ -12,6 +12,9 @@ import type {
   ClassReminderEmailData,
   RecordingAvailableEmailData,
   CertificateIssuedEmailData,
+  PaymentClaimedEmailData,
+  PaymentApprovedEmailData,
+  PaymentRejectedEmailData,
 } from './types';
 import {
   renderEnrollmentConfirmation,
@@ -19,6 +22,9 @@ import {
   renderClassReminder,
   renderRecordingAvailable,
   renderCertificateIssued,
+  renderPaymentClaimed,
+  renderPaymentApproved,
+  renderPaymentRejected,
 } from './templates.ts';
 
 export class MockEmailService implements EmailService {
@@ -108,6 +114,36 @@ export class MockEmailService implements EmailService {
 
   async sendCertificateIssued(data: CertificateIssuedEmailData): Promise<EmailSendResult> {
     const { subject, html, text } = renderCertificateIssued(data);
+    return this.sendEmail({
+      to: data.studentEmail,
+      subject,
+      html,
+      text,
+    });
+  }
+
+  async sendPaymentClaimed(data: PaymentClaimedEmailData): Promise<EmailSendResult> {
+    const { subject, html, text } = renderPaymentClaimed(data);
+    return this.sendEmail({
+      to: data.ownerEmail,
+      subject,
+      html,
+      text,
+    });
+  }
+
+  async sendPaymentApproved(data: PaymentApprovedEmailData): Promise<EmailSendResult> {
+    const { subject, html, text } = renderPaymentApproved(data);
+    return this.sendEmail({
+      to: data.studentEmail,
+      subject,
+      html,
+      text,
+    });
+  }
+
+  async sendPaymentRejected(data: PaymentRejectedEmailData): Promise<EmailSendResult> {
+    const { subject, html, text } = renderPaymentRejected(data);
     return this.sendEmail({
       to: data.studentEmail,
       subject,

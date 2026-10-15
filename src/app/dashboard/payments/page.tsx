@@ -108,7 +108,7 @@ export default function StudentPaymentsPage() {
                   <div className="text-left md:text-right">
                     <span className="text-[11px] text-slate-400 block">Amount Paid</span>
                     <span className="text-xl font-black text-white">
-                      {enr.currency === 'INR' ? `₹${enr.paymentAmount.toLocaleString()}` : `$${enr.paymentAmount} USD`}
+                      ₹{(enr.paymentAmount || 5100).toLocaleString('en-IN')}
                     </span>
                   </div>
 
@@ -129,9 +129,9 @@ export default function StudentPaymentsPage() {
         <div className="mt-12 p-6 rounded-2xl bg-white/[0.02] border border-white/10 text-center text-xs text-slate-400 space-y-1">
           <p className="flex items-center justify-center gap-1.5 text-slate-300">
             <Lock className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Secure 256-bit encrypted transactions via Razorpay (India) & Stripe (Global).</span>
+            <span>Direct UPI QR payment verified by Vihangam Institute administration.</span>
           </p>
-          <p>For invoice billing inquiries or GST receipts, contact admissions@viar.in.</p>
+          <p>For invoice billing inquiries or GST receipts, contact admissions@viar.in or WhatsApp +91 93112 15564.</p>
         </div>
 
       </div>

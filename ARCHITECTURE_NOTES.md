@@ -62,7 +62,7 @@ The platform uses 6 standardized section identifiers:
 3. `students` — Enrolled student roster, manual admissions, and attendance.
 4. `quizzes` — 20-question certification exams, pass thresholds, and certificate issuance.
 5. `analytics` — Student completion rates, video watch telemetry, and platform stats.
-6. `payments` — Razorpay / Stripe transaction receipts and revenue telemetry.
+6. `payments` — Direct UPI QR transactions, UTR verifications, and revenue telemetry.
 7. `staff` — Team permission management (`/admin/team`), strictly reserved for the Site Owner.
 
 ### Access Levels: `VIEW` vs. `MANAGE`

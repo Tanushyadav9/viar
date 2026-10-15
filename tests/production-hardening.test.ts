@@ -57,12 +57,12 @@ describe('Production Hardening Test Suite', () => {
 
     it('should log critical payment failures without throwing', () => {
       assert.doesNotThrow(() => {
-        logger.paymentError('Card authorization failed', {
-          orderId: 'order_12345',
+        logger.paymentError('UPI transaction verification failed', {
+          orderId: 'pay_12345',
           studentEmail: 'student@example.com',
           amount: 5100,
-          provider: 'razorpay',
-        }, new Error('Insufficient funds'));
+          provider: 'upi_qr',
+        }, new Error('Invalid UTR reference'));
       });
     });
 

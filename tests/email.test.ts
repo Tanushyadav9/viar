@@ -50,8 +50,8 @@ test('Transactional Email System', async (t) => {
     mockService.clearHistory();
 
     const receiptData = {
-      receiptNumber: 'REC-RZP-984210',
-      orderId: 'order_test_9842',
+      receiptNumber: 'REC-UPI-984210',
+      orderId: 'pay_test_9842',
       paymentDate: 'Oct 1, 2026',
       studentName: 'Priya Verma',
       studentEmail: 'priya@example.com',
@@ -59,15 +59,15 @@ test('Transactional Email System', async (t) => {
       cohortName: 'Batch 1',
       amount: 5100,
       currency: '₹',
-      paymentMethod: 'Razorpay (UPI / NetBanking)',
+      paymentMethod: 'Direct UPI (aapkaastro@okaxis)',
       status: 'PAID' as const,
       dashboardUrl: 'https://viar.in/dashboard/payments',
     };
 
     const template = renderPaymentReceipt(receiptData);
-    assert.match(template.subject, /Payment Receipt #REC-RZP-984210/);
-    assert.match(template.html, /REC-RZP-984210/);
-    assert.match(template.html, /order_test_9842/);
+    assert.match(template.subject, /Payment Receipt #REC-UPI-984210/);
+    assert.match(template.html, /REC-UPI-984210/);
+    assert.match(template.html, /pay_test_9842/);
     assert.match(template.html, /PAID IN FULL/);
     assert.match(template.html, /₹ 5,100/);
 
@@ -182,5 +182,70 @@ test('Transactional Email System', async (t) => {
     assert.strictEqual(typeof service.sendClassReminder, 'function');
     assert.strictEqual(typeof service.sendRecordingAvailable, 'function');
     assert.strictEqual(typeof service.sendCertificateIssued, 'function');
+    assert.strictEqual(typeof service.sendPaymentClaimed, 'function');
+    assert.strictEqual(typeof service.sendPaymentApproved, 'function');
+    assert.strictEqual(typeof service.sendPaymentRejected, 'function');
+  });
+
+  await t.test('8. Payment Claimed Email to Owner', async () => {
+    mockService.clearHistory();
+    const result = await mockService.sendPaymentClaimed({
+      ownerEmail: 'ask@aapkaastro.com',
+      orderReference: 'VIAR-ORD-TEST-01',
+      studentName: 'Rahul Sharma',
+      studentPhone: '+91 98765 43210',
+      studentEmail: 'rahul@example.com',
+      courseTitle: 'Foundations of Vedic Astrology',
+      amount: 4999,
+      utr: '123456789012',
+      adminQueueUrl: 'https://viar.in/admin',
+    });
+    assert.strictEqual(result.success, true);
+    const sent = mockService.getSentEmails();
+    assert.strictEqual(sent.length, 1);
+    assert.strictEqual(sent[0].to, 'ask@aapkaastro.com');
+    assert.match(sent[0].subject, /VIAR-ORD-TEST-01/);
+    assert.match(sent[0].html, /Rahul Sharma/);
+    assert.match(sent[0].html, /123456789012/);
+  });
+
+  await t.test('9. Payment Approved Email to Student (Zero Passwords)', async () => {
+    mockService.clearHistory();
+    const result = await mockService.sendPaymentApproved({
+      studentName: 'Rahul Sharma',
+      studentEmail: 'rahul@example.com',
+      courseTitle: 'Foundations of Vedic Astrology',
+      amountPaid: 4999,
+      orderReference: 'VIAR-ORD-TEST-01',
+      utr: '123456789012',
+      dashboardUrl: 'https://viar.in/dashboard',
+    });
+    assert.strictEqual(result.success, true);
+    const sent = mockService.getSentEmails();
+    assert.strictEqual(sent.length, 1);
+    assert.strictEqual(sent[0].to, 'rahul@example.com');
+    assert.match(sent[0].subject, /Course Access Unlocked/);
+    assert.match(sent[0].html, /Zero-Password Access Notice/);
+    assert.match(sent[0].text || '', /No passwords are sent/);
+  });
+
+  await t.test('10. Payment Rejected Email to Student', async () => {
+    mockService.clearHistory();
+    const result = await mockService.sendPaymentRejected({
+      studentName: 'Rahul Sharma',
+      studentEmail: 'rahul@example.com',
+      courseTitle: 'Foundations of Vedic Astrology',
+      orderReference: 'VIAR-ORD-TEST-01',
+      amount: 4999,
+      rejectionReason: 'Amount not received in bank account. Please check with your bank.',
+      supportWhatsApp: '+91 93112 15564',
+    });
+    assert.strictEqual(result.success, true);
+    const sent = mockService.getSentEmails();
+    assert.strictEqual(sent.length, 1);
+    assert.strictEqual(sent[0].to, 'rahul@example.com');
+    assert.match(sent[0].subject, /Payment Verification Update/);
+    assert.match(sent[0].html, /Amount not received in bank account/);
+    assert.match(sent[0].html, /\+91 93112 15564/);
   });
 });

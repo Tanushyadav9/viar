@@ -38,7 +38,7 @@ async function main() {
     cohortName: 'Batch 1 (October 2026)',
     amount: 5100,
     currency: '₹',
-    paymentMethod: 'Razorpay UPI (aarav@okaxis)',
+    paymentMethod: 'Direct UPI (aarav@okaxis)',
     status: 'PAID',
     dashboardUrl: 'https://viar.in/dashboard/payments',
   });

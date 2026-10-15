@@ -22,6 +22,12 @@ import {
   BarChart3,
   Check,
   X,
+  Activity,
+  Settings,
+  AlertTriangle,
+  MessageCircle,
+  RefreshCw,
+  Smartphone,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import {
@@ -54,6 +60,50 @@ interface AdminStats {
   upcomingClasses: number;
   certificatesIssued: number;
   activeCohorts: number;
+}
+
+export type OrderStatusType =
+  | 'PENDING_PAYMENT'
+  | 'PAYMENT_CLAIMED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'REFUNDED';
+
+export interface AdminOrder {
+  id: string;
+  userId: string;
+  courseId: string;
+  cohortId?: string | null;
+  amount: number;
+  currency: string;
+  status: OrderStatusType;
+  orderReference: string;
+  expiresAt: string | Date;
+  utr?: string | null;
+  claimedAt?: string | Date | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | Date | null;
+  rejectionReason?: string | null;
+  refundReason?: string | null;
+  studentName?: string | null;
+  studentEmail?: string | null;
+  studentPhone?: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  course?: { id: string; title: string; slug: string } | null;
+  cohort?: { id: string; batchName: string } | null;
+  user?: { id: string; name?: string | null; email: string; phone?: string | null } | null;
+  enrollment?: { id: string; status: string; enrolledAt: string | Date } | null;
+}
+
+export interface PaymentSettingsState {
+  upiId: string;
+  payeeName: string;
+  qrImageUrl: string;
+  whatsappNumber: string;
+  orderExpiryDays: number;
+  isDefaultFallback?: boolean;
 }
 
 export default function AdminPortalPage() {
@@ -90,7 +140,6 @@ export default function AdminPortalPage() {
   const [newCourseTitle, setNewCourseTitle] = useState('');
   const [newCourseTagline, setNewCourseTagline] = useState('');
   const [newCoursePriceInr, setNewCoursePriceInr] = useState('19999');
-  const [newCoursePriceUsd, setNewCoursePriceUsd] = useState('249');
   const [newCourseWeeks, setNewCourseWeeks] = useState('8');
   const [newCourseClasses, setNewCourseClasses] = useState('16');
 
@@ -104,6 +153,249 @@ export default function AdminPortalPage() {
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
 
+  // WhatsApp activation confirmation url state
+  const [lastVerifiedWhatsAppUrl, setLastVerifiedWhatsAppUrl] = useState<string | null>(null);
+
+  // Manual UPI Orders & Verification Queue State
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [orderCounts, setOrderCounts] = useState<Record<string, number>>({
+    ALL: 0,
+    PENDING_PAYMENT: 0,
+    PAYMENT_CLAIMED: 0,
+    APPROVED: 0,
+    REJECTED: 0,
+    EXPIRED: 0,
+    REFUNDED: 0,
+  });
+  const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>('PAYMENT_CLAIMED');
+  const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [orderActionError, setOrderActionError] = useState<string | null>(null);
+
+  // Approval Modal State (Mandatory bank checklist + duplicate UTR protection)
+  const [orderToApprove, setOrderToApprove] = useState<AdminOrder | null>(null);
+  const [bankCheckConfirmed, setBankCheckConfirmed] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [approveErrorMessage, setApproveErrorMessage] = useState<string | null>(null);
+
+  // Rejection Modal State
+  const [orderToReject, setOrderToReject] = useState<AdminOrder | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [rejectErrorMessage, setRejectErrorMessage] = useState<string | null>(null);
+
+  // Refund Modal State
+  const [orderToRefund, setOrderToRefund] = useState<AdminOrder | null>(null);
+  const [refundReason, setRefundReason] = useState('');
+  const [isRefunding, setIsRefunding] = useState(false);
+  const [refundErrorMessage, setRefundErrorMessage] = useState<string | null>(null);
+
+  // Payment Settings State (Owner Only)
+  const [isPaymentSettingsOpen, setIsPaymentSettingsOpen] = useState(false);
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettingsState>({
+    upiId: 'aapkaastro@okaxis',
+    payeeName: 'Acharya Niraj Kumar',
+    qrImageUrl: '',
+    whatsappNumber: '919311215564',
+    orderExpiryDays: 3,
+  });
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsNotice, setSettingsNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const loadOrders = React.useCallback(async (statusOverride?: string, queryOverride?: string) => {
+    setIsLoadingOrders(true);
+    setOrderActionError(null);
+    try {
+      const statusToUse = statusOverride !== undefined ? statusOverride : selectedOrderStatus;
+      const queryToUse = queryOverride !== undefined ? queryOverride : orderSearchQuery;
+      const params = new URLSearchParams();
+      if (statusToUse && statusToUse !== 'ALL') {
+        params.set('status', statusToUse);
+      }
+      if (queryToUse.trim()) {
+        params.set('q', queryToUse.trim());
+      }
+      const res = await fetch(`/api/admin/orders?${params.toString()}`);
+      const data = await res.json();
+      if (data?.success) {
+        setOrders(data.orders || []);
+        if (data.countsByStatus) {
+          setOrderCounts(data.countsByStatus);
+        }
+      } else {
+        setOrderActionError(data?.error || 'Failed to fetch orders queue');
+      }
+    } catch (e: unknown) {
+      setOrderActionError(e instanceof Error ? e.message : 'Error fetching orders queue');
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  }, [selectedOrderStatus, orderSearchQuery]);
+
+  const loadPaymentSettings = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/settings/payment');
+      const data = await res.json();
+      if (data?.success && data.settings) {
+        setPaymentSettings({
+          upiId: data.settings.upiId || 'aapkaastro@okaxis',
+          payeeName: data.settings.payeeName || 'Acharya Niraj Kumar',
+          qrImageUrl: data.settings.qrImageUrl || '',
+          whatsappNumber: data.settings.whatsappNumber || '919311215564',
+          orderExpiryDays: data.settings.orderExpiryDays || 3,
+          isDefaultFallback: data.settings.isDefaultFallback,
+        });
+      }
+    } catch {}
+  }, []);
+
+  const handleSavePaymentSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingSettings(true);
+    setSettingsNotice(null);
+    try {
+      const res = await fetch('/api/admin/settings/payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paymentSettings),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setSettingsNotice({
+          type: 'success',
+          message: data.message || 'Payment settings updated and audit notice dispatched.',
+        });
+        loadPaymentSettings();
+      } else {
+        setSettingsNotice({
+          type: 'error',
+          message: data?.error || 'Failed to update payment settings.',
+        });
+      }
+    } catch (err: unknown) {
+      setSettingsNotice({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to save settings.',
+      });
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleConfirmApprove = async () => {
+    if (!orderToApprove) return;
+    if (!bankCheckConfirmed) {
+      setApproveErrorMessage('You must confirm that the funds have been credited to your bank account.');
+      return;
+    }
+
+    setIsApproving(true);
+    setApproveErrorMessage(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderToApprove.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'APPROVE',
+          bankConfirmed: true,
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        if (data.whatsappConfirmationUrl) {
+          setLastVerifiedWhatsAppUrl(data.whatsappConfirmationUrl);
+        }
+        setOrderToApprove(null);
+        setBankCheckConfirmed(false);
+        loadOrders();
+        setStats(ViarStore.getAdminStats());
+      } else {
+        setApproveErrorMessage(data?.error || 'Failed to approve order.');
+      }
+    } catch (err: unknown) {
+      setApproveErrorMessage(err instanceof Error ? err.message : 'Failed to approve order.');
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleConfirmReject = async () => {
+    if (!orderToReject) return;
+    if (!rejectionReason.trim()) {
+      setRejectErrorMessage('A rejection reason is required.');
+      return;
+    }
+
+    setIsRejecting(true);
+    setRejectErrorMessage(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderToReject.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'REJECT',
+          rejectionReason: rejectionReason.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setOrderToReject(null);
+        setRejectionReason('');
+        loadOrders();
+      } else {
+        setRejectErrorMessage(data?.error || 'Failed to reject order.');
+      }
+    } catch (err: unknown) {
+      setRejectErrorMessage(err instanceof Error ? err.message : 'Failed to reject order.');
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
+  const handleConfirmRefund = async () => {
+    if (!orderToRefund) return;
+    if (!refundReason.trim()) {
+      setRefundErrorMessage('A refund reason is required.');
+      return;
+    }
+
+    setIsRefunding(true);
+    setRefundErrorMessage(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderToRefund.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'REFUND',
+          refundReason: refundReason.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setOrderToRefund(null);
+        setRefundReason('');
+        loadOrders();
+      } else {
+        setRefundErrorMessage(data?.error || 'Failed to refund order.');
+      }
+    } catch (err: unknown) {
+      setRefundErrorMessage(err instanceof Error ? err.message : 'Failed to refund order.');
+    } finally {
+      setIsRefunding(false);
+    }
+  };
+
+  const getWhatsAppMessageLink = (order: AdminOrder) => {
+    const studentName = order.studentName || order.user?.name || 'Student';
+    const courseTitle = order.course?.title || 'What is Astrology';
+    const rawPhone = (order.studentPhone || order.user?.phone || '').replace(/[^0-9]/g, '');
+    const cleanPhone = rawPhone.startsWith('91') && rawPhone.length === 12 ? rawPhone : `91${rawPhone.replace(/^0+/, '')}`;
+
+    const text = `Namaste ${studentName}! 🙏\n\nYour payment of ₹${order.amount.toLocaleString('en-IN')} for "${courseTitle}" (Order Ref: ${order.orderReference}) has been verified and confirmed.\n\nYour course access is now ACTIVE on viar.in! Simply log in to access all 23 video modules, notes, and live classes:\nhttps://viar.in/dashboard\n\nIf you have any questions, we are here to support you.\n\nWarm regards,\nVihangam Institute of Astrology & Research (VIAR)`;
+
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+  };
+
   const loadAdminData = React.useCallback(() => {
     setStats(ViarStore.getAdminStats());
     setCohorts(ViarStore.getCohorts());
@@ -114,7 +406,9 @@ export default function AdminPortalPage() {
     setCurrentUser(ViarStore.getCurrentUser());
     setStaffUsers(ViarStore.getStaffUsers());
     setAllStaffPermissions(ViarStore.getStaffPermissions());
-  }, [selectedCohortId]);
+    loadOrders();
+    loadPaymentSettings();
+  }, [selectedCohortId, loadOrders, loadPaymentSettings]);
 
   useEffect(() => {
     loadAdminData();
@@ -223,9 +517,9 @@ export default function AdminPortalPage() {
       totalClasses: parseInt(newCourseClasses) || 16,
       classesPerWeek: 2,
       priceInr: parseInt(newCoursePriceInr) || 19999,
-      priceUsd: parseInt(newCoursePriceUsd) || 249,
+      priceUsd: 0,
       originalPriceInr: Math.round((parseInt(newCoursePriceInr) || 19999) * 1.5),
-      originalPriceUsd: Math.round((parseInt(newCoursePriceUsd) || 249) * 1.5),
+      originalPriceUsd: 0,
       isPublished: true,
       featured: false,
       instructor: {
@@ -341,6 +635,16 @@ export default function AdminPortalPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {isOwner && (
+              <Link
+                href="/admin/diagnostics"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition flex items-center gap-1.5"
+              >
+                <Activity className="w-3.5 h-3.5 text-amber-400" />
+                <span>Diagnostics</span>
+              </Link>
+            )}
+
             <Link
               href="/instructor"
               className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-amber-500/20"
@@ -387,7 +691,7 @@ export default function AdminPortalPage() {
               <p className="text-2xl sm:text-3xl font-black text-white">
                 ₹{stats.totalRevenueInr.toLocaleString()}
               </p>
-              <p className="text-[11px] text-slate-400 mt-1">+ ${stats.totalRevenueUsd} USD Global</p>
+              <p className="text-[11px] text-emerald-400 mt-1">Direct UPI QR • Zero gateway commissions</p>
             </div>
 
             <div className="cosmic-card p-5 rounded-2xl border border-white/10">
@@ -659,7 +963,7 @@ export default function AdminPortalPage() {
                   <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs">
                     <div>
                       <span className="text-slate-400">Tuition:</span>
-                      <span className="font-bold text-white ml-1">₹{crs.priceInr.toLocaleString()} / ${crs.priceUsd}</span>
+                      <span className="font-bold text-white ml-1">₹{crs.priceInr.toLocaleString('en-IN')}</span>
                     </div>
                     <Link
                       href={`/courses/${crs.slug}`}
@@ -731,7 +1035,7 @@ export default function AdminPortalPage() {
                         </td>
                         <td className="px-6 py-4">
                           <span className="font-bold text-white">
-                            {enr.currency === 'INR' ? `₹${enr.paymentAmount.toLocaleString()}` : `$${enr.paymentAmount}`}
+                            ₹{enr.paymentAmount.toLocaleString('en-IN')}
                           </span>
                         </td>
                         <td className="px-6 py-4">
@@ -748,31 +1052,432 @@ export default function AdminPortalPage() {
           </div>
         )}
 
-        {/* TAB: PAYMENTS & REVENUE */}
+        {/* TAB: PAYMENTS & UPI VERIFICATION */}
         {isCurrentTabAllowed && activeTab === 'payments' && (
           <div className="space-y-6">
-            <div className="cosmic-card p-6 rounded-2xl border border-white/10">
-              <h3 className="text-lg font-bold text-white mb-2">Financial Breakdown & Payment Gateways</h3>
-              <p className="text-xs text-slate-400 mb-6">
-                Real-time tuition receipts verified against Razorpay (Domestic UPI/Cards) and Stripe (International).
-              </p>
+            
+            {/* WhatsApp Confirmation Banner */}
+            {lastVerifiedWhatsAppUrl && (
+              <div className="p-4 rounded-2xl bg-emerald-500/15 border-2 border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg shadow-emerald-500/10">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">✓</div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">Student Enrollment Activated in Database</h4>
+                    <p className="text-xs text-slate-300">Click below to notify the student on WhatsApp. (No passwords are sent; their own login unlocks the course).</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={lastVerifiedWhatsAppUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black flex items-center gap-1.5 transition shadow-md shadow-emerald-500/20"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>Message Student on WhatsApp</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                  <button
+                    onClick={() => setLastVerifiedWhatsAppUrl(null)}
+                    className="px-3 py-2 text-xs text-slate-400 hover:text-white"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold">Indian Rupees (Razorpay)</span>
-                  <p className="text-2xl font-black text-amber-300 mt-1">₹{stats?.totalRevenueInr.toLocaleString()}</p>
-                  <p className="text-[10px] text-emerald-400 mt-1">Zero platform fee loss</p>
+            {/* Main Studio Card */}
+            <div className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-6">
+              
+              {/* Studio Header & Top Actions */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-white/10">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-lg font-bold text-white">Manual UPI Payment & Tuition Verification Studio</h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                      Bank Record = Source of Truth
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 max-w-2xl">
+                    Verify student transactions to unlock course access. Zero gateway commissions. Screenshots can be edited—verify the credit in your bank or UPI merchant app before approving.
+                  </p>
                 </div>
-                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold">US Dollars (Stripe)</span>
-                  <p className="text-2xl font-black text-emerald-300 mt-1">${stats?.totalRevenueUsd}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">Global students via international cards</p>
+
+                <div className="flex items-center gap-2.5 self-start md:self-auto">
+                  <button
+                    onClick={() => {
+                      loadOrders();
+                    }}
+                    disabled={isLoadingOrders}
+                    className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition flex items-center gap-1.5 disabled:opacity-50"
+                    title="Refresh orders queue"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${isLoadingOrders ? 'animate-spin' : ''}`} />
+                    <span>Refresh</span>
+                  </button>
+
+                  {isOwner && (
+                    <button
+                      onClick={() => setIsPaymentSettingsOpen(true)}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition flex items-center gap-1.5"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Payment Routing Settings</span>
+                    </button>
+                  )}
                 </div>
+              </div>
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold">Paid Enrollments</span>
-                  <p className="text-2xl font-black text-purple-300 mt-1">{enrollments.filter(e => e.paymentAmount > 0).length}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">100% verified via webhook signatures</p>
+                  <span className="text-[11px] text-slate-400 uppercase font-semibold">Total Verified Tuition</span>
+                  <p className="text-2xl font-black text-amber-300 mt-1">
+                    ₹{orders.filter(o => o.status === 'APPROVED').reduce((acc, o) => acc + (o.amount || 0), 0).toLocaleString('en-IN') || stats?.totalRevenueInr.toLocaleString('en-IN')}
+                  </p>
+                  <p className="text-[10px] text-emerald-400 mt-1">Direct bank credit • Zero gateway fees</p>
                 </div>
+
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-slate-400 uppercase font-semibold">Awaiting Verification</span>
+                    {orderCounts.PAYMENT_CLAIMED > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                    )}
+                  </div>
+                  <p className="text-2xl font-black text-amber-400 mt-1">
+                    {orderCounts.PAYMENT_CLAIMED}
+                  </p>
+                  <p className="text-[10px] text-amber-300/80 mt-1">
+                    {orderCounts.PAYMENT_CLAIMED > 0 ? 'Claims pending bank check' : 'Queue clear'}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <span className="text-[11px] text-slate-400 uppercase font-semibold">Active Enrolled Students</span>
+                  <p className="text-2xl font-black text-purple-300 mt-1">
+                    {orderCounts.APPROVED || enrollments.filter(e => e.paymentAmount > 0).length}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-1">Unlocked in PostgreSQL database</p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <span className="text-[11px] text-slate-400 uppercase font-semibold">UPI VPA & WhatsApp</span>
+                  <p className="text-sm font-mono font-bold text-white mt-1.5 truncate">
+                    {paymentSettings.upiId || 'aapkaastro@okaxis'}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5 truncate font-mono">
+                    WA: +{paymentSettings.whatsappNumber || '919311215564'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Tabs and Search Filter Bar */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-2">
+                
+                {/* Status Navigation Tabs */}
+                <div className="flex flex-wrap items-center gap-1.5 bg-black/30 p-1.5 rounded-xl border border-white/5">
+                  {[
+                    { id: 'PAYMENT_CLAIMED', label: 'Claimed', count: orderCounts.PAYMENT_CLAIMED, highlight: orderCounts.PAYMENT_CLAIMED > 0 },
+                    { id: 'PENDING_PAYMENT', label: 'Awaiting Payment', count: orderCounts.PENDING_PAYMENT },
+                    { id: 'APPROVED', label: 'Approved', count: orderCounts.APPROVED },
+                    { id: 'REJECTED', label: 'Rejected', count: orderCounts.REJECTED },
+                    { id: 'REFUNDED', label: 'Refunded', count: orderCounts.REFUNDED },
+                    { id: 'EXPIRED', label: 'Expired', count: orderCounts.EXPIRED },
+                    { id: 'ALL', label: 'All Orders', count: orderCounts.ALL },
+                  ].map((tab) => {
+                    const isActive = selectedOrderStatus === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          setSelectedOrderStatus(tab.id);
+                          loadOrders(tab.id);
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                          isActive
+                            ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-sm'
+                            : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                        }`}
+                      >
+                        <span>{tab.label}</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                          tab.highlight
+                            ? 'bg-amber-500 text-black font-bold animate-pulse'
+                            : isActive
+                            ? 'bg-amber-400/30 text-amber-200'
+                            : 'bg-white/10 text-slate-400'
+                        }`}>
+                          {tab.count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Search Bar */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    loadOrders(selectedOrderStatus, orderSearchQuery);
+                  }}
+                  className="flex items-center gap-2 max-w-sm w-full"
+                >
+                  <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={orderSearchQuery}
+                      onChange={(e) => setOrderSearchQuery(e.target.value)}
+                      placeholder="Search student, phone, ref, UTR..."
+                      className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/15 text-white transition shrink-0"
+                  >
+                    Filter
+                  </button>
+                  {orderSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrderSearchQuery('');
+                        loadOrders(selectedOrderStatus, '');
+                      }}
+                      className="px-2 py-1.5 rounded-xl text-xs text-slate-400 hover:text-white"
+                      title="Clear filter"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </form>
+              </div>
+
+              {/* Error Notice */}
+              {orderActionError && (
+                <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 text-xs flex items-center justify-between">
+                  <span>{orderActionError}</span>
+                  <button onClick={() => setOrderActionError(null)} className="text-red-400 hover:text-white">✕</button>
+                </div>
+              )}
+
+              {/* Orders Table */}
+              <div className="overflow-x-auto rounded-xl border border-white/10">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-white/5 text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/10 font-bold">
+                    <tr>
+                      <th className="px-5 py-3.5">Student & Contact</th>
+                      <th className="px-5 py-3.5">Course & Cohort</th>
+                      <th className="px-5 py-3.5">Amount</th>
+                      <th className="px-5 py-3.5">Order Ref & UTR</th>
+                      <th className="px-5 py-3.5">Timeline</th>
+                      <th className="px-5 py-3.5">Status</th>
+                      <th className="px-5 py-3.5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {orders.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-5 py-10 text-center text-slate-400 italic">
+                          {isLoadingOrders ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+                              Loading orders queue from PostgreSQL...
+                            </span>
+                          ) : (
+                            <div>
+                              <p className="text-slate-300 font-semibold mb-1">No orders found in &quot;{selectedOrderStatus}&quot; queue.</p>
+                              <p className="text-[11px] text-slate-500">When students generate checkout orders or submit claims, they will appear here.</p>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ) : (
+                      orders.map((ord) => {
+                        const isClaimed = ord.status === 'PAYMENT_CLAIMED';
+                        const isPending = ord.status === 'PENDING_PAYMENT';
+                        const isApproved = ord.status === 'APPROVED';
+                        const isRejected = ord.status === 'REJECTED';
+                        const isRefunded = ord.status === 'REFUNDED';
+                        const phone = ord.studentPhone || ord.user?.phone;
+
+                        return (
+                          <tr key={ord.id} className={`hover:bg-white/[0.02] transition ${isClaimed ? 'bg-amber-500/[0.04]' : ''}`}>
+                            
+                            {/* Student & Contact */}
+                            <td className="px-5 py-3.5">
+                              <p className="font-bold text-white">{ord.studentName || ord.user?.name || 'Student'}</p>
+                              <p className="text-[10px] text-slate-400 font-mono">{ord.studentEmail || ord.user?.email}</p>
+                              {phone ? (
+                                <p className="text-[10px] text-emerald-400 font-mono flex items-center gap-1 mt-0.5">
+                                  <Smartphone className="w-3 h-3" />
+                                  <span>{phone}</span>
+                                </p>
+                              ) : (
+                                <p className="text-[10px] text-slate-500 italic mt-0.5">Phone not provided</p>
+                              )}
+                            </td>
+
+                            {/* Course */}
+                            <td className="px-5 py-3.5">
+                              <p className="text-white font-medium truncate max-w-[180px]">
+                                {ord.course?.title || 'What is Astrology'}
+                              </p>
+                              <p className="text-[10px] text-amber-400">
+                                {ord.cohort?.batchName || 'Masterclass Cohort'}
+                              </p>
+                            </td>
+
+                            {/* Amount */}
+                            <td className="px-5 py-3.5">
+                              <span className="font-bold text-white text-sm">
+                                ₹{(ord.amount || 5100).toLocaleString('en-IN')}
+                              </span>
+                              <p className="text-[9px] text-slate-400 uppercase">INR Direct UPI</p>
+                            </td>
+
+                            {/* Order Ref & UTR */}
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center gap-1">
+                                <code className="px-2 py-0.5 rounded bg-black/40 text-amber-300 font-mono text-[10px] border border-white/10">
+                                  {ord.orderReference}
+                                </code>
+                              </div>
+                              {ord.utr ? (
+                                <div className="mt-1 flex items-center gap-1">
+                                  <span className="text-[9px] text-slate-400 uppercase">UTR:</span>
+                                  <code className="text-[10px] font-mono text-emerald-300 font-bold bg-emerald-950/40 px-1 rounded border border-emerald-500/20">
+                                    {ord.utr}
+                                  </code>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-slate-500 italic block mt-0.5">
+                                  No UTR entered
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Timeline */}
+                            <td className="px-5 py-3.5 text-slate-400 text-[10px]">
+                              <div>Created: {new Date(ord.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                              {ord.claimedAt && (
+                                <div className="text-amber-300/80 mt-0.5">
+                                  Claimed: {new Date(ord.claimedAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              )}
+                              {ord.reviewedAt && (
+                                <div className="text-slate-500 mt-0.5">
+                                  Reviewed: {new Date(ord.reviewedAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-5 py-3.5">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border inline-flex items-center gap-1 ${
+                                isApproved
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                  : isClaimed
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
+                                  : isPending
+                                  ? 'bg-slate-500/20 text-slate-300 border-slate-500/30'
+                                  : isRejected
+                                  ? 'bg-red-500/20 text-red-300 border-red-500/30'
+                                  : isRefunded
+                                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                                  : 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30'
+                              }`}>
+                                {isClaimed && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                                {isApproved && <span>✓</span>}
+                                <span>{ord.status}</span>
+                              </span>
+                              {isRejected && ord.rejectionReason && (
+                                <p className="text-[10px] text-red-400/90 mt-1 max-w-[140px] truncate" title={ord.rejectionReason}>
+                                  Reason: {ord.rejectionReason}
+                                </p>
+                              )}
+                              {isRefunded && ord.refundReason && (
+                                <p className="text-[10px] text-purple-400/90 mt-1 max-w-[140px] truncate" title={ord.refundReason}>
+                                  Reason: {ord.refundReason}
+                                </p>
+                              )}
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-5 py-3.5 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                
+                                {/* Verify & Approve Button */}
+                                {(isClaimed || isPending) && isOwner && (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        setOrderToApprove(ord);
+                                        setBankCheckConfirmed(false);
+                                        setApproveErrorMessage(null);
+                                      }}
+                                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black shadow-md shadow-emerald-500/20 transition flex items-center gap-1"
+                                    >
+                                      <span>Verify & Approve</span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setOrderToReject(ord);
+                                        setRejectionReason('');
+                                        setRejectErrorMessage(null);
+                                      }}
+                                      className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/20 transition"
+                                      title="Reject payment claim"
+                                    >
+                                      Reject
+                                    </button>
+                                  </>
+                                )}
+
+                                {/* Approved Order Actions */}
+                                {isApproved && (
+                                  <>
+                                    <a
+                                      href={getWhatsAppMessageLink(ord)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1"
+                                      title="Send WhatsApp confirmation to student"
+                                    >
+                                      <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                                      <span>Message</span>
+                                    </a>
+                                    {isOwner && (
+                                      <button
+                                        onClick={() => {
+                                          setOrderToRefund(ord);
+                                          setRefundReason('');
+                                          setRefundErrorMessage(null);
+                                        }}
+                                        className="px-2 py-1.5 rounded-xl text-xs text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                                        title="Refund order & revoke access"
+                                      >
+                                        Refund
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+
+                                {(!isClaimed && !isPending && !isApproved) && (
+                                  <span className="text-[11px] text-slate-500 italic">No action</span>
+                                )}
+
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -1456,25 +2161,14 @@ export default function AdminPortalPage() {
                     className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Tuition (INR)</label>
-                    <input
-                      type="number"
-                      value={newCoursePriceInr}
-                      onChange={(e) => setNewCoursePriceInr(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Tuition (USD)</label>
-                    <input
-                      type="number"
-                      value={newCoursePriceUsd}
-                      onChange={(e) => setNewCoursePriceUsd(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-semibold">Tuition (INR)</label>
+                  <input
+                    type="number"
+                    value={newCoursePriceInr}
+                    onChange={(e) => setNewCoursePriceInr(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -1511,6 +2205,439 @@ export default function AdminPortalPage() {
                     className="gold-button px-5 py-2 rounded-xl font-bold"
                   >
                     Create Course
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* APPROVE ORDER MODAL (Owner Only, Mandatory Bank Confirmation) */}
+        {orderToApprove && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#0f172a] border border-emerald-500/40 rounded-2xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                    ✓
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Confirm Bank Credit & Approve Tuition</h3>
+                    <p className="text-xs text-slate-400">Owner Verification Action • Neon PostgreSQL</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setOrderToApprove(null)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Order Details Summary */}
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2 text-xs">
+                <div className="flex justify-between items-center text-slate-300">
+                  <span className="text-slate-400">Student:</span>
+                  <span className="font-bold text-white">{orderToApprove.studentName || orderToApprove.user?.name || 'Student'}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-300">
+                  <span className="text-slate-400">Email:</span>
+                  <span className="font-mono text-slate-200">{orderToApprove.studentEmail || orderToApprove.user?.email}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-300">
+                  <span className="text-slate-400">Mobile Phone:</span>
+                  <span className="font-mono text-emerald-400 font-bold">{orderToApprove.studentPhone || orderToApprove.user?.phone || 'Not provided'}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-300">
+                  <span className="text-slate-400">Course / Cohort:</span>
+                  <span className="text-amber-300 font-medium">{orderToApprove.course?.title || 'What is Astrology'}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-300 pt-2 border-t border-white/10">
+                  <span className="text-slate-400 font-semibold">Order Reference:</span>
+                  <code className="text-amber-400 font-mono font-bold bg-black/40 px-2 py-0.5 rounded border border-white/10">{orderToApprove.orderReference}</code>
+                </div>
+                <div className="flex justify-between items-center text-slate-300">
+                  <span className="text-slate-400 font-semibold">Student Claimed UTR:</span>
+                  {orderToApprove.utr ? (
+                    <code className="text-emerald-300 font-mono font-bold bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/20">{orderToApprove.utr}</code>
+                  ) : (
+                    <span className="text-slate-500 italic">None entered</span>
+                  )}
+                </div>
+                <div className="flex justify-between items-center text-slate-300 pt-1">
+                  <span className="text-slate-400 font-semibold">Amount to Verify:</span>
+                  <span className="text-lg font-black text-white">₹{orderToApprove.amount.toLocaleString('en-IN')} INR</span>
+                </div>
+              </div>
+
+              {/* Crucial Verification Notice */}
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Bank Statement is the Sole Proof of Payment</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Screenshots can be edited and forged. Open your bank app or UPI merchant statement (Axis Bank / UPI ID: <strong className="text-amber-300 font-mono">{paymentSettings.upiId}</strong>) and confirm that ₹{orderToApprove.amount.toLocaleString('en-IN')} has actually credited before ticking below.
+                </p>
+              </div>
+
+              {/* Duplicate UTR & Error Banner */}
+              {approveErrorMessage && (
+                <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/40 text-red-300 text-xs flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block font-bold">Verification Blocked</strong>
+                    <span>{approveErrorMessage}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Mandatory Checklist Item */}
+              <label className="flex items-start gap-3 p-3.5 rounded-xl bg-white/[0.03] border border-white/10 hover:border-emerald-500/40 cursor-pointer transition select-none">
+                <input
+                  type="checkbox"
+                  checked={bankCheckConfirmed}
+                  onChange={(e) => setBankCheckConfirmed(e.target.checked)}
+                  className="w-4 h-4 mt-0.5 accent-emerald-500 rounded cursor-pointer"
+                />
+                <span className="text-xs text-white leading-relaxed font-medium">
+                  I have confirmed this amount (₹{orderToApprove.amount.toLocaleString('en-IN')}) is credited in my bank or UPI app and the reference matches.
+                </span>
+              </label>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setOrderToApprove(null)}
+                  disabled={isApproving}
+                  className="px-4 py-2 rounded-xl text-xs text-slate-300 bg-white/5 hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmApprove}
+                  disabled={!bankCheckConfirmed || isApproving}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                >
+                  {isApproving ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Activating in PostgreSQL...</span>
+                    </>
+                  ) : (
+                    <span>Approve & Unlock Course Access</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* REJECT ORDER MODAL */}
+        {orderToReject && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#0f172a] border border-red-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <h3 className="text-base font-bold text-white">Reject Payment Claim</h3>
+                <button
+                  onClick={() => setOrderToReject(null)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-300 space-y-1">
+                <p>Order Reference: <code className="text-amber-400 font-mono">{orderToReject.orderReference}</code></p>
+                <p>Student: <strong>{orderToReject.studentName || orderToReject.user?.name || 'Student'}</strong></p>
+              </div>
+
+              {rejectErrorMessage && (
+                <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 text-xs">
+                  {rejectErrorMessage}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-slate-300 mb-1.5 text-xs font-semibold">
+                  Reason for Rejection (Required)
+                </label>
+                <textarea
+                  rows={3}
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="e.g. Funds not received in bank account / UTR reference mismatch..."
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-red-400"
+                />
+              </div>
+
+              {/* Quick Reason Suggestions */}
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'Funds not credited in bank statement',
+                  'UTR / Reference number mismatch',
+                  'Screenshot illegible or unverifiable',
+                  'Incorrect amount transferred',
+                ].map((reasonText) => (
+                  <button
+                    key={reasonText}
+                    type="button"
+                    onClick={() => setRejectionReason(reasonText)}
+                    className="px-2 py-1 rounded-lg text-[10px] bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5 transition"
+                  >
+                    {reasonText}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setOrderToReject(null)}
+                  disabled={isRejecting}
+                  className="px-4 py-2 rounded-xl text-slate-300 bg-white/5 hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmReject}
+                  disabled={!rejectionReason.trim() || isRejecting}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-red-500 hover:bg-red-400 text-white shadow-md shadow-red-500/20 transition disabled:opacity-40"
+                >
+                  {isRejecting ? 'Rejecting...' : 'Confirm Rejection'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* REFUND ORDER MODAL */}
+        {orderToRefund && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#0f172a] border border-purple-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <h3 className="text-base font-bold text-white">Process Refund & Revoke Access</h3>
+                <button
+                  onClick={() => setOrderToRefund(null)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-200 text-xs">
+                Marking this order as refunded will immediately revoke the student&apos;s active enrollment in PostgreSQL. They will lose access to modules and live classes.
+              </div>
+
+              <div className="text-xs text-slate-300 space-y-1">
+                <p>Order: <code className="text-amber-400 font-mono">{orderToRefund.orderReference}</code></p>
+                <p>Student: <strong>{orderToRefund.studentName || orderToRefund.user?.name || 'Student'}</strong></p>
+                <p>Amount: <strong>₹{orderToRefund.amount.toLocaleString('en-IN')}</strong></p>
+              </div>
+
+              {refundErrorMessage && (
+                <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 text-xs">
+                  {refundErrorMessage}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-slate-300 mb-1.5 text-xs font-semibold">
+                  Reason for Refund (Required)
+                </label>
+                <textarea
+                  rows={3}
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  placeholder="e.g. Student requested cancellation within guarantee window..."
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-400"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setOrderToRefund(null)}
+                  disabled={isRefunding}
+                  className="px-4 py-2 rounded-xl text-slate-300 bg-white/5 hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmRefund}
+                  disabled={!refundReason.trim() || isRefunding}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition disabled:opacity-40"
+                >
+                  {isRefunding ? 'Refunding...' : 'Confirm Refund & Revoke Access'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* OWNER PAYMENT SETTINGS MODAL */}
+        {isPaymentSettingsOpen && isOwner && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#0f172a] border border-amber-500/40 rounded-2xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-white">UPI Payment Routing & Gateway Settings</h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                      Owner Only
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Live payment routing stored in Neon PostgreSQL database.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsPaymentSettingsOpen(false)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Security Alert Banner */}
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                  <ShieldCheck className="w-4 h-4 text-amber-400" />
+                  <span>Security & Audit Notification</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Altering these settings redirects live student tuition payments. Every change is audit-logged and an alert is automatically emailed to <code className="text-amber-200">{currentUser?.email || primaryOwnerEmail}</code>.
+                </p>
+              </div>
+
+              {/* Success / Error Notice */}
+              {settingsNotice && (
+                <div className={`p-3 rounded-xl border text-xs ${
+                  settingsNotice.type === 'success'
+                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                    : 'bg-red-500/15 border-red-500/30 text-red-300'
+                }`}>
+                  {settingsNotice.message}
+                </div>
+              )}
+
+              <form onSubmit={handleSavePaymentSettings} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-semibold">
+                    UPI ID / VPA (Primary Payee)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={paymentSettings.upiId}
+                    onChange={(e) => setPaymentSettings((prev) => ({ ...prev, upiId: e.target.value }))}
+                    placeholder="e.g. aapkaastro@okaxis"
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-mono focus:outline-none focus:border-amber-400"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Used to generate student dynamic UPI QR codes and deep links pre-filling ₹5,100.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 mb-1 font-semibold">
+                    Payee Name (Shown in Student UPI Apps)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={paymentSettings.payeeName}
+                    onChange={(e) => setPaymentSettings((prev) => ({ ...prev, payeeName: e.target.value }))}
+                    placeholder="e.g. Acharya Niraj Kumar"
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-slate-300 font-semibold">
+                      WhatsApp Proof Number (Digits with country code)
+                    </label>
+                    <span className="text-[10px] text-amber-300 font-semibold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                      Flagged for Client Confirmation
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={paymentSettings.whatsappNumber}
+                    onChange={(e) => setPaymentSettings((prev) => ({ ...prev, whatsappNumber: e.target.value.replace(/[^0-9]/g, '') }))}
+                    placeholder="919311215564"
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-mono focus:outline-none focus:border-amber-400"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Default is <code className="text-amber-300 font-mono">919311215564</code> (+91 93112 15564). When students click &quot;I have paid&quot;, WhatsApp opens to this number.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 mb-1 font-semibold">
+                    Static QR Image URL (Optional Fallback)
+                  </label>
+                  <input
+                    type="text"
+                    value={paymentSettings.qrImageUrl}
+                    onChange={(e) => setPaymentSettings((prev) => ({ ...prev, qrImageUrl: e.target.value }))}
+                    placeholder="e.g. /images/qr-code.png or https://..."
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Only used if the dynamic UPI link fails to generate.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 mb-1 font-semibold">
+                    Unpaid Order Expiry Window (Days)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={30}
+                    required
+                    value={paymentSettings.orderExpiryDays}
+                    onChange={(e) => setPaymentSettings((prev) => ({ ...prev, orderExpiryDays: parseInt(e.target.value) || 3 }))}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Unpaid orders expire after this duration to prevent stale pending queues.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setIsPaymentSettingsOpen(false)}
+                    disabled={isSavingSettings}
+                    className="px-4 py-2 rounded-xl text-slate-300 bg-white/5 hover:bg-white/10"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingSettings}
+                    className="gold-button px-5 py-2 rounded-xl font-bold flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {isSavingSettings ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Saving & Dispatching Notice...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-3.5 h-3.5" />
+                        <span>Save Settings</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </form>

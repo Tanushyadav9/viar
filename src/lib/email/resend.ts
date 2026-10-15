@@ -12,6 +12,9 @@ import type {
   ClassReminderEmailData,
   RecordingAvailableEmailData,
   CertificateIssuedEmailData,
+  PaymentClaimedEmailData,
+  PaymentApprovedEmailData,
+  PaymentRejectedEmailData,
 } from './types';
 import {
   renderEnrollmentConfirmation,
@@ -19,6 +22,9 @@ import {
   renderClassReminder,
   renderRecordingAvailable,
   renderCertificateIssued,
+  renderPaymentClaimed,
+  renderPaymentApproved,
+  renderPaymentRejected,
 } from './templates.ts';
 
 export class ResendEmailService implements EmailService {
@@ -41,11 +47,16 @@ export class ResendEmailService implements EmailService {
     const replyTo = payload.replyTo || this.defaultReplyTo;
 
     if (!this.apiKey) {
-      console.warn('[ResendEmailService] Missing RESEND_API_KEY. Simulating delivery.');
+      if (process.env.NODE_ENV === 'production') {
+        console.error('🚨 [CRITICAL CONFIG ERROR] RESEND_API_KEY is missing in production environment! Emails cannot be delivered.');
+      } else {
+        console.warn('[ResendEmailService] Missing RESEND_API_KEY. Simulating delivery.');
+      }
       return {
-        success: true,
+        success: process.env.NODE_ENV !== 'production',
         messageId: `sim-resend-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         provider: 'RESEND_SIMULATED',
+        error: process.env.NODE_ENV === 'production' ? 'RESEND_API_KEY is missing in production environment' : undefined,
         dispatchedAt,
       };
     }
@@ -140,6 +151,36 @@ export class ResendEmailService implements EmailService {
 
   async sendCertificateIssued(data: CertificateIssuedEmailData): Promise<EmailSendResult> {
     const { subject, html, text } = renderCertificateIssued(data);
+    return this.sendEmail({
+      to: data.studentEmail,
+      subject,
+      html,
+      text,
+    });
+  }
+
+  async sendPaymentClaimed(data: PaymentClaimedEmailData): Promise<EmailSendResult> {
+    const { subject, html, text } = renderPaymentClaimed(data);
+    return this.sendEmail({
+      to: data.ownerEmail,
+      subject,
+      html,
+      text,
+    });
+  }
+
+  async sendPaymentApproved(data: PaymentApprovedEmailData): Promise<EmailSendResult> {
+    const { subject, html, text } = renderPaymentApproved(data);
+    return this.sendEmail({
+      to: data.studentEmail,
+      subject,
+      html,
+      text,
+    });
+  }
+
+  async sendPaymentRejected(data: PaymentRejectedEmailData): Promise<EmailSendResult> {
+    const { subject, html, text } = renderPaymentRejected(data);
     return this.sendEmail({
       to: data.studentEmail,
       subject,

@@ -175,7 +175,7 @@ describe('Full Core-Flow End-to-End Walkthrough', () => {
       cohortId,
       amount: 5100,
       currency: 'INR',
-      paymentMethod: 'Razorpay UPI (Test Verification)',
+      paymentMethod: 'UPI QR (Verified ₹5,100)',
     });
 
     assert.ok(newEnrollment.id);
@@ -327,33 +327,24 @@ describe('Full Core-Flow End-to-End Walkthrough', () => {
 
     // 3. Checkout charge calculation simulation (mirroring src/app/checkout/[cohortId]/page.tsx)
     const testCohortId = 'cohort-wia-batch-1';
-    function createCheckoutOrder(course: typeof flagship, currency: 'INR' | 'USD') {
-      const displayPrice = currency === 'INR' ? course.priceInr : course.priceUsd;
-      const chargeAmount = currency === 'INR' ? course.priceInr : course.priceUsd;
-      const gatewayAmountSmallestUnit = chargeAmount * 100;
+    function createCheckoutOrder(course: typeof flagship) {
+      const displayPrice = course.priceInr;
+      const chargeAmount = course.priceInr;
 
-      // Verification of zero discrepancy between marketing display and gateway authorization
-      assert.strictEqual(displayPrice, chargeAmount, `Display price and charged amount must match exactly for ${currency}`);
+      // Verification of zero discrepancy between marketing display and checkout price
+      assert.strictEqual(displayPrice, chargeAmount, 'Display price and charged amount must match exactly in INR');
 
       return {
-        currency,
+        currency: 'INR' as const,
         displayPrice,
         chargeAmount,
-        gatewayAmountSmallestUnit, // Paise for Razorpay, Cents for Stripe
       };
     }
 
-    // INR / Razorpay simulation
-    const inrOrder = createCheckoutOrder(flagship, 'INR');
+    // INR / UPI QR simulation
+    const inrOrder = createCheckoutOrder(flagship);
     assert.strictEqual(inrOrder.displayPrice, 5100, 'INR display price must be 5100');
     assert.strictEqual(inrOrder.chargeAmount, 5100, 'INR charged amount must be exactly 5100');
-    assert.strictEqual(inrOrder.gatewayAmountSmallestUnit, 510000, 'Razorpay order amount in paise must be 510000');
-
-    // USD / Stripe simulation
-    const usdOrder = createCheckoutOrder(flagship, 'USD');
-    assert.strictEqual(usdOrder.displayPrice, 69, 'USD display price must be 69');
-    assert.strictEqual(usdOrder.chargeAmount, 69, 'USD charged amount must be exactly 69');
-    assert.strictEqual(usdOrder.gatewayAmountSmallestUnit, 6900, 'Stripe order amount in cents must be 6900');
 
     // 4. Successful checkout produces accurate store enrollment record
     const checkoutEnrollment = store.createEnrollment({
@@ -363,7 +354,7 @@ describe('Full Core-Flow End-to-End Walkthrough', () => {
       cohortId: testCohortId,
       amount: inrOrder.chargeAmount,
       currency: inrOrder.currency,
-      paymentMethod: 'Razorpay UPI (Verified ₹5,100)',
+      paymentMethod: 'UPI QR (aapkaastro@okaxis)',
     });
 
     assert.strictEqual(checkoutEnrollment.paymentAmount, 5100, 'Enrollment recorded amount must be ₹5,100');

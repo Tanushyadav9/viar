@@ -273,8 +273,11 @@ export async function PATCH(
     // 4. Build update payload
     const dataToUpdate: Record<string, unknown> = {};
     if (body.title !== undefined) dataToUpdate.title = body.title;
+    if (body.titleHi !== undefined) dataToUpdate.titleHi = body.titleHi;
     if (body.shortDescription !== undefined) dataToUpdate.shortDescription = body.shortDescription;
+    if (body.shortDescriptionHi !== undefined) dataToUpdate.shortDescriptionHi = body.shortDescriptionHi;
     if (body.description !== undefined) dataToUpdate.description = body.description;
+    if (body.descriptionHi !== undefined) dataToUpdate.descriptionHi = body.descriptionHi;
     if (body.level !== undefined) dataToUpdate.level = body.level;
     if (body.category !== undefined) dataToUpdate.category = body.category;
     if (body.thumbnailUrl !== undefined) dataToUpdate.thumbnailUrl = body.thumbnailUrl;

@@ -20,9 +20,6 @@ export default function InstructorAnalyticsPage() {
     setCohorts(ViarStore.getCohorts());
   }, []);
 
-  const inrEnrollments = enrollments.filter((e) => e.currency === 'INR');
-  const usdEnrollments = enrollments.filter((e) => e.currency === 'USD');
-
   return (
     <div className="cosmic-bg min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -49,22 +46,22 @@ export default function InstructorAnalyticsPage() {
           </div>
 
           <div className="cosmic-card p-6 rounded-2xl border border-emerald-500/30">
-            <span className="text-xs font-semibold text-slate-400 block mb-1">INR Revenue (Razorpay)</span>
+            <span className="text-xs font-semibold text-slate-400 block mb-1">Direct UPI Tuition Revenue</span>
             <span className="text-3xl font-black text-white">
-              ₹{(stats.totalRevenueInr || 5100).toLocaleString()}
+              ₹{(stats.totalRevenueInr || 5100).toLocaleString('en-IN')}
             </span>
             <p className="text-[11px] text-emerald-400 mt-2">
-              {inrEnrollments.length} Domestic UPI / Cards
+              {enrollments.length} Direct UPI Admissions
             </p>
           </div>
 
-          <div className="cosmic-card p-6 rounded-2xl border border-sky-500/30">
-            <span className="text-xs font-semibold text-slate-400 block mb-1">USD Revenue (Global / Stripe)</span>
-            <span className="text-3xl font-black text-white">
-              ${(stats.totalRevenueUsd || 138)} USD
+          <div className="cosmic-card p-6 rounded-2xl border border-amber-500/30">
+            <span className="text-xs font-semibold text-slate-400 block mb-1">Gateway Commissions Saved</span>
+            <span className="text-3xl font-black text-amber-400">
+              100%
             </span>
-            <p className="text-[11px] text-sky-400 mt-2">
-              {usdEnrollments.length} International Cards
+            <p className="text-[11px] text-amber-300 mt-2">
+              Direct UPI QR (0% gateway deductions)
             </p>
           </div>
 
@@ -111,33 +108,33 @@ export default function InstructorAnalyticsPage() {
             })}
           </div>
 
-          {/* Currency / Region Distribution */}
+          {/* Payment Method Distribution */}
           <div className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Globe className="w-4 h-4 text-sky-400" />
-              <span>Payment Gateway & Regional Distribution</span>
+              <Globe className="w-4 h-4 text-emerald-400" />
+              <span>Tuition Payment Methods</span>
             </h3>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-                <span className="text-xs text-slate-400 block font-medium">India (Razorpay)</span>
+                <span className="text-xs text-slate-400 block font-medium">Direct UPI QR</span>
                 <span className="text-2xl font-bold text-white mt-1 block">
-                  {inrEnrollments.length}
+                  {enrollments.length}
                 </span>
-                <p className="text-[10px] text-emerald-400 mt-1">UPI & NetBanking</p>
+                <p className="text-[10px] text-emerald-400 mt-1">aapkaastro@okaxis</p>
               </div>
 
               <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-                <span className="text-xs text-slate-400 block font-medium">Global (Stripe)</span>
+                <span className="text-xs text-slate-400 block font-medium">Manual Verification</span>
                 <span className="text-2xl font-bold text-white mt-1 block">
-                  {usdEnrollments.length}
+                  {enrollments.length}
                 </span>
-                <p className="text-[10px] text-sky-400 mt-1">US, UK, EU cards</p>
+                <p className="text-[10px] text-amber-400 mt-1">WhatsApp UTR Verified</p>
               </div>
             </div>
 
             <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-300">
-              <strong>Ecosystem SSO Ready:</strong> Client satellite accounts are unified under the same Clerk instance across Viar.in and AapkaAstro.com.
+              <strong>Zero Gateway Deductions:</strong> 100% of student tuition reaches the institute directly via UPI with zero gateway fees.
             </div>
           </div>
 

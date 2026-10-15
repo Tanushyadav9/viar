@@ -1,0 +1,155 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Locale, LOCALE_COOKIE_NAME, translate, getLocalizedContent } from '@/i18n';
+export type Language = Locale;
+
+interface LanguageContextType {
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  toggleLanguage: () => void;
+  t: (key: string, defaultText?: string) => string;
+  localize: <T extends { title: string; titleHi?: string | null; description?: string | null; descriptionHi?: string | null; shortDescription?: string | null; shortDescriptionHi?: string | null }>(
+    item: T
+  ) => { title: string; description: string; shortDescription?: string };
+}
+
+const LanguageContext = createContext<LanguageContextType>({
+  language: 'en',
+  setLanguage: () => {},
+  toggleLanguage: () => {},
+  t: (key: string, defaultText?: string) => defaultText || key,
+  localize: (item) => ({ title: item.title, description: item.description || '' }),
+});
+
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname() || '/';
+  const router = useRouter();
+
+  // Deduce locale from URL pathname: /hi or /hi/... means Hindi
+  const isHiUrl = pathname === '/hi' || pathname.startsWith('/hi/');
+  const initialLocale: Locale = isHiUrl ? 'hi' : 'en';
+
+  const [language, setLanguageState] = useState<Language>(initialLocale);
+
+  // Sync state when pathname changes
+  useEffect(() => {
+    const activeFromPath: Locale = pathname === '/hi' || pathname.startsWith('/hi/') ? 'hi' : 'en';
+    setLanguageState(activeFromPath);
+    try {
+      document.cookie = `${LOCALE_COOKIE_NAME}=${activeFromPath}; path=/; max-age=31536000; SameSite=Lax`;
+    } catch {}
+  }, [pathname]);
+
+  const switchLanguage = useCallback(
+    (targetLang: Language) => {
+      setLanguageState(targetLang);
+
+      // Save cookie
+      try {
+        document.cookie = `${LOCALE_COOKIE_NAME}=${targetLang}; path=/; max-age=31536000; SameSite=Lax`;
+        localStorage.setItem('NEXT_LOCALE', targetLang);
+      } catch {}
+
+      // Calculate new target path while keeping visitor on the same page
+      let targetPath = pathname;
+      if (targetLang === 'hi') {
+        if (!targetPath.startsWith('/hi')) {
+          targetPath = targetPath === '/' ? '/hi' : `/hi${targetPath}`;
+        }
+      } else {
+        if (targetPath === '/hi') {
+          targetPath = '/';
+        } else if (targetPath.startsWith('/hi/')) {
+          targetPath = targetPath.replace(/^\/hi/, '') || '/';
+        }
+      }
+
+      // Preserve query parameters and hash from browser location
+      const search = typeof window !== 'undefined' ? window.location.search : '';
+      const hash = typeof window !== 'undefined' ? window.location.hash : '';
+      const destination = `${targetPath}${search}${hash}`;
+
+      router.push(destination);
+    },
+    [pathname, router]
+  );
+
+  const toggleLanguage = () => {
+    switchLanguage(language === 'en' ? 'hi' : 'en');
+  };
+
+  const t = useCallback(
+    (key: string, defaultText?: string): string => {
+      return translate(language, key, defaultText);
+    },
+    [language]
+  );
+
+  const localize = useCallback(
+    <T extends { title: string; titleHi?: string | null; description?: string | null; descriptionHi?: string | null; shortDescription?: string | null; shortDescriptionHi?: string | null }>(
+      item: T
+    ) => {
+      return getLocalizedContent(item, language);
+    },
+    [language]
+  );
+
+  return (
+    <LanguageContext.Provider
+      value={{
+        language,
+        setLanguage: switchLanguage,
+        toggleLanguage,
+        t,
+        localize,
+      }}
+    >
+      {children}
+    </LanguageContext.Provider>
+  );
+}
+
+export function useLanguage() {
+  return useContext(LanguageContext);
+}
+
+/**
+ * Visual Language Selector Pill Component
+ */
+export function LanguageSwitcher({ className = '' }: { className?: string }) {
+  const { language, setLanguage } = useLanguage();
+
+  return (
+    <div
+      aria-label="Language selection"
+      className={`inline-flex items-center rounded-xl p-0.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-semibold ${className}`}
+    >
+      <button
+        type="button"
+        onClick={() => setLanguage('en')}
+        aria-pressed={language === 'en'}
+        className={`px-2.5 py-1 rounded-lg transition-all ${
+          language === 'en'
+            ? 'bg-amber-500 text-black font-bold shadow-sm'
+            : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+        }`}
+      >
+        English
+      </button>
+      <button
+        type="button"
+        onClick={() => setLanguage('hi')}
+        aria-pressed={language === 'hi'}
+        className={`px-2.5 py-1 rounded-lg transition-all ${
+          language === 'hi'
+            ? 'bg-amber-500 text-black font-bold shadow-sm'
+            : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+        }`}
+      >
+        हिन्दी
+      </button>
+    </div>
+  );
+}

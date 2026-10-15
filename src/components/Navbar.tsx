@@ -22,10 +22,12 @@ import { User } from '@/lib/types';
 import { authProvider } from '@/lib/auth';
 import AuthModal from './AuthModal';
 import { useTheme } from './ThemeProvider';
+import { LanguageSwitcher, useLanguage } from './LanguageContext';
 
 export default function Navbar() {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [selectedTz, setSelectedTz] = useState<string>('Asia/Kolkata');
   const [isTzOpen, setIsTzOpen] = useState(false);
@@ -82,11 +84,11 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { label: 'Courses', href: '/courses', active: pathname === '/courses' },
-    { label: 'Flagship Cohort', href: '/courses/what-is-astrology', active: pathname === '/courses/what-is-astrology' },
-    { label: 'About Instructor', href: '/about', active: pathname === '/about' },
-    { label: 'Contact', href: '/contact', active: pathname === '/contact' },
-    { label: 'Verify', href: '/verify', active: pathname.startsWith('/verify') },
+    { label: t('nav.courses', 'Courses'), href: '/courses', active: pathname === '/courses' },
+    { label: t('nav.flagship', 'Flagship Cohort'), href: '/courses/what-is-astrology', active: pathname === '/courses/what-is-astrology' },
+    { label: t('nav.about', 'About Instructor'), href: '/about', active: pathname === '/about' },
+    { label: t('nav.contact', 'Contact'), href: '/contact', active: pathname === '/contact' },
+    { label: t('nav.verify', 'Verify'), href: '/verify', active: pathname.startsWith('/verify') },
   ];
 
   if (!mounted) {
@@ -209,6 +211,9 @@ export default function Navbar() {
         {/* 7 - 10. Utility & Action Controls (Desktop: lg+) */}
         <div className="hidden lg:flex items-center gap-2 xl:gap-2.5 shrink-0">
           
+          {/* Language Switcher (EN / HI) */}
+          <LanguageSwitcher />
+
           {/* 7. Dark Mode Toggle */}
           <button
             onClick={toggleTheme}
@@ -333,6 +338,9 @@ export default function Navbar() {
 
         {/* Mobile / Tablet Controls (< lg) */}
         <div className="flex lg:hidden items-center gap-2">
+          {/* Language Switcher on mobile */}
+          <LanguageSwitcher />
+
           {/* Theme Toggle on mobile */}
           <button
             onClick={toggleTheme}
@@ -384,6 +392,14 @@ export default function Navbar() {
               </Link>
             ))}
           </nav>
+
+          {/* Mobile Language Switcher */}
+          <div className="pt-2 border-t border-slate-100 dark:border-white/10 flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Language / भाषा
+            </span>
+            <LanguageSwitcher />
+          </div>
 
           {/* Mobile Timezone Selector */}
           <div className="pt-2 border-t border-slate-100 dark:border-white/10">

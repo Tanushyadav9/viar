@@ -92,6 +92,40 @@ export async function POST(req: NextRequest) {
   const eventType = evt.type;
   const data = evt.data;
 
+  // Track webhook receipt for Owner diagnostics
+  const receivedAt = new Date().toISOString();
+  (globalThis as unknown as { __lastClerkWebhookTimestamp?: string }).__lastClerkWebhookTimestamp = receivedAt;
+
+  try {
+    // Record webhook telemetry in clerk_webhook_events table for Owner diagnostics
+    await prisma.clerkWebhookEvent.create({
+      data: {
+        eventId: svixId,
+        eventType,
+        payload: evt as unknown as object,
+        status: 'PROCESSED',
+      },
+    }).catch(() => {});
+
+    // Also record in ActivityLog table (non-blocking)
+    await prisma.activityLog.create({
+      data: {
+        action: 'CLERK_WEBHOOK_RECEIVED',
+        entityType: 'WEBHOOK',
+        entityId: svixId,
+        reason: eventType,
+        details: {
+          eventType,
+          svixId,
+          svixTimestamp,
+          receivedAt,
+        },
+      },
+    }).catch(() => {});
+  } catch {
+    // Silently continue if DB logging fails
+  }
+
   try {
     if (eventType === 'user.created') {
       const clerkId = data.id;
@@ -211,6 +245,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true, ignored: true, type: eventType });
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : 'Database sync failed';
+    try {
+      await prisma.clerkWebhookEvent.create({
+        data: {
+          eventId: svixId,
+          eventType,
+          payload: evt as unknown as object,
+          status: 'ERROR',
+          errorMessage: errMessage,
+        },
+      }).catch(() => {});
+    } catch {}
+
     logger.error('Failed to process Clerk webhook event in local database', error instanceof Error ? error : new Error(String(error)), {
       service: 'auth',
       eventType,

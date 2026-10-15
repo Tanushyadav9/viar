@@ -79,6 +79,38 @@ export interface CertificateIssuedEmailData {
   verifyUrl: string;
 }
 
+export interface PaymentClaimedEmailData {
+  ownerEmail: string;
+  orderReference: string;
+  studentName: string;
+  studentPhone: string;
+  studentEmail?: string;
+  courseTitle: string;
+  amount: number;
+  utr?: string;
+  adminQueueUrl?: string;
+}
+
+export interface PaymentApprovedEmailData {
+  studentName: string;
+  studentEmail: string;
+  courseTitle: string;
+  amountPaid: number;
+  orderReference: string;
+  utr?: string;
+  dashboardUrl?: string;
+}
+
+export interface PaymentRejectedEmailData {
+  studentName: string;
+  studentEmail: string;
+  courseTitle: string;
+  orderReference: string;
+  amount: number;
+  rejectionReason: string;
+  supportWhatsApp?: string;
+}
+
 export interface EmailService {
   readonly providerName: string;
 
@@ -111,4 +143,19 @@ export interface EmailService {
    * 5. Send certificate issuance notification with verification link upon passing exam
    */
   sendCertificateIssued(data: CertificateIssuedEmailData): Promise<EmailSendResult>;
+
+  /**
+   * 6. Send payment claim alert to Owner when student clicks "I have paid"
+   */
+  sendPaymentClaimed(data: PaymentClaimedEmailData): Promise<EmailSendResult>;
+
+  /**
+   * 7. Send payment approval notification to student with portal dashboard access (no passwords)
+   */
+  sendPaymentApproved(data: PaymentApprovedEmailData): Promise<EmailSendResult>;
+
+  /**
+   * 8. Send payment rejection notification to student with clear reason and support options
+   */
+  sendPaymentRejected(data: PaymentRejectedEmailData): Promise<EmailSendResult>;
 }

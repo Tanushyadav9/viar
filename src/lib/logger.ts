@@ -139,6 +139,7 @@ class Logger {
     amount?: number;
     provider?: string;
     cohortId?: string;
+    [key: string]: unknown;
   }, err?: unknown) {
     this.critical(`Payment failure: ${message}`, err, {
       service: 'payments',

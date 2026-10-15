@@ -326,9 +326,9 @@ async function runProof() {
       data: {
         userId: studentA.id,
         cohortId: cohort.id,
-        provider: 'RAZORPAY',
+        provider: 'UPI_QR',
         providerReference: `pay_test_${Date.now()}`,
-        amount: 7500,
+        amount: 5100,
         currency: 'INR',
         status: 'COMPLETED',
       },

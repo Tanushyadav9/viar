@@ -397,3 +397,194 @@ ask@aapkaastro.com
 
   return { subject, html, text };
 }
+
+/**
+ * 6. Payment Claimed Email (Sent to Owner)
+ */
+export function renderPaymentClaimed(data: import('./types').PaymentClaimedEmailData): { subject: string; html: string; text: string } {
+  const subject = `🔔 ACTION REQUIRED: Payment Claimed for ${data.orderReference} (${data.studentName} — ₹${data.amount.toLocaleString('en-IN')})`;
+  const queueUrl = data.adminQueueUrl || 'https://viar.in/admin';
+
+  const html = emailWrapper(`
+    <h1 class="h1">🔔 Student Submitted Payment Claim</h1>
+    <p>A student has clicked "I Have Paid" and submitted payment details for verification:</p>
+    
+    <div class="card">
+      <div style="font-weight: 700; color: #f59e0b; margin-bottom: 12px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">ORDER &amp; STUDENT DETAILS</div>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px;">Order Reference:</td>
+          <td style="padding: 6px 0; color: #38bdf8; font-weight: 700; font-family: monospace; font-size: 14px; text-align: right;">${data.orderReference}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px;">Student Name:</td>
+          <td style="padding: 6px 0; color: #ffffff; font-weight: 600; font-size: 14px; text-align: right;">${data.studentName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px;">Phone / WhatsApp:</td>
+          <td style="padding: 6px 0; color: #ffffff; font-weight: 600; font-size: 14px; text-align: right;">${data.studentPhone}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px;">Email Address:</td>
+          <td style="padding: 6px 0; color: #ffffff; font-weight: 600; font-size: 14px; text-align: right;">${data.studentEmail || 'N/A'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px;">Course:</td>
+          <td style="padding: 6px 0; color: #ffffff; font-weight: 600; font-size: 14px; text-align: right;">${data.courseTitle}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px;">Locked Tuition Amount:</td>
+          <td style="padding: 6px 0; color: #10b981; font-weight: 700; font-size: 14px; text-align: right;">₹${data.amount.toLocaleString('en-IN')}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px;">Submitted UTR:</td>
+          <td style="padding: 6px 0; color: ${data.utr ? '#10b981' : '#94a3b8'}; font-weight: 700; font-family: monospace; font-size: 14px; text-align: right;">
+            ${data.utr || 'Check WhatsApp Screenshot'}
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="font-size: 13px; color: #94a3b8;">
+      Please verify your bank or UPI statement credit before approving. Remember: digital screenshots can be altered, so the bank record is the true proof.
+    </p>
+
+    <div style="text-align: center; margin: 24px 0;">
+      <a href="${queueUrl}" class="btn">Open Owner Verification Queue &rarr;</a>
+    </div>
+  `, `New payment claim submitted for ${data.orderReference} by ${data.studentName} (₹${data.amount.toLocaleString('en-IN')}).`);
+
+  const text = `
+Action Required: Payment Claimed for ${data.orderReference}
+
+Student Details:
+• Name: ${data.studentName}
+• Phone: ${data.studentPhone}
+• Email: ${data.studentEmail || 'N/A'}
+• Course: ${data.courseTitle}
+• Amount: ₹${data.amount.toLocaleString('en-IN')}
+• Order Ref: ${data.orderReference}
+• UTR: ${data.utr || 'Not provided (check WhatsApp)'}
+
+Open Owner Verification Queue: ${queueUrl}
+  `.trim();
+
+  return { subject, html, text };
+}
+
+/**
+ * 7. Payment Approved Email (Sent to Student)
+ */
+export function renderPaymentApproved(data: import('./types').PaymentApprovedEmailData): { subject: string; html: string; text: string } {
+  const subject = `✅ Course Access Unlocked: ${data.courseTitle} (Ref: ${data.orderReference})`;
+  const dashboardUrl = data.dashboardUrl || 'https://viar.in/dashboard';
+
+  const html = emailWrapper(`
+    <h1 class="h1">🎉 Namaste ${data.studentName}! Your Enrollment is Active</h1>
+    <p>Your payment for <strong>${data.courseTitle}</strong> has been verified and approved by Acharya Niraj Kumar. Your lifetime course access is now permanently activated!</p>
+    
+    <div class="card">
+      <div style="font-weight: 700; color: #f59e0b; margin-bottom: 12px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">ENROLLMENT CONFIRMATION</div>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px;">Course:</td>
+          <td style="padding: 6px 0; color: #ffffff; font-weight: 600; font-size: 14px; text-align: right;">${data.courseTitle}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px;">Order Reference:</td>
+          <td style="padding: 6px 0; color: #38bdf8; font-family: monospace; font-size: 14px; text-align: right;">${data.orderReference}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px;">Amount Paid:</td>
+          <td style="padding: 6px 0; color: #10b981; font-weight: 700; font-size: 14px; text-align: right;">₹${data.amountPaid.toLocaleString('en-IN')}</td>
+        </tr>
+        ${data.utr ? `
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px;">Bank Reference (UTR):</td>
+          <td style="padding: 6px 0; color: #ffffff; font-family: monospace; font-size: 13px; text-align: right;">${data.utr}</td>
+        </tr>
+        ` : ''}
+        <tr>
+          <td style="padding: 6px 0; color: #94a3b8; font-size: 13px;">Access Type:</td>
+          <td style="padding: 6px 0; color: #ffffff; font-weight: 600; font-size: 14px; text-align: right;">Lifetime On-Demand</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="background-color: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 12px; padding: 16px; margin: 20px 0; font-size: 13px; color: #a7f3d0;">
+      <strong>🔒 Zero-Password Access Notice:</strong> No separate login credentials or passwords are ever generated or sent. Your course is automatically unlocked on the account you used during signup. Simply log in with your existing email or Google account!
+    </div>
+
+    <div style="text-align: center; margin: 24px 0;">
+      <a href="${dashboardUrl}" class="btn">Enter Student Portal &amp; Start Learning &rarr;</a>
+    </div>
+
+    <p style="font-size: 12px; color: #94a3b8; text-align: center;">
+      Need any assistance? Connect with our academic desk on WhatsApp at <a href="https://wa.me/919311215564" style="color: #f59e0b;">+91 93112 15564</a>.
+    </p>
+  `, `Your enrollment in ${data.courseTitle} is active. Log in at viar.in/dashboard to start learning.`);
+
+  const text = `
+Namaste ${data.studentName}!
+
+Your payment of ₹${data.amountPaid.toLocaleString('en-IN')} for "${data.courseTitle}" (Ref: ${data.orderReference}) is confirmed.
+Your course access is now ACTIVE on viar.in.
+
+Access Portal: ${dashboardUrl}
+Note: No passwords are sent over email/WhatsApp. Sign in with your existing account.
+
+Acharya Niraj Kumar & Vihangam Institute (VIAR)
+ask@aapkaastro.com | +91 93112 15564
+  `.trim();
+
+  return { subject, html, text };
+}
+
+/**
+ * 8. Payment Rejected Email (Sent to Student)
+ */
+export function renderPaymentRejected(data: import('./types').PaymentRejectedEmailData): { subject: string; html: string; text: string } {
+  const subject = `⚠️ Payment Verification Update for Order ${data.orderReference}`;
+  const supportPhone = data.supportWhatsApp || '+91 93112 15564';
+
+  const html = emailWrapper(`
+    <h1 class="h1">Payment Verification Update</h1>
+    <p>Dear ${data.studentName},</p>
+    <p>We reviewed the payment claim submitted for order <strong>${data.orderReference}</strong> (${data.courseTitle}), but could not confirm the bank credit at this time.</p>
+    
+    <div class="card" style="border-color: rgba(239, 68, 68, 0.3);">
+      <div style="font-weight: 700; color: #ef4444; margin-bottom: 8px; font-size: 13px; text-transform: uppercase;">REASON FOR REJECTION</div>
+      <p style="margin: 0; color: #fca5a5; font-size: 14px; font-weight: 500;">
+        ${data.rejectionReason}
+      </p>
+    </div>
+
+    <div style="margin: 20px 0; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+      <strong>What should you do next?</strong>
+      <ol style="margin-top: 8px; padding-left: 20px;">
+        <li>Please check your UPI app or bank statement to verify that ₹${data.amount.toLocaleString('en-IN')} was actually debited.</li>
+        <li>If the transaction was successful and you have an updated bank screenshot or corrected 12-digit UTR, message Acharya Niraj Kumar directly on WhatsApp at <a href="https://wa.me/919311215564" style="color: #f59e0b;">${supportPhone}</a> with your Order Reference: <code>${data.orderReference}</code>.</li>
+        <li>If the funds were refunded to your bank account, you may initiate a fresh order anytime at <a href="https://viar.in/courses" style="color: #f59e0b;">https://viar.in/courses</a>.</li>
+      </ol>
+    </div>
+
+    <div style="text-align: center; margin: 24px 0;">
+      <a href="https://wa.me/919311215564" class="btn">Connect with Support on WhatsApp &rarr;</a>
+    </div>
+  `, `Payment verification update for order ${data.orderReference}. Please review the details.`);
+
+  const text = `
+Dear ${data.studentName},
+
+We could not confirm the payment for order ${data.orderReference} (${data.courseTitle}).
+
+Reason: ${data.rejectionReason}
+
+If the amount was debited from your bank, please message Acharya Niraj Kumar on WhatsApp at ${supportPhone} with your Order Reference (${data.orderReference}) and bank statement screenshot.
+
+VIAR Admissions Desk
+ask@aapkaastro.com | ${supportPhone}
+  `.trim();
+
+  return { subject, html, text };
+}

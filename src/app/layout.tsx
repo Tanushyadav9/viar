@@ -5,6 +5,7 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { LanguageProvider } from '@/components/LanguageContext';
 import WelcomeCohortModal from '@/components/WelcomeCohortModal';
 
 const geistSans = localFont({
@@ -24,6 +25,14 @@ export const metadata: Metadata = {
   title: 'VIAR | Vihangam Institute of Astrology and Research',
   description:
     'Vihangam Institute of Astrology and Research (VIAR, viar.in) is the premier Vedic astrology institute founded by Acharya Niraj Kumar (Jyotish Acharya, Bharatiya Vidya Bhavan). Comprehensive 23-module self-paced video masterclasses, practical chart workshops, and verifiable certification.',
+  alternates: {
+    canonical: 'https://viar.in',
+    languages: {
+      'en': 'https://viar.in',
+      'hi': 'https://viar.in/hi',
+      'x-default': 'https://viar.in',
+    },
+  },
   icons: {
     icon: [
       { url: '/images/favicon.png', type: 'image/png' },
@@ -122,21 +131,25 @@ export default function RootLayout({
         {process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? (
           <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
             <ThemeProvider>
-              <Navbar />
-              <main className="flex-grow">{children}</main>
-              <Footer />
-              <WelcomeCohortModal />
+              <LanguageProvider>
+                <Navbar />
+                <main className="flex-grow">{children}</main>
+                <Footer />
+                <WelcomeCohortModal />
+              </LanguageProvider>
             </ThemeProvider>
           </ClerkProvider>
         ) : (
           <ThemeProvider>
-            <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 text-center text-xs font-mono text-amber-300">
-              ⚠️ <strong>Authentication Misconfigured:</strong> <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> is missing from environment variables.
-            </div>
-            <Navbar />
-            <main className="flex-grow">{children}</main>
-            <Footer />
-            <WelcomeCohortModal />
+            <LanguageProvider>
+              <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 text-center text-xs font-mono text-amber-300">
+                ⚠️ <strong>Authentication Misconfigured:</strong> <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> is missing from environment variables.
+              </div>
+              <Navbar />
+              <main className="flex-grow">{children}</main>
+              <Footer />
+              <WelcomeCohortModal />
+            </LanguageProvider>
           </ThemeProvider>
         )}
       </body>

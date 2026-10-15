@@ -39,18 +39,12 @@ export interface AppEnvConfig {
     blocklistExtra: string[];
   };
 
-  // Payments (Razorpay India & Stripe International)
+  // Payments (Direct UPI QR & Verification)
   payments: {
-    enableStripe: boolean;
-    razorpay: {
-      keyId: string;
-      keySecret: string;
-    };
-    stripe: {
-      publishableKey: string;
-      secretKey: string;
-      webhookSecret: string;
-    };
+    upiVpa: string;
+    payeeName: string;
+    ownerWhatsApp: string;
+    defaultTuitionInr: number;
   };
 
   // Video Hosting (Cloudflare Stream or Mux)
@@ -132,22 +126,10 @@ export const env: AppEnvConfig = {
   },
 
   payments: {
-    // Graceful toggle: Stripe is only considered enabled if ENABLE_STRIPE is true AND keys exist
-    enableStripe:
-      getBooleanEnvVar('ENABLE_STRIPE', false) &&
-      Boolean(getEnvVar('STRIPE_SECRET_KEY', '')) &&
-      Boolean(getEnvVar('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', '')),
-
-    razorpay: {
-      keyId: getEnvVar('NEXT_PUBLIC_RAZORPAY_KEY_ID', getEnvVar('RAZORPAY_KEY_ID', '')),
-      keySecret: getEnvVar('RAZORPAY_KEY_SECRET', ''),
-    },
-
-    stripe: {
-      publishableKey: getEnvVar('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', ''),
-      secretKey: getEnvVar('STRIPE_SECRET_KEY', ''),
-      webhookSecret: getEnvVar('STRIPE_WEBHOOK_SECRET', ''),
-    },
+    upiVpa: getEnvVar('UPI_VPA', 'aapkaastro@okaxis'),
+    payeeName: getEnvVar('UPI_PAYEE_NAME', 'Vihangam Institute of Astrology and Research'),
+    ownerWhatsApp: getEnvVar('OWNER_WHATSAPP', '919311215564'),
+    defaultTuitionInr: Number(getEnvVar('DEFAULT_TUITION_INR', '5100')) || 5100,
   },
 
   video: {

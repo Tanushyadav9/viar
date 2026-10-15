@@ -1,115 +1,69 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import crypto from 'node:crypto';
+import { UPI_CONFIG, generateUpiUrl, generateWhatsAppPaymentSubmissionUrl, generateWhatsAppActivationUrl } from '../src/lib/payments/upi.ts';
 
-describe('Payment Webhook Verification Logic', () => {
-  const razorpaySecret = 'rzp_test_secret_key_12345';
-  const stripeSecret = 'whsec_test_stripe_secret_67890';
-
-  describe('Razorpay HMAC-SHA256 Signatures', () => {
-    function verifyRazorpaySignature(body: string, signature: string, secret: string): boolean {
-      const expected = crypto.createHmac('sha256', secret).update(body).digest('hex');
-      return expected === signature;
-    }
-
-    it('should successfully verify a valid Razorpay webhook signature', () => {
-      const payload = JSON.stringify({
-        event: 'payment.captured',
-        payload: {
-          payment: {
-            entity: {
-              id: 'pay_ABC123456789',
-              amount: 510000,
-              currency: 'INR',
-              email: 'student@example.com',
-            },
-          },
-        },
+describe('Webhook & Payment Verification Logic', () => {
+  describe('UPI QR & Manual Verification Security', () => {
+    it('should generate valid UPI deep-link URI with correct payee VPA and amount', () => {
+      const upiUrl = generateUpiUrl({
+        amount: 5100,
+        studentName: 'Pooja Verma',
+        courseTitle: 'What is Astrology',
       });
 
-      const validSignature = crypto
-        .createHmac('sha256', razorpaySecret)
-        .update(payload)
-        .digest('hex');
-
-      const isVerified = verifyRazorpaySignature(payload, validSignature, razorpaySecret);
-      assert.strictEqual(isVerified, true, 'Valid signature must be verified');
+      assert.ok(upiUrl.startsWith('upi://pay?'), 'URI must start with upi://pay');
+      assert.ok(upiUrl.includes(`pa=${UPI_CONFIG.vpa}`), `VPA must be ${UPI_CONFIG.vpa}`);
+      assert.ok(upiUrl.includes('am=5100'), 'Amount must be 5100');
+      assert.ok(upiUrl.includes('cu=INR'), 'Currency must be INR');
     });
 
-    it('should reject a tampered payload with mismatched signature', () => {
-      const originalPayload = JSON.stringify({ event: 'payment.captured', amount: 510000 });
-      const tamperedPayload = JSON.stringify({ event: 'payment.captured', amount: 100 });
-
-      const originalSignature = crypto
-        .createHmac('sha256', razorpaySecret)
-        .update(originalPayload)
-        .digest('hex');
-
-      const isVerified = verifyRazorpaySignature(tamperedPayload, originalSignature, razorpaySecret);
-      assert.strictEqual(isVerified, false, 'Tampered payload must fail signature verification');
-    });
-
-    it('should reject when verified against incorrect secret key', () => {
-      const payload = JSON.stringify({ event: 'order.paid' });
-      const validSignature = crypto
-        .createHmac('sha256', razorpaySecret)
-        .update(payload)
-        .digest('hex');
-
-      const isVerified = verifyRazorpaySignature(payload, validSignature, 'wrong_secret');
-      assert.strictEqual(isVerified, false, 'Signature with wrong secret must fail');
-    });
-
-    it('should fail closed when secret or signature is missing or empty', () => {
-      const payload = JSON.stringify({ event: 'payment.captured' });
-      assert.strictEqual(verifyRazorpaySignature(payload, '', razorpaySecret), false);
-      assert.strictEqual(verifyRazorpaySignature(payload, 'sig_abc', ''), false);
-    });
-  });
-
-  describe('Stripe Webhook Signatures', () => {
-    function verifyStripeSignature(rawBody: string, header: string, secret: string): boolean {
-      const parts = header.split(',').reduce((acc, part) => {
-        const [k, v] = part.split('=');
-        if (k && v) acc[k.trim()] = v.trim();
-        return acc;
-      }, {} as Record<string, string>);
-
-      const timestamp = parts['t'];
-      const signature = parts['v1'];
-      if (!timestamp || !signature) return false;
-
-      const signedPayload = `${timestamp}.${rawBody}`;
-      const expected = crypto.createHmac('sha256', secret).update(signedPayload).digest('hex');
-      return expected === signature;
-    }
-
-    it('should successfully verify a valid Stripe signature header', () => {
-      const rawBody = JSON.stringify({
-        id: 'evt_123',
-        type: 'payment_intent.succeeded',
-        data: { object: { id: 'pi_abc', amount: 6900, currency: 'usd' } },
+    it('should generate WhatsApp submission link with student and payment details', () => {
+      const submissionUrl = generateWhatsAppPaymentSubmissionUrl({
+        studentName: 'Pooja Verma',
+        studentEmail: 'pooja@example.com',
+        studentPhone: '+91 98765 43210',
+        courseTitle: 'What is Astrology',
+        amount: 5100,
+        utr: '123456789012',
       });
 
-      const timestamp = Math.floor(Date.now() / 1000).toString();
-      const signedPayload = `${timestamp}.${rawBody}`;
-      const signature = crypto.createHmac('sha256', stripeSecret).update(signedPayload).digest('hex');
-      const stripeHeader = `t=${timestamp},v1=${signature}`;
-
-      const isValid = verifyStripeSignature(rawBody, stripeHeader, stripeSecret);
-      assert.strictEqual(isValid, true, 'Valid Stripe signature header must verify');
+      assert.ok(submissionUrl.startsWith(`https://wa.me/${UPI_CONFIG.ownerWhatsApp}?text=`), 'Must link to Owner WhatsApp');
+      const decodedText = decodeURIComponent(submissionUrl.split('?text=')[1]);
+      assert.ok(decodedText.includes('Pooja Verma'), 'Must include student name');
+      assert.ok(decodedText.includes('pooja@example.com'), 'Must include student email');
+      assert.ok(decodedText.includes('123456789012'), 'Must include 12-digit UTR');
+      assert.ok(decodedText.includes('₹5,100'), 'Must include INR amount');
     });
 
-    it('should reject malformed or missing Stripe signature header', () => {
-      const rawBody = '{"type":"checkout.session.completed"}';
-      const isValid = verifyStripeSignature(rawBody, 'invalid_header_format', stripeSecret);
-      assert.strictEqual(isValid, false, 'Malformed header must fail verification');
+    it('should generate WhatsApp activation link that NEVER includes passwords or credentials', () => {
+      const activationUrl = generateWhatsAppActivationUrl({
+        studentPhone: '9876543210',
+        studentName: 'Pooja Verma',
+        courseTitle: 'What is Astrology — Foundations of Vedic Astrology',
+      });
+
+      assert.ok(activationUrl.startsWith('https://wa.me/919876543210?text='), 'Must format Indian phone number to 91 prefix');
+      const decoded = decodeURIComponent(activationUrl.split('?text=')[1]);
+      assert.ok(decoded.includes('Your Course Access is now ACTIVE'), 'Must confirm access activation');
+      assert.ok(decoded.includes('https://viar.in/login'), 'Must direct to student login');
+      assert.ok(decoded.includes('No separate passwords are required'), 'Must clarify no passwords sent');
+      
+      // Verify strict security: zero passwords or credential tokens present
+      assert.strictEqual(/password[:= ]/i.test(decoded), false, 'Must NEVER contain password assignment');
+      assert.strictEqual(/temp_pass/i.test(decoded), false, 'Must NEVER contain temporary passwords');
     });
 
-    it('should fail closed when Stripe secret or signature header is empty', () => {
-      const rawBody = '{"type":"payment_intent.succeeded"}';
-      assert.strictEqual(verifyStripeSignature(rawBody, '', stripeSecret), false);
-      assert.strictEqual(verifyStripeSignature(rawBody, 't=123,v1=sig', ''), false);
+    it('should validate 12-digit numeric UTR transaction format', () => {
+      const validUtr = '426019827361';
+      const invalidShortUtr = '12345';
+      const invalidAlphaUtr = '42601982736A';
+
+      const isValidUtr = (utr: string) => /^\d{12}$/.test(utr.trim());
+
+      assert.strictEqual(isValidUtr(validUtr), true);
+      assert.strictEqual(isValidUtr(invalidShortUtr), false);
+      assert.strictEqual(isValidUtr(invalidAlphaUtr), false);
     });
   });
 
@@ -202,4 +156,3 @@ describe('Payment Webhook Verification Logic', () => {
     });
   });
 });
-

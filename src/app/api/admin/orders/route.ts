@@ -1,0 +1,98 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { extractAuthFromRequest, isSiteOwner, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import { prisma } from '@/lib/prisma';
+import type { OrderStatus } from '@prisma/client';
+
+export async function GET(req: NextRequest) {
+  try {
+    const auth = extractAuthFromRequest(req);
+    const user = auth.userEmail || auth.userId || null;
+
+    // Check permissions: Owner or staff with payments:VIEW
+    const isOwnerUser = isSiteOwner(auth.userEmail || '');
+    const staffAccess = checkStaffSectionAccess({
+      user,
+      section: 'payments',
+      requiredLevel: 'VIEW',
+    });
+
+    if (!isOwnerUser && !staffAccess.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: Access to order verification queue is restricted.' },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(req.url);
+    const statusParam = searchParams.get('status') || 'ALL';
+    const searchQuery = (searchParams.get('q') || '').trim();
+
+    const whereClause: Record<string, unknown> = {};
+
+    if (statusParam && statusParam !== 'ALL') {
+      whereClause.status = statusParam as OrderStatus;
+    }
+
+    if (searchQuery) {
+      whereClause.OR = [
+        { orderReference: { contains: searchQuery, mode: 'insensitive' } },
+        { utr: { contains: searchQuery, mode: 'insensitive' } },
+        { studentName: { contains: searchQuery, mode: 'insensitive' } },
+        { studentEmail: { contains: searchQuery, mode: 'insensitive' } },
+        { studentPhone: { contains: searchQuery, mode: 'insensitive' } },
+        { user: { name: { contains: searchQuery, mode: 'insensitive' } } },
+        { user: { email: { contains: searchQuery, mode: 'insensitive' } } },
+        { user: { phone: { contains: searchQuery, mode: 'insensitive' } } },
+      ];
+    }
+
+    const [orders, counts] = await Promise.all([
+      prisma.order.findMany({
+        where: whereClause,
+        include: {
+          course: { select: { id: true, title: true, slug: true } },
+          cohort: { select: { id: true, batchName: true } },
+          user: { select: { id: true, name: true, email: true, phone: true } },
+          enrollment: { select: { id: true, status: true, enrolledAt: true } },
+        },
+        orderBy: [
+          // Prioritize claimed payments awaiting verification
+          { status: 'asc' },
+          { createdAt: 'desc' },
+        ],
+      }),
+      prisma.order.groupBy({
+        by: ['status'],
+        _count: { id: true },
+      }),
+    ]);
+
+    const countsByStatus: Record<string, number> = {
+      ALL: 0,
+      PENDING_PAYMENT: 0,
+      PAYMENT_CLAIMED: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+      EXPIRED: 0,
+      REFUNDED: 0,
+    };
+
+    let total = 0;
+    for (const c of counts) {
+      countsByStatus[c.status] = c._count.id;
+      total += c._count.id;
+    }
+    countsByStatus.ALL = total;
+
+    return NextResponse.json({
+      success: true,
+      orders,
+      countsByStatus,
+    });
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, error: err instanceof Error ? err.message : 'Failed to fetch orders queue.' },
+      { status: 500 }
+    );
+  }
+}

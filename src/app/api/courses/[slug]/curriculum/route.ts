@@ -76,7 +76,7 @@ export async function POST(
 
     const slugOrId = params.slug;
     const body = await req.json();
-    const { itemType, moduleId, title, description, order, lessonType, isFreePreview, videoProviderId, videoDuration, documentKey, documentUrl, liveScheduledAt, liveTimezone, liveJoinLink } = body;
+    const { itemType, moduleId, title, titleHi, description, descriptionHi, order, lessonType, isFreePreview, videoProviderId, videoDuration, documentKey, documentUrl, liveScheduledAt, liveTimezone, liveJoinLink } = body;
 
     const course = await prisma.course.findFirst({
       where: {
@@ -95,7 +95,9 @@ export async function POST(
         data: {
           courseId: course.id,
           title: title || `Module ${moduleCount + 1}`,
+          titleHi: titleHi || null,
           description: description || '',
+          descriptionHi: descriptionHi || null,
           order: order !== undefined ? Number(order) : moduleCount + 1,
         },
       });
@@ -126,7 +128,9 @@ export async function POST(
         data: {
           moduleId,
           title: title || `Lesson ${existingLessons + 1}`,
+          titleHi: titleHi || null,
           description: description || '',
+          descriptionHi: descriptionHi || null,
           order: order !== undefined ? Number(order) : existingLessons + 1,
           type: lessonType || 'VIDEO',
           isFreePreview: Boolean(isFreePreview),
@@ -187,7 +191,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { itemType, id, title, description, order, lessonType, isFreePreview, videoProviderId, videoDuration, documentKey, documentUrl, liveScheduledAt, liveTimezone, liveJoinLink } = body;
+    const { itemType, id, title, titleHi, description, descriptionHi, order, lessonType, isFreePreview, videoProviderId, videoDuration, documentKey, documentUrl, liveScheduledAt, liveTimezone, liveJoinLink } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, error: 'Item ID is required for update' }, { status: 400 });
@@ -196,7 +200,9 @@ export async function PATCH(
     if (itemType === 'MODULE') {
       const updateData: Record<string, unknown> = {};
       if (title !== undefined) updateData.title = title;
+      if (titleHi !== undefined) updateData.titleHi = titleHi;
       if (description !== undefined) updateData.description = description;
+      if (descriptionHi !== undefined) updateData.descriptionHi = descriptionHi;
       if (order !== undefined) updateData.order = Number(order);
 
       const updated = await prisma.module.update({
@@ -210,7 +216,9 @@ export async function PATCH(
     if (itemType === 'LESSON') {
       const updateData: Record<string, unknown> = {};
       if (title !== undefined) updateData.title = title;
+      if (titleHi !== undefined) updateData.titleHi = titleHi;
       if (description !== undefined) updateData.description = description;
+      if (descriptionHi !== undefined) updateData.descriptionHi = descriptionHi;
       if (order !== undefined) updateData.order = Number(order);
       if (lessonType !== undefined) updateData.type = lessonType;
       if (isFreePreview !== undefined) updateData.isFreePreview = Boolean(isFreePreview);
