@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
+import { assertStagingEnvironment } from './guard-staging.mjs';
 
 // Load .env
 if (!process.env.DATABASE_URL && fs.existsSync('.env')) {
@@ -18,6 +19,9 @@ if (!process.env.DATABASE_URL && fs.existsSync('.env')) {
     }
   }
 }
+
+// Enforce staging isolation: refuse to run against production database
+assertStagingEnvironment({ scriptName: 'scripts/seed-bilingual-content.mjs' });
 
 const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
 const prisma = new PrismaClient({

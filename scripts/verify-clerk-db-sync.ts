@@ -5,7 +5,11 @@
  * that a corresponding row is created in the Prisma User database.
  */
 import { PrismaClient } from '@prisma/client';
+import { assertStagingEnvironment } from './guard-staging.ts';
 import { assignRoleForUser } from '../src/lib/auth/permissions.ts';
+
+// Enforce staging isolation: refuse to run against production database
+assertStagingEnvironment({ scriptName: 'scripts/verify-clerk-db-sync.ts' });
 
 const prisma = new PrismaClient();
 

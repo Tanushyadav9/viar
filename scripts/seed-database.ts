@@ -1,10 +1,14 @@
 import { PrismaClient } from '@prisma/client';
+import { assertStagingEnvironment } from './guard-staging.ts';
 import {
   INITIAL_COURSES,
   ULTIMATE_ASTROLOGY_MODULES,
   SCHEDULED_CLASSES_FLAGSHIP,
   INITIAL_FINAL_TEST,
 } from '../src/lib/data.ts';
+
+// Enforce staging isolation: refuse to run against production database
+assertStagingEnvironment({ scriptName: 'scripts/seed-database.ts' });
 
 const prisma = new PrismaClient();
 

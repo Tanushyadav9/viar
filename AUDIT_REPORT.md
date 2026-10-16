@@ -415,3 +415,27 @@ Shows the unlocked masterclass dashboard for student `Rohan Singhania`, with all
 - **Owner Invariant**: `OWNER` role and `isOwner: true` are granted **IF AND ONLY IF** the verified primary email address matches `OWNER_EMAIL` (`aapkaastro1606@gmail.com`).
 - **Demotion & Audit Logging**: Any database record holding `role: 'OWNER'` or `isOwner: true` for any other email address is immediately demoted to `STUDENT`, `isOwner` set to `false`, and logged as a security alert to `logger.securityAlert` and `prisma.activityLog` with action `UNAUTHORIZED_OWNER_DEMOTED`.
 - **Staff Access Preservation**: Existing staff roles (`INSTRUCTOR`, `ADMIN`) granted through `/admin/team` and managed via the `StaffPermission` table are preserved. All unprivileged sign-ins default to `STUDENT`.
+
+---
+
+## 10. Test Data Isolation, Staging Guard & Production Cleanup Plan
+
+### 10.1 Staging Environment Guard (`scripts/guard-staging.mjs` & `.ts`)
+- **Strict Production Host Denylist**: Explicitly blocks execution against the production database (`ep-orange-poetry-b4cupwem.c-6.us-east-2.aws.neon.tech`). Any test, seed, or verification script attempting to connect to production immediately halts with an exit code 1 error banner.
+- **Explicit Confirmation Flag**: Refuses to run unless `--staging` or `ALLOW_STAGING_SCRIPTS=true` is explicitly provided.
+- **Staging Allowlist Verification**: Enforces that execution only occurs against approved staging branch hosts defined in `STAGING_DATABASE_HOST_ALLOWLIST`.
+
+### 10.2 Production Test Data Dry-Run Audit
+A full dry-run audit of the production database (`neondb`) was performed via `scripts/dry-run-cleanup.mjs`:
+- **Users**: 4 test users identified for cleanup (`scholar.aarav.1791997088631@example.com`, `student_1792085411317@example.com`, `student_1792085480147@example.com`, `student_1792085726656@example.com`).
+- **Orders**: 2 test orders identified (`cmv9tfig4000210vkl3ryk2om`, `cmv9tkrq600025qmsym40kk6a`).
+- **Enrollments**: 2 test enrollments identified (`cmv9tfrid000610vkc9wxcu57`, `cmv9tl17u00065qmsd8sozhoi`).
+- **Activity Logs**: 4 test order audit log entries identified.
+- **Strict Owner Protection**: `aapkaastro1606@gmail.com` is configured as permanently immutable and will NEVER be deleted.
+- **Core Content Intact**: All 5 courses, 2 cohorts, 24 modules, 50 lessons, 2 quizzes, 20 questions, 80 options, and payment settings are 100% preserved.
+- **Status**: Zero database rows were modified or deleted; awaiting developer approval.
+
+### 10.3 Dead Schema & Code Purge
+- Confirmed that `CourseBundle` and `Testimonial` models held 0 rows in production and had 0 active code references.
+- Purged `CourseBundle` and `Testimonial` models and their relation fields from `prisma/schema.prisma`.
+- Re-generated Prisma Client and verified with passing unit tests and Next.js production build.

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { assertStagingEnvironment } from './guard-staging.mjs';
 import {
   createOrGetActiveOrder,
   claimOrderPayment,
@@ -6,6 +7,9 @@ import {
   generateOrderReference,
   buildUpiPaymentUri,
 } from '../src/lib/payments/orders.ts';
+
+// Enforce staging isolation: refuse to run against production database
+assertStagingEnvironment({ scriptName: 'scripts/e2e-proof-flow.mjs' });
 
 const prisma = new PrismaClient();
 

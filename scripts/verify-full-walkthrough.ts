@@ -10,12 +10,16 @@
  * 6. Query and display live Neon database tables.
  */
 import { PrismaClient } from '@prisma/client';
+import { assertStagingEnvironment } from './guard-staging.ts';
 import {
   generateSignedPlaybackToken,
   verifySignedPlaybackToken,
   generateSignedDocumentToken,
   verifySignedDocumentToken,
 } from '../src/lib/auth/token-crypto.ts';
+
+// Enforce staging isolation: refuse to run against production database
+assertStagingEnvironment({ scriptName: 'scripts/verify-full-walkthrough.ts' });
 
 const prisma = new PrismaClient();
 
