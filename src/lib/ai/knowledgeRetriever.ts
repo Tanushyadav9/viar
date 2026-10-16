@@ -273,9 +273,9 @@ export function maskSensitiveData(rawText: string): string {
     '[EMAIL_MASKED]'
   );
 
-  // 3. Mask phone numbers (10 digits starting with 6-9, or +91...)
+  // 3. Mask phone numbers (10 digits starting with 6-9, with or without spaces, or +91...)
   sanitized = sanitized.replace(
-    /(?:\+91[\s-]?)?[6-9]\d{9}\b|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/g,
+    /(?:\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}\b|(?:\+91[\s-]?)?[6-9]\d{9}\b|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/g,
     '[PHONE_MASKED]'
   );
 

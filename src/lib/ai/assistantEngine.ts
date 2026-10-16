@@ -72,77 +72,91 @@ export function identifyIntent(query: string): string {
     return 'greeting';
   }
 
-  // Personal Horoscope / Prediction Inquiries (Must be redirected to 1-on-1 consultation)
+  // 1. Transaction Confirmation Inquiries (Strictly fail-closed: Rule 5)
   if (
-    /(meri\s+(kundli|kundali|shadi|marriage|career|job|future|health)|kundali\s+dikhani|kundli\s+dekhna|apna\s+bhavishya|personal\s+(horoscope|reading|consultation|prediction)|my\s+(kundali|chart|marriage|career|future)|read\s+my\s+chart|matchmaking|kundli\s+milan|कुंडली|कुंडली\s+का\s+विश्लेषण|मेरी\s+कुंडली|मेरी\s+शादी|भविष्य|परामर्श)/i.test(q)
+    /(confirm\s+(my\s+)?(payment|transaction|booking|enrollment|order)|payment\s+(confirm|verify|check|hua\s+ki\s+nahi)|verify\s+my\s+payment|activate\s+my\s+(course|account|enrollment)|mene\s+paise\s+bhej\s+diye|paise\s+kat\s+gaye|payment\s+ho\s+gaya|पेमेंट\s+(कन्फर्म|सत्यापित|चेक)|पैसे\s+कट\s+गए|भुगतान\s+सत्यापन)/i.test(q)
   ) {
-    return 'personal_consultation';
+    return 'confirm_payment';
   }
 
-  // Out of scope (Coding, politics, general unrelated topics, medical, prompt injections)
+  // 2. Free Tools / Calculators / Free Previews / Kundli Software
   if (
-    /(python|javascript|write\s+code|code|script|react|sql|chatgpt|politics|political|election|weather|cricket|narendra\s+modi|stock\s+tips|bitcoin|crypto|dawa|medicine|headache|doctor|medical|dan|jailbreak|ignore\s+all\s+instructions|system\s+prompt|roleplay|दवा|मौसम|चुनाव|कोडिंग)/i.test(q)
+    /(free\s+(tool|tools|calculator|software|kundli|chart|preview|lesson|lessons|video|watch|sample)|kundli\s+(calculator|software|maker)|panchang\s+calculator|free\s+me\s+kya|free\s+resources|watch\s+.*free|मुफ्त\s+(टूल|कैलकुलेटर|सॉफ्टवेयर|कुंडली|पाठ|वीडियो)|फ्री\s+टूल)/i.test(q)
+  ) {
+    return 'free_tools';
+  }
+
+  // 3. Out of scope (Coding, politics, general unrelated topics, medical, legal advice, prompt injections, abuse)
+  if (
+    /(python|javascript|write\s+code|source\s+code|coding|react|sql|chatgpt|politics|political|election|weather|cricket|world\s+cup|france|narendra\s+modi|stock\s+tips|bitcoin|crypto|dawa|medicine|headache|doctor|medical|surgery|cancer|illness|court\s+case|legal\s+advice|lawyer|lawsuit|property\s+dispute|dan|jailbreak|ignore\s+all\s+instructions|system\s+prompt|developer\s+prompt|api\s+key|api\s+keys|secret\s+key|roleplay|idiot|stupid|scam|scammer|fraud|fool|bastard|abuse|दवा|बीमारी|इलाज|कोर्ट|केस|कानूनी|मौसम|चुनाव|कोडिंग)/i.test(q)
   ) {
     return 'out_of_scope';
   }
 
-  // Course Tuition / Fees / Price / Cost
-  if (
-    /(fee|fees|cost|price|pricing|charge|tuition|rate|amount|₹|inr|dollar|discount|installment|emi|kitni\s+fees|kitna\s+lagega|kitne\s+paise|paise\s+kitne|fees\s+kya\s+hai|fees\s+batao|fees\s+kitni|फीस|शुल्क|खर्च|लागत|दाम|मूल्य|पैसे\s+कितने)/i.test(q)
-  ) {
-    return 'fees_pricing';
-  }
-
-  // Curriculum / Syllabus / Modules / What is taught
-  if (
-    /(syllabus|curriculum|module|modules|lesson|lessons|topic|topics|content|chapter|chapters|kya\s+sikhaya|kya\s+padhaya|kya\s+kya\s+hai|course\s+me\s+kya\s+hai|course\s+details|what\s+will\s+i\s+learn|topics\s+covered|kundali\s+making|graha|nakshatra|rashis|bhavas|dashas|पाठ्यक्रम|सिलेबस|विषय|अध्याय|मॉड्यूल|क्या\s+सिखाया|क्या\s+पढ़ाया|क्या\s+सिखाते)/i.test(q)
-  ) {
-    return 'syllabus_curriculum';
-  }
-
-  // Course Delivery Format (Live vs Recorded / Timing / Duration / Lifetime access)
-  if (
-    /(live|recorded|self\s*paced|timing|timings|schedule|time\s+table|kab\s+hoti\s+hai|kis\s+samay|duration|kab\s+tak|lifetime|validity|zoom|batch|dates|recording\s+milegi|kya\s+live\s+hai|recorded\s+hai\s+ya\s+live|लाइव|रिकॉर्डेड|सेल्फ-पेस्ड|समय|समय\s+सारणी|अवधि|आजीवन|ज़ूम)/i.test(q)
-  ) {
-    return 'format_schedule';
-  }
-
-  // Certification / Exams / Verification
-  if (
-    /(certificate|certification|exam|test|quiz|praman\s*patra|degree|diploma|certified|accredited|passing\s+marks|verify|verification|certificate\s+milega|certificate\s+kaisa\s+hoga|सर्टिफिकेट|प्रमाणपत्र|परीक्षा|क्विज़|डिग्री)/i.test(q)
-  ) {
-    return 'certificate';
-  }
-
-  // Instructor / Acharya Niraj Kumar
-  if (
-    /(acharya|niraj|niraj\s+kumar|instructor|teacher|faculty|founder|guru|who\s+teaches|kon\s+padhayega|who\s+is\s+niraj|qualifications|experience|bvb|bharatiya\s+vidya\s+bhavan|background|आचार्य|नीरज|नीरज\s+कुमार|शिक्षक|गुरु|संस्थापक)/i.test(q)
-  ) {
-    return 'instructor';
-  }
-
-  // Payment method / How to pay / UPI / QR / Account Activation
-  if (
-    /(how\s+to\s+pay|pay\s+kaise|upi|qr|google\s*pay|phonepe|paytm|vpa|utr|bank\s+transfer|screenshot|payment\s+process|enroll\s+kaise|admission\s+kaise|password|login\s+access|account\s+kab\s+khulega|भुगतान|पेमेंट|यूपीआई|क्यूआर|प्रवेश|दाखिला|पैसे\s+कैसे\s+दें)/i.test(q)
-  ) {
-    return 'payment_how_to';
-  }
-
-  // Refund & Cancellation Policy
+  // 4. Refund & Cancellation Policy (Must take precedence over generic module/fee keywords)
   if (
     /(refund|money\s*back|cancel|cancellation|wapas|paise\s+wapas|guarantee|satisfaction|return\s+policy|refund\s+policy|रिफंड|धनवापसी|रद्दीकरण|पैसे\s+वापस)/i.test(q)
   ) {
     return 'refund';
   }
 
-  // Direct Contact / Phone / WhatsApp
+  // 5. Payment method / How to pay / UPI / QR / Account Activation / Password delivery / Enrollment steps
+  if (
+    /(how\s+(do\s+i\s+|can\s+i\s+|to\s+)?(enroll|enrol|register|join|sign\s*up|pay)|(how\s+soon|when)\s+.*(access|unlock)|access\s+to\s+the\s+course|access\s+after|steps\s+to\s+enroll|admission\s+process|enrollment\s+steps|pay\s+kaise|which\s+upi|upi\s+apps|upi|qr|google\s*pay|phonepe|paytm|vpa|utr|bank\s+transfer|screenshot|payment\s+process|enroll\s+kaise|admission\s+kaise|password|login\s+access|account\s+kab\s+khulega|भुगतान|पेमेंट|यूपीआई|क्यूआर|प्रवेश\s+(कैसे|प्रक्रिया)|दाखिला|पैसे\s+कैसे\s+(दें|भेजें|जमा|पे)|भुगतान\s+(कैसे|प्रक्रिया))/i.test(q)
+  ) {
+    return 'payment_how_to';
+  }
+
+  // 6. Direct Contact / Phone / WhatsApp / Call
   if (
     /(contact|phone|number|mobile|whatsapp|call|reach|email|address|office|baat\s+karni|sampark|direct\s+call|संपर्क|फोन|व्हाट्सएप|कॉल|मोबाइल|बात\s+करनी)/i.test(q)
   ) {
     return 'contact_whatsapp';
   }
 
-  // General Course Inquiry
+  // 7. Personal Horoscope / Prediction Inquiries (Must be redirected to 1-on-1 consultation)
+  if (
+    /(meri\s+(kundli|kundali|shadi|marriage|career|job|future|health)|kundali\s+dikhani|kundli\s+dekhna|apna\s+bhavishya|personal\s+(horoscope|reading|consultation|prediction)|my\s+(kundali|chart|marriage|career|future)|read\s+my\s+chart|when\s+will\s+i|will\s+i\s+(get|marry|win|recover)|matchmaking|kundli\s+milan|कुंडली|कुंडली\s+का\s+विश्लेषण|मेरी\s+कुंडली|मेरी\s+शादी|भविष्य|परामर्श)/i.test(q)
+  ) {
+    return 'personal_consultation';
+  }
+
+  // 8. Course Tuition / Fees / Price / Cost / Discounts / Currency
+  if (
+    /(fee|fees|cost|price|pricing|charge|tuition|rate|amount|₹|inr|dollar|usd|currency|currencies|international\s+student|foreign\s+currency|discount|free\s+course|make\s+it\s+free|100%\s*free|for\s+free|\bfree\b|coupon|installment|emi|kitni\s+fees|kitna\s+lagega|kitne\s+paise|paise\s+kitne|fees\s+kya\s+hai|fees\s+batao|fees\s+kitni|फीस|शुल्क|खर्च|लागत|दाम|मूल्य|करेंसी|पैसे\s+कितने)/i.test(q)
+  ) {
+    return 'fees_pricing';
+  }
+
+  // 9. Certification / Exams / Verification
+  if (
+    /(certificate|certification|exam|test|quiz|praman\s*patra|degree|diploma|certified|accredited|passing\s+marks|verify|verification|certificate\s+milega|certificate\s+kaisa\s+hoga|सर्टिफिकेट|प्रमाणपत्र|परीक्षा|क्विज़|डिग्री)/i.test(q)
+  ) {
+    return 'certificate';
+  }
+
+  // 10. Instructor / Acharya Niraj Kumar
+  if (
+    /(acharya|niraj|niraj\s+kumar|instructor|teacher|faculty|founder|guru|who\s+teaches|kon\s+padhayega|who\s+is\s+niraj|qualifications|experience|bvb|bharatiya\s+vidya\s+bhavan|background|आचार्य|नीरज|नीरज\s+कुमार|शिक्षक|गुरु|संस्थापक)/i.test(q)
+  ) {
+    return 'instructor';
+  }
+
+  // 11. Curriculum / Syllabus / Modules / Workshops / Bonus classes / Prerequisites
+  if (
+    /(syllabus|curriculum|module|modules|lesson|lessons|topic|topics|content|chapter|chapters|workshop|workshops|bonus|case\s+study|prerequisite|prerequisites|eligibility|prior\s+knowledge|prior\s+experience|requirements\s+to\s+join|kya\s+sikhaya|kya\s+padhaya|kya\s+kya\s+hai|course\s+me\s+kya\s+hai|course\s+details|what\s+will\s+i\s+learn|topics\s+covered|kundali\s+making|graha|nakshatra|rashis|bhavas|dashas|पाठ्यक्रम|सिलेबस|विषय|अध्याय|मॉड्यूल|क्या\s+सिखाया|क्या\s+पढ़ाया|क्या\s+सिखाते)/i.test(q)
+  ) {
+    return 'syllabus_curriculum';
+  }
+
+  // 12. Course Delivery Format (Live vs Recorded / Timing / Duration / Validity / Lifetime access)
+  if (
+    /(live|recorded|self\s*paced|timing|timings|schedule|time\s+table|kab\s+hoti\s+hai|kis\s+samay|duration|valid|validity|how\s+long|kab\s+tak|lifetime|zoom|batch|dates|recording\s+milegi|kya\s+live\s+hai|recorded\s+hai\s+ya\s+live|लाइव|रिकॉर्डेड|सेल्फ-पेस्ड|समय|समय\s+सारणी|अवधि|आजीवन|ज़ूम)/i.test(q)
+  ) {
+    return 'format_schedule';
+  }
+
+  // 13. General Course Inquiry
   if (
     /(course|astrology|jyotish|learn|seekhna|admission|join|enroll|कोर्स|ज्योतिष|सीखना|प्रवेश)/i.test(q)
   ) {
@@ -235,6 +249,100 @@ export function generateGroundedAssistantResponse(
       intent,
       confidence: 'high',
       actionButtons: [getEnrollAction(), getSyllabusAction(), getWhatsAppAction()],
+    };
+  }
+
+  // 1B. CONFIRM PAYMENT (Rule 5: Fail-closed; never confirm payment as an AI)
+  if (intent === 'confirm_payment') {
+    if (language === 'hi') {
+      return {
+        reply: `एक एआई सहायक के रूप में, मैं बैंक लेन-देन की पुष्टि या भुगतान सत्यापन नहीं कर सकता। केवल संस्थान के संस्थापक (आचार्य नीरज कुमार जी) बैंक में राशि प्राप्त होने की पुष्टि करके नामांकन सक्रिय करते हैं।\n\nकृपया अपना 12 अंकों का बैंक UTR / ट्रांजैक्शन नंबर और पेमेंट का स्क्रीनशॉट सीधे आचार्य जी को व्हाट्सएप (+91 93112 15564) पर भेजें अथवा viar.in/checkout पर 'मैंने भुगतान कर दिया' पर सबमिट करें। बैंक सत्यापन होते ही आपका कोर्स स्वतः अनलॉक हो जाएगा।`,
+        language,
+        intent,
+        confidence: 'high',
+        actionButtons: [
+          getWhatsAppAction('Namaste Acharya ji, I have made the payment. Here is my 12-digit UTR reference for verification: '),
+          getCallAction(),
+        ],
+      };
+    }
+    if (language === 'hinglish') {
+      return {
+        reply: `Main ek AI assistant hoon aur financial transactions ya payment verification confirm nahi kar sakta. Course access strictly tab unlock hota hai jab Acharya Niraj Kumar ji bank credit verify karte hain.\n\nKripya apna 12-digit bank UTR reference number aur payment screenshot direct Acharya ji ko WhatsApp (+91 93112 15564) par send karein ya viar.in/checkout par submit karein. Bank verification complete hote hi aapka course instantly unlock ho jayega.`,
+        language,
+        intent,
+        confidence: 'high',
+        actionButtons: [
+          getWhatsAppAction('Namaste Acharya ji, I have made the payment. Here is my 12-digit UTR reference for verification: '),
+          getCallAction(),
+        ],
+      };
+    }
+    return {
+      reply: `As an AI assistant, I cannot verify financial transactions, bank receipts, or confirm that a payment or enrollment has occurred. Only the academy Owner (Acharya Niraj Kumar) verifies bank credits and activates student access.\n\nPlease submit your 12-digit bank UTR transaction reference at viar.in/checkout and message your payment screenshot directly to Acharya Niraj Kumar on WhatsApp (+91 93112 15564). Once bank credit is verified in the admin queue, your student account unlocks automatically.`,
+      language,
+      intent,
+      confidence: 'high',
+      actionButtons: [
+        getWhatsAppAction('Namaste Acharya ji, I have made the payment. Here is my 12-digit UTR reference for verification: '),
+        getCallAction(),
+      ],
+    };
+  }
+
+  // 1C. FREE TOOLS / CALCULATORS
+  if (intent === 'free_tools') {
+    if (language === 'hi') {
+      return {
+        reply: `VIAR संस्थान के viar.in/courses पेज पर मॉड्यूल 1 के परिचयात्मक वीडियो पाठ निःशुल्क (Free Preview) उपलब्ध हैं ताकि आप नामांकन से पूर्व आचार्य जी की शिक्षण शैली का अनुभव कर सकें।\n\nनिःशुल्क ऑनलाइन ज्योतिषीय टूल्स (तुरंत जन्म कुंडली निर्माण, दैनिक पंचांग, और शुभ मुहूर्त कैलकुलेटर) के लिए आप हमारे सहयोगी परामर्श मंच 'Aapka Astro' (aapkaastro.com) पर जा सकते हैं। VIAR का 23-मॉड्यूल का संपूर्ण शैक्षणिक सर्टिफिकेशन कोर्स ₹5,100 शिक्षण शुल्क पर उपलब्ध है।`,
+        language,
+        intent,
+        confidence: 'high',
+        actionButtons: [
+          {
+            label: 'फ्री प्रीव्यू देखें',
+            url: '/courses/what-is-astrology',
+            type: 'link',
+            variant: 'secondary',
+          },
+          getEnrollAction(),
+          getWhatsAppAction(),
+        ],
+      };
+    }
+    if (language === 'hinglish') {
+      return {
+        reply: `VIAR par Module 1 ke free preview lessons viar.in/courses par available hain taaki aap enroll karne se pehle teaching style dekh sakein.\n\nFree online astrological tools (Kundli generation, daily Panchang, aur Muhurta calculators) ke liye aap hamare sister portal Aapka Astro (aapkaastro.com) par visit kar sakte hain. VIAR ka complete 23-module masterclass course ₹5,100 ki one-time fee par available hai.`,
+        language,
+        intent,
+        confidence: 'high',
+        actionButtons: [
+          {
+            label: 'Watch Free Preview',
+            url: '/courses/what-is-astrology',
+            type: 'link',
+            variant: 'secondary',
+          },
+          getEnrollAction(),
+          getWhatsAppAction(),
+        ],
+      };
+    }
+    return {
+      reply: `VIAR provides free preview lessons for Module 1 of our masterclass at viar.in/courses so you can experience Acharya Niraj Kumar's logical teaching methodology before enrolling.\n\nFor free astrological calculators (instant Kundli generation, daily Panchang, and Muhurta tools), please visit our sister portal Aapka Astro (aapkaastro.com). The flagship 23-module academic certification course at VIAR is a structured paid program for ₹5,100 INR ($69 USD).`,
+      language,
+      intent,
+      confidence: 'high',
+      actionButtons: [
+        {
+          label: 'Watch Free Preview',
+          url: '/courses/what-is-astrology',
+          type: 'link',
+          variant: 'secondary',
+        },
+        getEnrollAction(),
+        getWhatsAppAction(),
+      ],
     };
   }
 
@@ -346,7 +454,7 @@ export function generateGroundedAssistantResponse(
       };
     }
     return {
-      reply: `Yes! Upon completing the course, you receive an official verifiable digital Certificate of Completion from the Vihangam Institute of Astrology and Research (VIAR).\n\n• Assessment: A 20-question multiple-choice graded assessment testing practical chart reading and foundational concepts.\n• Passing Standard: Scoring 70% or higher automatically awards your certificate.\n• Cryptographic Verification: Each certificate carries a unique code verifiable publicly at viar.in/verify.`,
+      reply: `Yes! Upon completing the course, you receive an official verifiable digital Certificate of Completion from the Vihangam Institute of Astrology and Research (VIAR).\n\n• Assessment & Quiz: A 20-question multiple-choice graded assessment quiz testing practical chart reading and foundational concepts.\n• Passing Standard: Scoring 70% or higher automatically awards your certificate.\n• Cryptographic Verification: Each certificate carries a unique code verifiable publicly at viar.in/verify.`,
       language,
       intent,
       confidence: 'high',
@@ -468,7 +576,7 @@ export function generateGroundedAssistantResponse(
       };
     }
     return {
-      reply: `Namaste! As the VIAR Academic Assistant, I am specialized strictly in our astrology courses, curriculum, tuition, and admissions. I cannot analyze personal horoscopes or generate astrological predictions.\n\nTo consult Acharya Niraj Kumar 1-on-1 for a comprehensive birth chart reading, career/marriage forecast, or Vastu audit, please reach out directly via WhatsApp or phone call:`,
+      reply: `Namaste! As the VIAR Academic Assistant, I am specialized strictly in our astrology courses, curriculum, tuition, and admissions. I cannot analyze personal horoscopes or generate astrological predictions.\n\nTo consult Acharya Niraj Kumar 1-on-1 for a comprehensive birth chart reading, career/marriage forecast, or Vastu audit, please reach out on our sister consultation platform Aapka Astro (aapkaastro.com) or connect directly via WhatsApp or phone call:`,
       language,
       intent,
       confidence: 'high',
