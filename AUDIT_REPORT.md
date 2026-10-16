@@ -338,6 +338,54 @@ Shows the unlocked masterclass dashboard for student `Rohan Singhania`, with all
 
 ---
 
+### Proof 8: AI Assistant — Desktop English (Closed Floating Trigger)
+Shows the unobtrusive floating assistant beacon at the bottom-right corner of the homepage (`/`) with pulsing beacon, brand styling, and zero automatic popup.
+![AI Assistant Desktop English Closed](file:///C:/Users/TANUSH%20YADAV/.gemini/antigravity/brain/096bfe9f-b128-4fdd-964d-724a827165d5/08_ai_assistant_desktop_closed_en.png)
+
+---
+
+### Proof 9: AI Assistant — Desktop English (Open 380×560 Panel)
+Shows the accessible 380×560 desktop dialog panel with "AI assistant" badge, new chat session reset control, 4 suggested question chips, persistent escalation bar (WhatsApp, Call, Enroll), and Privacy Policy footer note.
+![AI Assistant Desktop English Open](file:///C:/Users/TANUSH%20YADAV/.gemini/antigravity/brain/096bfe9f-b128-4fdd-964d-724a827165d5/09_ai_assistant_desktop_open_en.png)
+
+---
+
+### Proof 10: AI Assistant — Desktop Hindi (Closed Floating Trigger)
+Shows the bilingual Hindi floating beacon on `/hi` with authentic Devanagari typography ("ज्योतिष सहायक • शुल्क • पाठ्यक्रम • सहायता").
+![AI Assistant Desktop Hindi Closed](file:///C:/Users/TANUSH%20YADAV/.gemini/antigravity/brain/096bfe9f-b128-4fdd-964d-724a827165d5/10_ai_assistant_desktop_closed_hi.png)
+
+---
+
+### Proof 11: AI Assistant — Desktop Hindi (Open Panel)
+Shows the localized open chat panel with Devanagari greeting, 4 Hindi suggested question chips, WhatsApp escalation, and Hindi Privacy Policy disclosure.
+![AI Assistant Desktop Hindi Open](file:///C:/Users/TANUSH%20YADAV/.gemini/antigravity/brain/096bfe9f-b128-4fdd-964d-724a827165d5/11_ai_assistant_desktop_open_hi.png)
+
+---
+
+### Proof 12: AI Assistant — Mobile 390px English (Closed Floating Trigger)
+Tested on standard 390px mobile viewport (iPhone 12/13/14). Demonstrates zero collisions with bottom margins, action bars, or site elements.
+![AI Assistant Mobile English Closed](file:///C:/Users/TANUSH%20YADAV/.gemini/antigravity/brain/096bfe9f-b128-4fdd-964d-724a827165d5/12_ai_assistant_mobile_closed_en.png)
+
+---
+
+### Proof 13: AI Assistant — Mobile 390px English (Open Full-Height Sheet)
+Shows responsive full-height bottom sheet on mobile with touch-optimized chips, persistent escalation bar, and safe keyboard dismiss area.
+![AI Assistant Mobile English Open](file:///C:/Users/TANUSH%20YADAV/.gemini/antigravity/brain/096bfe9f-b128-4fdd-964d-724a827165d5/13_ai_assistant_mobile_open_en.png)
+
+---
+
+### Proof 14: AI Assistant — Mobile 390px Hindi (Closed Floating Trigger)
+Shows localized Devanagari floating trigger on 390px mobile viewport.
+![AI Assistant Mobile Hindi Closed](file:///C:/Users/TANUSH%20YADAV/.gemini/antigravity/brain/096bfe9f-b128-4fdd-964d-724a827165d5/14_ai_assistant_mobile_closed_hi.png)
+
+---
+
+### Proof 15: AI Assistant — Mobile 390px Hindi (Open Full-Height Sheet)
+Shows responsive Hindi full-height mobile sheet with Devanagari chips and WhatsApp escalation.
+![AI Assistant Mobile Hindi Open](file:///C:/Users/TANUSH%20YADAV/.gemini/antigravity/brain/096bfe9f-b128-4fdd-964d-724a827165d5/15_ai_assistant_mobile_open_hi.png)
+
+---
+
 ## 6. Verification & Build Summary
 
 | Metric | Result | Standard | Status |

@@ -374,6 +374,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
         >
           <button
             ref={triggerButtonRef}
+            id="viar-ai-assistant-trigger"
             onClick={() => setIsOpen(true)}
             aria-expanded={isOpen}
             aria-controls="viar-ai-chat-window"
