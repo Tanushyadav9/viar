@@ -8,6 +8,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { LanguageProvider } from '@/components/LanguageContext';
 import WelcomeCohortModal from '@/components/WelcomeCohortModal';
 import FloatingAIAssistant from '@/components/FloatingAIAssistant';
+import { isChatbotConfigured } from '@/lib/ai/chatbotConfig';
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -79,6 +80,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const chatbotConfigured = isChatbotConfigured();
+
   return (
     <html lang="en" className="light" data-theme="light" suppressHydrationWarning>
       <head>
@@ -139,7 +142,7 @@ export default function RootLayout({
                 <main className="flex-grow">{children}</main>
                 <Footer />
                 <WelcomeCohortModal />
-                <FloatingAIAssistant />
+                {chatbotConfigured && <FloatingAIAssistant isConfigured={true} />}
               </LanguageProvider>
             </ThemeProvider>
           </ClerkProvider>
@@ -153,7 +156,7 @@ export default function RootLayout({
               <main className="flex-grow">{children}</main>
               <Footer />
               <WelcomeCohortModal />
-              <FloatingAIAssistant />
+              {chatbotConfigured && <FloatingAIAssistant isConfigured={true} />}
             </LanguageProvider>
           </ThemeProvider>
         )}

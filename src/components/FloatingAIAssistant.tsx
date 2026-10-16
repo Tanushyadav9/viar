@@ -25,7 +25,11 @@ interface ChatMessage {
   actionButtons?: ActionButton[];
 }
 
-export default function FloatingAIAssistant() {
+interface FloatingAIAssistantProps {
+  isConfigured?: boolean;
+}
+
+export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIAssistantProps) {
   const pathname = usePathname();
   const { language } = useLanguage();
   const isHi = language === 'hi';
@@ -40,7 +44,7 @@ export default function FloatingAIAssistant() {
   const inputRef = useRef<HTMLInputElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // 1. Route Suppression: Hide completely on protected student/admin/instructor portals
+  // Route Suppression: Hide completely on protected student/admin/instructor portals
   const isProtectedPortal =
     !pathname ||
     pathname.startsWith('/dashboard') ||
@@ -107,10 +111,13 @@ export default function FloatingAIAssistant() {
     }
   }, [isOpen]);
 
-  // Send Message Handler
+  // Send Message Handler with Real-Time Streaming and Rate Limit Handling
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
     if (!text || isLoading) return;
+
+    // Strict 500 characters limit
+    if (text.length > 500) return;
 
     setInputText('');
 
@@ -125,54 +132,138 @@ export default function FloatingAIAssistant() {
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
 
+    const asstId = `asst-${Date.now()}`;
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
     try {
-      // Call API Route
-      const res = await fetch('/api/assistant', {
+      // Call Streaming Server Route /api/chat with last 8 messages as context
+      const historyContext = messages.slice(-8).map((m) => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.text,
+      }));
+
+      const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          locale: isHi ? 'hi' : 'en',
-          history: messages.slice(-4).map((m) => ({
-            role: m.sender === 'user' ? 'user' : 'assistant',
-            content: m.text,
-          })),
+          history: historyContext,
         }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const assistantMsg: ChatMessage = {
-          id: `asst-${Date.now()}`,
-          sender: 'assistant',
-          text: data.reply || 'Thank you for your question.',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          actionButtons: data.actionButtons,
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-      } else {
-        // Fallback to client-side grounded engine on HTTP error
+      // Handle Rate Limiting (429) Friendly Message with WhatsApp Button
+      if (res.status === 429) {
+        const errorData = await res.json().catch(() => null);
+        const limitReply =
+          errorData?.message ||
+          (isHi
+            ? 'आपने बातचीत की सीमा पार कर ली है। कृपया त्वरित सहायता के लिए व्हाट्सएप पर संपर्क करें।'
+            : "You've reached the conversation limit. Please chat directly with our team on WhatsApp for instant assistance.");
+
+        const actionButtons: ActionButton[] = errorData?.actionButtons || [
+          {
+            label: isHi ? 'व्हाट्सएप पर संपर्क करें' : 'Chat on WhatsApp (+91 93112 15564)',
+            url: 'https://wa.me/919311215564?text=Namaste%20Acharya%20ji%2C%20I%20have%20an%20inquiry%20regarding%20the%20VIAR%20Astrology%20Course.',
+            isExternal: true,
+            type: 'whatsapp',
+            variant: 'primary',
+          },
+        ];
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: asstId,
+            sender: 'assistant',
+            text: limitReply,
+            timestamp,
+            actionButtons,
+          },
+        ]);
+        return;
+      }
+
+      // Handle Server Unavailable (503)
+      if (res.status === 503) {
         const fallback = generateGroundedAssistantResponse(text, { locale: isHi ? 'hi' : undefined });
-        const assistantMsg: ChatMessage = {
-          id: `asst-fallback-${Date.now()}`,
-          sender: 'assistant',
-          text: fallback.reply,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          actionButtons: fallback.actionButtons,
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: asstId,
+            sender: 'assistant',
+            text: fallback.reply,
+            timestamp,
+            actionButtons: fallback.actionButtons,
+          },
+        ]);
+        return;
+      }
+
+      // Handle Successful Streaming (200)
+      if (res.ok && res.body) {
+        // Create initial placeholder assistant message in state
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: asstId,
+            sender: 'assistant',
+            text: '',
+            timestamp,
+          },
+        ]);
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let accumulatedText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          accumulatedText += chunk;
+
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === asstId ? { ...m, text: accumulatedText } : m
+            )
+          );
+        }
+
+        // Attach contextual action buttons after completion
+        const fallback = generateGroundedAssistantResponse(text, { locale: isHi ? 'hi' : undefined });
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === asstId ? { ...m, actionButtons: fallback.actionButtons } : m
+          )
+        );
+      } else {
+        // Fallback to deterministic grounded engine on HTTP non-200
+        const fallback = generateGroundedAssistantResponse(text, { locale: isHi ? 'hi' : undefined });
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: asstId,
+            sender: 'assistant',
+            text: fallback.reply,
+            timestamp,
+            actionButtons: fallback.actionButtons,
+          },
+        ]);
       }
     } catch {
-      // Fallback to client-side grounded engine on network/offline error
+      // Fallback to deterministic grounded engine on network/offline error
       const fallback = generateGroundedAssistantResponse(text, { locale: isHi ? 'hi' : undefined });
-      const assistantMsg: ChatMessage = {
-        id: `asst-offline-${Date.now()}`,
-        sender: 'assistant',
-        text: fallback.reply,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actionButtons: fallback.actionButtons,
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: asstId,
+          sender: 'assistant',
+          text: fallback.reply,
+          timestamp,
+          actionButtons: fallback.actionButtons,
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -195,8 +286,10 @@ export default function FloatingAIAssistant() {
         'Talk to Acharya Niraj Kumar',
       ];
 
-  // If on a protected student/admin portal, do not render
-  if (isProtectedPortal) {
+  // Safety Guard & Route Suppression:
+  // 1. Do not render widget if not configured with valid API key (never show broken chatbot)
+  // 2. Hide completely on protected student/admin/instructor portals
+  if (!isConfigured || isProtectedPortal) {
     return null;
   }
 
@@ -241,177 +334,143 @@ export default function FloatingAIAssistant() {
         </aside>
       )}
 
-      {/* 2. EXPANDABLE CHAT WINDOW */}
+      {/* 2. CHAT WINDOW MODAL / DRAWER */}
       {isOpen && (
         <section
           id="viar-ai-chat-window"
           role="dialog"
           aria-modal="false"
-          aria-label={isHi ? 'विहंगम ज्योतिष सहायक' : 'VIAR AI Assistant'}
-          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-[calc(100vw-2rem)] sm:w-[420px] h-[560px] max-h-[85vh] z-50 flex flex-col rounded-3xl bg-[#0B0F19]/95 backdrop-blur-2xl border-2 border-amber-500/30 shadow-2xl shadow-black/80 overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300"
+          aria-label={isHi ? 'विहंगम ज्योतिष शैक्षणिक सहायक' : 'VIAR Academic AI Assistant'}
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[420px] h-[560px] max-h-[85vh] rounded-2xl bg-slate-950 border border-amber-500/30 shadow-2xl shadow-amber-500/20 flex flex-col overflow-hidden backdrop-blur-xl animate-in fade-in slide-in-from-bottom-5 duration-200"
         >
-          {/* A. HEADER */}
-          <div className="p-4 bg-gradient-to-r from-[#151B2E] via-[#101424] to-[#151B2E] border-b border-white/10 flex items-center justify-between shrink-0">
+          {/* Header */}
+          <div className="px-4 py-3.5 bg-gradient-to-r from-amber-500/15 via-slate-900 to-indigo-950/40 border-b border-amber-500/20 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Bot Avatar */}
-              <div className="relative">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 shadow-md shadow-amber-500/20">
-                  <Bot className="w-5 h-5 text-slate-950" />
-                </div>
-                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0B0F19]"></span>
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center font-bold shadow-md shadow-amber-500/20">
+                <Bot className="w-5 h-5 text-slate-950" />
               </div>
-
-              {/* Title & Status */}
-              <div>
+              <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
-                  <h2 className="text-sm font-bold text-white tracking-wide">
-                    {isHi ? 'विहंगम ज्योतिष सहायक' : 'VIAR AI Assistant'}
-                  </h2>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-300">
-                    AI
+                  <span className="text-sm font-bold text-white tracking-wide">
+                    {isHi ? 'विहंगम शैक्षणिक सहायक' : 'VIAR Academic AI'}
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    Live
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400">
-                  {isHi ? 'आचार्य नीरज कुमार संस्थान • 24/7 सहायता' : 'Acharya Niraj Kumar\'s Academy'}
-                </p>
+                <span className="text-[11px] text-amber-300/80">
+                  {isHi ? 'वैदिक ज्योतिष मास्टरक्लास • ₹5,100' : 'Vedic Astrology Masterclass • ₹5,100'}
+                </span>
               </div>
             </div>
 
-            {/* Header Actions */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setIsOpen(false)}
-                aria-label={isHi ? 'सहायक बंद करें' : 'Close assistant'}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition focus:outline-none focus:ring-2 focus:ring-amber-400"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            <button
+              onClick={() => setIsOpen(false)}
+              aria-label={isHi ? 'चैट विंडो बंद करें' : 'Close chat window'}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          {/* B. LANGUAGE & GROUNDING BANNER */}
-          <div className="px-4 py-1.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between text-[10px] text-amber-300 shrink-0">
-            <span className="flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-400" />
-              <span>{isHi ? 'सत्यापित जानकारी: फीस ₹5,100 • 23 मॉड्यूल' : 'Grounded: Tuition ₹5,100 • 23 Modules'}</span>
-            </span>
-            <span className="font-mono text-slate-400 text-[9px]">EN • हिं • Hinglish</span>
-          </div>
-
-          {/* C. CHAT MESSAGES LOG */}
+          {/* Messages Scroll Area */}
           <div
             ref={chatContainerRef}
-            className="flex-1 overflow-y-auto p-4 space-y-4 text-xs sm:text-sm custom-scrollbar"
-            aria-live="polite"
+            className="flex-1 p-4 overflow-y-auto space-y-3.5 text-xs sm:text-sm custom-scrollbar"
           >
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
-              >
+            {messages.map((m) => {
+              const isUser = m.sender === 'user';
+              return (
                 <div
-                  className={`flex items-start gap-2 max-w-[88%] ${
-                    msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
-                  }`}
+                  key={m.id}
+                  className={`flex gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}
                 >
-                  {/* Sender Avatar */}
-                  <div
-                    className={`w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[10px] ${
-                      msg.sender === 'user'
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                        : 'bg-white/10 text-amber-400 border border-white/10'
-                    }`}
-                  >
-                    {msg.sender === 'user' ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
+                  {!isUser && (
+                    <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    </div>
+                  )}
+
+                  <div className={`max-w-[85%] space-y-2`}>
+                    <div
+                      className={`p-3 rounded-2xl ${
+                        isUser
+                          ? 'bg-amber-500 text-slate-950 font-medium rounded-tr-none'
+                          : 'bg-slate-900 border border-white/10 text-slate-200 rounded-tl-none leading-relaxed'
+                      }`}
+                    >
+                      <p className="whitespace-pre-line">{m.text}</p>
+                    </div>
+
+                    {/* Action Buttons if attached */}
+                    {!isUser && m.actionButtons && m.actionButtons.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {m.actionButtons.map((btn, idx) => {
+                          const isWhatsApp = btn.type === 'whatsapp';
+                          const isCall = btn.type === 'call';
+                          const isEnroll = btn.type === 'enroll';
+
+                          return (
+                            <Link
+                              key={`${btn.label}-${idx}`}
+                              href={btn.url}
+                              target={btn.isExternal ? '_blank' : undefined}
+                              rel={btn.isExternal ? 'noopener noreferrer' : undefined}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm ${
+                                isEnroll
+                                  ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
+                                  : isWhatsApp
+                                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'
+                                  : isCall
+                                  ? 'bg-sky-600 hover:bg-sky-500 text-white shadow-sky-500/20'
+                                  : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/30'
+                              }`}
+                            >
+                              {isWhatsApp && <MessageCircle className="w-3.5 h-3.5" />}
+                              {isCall && <Phone className="w-3.5 h-3.5" />}
+                              {isEnroll && <GraduationCap className="w-3.5 h-3.5" />}
+                              <span>{btn.label}</span>
+                              {btn.isExternal && <ExternalLink className="w-2.5 h-2.5 opacity-70" />}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <span
+                      className={`block text-[10px] text-slate-500 ${
+                        isUser ? 'text-right' : 'text-left'
+                      }`}
+                    >
+                      {m.timestamp}
+                    </span>
                   </div>
 
-                  {/* Message Bubble */}
-                  <div
-                    className={`p-3 rounded-2xl leading-relaxed whitespace-pre-wrap break-words ${
-                      msg.sender === 'user'
-                        ? 'bg-amber-500 text-slate-950 font-medium rounded-tr-none shadow-md shadow-amber-500/10'
-                        : 'bg-[#151B2E] text-slate-200 border border-white/10 rounded-tl-none shadow-md'
-                    }`}
-                  >
-                    {msg.text}
-                  </div>
+                  {isUser && (
+                    <div className="w-6 h-6 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 mt-0.5">
+                      <User className="w-3.5 h-3.5 text-slate-950" />
+                    </div>
+                  )}
                 </div>
-
-                {/* Timestamp */}
-                <span className="text-[9px] text-slate-500 mt-1 px-8">
-                  {msg.timestamp}
-                </span>
-
-                {/* Contextual Action Buttons */}
-                {msg.actionButtons && msg.actionButtons.length > 0 && (
-                  <div className="mt-2.5 pl-8 flex flex-wrap gap-1.5 max-w-[95%]">
-                    {msg.actionButtons.map((action, idx) => {
-                      if (action.type === 'whatsapp') {
-                        return (
-                          <a
-                            key={idx}
-                            href={action.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 text-xs font-semibold transition"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>{action.label}</span>
-                            <ExternalLink className="w-2.5 h-2.5 opacity-60" />
-                          </a>
-                        );
-                      }
-                      if (action.type === 'call') {
-                        return (
-                          <a
-                            key={idx}
-                            href={action.url}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-300 hover:bg-sky-500/25 text-xs font-semibold transition"
-                          >
-                            <Phone className="w-3.5 h-3.5 text-sky-400" />
-                            <span>{action.label}</span>
-                          </a>
-                        );
-                      }
-                      if (action.type === 'enroll') {
-                        return (
-                          <Link
-                            key={idx}
-                            href={action.url}
-                            onClick={() => setIsOpen(false)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 text-xs font-bold transition shadow-sm shadow-amber-500/10"
-                          >
-                            <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
-                            <span>{action.label}</span>
-                          </Link>
-                        );
-                      }
-                      return (
-                        <Link
-                          key={idx}
-                          href={action.url}
-                          onClick={() => setIsOpen(false)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 text-xs font-medium transition"
-                        >
-                          <span>{action.label}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
 
             {/* Typing Indicator */}
             {isLoading && (
-              <div className="flex items-start gap-2 max-w-[85%]">
-                <div className="w-6 h-6 rounded-full bg-white/10 text-amber-400 border border-white/10 flex items-center justify-center shrink-0">
-                  <Bot className="w-3.5 h-3.5" />
+              <div className="flex gap-2.5 justify-start">
+                <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" />
                 </div>
-                <div className="p-3 rounded-2xl bg-[#151B2E] border border-white/10 rounded-tl-none flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce"></span>
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce [animation-delay:0.2s]"></span>
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce [animation-delay:0.4s]"></span>
+                <div className="p-3 rounded-2xl bg-slate-900 border border-white/10 text-slate-400 rounded-tl-none flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce"></span>
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce"
+                    style={{ animationDelay: '150ms' }}
+                  ></span>
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce"
+                    style={{ animationDelay: '300ms' }}
+                  ></span>
                 </div>
               </div>
             )}
@@ -419,24 +478,22 @@ export default function FloatingAIAssistant() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* D. SUGGESTED PROMPT CHIPS */}
-          {messages.length <= 2 && (
-            <div className="px-3 py-2 bg-black/40 border-t border-white/5 flex flex-wrap gap-1.5 shrink-0">
-              {suggestedPrompts.map((prompt, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSendMessage(prompt)}
-                  disabled={isLoading}
-                  className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-amber-500/15 border border-white/10 hover:border-amber-500/30 text-slate-300 hover:text-amber-300 text-[11px] transition text-left disabled:opacity-50"
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Suggested Prompts Pills */}
+          <div className="px-3 py-2 bg-slate-900/60 border-t border-white/5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {suggestedPrompts.map((prompt) => (
+              <button
+                key={prompt}
+                onClick={() => handleSendMessage(prompt)}
+                disabled={isLoading}
+                className="whitespace-nowrap px-2.5 py-1 rounded-full bg-white/5 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-white/10 hover:border-amber-400/40 text-[11px] font-medium transition disabled:opacity-40"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
 
-          {/* E. INPUT FORM */}
-          <div className="p-3 bg-[#101424] border-t border-white/10 shrink-0">
+          {/* Input Form with 500 characters limit */}
+          <div className="p-3 bg-slate-950 border-t border-white/10">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
