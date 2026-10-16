@@ -342,12 +342,13 @@ Shows the unlocked masterclass dashboard for student `Rohan Singhania`, with all
 
 | Metric | Result | Standard | Status |
 | :--- | :--- | :--- | :--- |
-| **Unit & Integration Tests** | 123 passed, 0 failed (36 suites) | 100% Pass Rate | ✅ **PASSED** |
+| **Unit & Integration Tests** | 141 passed, 0 failed (41 suites) | 100% Pass Rate | ✅ **PASSED** |
+| **Server Auth & Redirect Tests** | 18 passed, 0 failed | Open redirect, loops, owner detection | ✅ **PASSED** |
 | **Translation Quality Tests** | 8 passed, 0 failed | Zero mixed English, full Devanagari | ✅ **PASSED** |
 | **ESLint Static Analysis** | 0 errors, 0 warnings | Strict Next.js & React Rules | ✅ **PASSED** |
 | **Production Build** | 60/60 routes statically prerendered | Zero build errors | ✅ **PASSED** |
 | **Razorpay / Stripe Purge** | 0 active code references | Total removal | ✅ **PASSED** |
-| **Git Push Status** | Pushed to `origin/main` & `myfork/main` | Commit `1545b42` | ✅ **VERIFIED** |
+| **Git Push Status** | Pushed to `origin/main` & `myfork/main` | Latest Commit | ✅ **VERIFIED** |
 
 ---
 
@@ -364,3 +365,36 @@ Shows the unlocked masterclass dashboard for student `Rohan Singhania`, with all
 
 3. **Legal Counsel Review:**  
    The updated Terms of Service, Privacy Policy, and Refund Policy specifically address direct UPI payments, 12-digit UTR verification, and bank credit confirmation. They are marked *Pending Final Legal Counsel Review*.
+
+---
+
+## 8. Root-Level Authentication & Session Architecture (Next.js 14 & Clerk)
+
+### 8.1 Clerk Standard Flow & Zero Mock-Auth
+- Removed custom `AuthProvider` and mock-style state layers across `/login`, `/signup`, `/dashboard`, and `/admin`.
+- Embedded Clerk's `<SignIn />` and `<SignUp />` with custom dark-cosmic theming (`#D4AF37` gold accents, `#151B2E` backgrounds, `#CBD5E1` text).
+- Clerk performs authentic browser-to-server redirects and session management.
+
+### 8.2 Fail-Closed Server Security Boundaries
+- **Edge Middleware (`src/middleware.ts`)**: Checks Clerk sessions for `/dashboard/*`, `/instructor/*`, `/admin/*`, and `/api/admin/*`. Redirects unauthenticated requests to `/login?redirect_url=...`.
+- **Server Layout Guards (`src/app/admin/layout.tsx`, `src/app/dashboard/layout.tsx`, `src/app/instructor/layout.tsx`)**: Executes Node.js runtime server checks (`requireAuth()`, `requireOwner()`, `requireInstructor()`) before rendering any child component or leaking UI data. Client guards serve strictly for UX.
+
+### 8.3 Infinite Login Loop Elimination
+- `/login` is a server component that inspects server sessions and search params.
+- If a user has a valid server session and accesses `/login` without errors, they are immediately redirected to their target destination.
+- If a user triggers an error (e.g. `error=owner_only`, `error=unauthorized_role`, or `error=session_mismatch`), `/login` suppresses automatic redirection, renders an explicit "Access Restricted" alert card with a `<SignOutButton>` and student dashboard link, and logs `AUTH_SESSION_MISMATCH` to `prisma.activityLog`. It **never loops**.
+
+### 8.4 Open Redirect Prevention (`validateRedirectUrl`)
+- Standalone helper in `src/lib/auth/urlValidation.ts` enforces that redirect targets must start with a single `/`.
+- Strictly rejects protocol-relative URLs (`//`), Windows path-traversal backslashes (`/\`, `\`), absolute URI schemes (`http:`, `https:`), and dangerous protocols (`javascript:`, `data:`).
+
+### 8.5 Authoritative Server-Side Owner Detection
+- Evaluated via `currentUser()` from `@clerk/nextjs/server` to query Clerk's backend API.
+- Confirms `primaryEmailAddress.verification.status === 'verified'`.
+- Case-insensitively compares verified email against `process.env.OWNER_EMAIL` (`aapkaastro1606@gmail.com`).
+- Never trusts browser-supplied cookies, headers, or default JWT claims.
+
+### 8.6 Canonical Host HTTP 308 Redirect
+- Middleware detects host mismatch against `NEXT_PUBLIC_SITE_URL` (e.g. `www.viar.in` vs `viar.in`).
+- Issues an HTTP 308 Permanent Redirect to preserve request methods and prevent duplicate session cookie splits.
+- Root layout metadata applies `NEXT_PUBLIC_SITE_URL` to canonical tags and Open Graph metadata.

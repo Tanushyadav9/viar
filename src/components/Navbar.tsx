@@ -23,6 +23,7 @@ import { authProvider } from '@/lib/auth';
 import AuthModal from './AuthModal';
 import { useTheme } from './ThemeProvider';
 import { LanguageSwitcher, useLanguage } from './LanguageContext';
+import { useUser, useClerk } from '@clerk/nextjs';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -78,9 +79,20 @@ export default function Navbar() {
     window.dispatchEvent(new Event('timezone-changed'));
   };
 
+  const { isSignedIn, user: clerkUser } = useUser();
+  const { signOut } = useClerk();
+
   const handleSignOut = async () => {
+    try {
+      if (signOut) {
+        await signOut({ redirectUrl: '/' });
+      }
+    } catch {
+      // ignore
+    }
     await authProvider.signOut();
     setCurrentUser(null);
+    window.location.href = '/';
   };
 
   const navLinks = [
@@ -141,8 +153,14 @@ export default function Navbar() {
     );
   }
 
-  const isOwner = currentUser?.role === 'OWNER' || currentUser?.isOwner;
-  const isAdmin = isOwner || currentUser?.role === 'ADMIN';
+  const clerkEmail = clerkUser?.primaryEmailAddress?.emailAddress?.toLowerCase();
+  const effectiveEmail = clerkEmail || currentUser?.email?.toLowerCase();
+  const isOwner = Boolean(
+    effectiveEmail &&
+    (effectiveEmail === 'aapkaastro1606@gmail.com' || currentUser?.isOwner || currentUser?.role === 'OWNER')
+  );
+  const isAuthenticated = Boolean(isSignedIn || currentUser);
+  const isAdmin = isOwner || currentUser?.role === 'ADMIN' || currentUser?.role === 'INSTRUCTOR';
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-[#07090e]/95 backdrop-blur-md">
@@ -272,7 +290,7 @@ export default function Navbar() {
           </div>
 
           {/* 9 & 10. Sign In & Enroll Now / Authenticated State */}
-          {!currentUser ? (
+          {!isAuthenticated ? (
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
@@ -289,12 +307,16 @@ export default function Navbar() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              {currentUser.isOwner ? (
-                <span className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 whitespace-nowrap">
+              {isOwner ? (
+                <Link
+                  href="/admin"
+                  className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 whitespace-nowrap hover:bg-amber-500/30 transition"
+                  title="Site Owner Console"
+                >
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
                   <span>Site Owner</span>
-                </span>
-              ) : currentUser.staffSections && currentUser.staffSections.length > 0 ? (
+                </Link>
+              ) : currentUser?.staffSections && currentUser.staffSections.length > 0 ? (
                 <span className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
                   <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
                   <span>Staff</span>
@@ -306,7 +328,15 @@ export default function Navbar() {
                 </span>
               )}
 
-              {isAdmin || (currentUser.staffSections && currentUser.staffSections.length > 0) ? (
+              {isOwner ? (
+                <Link
+                  href="/admin"
+                  className="whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 shadow-md shadow-amber-900/30 transition flex items-center gap-1.5"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Admin Console</span>
+                </Link>
+              ) : isAdmin || (currentUser?.staffSections && currentUser.staffSections.length > 0) ? (
                 <Link
                   href="/instructor"
                   className="whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-md shadow-purple-900/30 transition flex items-center gap-1.5"
@@ -424,7 +454,7 @@ export default function Navbar() {
 
           {/* Mobile Action Buttons */}
           <div className="pt-2 border-t border-slate-100 dark:border-white/10 flex flex-col gap-2">
-            {!currentUser ? (
+            {!isAuthenticated ? (
               <>
                 <Link
                   href="/courses/what-is-astrology"
@@ -443,7 +473,15 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                {isAdmin || (currentUser.staffSections && currentUser.staffSections.length > 0) ? (
+                {isOwner ? (
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-600 to-amber-700 text-center block shadow-md"
+                  >
+                    Site Owner Admin Console
+                  </Link>
+                ) : isAdmin || (currentUser?.staffSections && currentUser.staffSections.length > 0) ? (
                   <Link
                     href="/instructor"
                     onClick={() => setIsMobileMenuOpen(false)}

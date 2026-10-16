@@ -8,6 +8,7 @@
 export interface AppEnvConfig {
   nodeEnv: 'development' | 'production' | 'test';
   appUrl: string;
+  siteUrl: string;
 
   // Database (PostgreSQL / Neon)
   database: {
@@ -76,6 +77,7 @@ function getEnvVar(key: string, fallback: string = ''): string {
 export const env: AppEnvConfig = {
   nodeEnv: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
   appUrl: getEnvVar('NEXT_PUBLIC_APP_URL', 'http://localhost:3000'),
+  siteUrl: getEnvVar('NEXT_PUBLIC_SITE_URL', getEnvVar('NEXT_PUBLIC_APP_URL', 'https://viar.in')),
 
   database: {
     url: getEnvVar('DATABASE_URL', ''),
