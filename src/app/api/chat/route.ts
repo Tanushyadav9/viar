@@ -6,7 +6,12 @@ import {
   recordChatUsage,
 } from '@/lib/ai/rateLimiter';
 import { getChatProvider, ChatMessage } from '@/lib/ai/chatProvider';
-import { GROUNDED_VIAR_SYSTEM_PROMPT, VIAR_ACADEMY_FACTS } from '@/lib/ai/knowledgeBase';
+import { buildGroundedSystemPrompt, VIAR_ACADEMY_FACTS } from '@/lib/ai/knowledgeBase';
+import {
+  getLiveAcademyData,
+  retrieveRelevantKnowledgeContext,
+  logUnansweredQuestion,
+} from '@/lib/ai/knowledgeRetriever';
 
 export const runtime = 'nodejs';
 
@@ -127,9 +132,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Build Context Window (Strictly capped to last 8 messages)
+    // 4. Live Data Retrieval & Context Selection (Single source of truth)
+    const liveData = await getLiveAcademyData();
+    const { contextText, hasSpecificMatch } = retrieveRelevantKnowledgeContext(rawMessage, liveData);
+    const systemPrompt = buildGroundedSystemPrompt(contextText);
+
+    // Asynchronously log low-confidence / unmatched question for Owner review (non-blocking)
+    if (!hasSpecificMatch) {
+      logUnansweredQuestion(rawMessage).catch((err) => {
+        console.warn('[Chat API] Failed to log unanswered question:', err);
+      });
+    }
+
+    // Build Context Window (Strictly capped to last 8 messages)
     const messages: ChatMessage[] = [
-      { role: 'system', content: GROUNDED_VIAR_SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
     ];
 
     if (Array.isArray(body.history)) {

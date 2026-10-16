@@ -713,6 +713,16 @@ export default function AdminPortalClient({
           <div className="flex flex-wrap items-center gap-3">
             {isOwner && (
               <Link
+                href="/admin/knowledge"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>AI Knowledge</span>
+              </Link>
+            )}
+
+            {isOwner && (
+              <Link
                 href="/admin/diagnostics"
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition flex items-center gap-1.5"
               >

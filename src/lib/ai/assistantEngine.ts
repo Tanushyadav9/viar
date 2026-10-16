@@ -79,9 +79,9 @@ export function identifyIntent(query: string): string {
     return 'personal_consultation';
   }
 
-  // Out of scope (Coding, politics, general unrelated topics, medical)
+  // Out of scope (Coding, politics, general unrelated topics, medical, prompt injections)
   if (
-    /(python|javascript|write\s+code|code|script|react|sql|chatgpt|politics|political|election|weather|cricket|narendra\s+modi|stock\s+tips|bitcoin|crypto|dawa|medicine|headache|doctor|medical|दवा|मौसम|चुनाव|कोडिंग)/i.test(q)
+    /(python|javascript|write\s+code|code|script|react|sql|chatgpt|politics|political|election|weather|cricket|narendra\s+modi|stock\s+tips|bitcoin|crypto|dawa|medicine|headache|doctor|medical|dan|jailbreak|ignore\s+all\s+instructions|system\s+prompt|roleplay|दवा|मौसम|चुनाव|कोडिंग)/i.test(q)
   ) {
     return 'out_of_scope';
   }
@@ -538,11 +538,13 @@ export function generateGroundedAssistantResponse(
   }
 
   // 12. OUT OF SCOPE OR UNKNOWN (Safe Refusal with Direct Contact)
+  const finalIntent = intent === 'out_of_scope' ? 'out_of_scope' : 'fallback';
+
   if (language === 'hi') {
     return {
       reply: `मुझे क्षमा करें, मैं केवल विहंगम संस्थान (VIAR) के वैदिक ज्योतिष पाठ्यक्रमों, ₹5,100 शिक्षण शुल्क, पाठ्यक्रम एवं प्रवेश प्रक्रिया के प्रश्नों का उत्तर दे सकता हूँ। मेरे पास इस विशिष्ट विषय की सत्यापित जानकारी नहीं है।\n\nसटीक जानकारी प्राप्त करने अथवा सीधे मार्गदर्शन हेतु आप आचार्य नीरज कुमार जी से व्हाट्सएप अथवा फोन पर संपर्क कर सकते हैं।`,
       language,
-      intent: 'fallback',
+      intent: finalIntent,
       confidence: 'fallback',
       actionButtons: [getWhatsAppAction(), getCallAction(), getEnrollAction()],
     };
@@ -551,7 +553,7 @@ export function generateGroundedAssistantResponse(
     return {
       reply: `Mujhe maaf kijiye, main sirf VIAR ke Vedic Astrology courses, ₹5,100 fees, syllabus, aur admission process ke baare mein guide kar sakta hoon. Mere paas is topic ki verified information nahi hai.\n\nGalat jankari dene se behtar hai ki aap direct Acharya Niraj Kumar ji se WhatsApp ya call par baat karein:`,
       language,
-      intent: 'fallback',
+      intent: finalIntent,
       confidence: 'fallback',
       actionButtons: [getWhatsAppAction(), getCallAction(), getEnrollAction()],
     };
@@ -559,7 +561,7 @@ export function generateGroundedAssistantResponse(
   return {
     reply: `I apologize, but as the VIAR Academic Assistant, I am strictly grounded in VIAR's Vedic Astrology courses, ₹5,100 tuition, curriculum, and admissions. I do not have verified information on this specific topic.\n\nRather than risk providing an inaccurate answer, I encourage you to contact Acharya Niraj Kumar directly on WhatsApp or phone:`,
     language,
-    intent: 'fallback',
+    intent: finalIntent,
     confidence: 'fallback',
     actionButtons: [getWhatsAppAction(), getCallAction(), getEnrollAction()],
   };

@@ -688,3 +688,49 @@ model ClerkWebhookEvent {
   @@map("clerk_webhook_events")
 }
 
+// ------------------------------------------------------------------------------
+// 17. OWNER-EDITABLE AI KNOWLEDGE ENTRIES
+// Managed in the Admin area so the Owner can teach the assistant new answers without code
+// ------------------------------------------------------------------------------
+
+model KnowledgeEntry {
+  id          String   @id @default(cuid())
+  question    String   @db.Text
+  answer      String   @db.Text
+  category    String   @default("general") // general, pricing, syllabus, instructor, admission, refund, policies
+  language    String   @default("en")      // en, hi, hinglish
+  published   Boolean  @default(true)
+  orderIndex  Int      @default(0) @map("order_index")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([published, language])
+  @@index([category])
+  @@map("knowledge_entries")
+}
+
+// ------------------------------------------------------------------------------
+// 18. UNANSWERED / LOW-CONFIDENCE QUESTIONS LOG
+// Tracks unanswered questions with privacy masking (phone & email masked, text truncated).
+// Kept 30 days with frequency count to allow the Owner to create new knowledge entries.
+// ------------------------------------------------------------------------------
+
+model UnansweredQuestion {
+  id                 String   @id @default(cuid())
+  question           String   @db.Text
+  normalizedQuestion String   @map("normalized_question") @db.Text
+  count              Int      @default(1)
+  language           String   @default("en")
+  lastAskedAt        DateTime @default(now()) @map("last_asked_at")
+  status             String   @default("PENDING") // PENDING | CONVERTED | DISMISSED
+  knowledgeEntryId   String?  @map("knowledge_entry_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([lastAskedAt])
+  @@index([count])
+  @@map("unanswered_questions")
+}
+
+

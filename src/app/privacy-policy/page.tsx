@@ -147,10 +147,46 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          {/* Section 4: Contact */}
+          {/* Section 4: AI Assistant & Anonymized Inquiry Logging */}
           <section className="space-y-3">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs">4</span>
+              {isHi ? 'AI सहायक एवं अज्ञात प्रश्न प्रविष्टि' : 'AI Assistant & Anonymized Question Logging'}
+            </h2>
+            <p>
+              {isHi
+                ? 'हमारी वेबसाइट पर उपलब्ध AI शैक्षणिक सहायक को बेहतर बनाने और अज्ञात प्रश्नों का उत्तर देने के लिए निम्नलिखित सुरक्षात्मक नियम लागू हैं:'
+                : 'To continuously improve our AI academic assistant and answer unaddressed student questions, the following privacy safeguards are strictly enforced:'}
+            </p>
+            <div className="space-y-2">
+              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-1">
+                <div className="font-semibold text-white">
+                  {isHi ? 'व्यक्तिगत विवरणों का अनिवार्य मास्किंग (Privacy Masking)' : 'Mandatory Privacy Masking & Truncation'}
+                </div>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  {isHi
+                    ? 'जब कोई आगंतुक ऐसा प्रश्न पूछता है जिसका उत्तर ज्ञानकोष में उपलब्ध नहीं है, तो उस प्रश्न को संग्रहीत करने से पूर्व फोन नंबर और ईमेल पते स्वचालित रूप से [MASKED] कर दिए जाते हैं तथा पाठ को अधिकतम 150 अक्षरों तक छोटा कर दिया जाता है।'
+                    : 'When a visitor asks an unanswered or low-confidence question, all phone numbers, email addresses, and account numbers are automatically replaced with privacy masks before storage, and text is truncated to 150 characters.'}
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-1">
+                <div className="font-semibold text-white">
+                  {isHi ? '30-दिवसीय सीमित अवधारण (30-Day Retention)' : '30-Day Limited Retention'}
+                </div>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  {isHi
+                    ? 'अज्ञात प्रश्न रिकॉर्ड अधिकतम 30 दिनों तक ही रखे जाते हैं, ताकि संस्थान के संचालक उन्हें नए FAQ ज्ञानकोष में परिवर्तित कर सकें। 30 दिनों के उपरांत ये रिकॉर्ड हटा दिए जाते हैं। हम कभी भी चैट डेटा तीसरे पक्ष को नहीं बेचते।'
+                    : 'Anonymized question logs are retained for a maximum of 30 days solely to allow the Site Owner to author official course FAQs. Records are never sold or shared with commercial third parties.'}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 5: Contact */}
+          <section className="space-y-3">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs">5</span>
               {isHi ? 'डेटा सहायता एवं संपर्क' : 'Data Privacy Inquiries'}
             </h2>
             <p>
