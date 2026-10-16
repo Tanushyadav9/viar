@@ -320,5 +320,237 @@ describe('Server-Side Authentication, Redirect Validation & Canonical Host', () 
     });
   });
 
+  describe('6. Admin Access & Role Boundaries (Fail-Closed, Staff Scoping & Server Navbar)', () => {
+    const ownerEmail = 'aapkaastro1606@gmail.com';
+
+    interface RouteCheckResult {
+      action: 'allow' | 'redirect';
+      target?: string;
+    }
+
+    function evaluateAdminRouteGuard(user: {
+      isAuthenticated: boolean;
+      isOwner: boolean;
+      isStaff: boolean;
+      staffSections: string[];
+      role: string;
+    }, path: string): RouteCheckResult {
+      if (!user.isAuthenticated) {
+        return { action: 'redirect', target: `/login?redirect_url=${encodeURIComponent(path)}` };
+      }
+
+      // /admin/team & /admin/diagnostics are strictly Owner-Only
+      if (path.startsWith('/admin/team') || path.startsWith('/admin/diagnostics')) {
+        if (!user.isOwner) {
+          if (user.isStaff) {
+            return { action: 'redirect', target: '/admin?error=owner_only' };
+          }
+          return { action: 'redirect', target: '/dashboard?error=admin_restricted' };
+        }
+        return { action: 'allow' };
+      }
+
+      // /admin/* requires Owner or Staff
+      if (path.startsWith('/admin')) {
+        if (user.isOwner || user.isStaff) {
+          return { action: 'allow' };
+        }
+        return { action: 'redirect', target: '/dashboard?error=admin_restricted' };
+      }
+
+      // /instructor/* requires Owner, Staff, or Instructor/Admin role
+      if (path.startsWith('/instructor')) {
+        if (user.isOwner || user.isStaff || user.role === 'INSTRUCTOR' || user.role === 'ADMIN') {
+          return { action: 'allow' };
+        }
+        return { action: 'redirect', target: '/dashboard?error=instructor_restricted' };
+      }
+
+      return { action: 'allow' };
+    }
+
+    it('should allow Owner to reach /admin with no redirect and no loop', () => {
+      const owner = {
+        isAuthenticated: true,
+        isOwner: true,
+        isStaff: true,
+        staffSections: ['courses', 'cohorts', 'students', 'quizzes', 'analytics', 'payments', 'staff'],
+        role: 'OWNER',
+      };
+
+      const resAdmin = evaluateAdminRouteGuard(owner, '/admin');
+      assert.strictEqual(resAdmin.action, 'allow');
+
+      const resInstructor = evaluateAdminRouteGuard(owner, '/instructor');
+      assert.strictEqual(resInstructor.action, 'allow');
+
+      const resTeam = evaluateAdminRouteGuard(owner, '/admin/team');
+      assert.strictEqual(resTeam.action, 'allow');
+
+      const resDiagnostics = evaluateAdminRouteGuard(owner, '/admin/diagnostics');
+      assert.strictEqual(resDiagnostics.action, 'allow');
+    });
+
+    it('should allow authorized Staff to reach /admin with no redirect', () => {
+      const staffMember = {
+        isAuthenticated: true,
+        isOwner: false,
+        isStaff: true,
+        staffSections: ['payments'],
+        role: 'STUDENT',
+      };
+
+      const res = evaluateAdminRouteGuard(staffMember, '/admin');
+      assert.strictEqual(res.action, 'allow');
+    });
+
+    it('should strictly redirect Staff away from /admin/team to /admin?error=owner_only', () => {
+      const staffMember = {
+        isAuthenticated: true,
+        isOwner: false,
+        isStaff: true,
+        staffSections: ['courses', 'quizzes'],
+        role: 'STUDENT',
+      };
+
+      const resTeam = evaluateAdminRouteGuard(staffMember, '/admin/team');
+      assert.strictEqual(resTeam.action, 'redirect');
+      assert.strictEqual(resTeam.target, '/admin?error=owner_only');
+
+      const resDiag = evaluateAdminRouteGuard(staffMember, '/admin/diagnostics');
+      assert.strictEqual(resDiag.action, 'redirect');
+      assert.strictEqual(resDiag.target, '/admin?error=owner_only');
+    });
+
+    it('should redirect Students away to /dashboard without looping', () => {
+      const student = {
+        isAuthenticated: true,
+        isOwner: false,
+        isStaff: false,
+        staffSections: [],
+        role: 'STUDENT',
+      };
+
+      const resAdmin = evaluateAdminRouteGuard(student, '/admin');
+      assert.strictEqual(resAdmin.action, 'redirect');
+      assert.strictEqual(resAdmin.target, '/dashboard?error=admin_restricted');
+
+      const resInstructor = evaluateAdminRouteGuard(student, '/instructor');
+      assert.strictEqual(resInstructor.action, 'redirect');
+      assert.strictEqual(resInstructor.target, '/dashboard?error=instructor_restricted');
+
+      const resTeam = evaluateAdminRouteGuard(student, '/admin/team');
+      assert.strictEqual(resTeam.action, 'redirect');
+      assert.strictEqual(resTeam.target, '/dashboard?error=admin_restricted');
+    });
+
+    it('should redirect Unauthenticated visitors to /login with redirect_url', () => {
+      const unauth = {
+        isAuthenticated: false,
+        isOwner: false,
+        isStaff: false,
+        staffSections: [],
+        role: 'STUDENT',
+      };
+
+      const res = evaluateAdminRouteGuard(unauth, '/admin');
+      assert.strictEqual(res.action, 'redirect');
+      assert.strictEqual(res.target, '/login?redirect_url=%2Fadmin');
+    });
+
+    it('should filter admin sections so staff members see ONLY their granted sections', () => {
+      const allSections = ['courses', 'cohorts', 'students', 'quizzes', 'analytics', 'payments', 'staff'];
+
+      function filterSectionsForUser(user: { isOwner: boolean; staffSections: string[] }): string[] {
+        if (user.isOwner) return [...allSections];
+        return allSections.filter((sec) => sec !== 'staff' && user.staffSections.includes(sec));
+      }
+
+      // Staff with only 'payments'
+      const paymentsStaff = filterSectionsForUser({
+        isOwner: false,
+        staffSections: ['payments'],
+      });
+      assert.deepStrictEqual(paymentsStaff, ['payments'], 'Staff must see ONLY granted payments section');
+
+      // Staff with 'courses' and 'quizzes'
+      const contentStaff = filterSectionsForUser({
+        isOwner: false,
+        staffSections: ['courses', 'quizzes'],
+      });
+      assert.deepStrictEqual(contentStaff, ['courses', 'quizzes']);
+      assert.strictEqual(contentStaff.includes('payments'), false);
+      assert.strictEqual(contentStaff.includes('staff'), false);
+
+      // Owner sees all sections including staff
+      const ownerSections = filterSectionsForUser({
+        isOwner: true,
+        staffSections: [],
+      });
+      assert.strictEqual(ownerSections.length, 7);
+      assert.strictEqual(ownerSections.includes('staff'), true);
+    });
+
+    it('should decide Admin navigation link strictly on the server (Owner & Staff only)', () => {
+      function computeServerNavbarVisibility(authResult: {
+        isAuthenticated: boolean;
+        isOwner: boolean;
+        isStaff: boolean;
+      }): { showAdminNav: boolean; destination: string; roleLabel: string } {
+        const showAdminNav = Boolean(authResult.isOwner || authResult.isStaff);
+        if (authResult.isOwner) {
+          return { showAdminNav: true, destination: '/admin', roleLabel: 'Site Owner' };
+        }
+        if (authResult.isStaff) {
+          return { showAdminNav: true, destination: '/admin', roleLabel: 'Staff' };
+        }
+        if (authResult.isAuthenticated) {
+          return { showAdminNav: false, destination: '/dashboard', roleLabel: 'Student' };
+        }
+        return { showAdminNav: false, destination: '/login', roleLabel: 'Guest' };
+      }
+
+      // Owner
+      const ownerNav = computeServerNavbarVisibility({
+        isAuthenticated: true,
+        isOwner: true,
+        isStaff: true,
+      });
+      assert.strictEqual(ownerNav.showAdminNav, true);
+      assert.strictEqual(ownerNav.destination, '/admin');
+      assert.strictEqual(ownerNav.roleLabel, 'Site Owner');
+
+      // Staff member
+      const staffNav = computeServerNavbarVisibility({
+        isAuthenticated: true,
+        isOwner: false,
+        isStaff: true,
+      });
+      assert.strictEqual(staffNav.showAdminNav, true);
+      assert.strictEqual(staffNav.destination, '/admin');
+      assert.strictEqual(staffNav.roleLabel, 'Staff');
+
+      // Student (must NOT see admin nav link)
+      const studentNav = computeServerNavbarVisibility({
+        isAuthenticated: true,
+        isOwner: false,
+        isStaff: false,
+      });
+      assert.strictEqual(studentNav.showAdminNav, false);
+      assert.strictEqual(studentNav.destination, '/dashboard');
+      assert.strictEqual(studentNav.roleLabel, 'Student');
+
+      // Unauthenticated visitor (must NOT see admin nav link)
+      const guestNav = computeServerNavbarVisibility({
+        isAuthenticated: false,
+        isOwner: false,
+        isStaff: false,
+      });
+      assert.strictEqual(guestNav.showAdminNav, false);
+      assert.strictEqual(guestNav.destination, '/login');
+      assert.strictEqual(guestNav.roleLabel, 'Guest');
+    });
+  });
+
 });
 

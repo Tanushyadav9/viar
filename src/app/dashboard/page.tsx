@@ -201,6 +201,42 @@ function StudentDashboardContent() {
     <div className="cosmic-bg min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
+        {/* Admin/Instructor Restricted Redirect Banners */}
+        {errorParam === 'admin_restricted' && (
+          <div className="mb-8 p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 shrink-0 text-amber-400" />
+              <div>
+                <strong className="text-white block">Administrative Access Restricted</strong>
+                <span>The administration portal is restricted to the Site Owner and authorized staff members. You have been redirected to your student dashboard.</span>
+              </div>
+            </div>
+            <Link
+              href="/dashboard"
+              className="text-amber-400 hover:text-white px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 shrink-0 text-[11px] font-semibold transition"
+            >
+              Dismiss
+            </Link>
+          </div>
+        )}
+        {errorParam === 'instructor_restricted' && (
+          <div className="mb-8 p-5 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs flex items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 shrink-0 text-purple-400" />
+              <div>
+                <strong className="text-white block">Instructor Access Restricted</strong>
+                <span>The instructor suite requires authorized instructor privileges. You have been redirected to your student dashboard.</span>
+              </div>
+            </div>
+            <Link
+              href="/dashboard"
+              className="text-purple-400 hover:text-white px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 shrink-0 text-[11px] font-semibold transition"
+            >
+              Dismiss
+            </Link>
+          </div>
+        )}
+
         {/* Welcome & Just Enrolled Banner */}
         {justEnrolled && (
           <div className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-emerald-900/60 to-emerald-950/80 border border-emerald-500/40 shadow-xl flex items-center justify-between gap-4">

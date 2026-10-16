@@ -13,6 +13,8 @@ export interface ServerAuthResult {
   email: string | null;
   isEmailVerified: boolean;
   isOwner: boolean;
+  isStaff: boolean;
+  staffSections: string[];
   role: 'STUDENT' | 'INSTRUCTOR' | 'ADMIN' | 'OWNER';
   dbUser: {
     id: string;
@@ -44,6 +46,8 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
     email: null,
     isEmailVerified: false,
     isOwner: false,
+    isStaff: false,
+    staffSections: [],
     role: 'STUDENT',
     dbUser: null,
   };
@@ -117,15 +121,51 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
       }
     }
 
-    // Authoritative role computation
+    // Authoritative role & staff permission computation
     let role: 'STUDENT' | 'INSTRUCTOR' | 'ADMIN' | 'OWNER' = 'STUDENT';
+    let isStaff = false;
+    let staffSections: string[] = [];
+
     if (isOwner) {
       role = 'OWNER';
-    } else if (dbUser?.role === 'ADMIN' || dbUser?.role === 'INSTRUCTOR') {
-      role = dbUser.role as 'INSTRUCTOR' | 'ADMIN';
+      isStaff = true;
+      staffSections = ['courses', 'cohorts', 'students', 'quizzes', 'analytics', 'payments', 'staff'];
     } else {
-      // Database OWNER for non-owner email is treated strictly as STUDENT (and logged during sync)
-      role = 'STUDENT';
+      // Query active StaffPermission records from Neon PostgreSQL
+      if (dbUser) {
+        try {
+          const activePerms = await prisma.staffPermission.findMany({
+            where: {
+              OR: [
+                { userId: dbUser.id },
+                ...(dbUser.email ? [{ userId: dbUser.email }] : []),
+                ...(verifiedEmail ? [{ userId: verifiedEmail }] : []),
+              ],
+              revokedAt: null,
+            },
+            select: { section: true },
+          });
+
+          if (activePerms && activePerms.length > 0) {
+            staffSections = Array.from(new Set(activePerms.map((p) => p.section.toLowerCase())));
+            isStaff = true;
+          }
+        } catch {
+          // Graceful fallback on unprovisioned/offline DB in test environments
+          staffSections = [];
+        }
+      }
+
+      if (dbUser?.role === 'ADMIN' || dbUser?.role === 'INSTRUCTOR') {
+        role = dbUser.role as 'INSTRUCTOR' | 'ADMIN';
+        isStaff = true;
+        if (staffSections.length === 0) {
+          staffSections = ['courses', 'cohorts', 'students', 'quizzes', 'analytics', 'payments'];
+        }
+      } else {
+        // Database OWNER for non-owner email is treated strictly as STUDENT (and logged during sync)
+        role = 'STUDENT';
+      }
     }
 
     return {
@@ -134,6 +174,8 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
       email: verifiedEmail,
       isEmailVerified,
       isOwner,
+      isStaff,
+      staffSections,
       role,
       dbUser,
     };
@@ -156,7 +198,30 @@ export async function requireAuth(targetPath: string = '/dashboard'): Promise<Se
 }
 
 /**
- * Server Layout Guard: Requires Site Owner.
+ * Server Layout Guard: Requires Site Owner OR authorized Staff member.
+ * - Site Owner: Reaches admin areas directly with no redirect and no loop.
+ * - Staff member: Allowed into admin area if granted permissions exist.
+ * - Students: Redirected away to /dashboard?error=admin_restricted (no loop).
+ * - Unauthenticated: Redirected to /login with validated redirect_url.
+ */
+export async function requireAdminOrStaff(targetPath: string = '/admin'): Promise<ServerAuthResult> {
+  const result = await getServerAuthUser();
+  if (!result.isAuthenticated || !result.userId) {
+    const validTarget = validateRedirectUrl(targetPath, '/admin');
+    redirect(`/login?redirect_url=${encodeURIComponent(validTarget)}`);
+  }
+  if (!result.isOwner && !result.isStaff) {
+    redirect('/dashboard?error=admin_restricted');
+  }
+  return result;
+}
+
+/**
+ * Server Layout Guard: Requires Site Owner strictly.
+ * - Site Owner: Passes directly with no redirect.
+ * - Staff member: Redirected to /admin?error=owner_only (retained in admin area, notified of restriction).
+ * - Students: Redirected away to /dashboard?error=admin_restricted.
+ * - Unauthenticated: Redirected to /login with validated redirect_url.
  */
 export async function requireOwner(targetPath: string = '/admin'): Promise<ServerAuthResult> {
   const result = await getServerAuthUser();
@@ -165,13 +230,20 @@ export async function requireOwner(targetPath: string = '/admin'): Promise<Serve
     redirect(`/login?redirect_url=${encodeURIComponent(validTarget)}`);
   }
   if (!result.isOwner) {
-    redirect('/login?error=owner_only');
+    if (result.isStaff) {
+      redirect('/admin?error=owner_only');
+    } else {
+      redirect('/dashboard?error=admin_restricted');
+    }
   }
   return result;
 }
 
 /**
- * Server Layout Guard: Requires Instructor or Admin or Owner.
+ * Server Layout Guard: Requires Instructor or Admin or Owner or authorized Staff.
+ * - Site Owner & Staff: Passes directly with no redirect.
+ * - Students: Redirected away to /dashboard?error=instructor_restricted.
+ * - Unauthenticated: Redirected to /login with validated redirect_url.
  */
 export async function requireInstructor(targetPath: string = '/instructor'): Promise<ServerAuthResult> {
   const result = await getServerAuthUser();
@@ -179,8 +251,8 @@ export async function requireInstructor(targetPath: string = '/instructor'): Pro
     const validTarget = validateRedirectUrl(targetPath, '/instructor');
     redirect(`/login?redirect_url=${encodeURIComponent(validTarget)}`);
   }
-  if (!result.isOwner && result.role !== 'INSTRUCTOR' && result.role !== 'ADMIN') {
-    redirect('/login?error=unauthorized_role');
+  if (!result.isOwner && !result.isStaff && result.role !== 'INSTRUCTOR' && result.role !== 'ADMIN') {
+    redirect('/dashboard?error=instructor_restricted');
   }
   return result;
 }

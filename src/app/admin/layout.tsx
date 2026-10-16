@@ -1,15 +1,16 @@
 import React from 'react';
-import { getServerAuthUser } from '@/lib/auth/serverAuth';
-import { redirect } from 'next/navigation';
+import { requireAdminOrStaff } from '@/lib/auth/serverAuth';
 import { headers } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Server-Side Security Boundary: /admin/*
- * Fail-closed server layout: Strictly restricted to Site Owner (aapkaastro1606@gmail.com).
- * Evaluates verified primary email against OWNER_EMAIL server-side.
- * Unauthorized sessions redirect to /login?error=owner_only on the server.
+ * Fail-closed server layout:
+ * - Site Owner (aapkaastro1606@gmail.com): Direct access, zero redirect, zero loop.
+ * - Staff members: Direct access to authorized admin sections.
+ * - Students: Redirected away to /dashboard?error=admin_restricted.
+ * - Unauthenticated: Redirected to /login?redirect_url=/admin.
  */
 export default async function AdminLayout({
   children,
@@ -28,14 +29,8 @@ export default async function AdminLayout({
     referer.includes('key=viar-owner-diagnostics-2026')
   );
 
-  const authResult = await getServerAuthUser();
-
-  if (!authResult.isAuthenticated && !isKeyAuthorized) {
-    redirect('/login?redirect_url=/admin');
-  }
-
-  if (!authResult.isOwner && !isKeyAuthorized) {
-    redirect('/login?error=owner_only');
+  if (!isKeyAuthorized) {
+    await requireAdminOrStaff('/admin');
   }
 
   return <>{children}</>;

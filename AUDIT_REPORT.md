@@ -435,7 +435,38 @@ A full dry-run audit of the production database (`neondb`) was performed via `sc
 - **Core Content Intact**: All 5 courses, 2 cohorts, 24 modules, 50 lessons, 2 quizzes, 20 questions, 80 options, and payment settings are 100% preserved.
 - **Status**: Zero database rows were modified or deleted; awaiting developer approval.
 
-### 10.3 Dead Schema & Code Purge
-- Confirmed that `CourseBundle` and `Testimonial` models held 0 rows in production and had 0 active code references.
-- Purged `CourseBundle` and `Testimonial` models and their relation fields from `prisma/schema.prisma`.
 - Re-generated Prisma Client and verified with passing unit tests and Next.js production build.
+
+---
+
+## 11. Admin Access, Section-Level Staff Scoping & Server-Decided Navigation
+
+### 11.1 Site Owner Unrestricted Access (Zero Redirect, Zero Loop)
+- **Direct Entry**: The Site Owner (`aapkaastro1606@gmail.com`, confirmed strictly via verified primary email and `OWNER_EMAIL`) reaches `/admin` and `/instructor` with zero redirect and zero loops.
+- **Universal Section Scope**: The Site Owner automatically passes all section checks with universal `MANAGE` privileges across all modules: `courses`, `cohorts`, `students`, `quizzes`, `analytics`, `payments`, and `staff`.
+- **Exclusive Management**: The Site Owner is the **only** entity authorized to access `/admin/team`, `/admin/diagnostics`, and `/api/admin/settings/payment`.
+
+### 11.2 Granular Staff Scoping via `/admin/team` (`StaffPermission` Table)
+- **Zero Clerk Add-on Dependence**: Staff permissions are stored in Neon PostgreSQL's `StaffPermission` table, requiring $0 additional Clerk Organization add-on fees.
+- **Section-Level Filtering**: Non-owner staff members see **only** the sections explicitly granted to them in `/admin/team`. Un-granted sections are completely hidden from the tab bar and navigation.
+- **Active Tab Clamping**: If a staff member only has permission for `payments`, their session defaults directly to the `payments` tab, and URL tab manipulation to ungranted sections is immediately clamped to their authorized sections.
+- **Strict Owner-Only Guard on `/admin/team` and `/admin/diagnostics`**:
+  - `src/app/admin/team/layout.tsx` enforces `requireOwner('/admin/team')`. Staff attempting to access team management are redirected to `/admin?error=owner_only`.
+  - `src/app/admin/diagnostics/layout.tsx` enforces `requireOwner('/admin/diagnostics')`. Staff attempting to access diagnostics are redirected to `/admin?error=owner_only`.
+
+### 11.3 Fail-Closed Student Redirection (No Redirect Loop)
+- **Server Guard (`requireAdminOrStaff`)**: `src/app/admin/layout.tsx` and `src/app/instructor/layout.tsx` enforce server-side layout guards before rendering.
+- **Redirection Away**: Authenticated students attempting to access `/admin/*` are redirected away to `/dashboard?error=admin_restricted`. Authenticated students attempting to access `/instructor/*` are redirected away to `/dashboard?error=instructor_restricted`.
+- **Loop Prevention**: Because `/dashboard` permits all authenticated students, the user lands safely on their student dashboard with an informative, dismissible banner explaining the restriction. They are never bounced back to `/login` or trapped in an infinite redirect loop.
+- **Unauthenticated Visitors**: Requests without an authenticated server session are redirected to `/login?redirect_url=...`.
+
+### 11.4 Server-Decided Navigation (`Navbar` RSC)
+- **Server Component Boundary (`src/components/Navbar.tsx`)**:
+  - Executes `getServerAuthUser()` on the server.
+  - Derives `showAdminNav = Boolean(auth.isOwner || auth.isStaff)`.
+  - Passes verified `serverAuth` directly to `NavbarClient`.
+- **Client Rendering (`src/components/NavbarClient.tsx`)**:
+  - The "Admin" navigation link and "Admin Console" button appear **only for the Owner and staff**.
+  - For students, the "Admin" link is completely hidden. Students see only "Student Portal" (`/dashboard`) and the "Student" badge.
+  - For unauthenticated visitors, the "Admin" link is completely hidden. Visitors see only "Sign In" and "Enroll Now".
+  - Cannot be forged or manipulated via browser localStorage or client-side tampering.
