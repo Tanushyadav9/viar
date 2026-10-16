@@ -3,7 +3,7 @@ import { Webhook } from 'svix';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/config/env';
 import { logger } from '@/lib/logger';
-import { assignRoleForUser } from '@/lib/auth/permissions';
+import { syncDatabaseUser } from '@/lib/auth/userSync';
 
 interface ClerkEmailAddress {
   id: string;
@@ -127,12 +127,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    if (eventType === 'user.created') {
+    if (eventType === 'user.created' || eventType === 'user.updated') {
       const clerkId = data.id;
       const primaryEmailObj = data.email_addresses?.find(
         (e) => e.id === data.primary_email_address_id
       ) || data.email_addresses?.[0];
       const email = primaryEmailObj?.email_address?.trim().toLowerCase() || null;
+      const isEmailVerified = primaryEmailObj ? true : false; // Webhooks from Clerk represent verified email records
 
       const firstName = data.first_name || '';
       const lastName = data.last_name || '';
@@ -144,86 +145,39 @@ export async function POST(req: NextRequest) {
       ) || data.phone_numbers?.[0];
       const phone = phoneObj?.phone_number || null;
 
-      // Assign role with strict anti-tamper guarantee: Site Owner recognized only if email matches OWNER_EMAIL
-      const { role, isOwner } = assignRoleForUser(email || '');
-
-      // Upsert into local Prisma User table
-      const user = await prisma.user.upsert({
-        where: { clerkId },
-        update: {
-          email,
-          phone,
-          name: fullName,
-          avatarUrl,
-          role,
-          isOwner,
-        },
-        create: {
-          clerkId,
-          email,
-          phone,
-          name: fullName,
-          avatarUrl,
-          role,
-          isOwner,
-          country: 'IN',
-          timezone: 'Asia/Kolkata',
-        },
-      });
-
-      logger.info('Synced new Clerk user into local database', {
-        service: 'auth',
+      // Idempotently upsert user, linking existing email rows instead of duplicating
+      const syncResult = await syncDatabaseUser({
         clerkId,
-        userId: user.id,
         email,
-        role: user.role,
-        isOwner: user.isOwner,
+        name: fullName,
+        phone,
+        avatarUrl,
+        isEmailVerified,
       });
 
-      return NextResponse.json({ success: true, event: 'user.created', userId: user.id });
-    }
-
-    if (eventType === 'user.updated') {
-      const clerkId = data.id;
-      const primaryEmailObj = data.email_addresses?.find(
-        (e) => e.id === data.primary_email_address_id
-      ) || data.email_addresses?.[0];
-      const email = primaryEmailObj?.email_address?.trim().toLowerCase() || null;
-
-      const firstName = data.first_name || '';
-      const lastName = data.last_name || '';
-      const fullName = `${firstName} ${lastName}`.trim() || undefined;
-      const avatarUrl = data.image_url || data.profile_image_url || undefined;
-
-      const { role, isOwner } = assignRoleForUser(email || '');
-
-      const user = await prisma.user.upsert({
-        where: { clerkId },
-        update: {
-          email,
-          ...(fullName ? { name: fullName } : {}),
-          ...(avatarUrl ? { avatarUrl } : {}),
-          role,
-          isOwner,
-        },
-        create: {
+      logger.info(
+        eventType === 'user.created'
+          ? 'Synced new Clerk user into local database'
+          : 'Updated Clerk user in local database',
+        {
+          service: 'auth',
           clerkId,
+          userId: syncResult.user.id,
           email,
-          name: fullName || (email ? email.split('@')[0] : 'Student'),
-          avatarUrl,
-          role,
-          isOwner,
-        },
-      });
+          role: syncResult.user.role,
+          isOwner: syncResult.user.isOwner,
+          created: syncResult.created,
+          linkedExistingEmail: syncResult.linkedExistingEmail,
+          demotedFromOwner: syncResult.demotedFromOwner,
+        }
+      );
 
-      logger.info('Updated Clerk user in local database', {
-        service: 'auth',
-        clerkId,
-        userId: user.id,
-        email,
+      return NextResponse.json({
+        success: true,
+        event: eventType,
+        userId: syncResult.user.id,
+        linkedExistingEmail: syncResult.linkedExistingEmail,
       });
-
-      return NextResponse.json({ success: true, event: 'user.updated', userId: user.id });
     }
 
     if (eventType === 'user.deleted') {

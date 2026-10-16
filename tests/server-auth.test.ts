@@ -196,4 +196,129 @@ describe('Server-Side Authentication, Redirect Validation & Canonical Host', () 
     });
   });
 
+  describe('5. Just-In-Time Database User Sync & Anti-Tamper Role Computation', () => {
+    const ownerEmail = 'aapkaastro1606@gmail.com';
+
+    it('should grant OWNER role ONLY when verified email strictly equals OWNER_EMAIL', async () => {
+      const { computeEffectiveRole } = await import('../src/lib/auth/userSync.ts');
+      const orig = process.env.OWNER_EMAIL;
+      try {
+        process.env.OWNER_EMAIL = ownerEmail;
+
+        const res = computeEffectiveRole({
+          email: 'aapkaastro1606@gmail.com',
+          isEmailVerified: true,
+          existingRole: 'STUDENT',
+          existingIsOwner: false,
+        });
+
+        assert.strictEqual(res.role, 'OWNER');
+        assert.strictEqual(res.isOwner, true);
+        assert.strictEqual(res.wasDemoted, false);
+      } finally {
+        process.env.OWNER_EMAIL = orig;
+      }
+    });
+
+    it('should treat a database OWNER for any other email as STUDENT and flag for logging', async () => {
+      const { computeEffectiveRole } = await import('../src/lib/auth/userSync.ts');
+      const orig = process.env.OWNER_EMAIL;
+      try {
+        process.env.OWNER_EMAIL = ownerEmail;
+
+        // Imposter: DB row has role: 'OWNER' or isOwner: true, but email is different!
+        const resRole = computeEffectiveRole({
+          email: 'imposter@example.com',
+          isEmailVerified: true,
+          existingRole: 'OWNER',
+          existingIsOwner: false,
+        });
+        assert.strictEqual(resRole.role, 'STUDENT', 'Must coerce unauthorized OWNER to STUDENT');
+        assert.strictEqual(resRole.isOwner, false);
+        assert.strictEqual(resRole.wasDemoted, true, 'Must flag wasDemoted to log security alert');
+
+        const resFlag = computeEffectiveRole({
+          email: 'tampered@example.com',
+          isEmailVerified: true,
+          existingRole: 'STUDENT',
+          existingIsOwner: true,
+        });
+        assert.strictEqual(resFlag.role, 'STUDENT');
+        assert.strictEqual(resFlag.isOwner, false);
+        assert.strictEqual(resFlag.wasDemoted, true);
+      } finally {
+        process.env.OWNER_EMAIL = orig;
+      }
+    });
+
+    it('should REJECT OWNER if email matches OWNER_EMAIL but verification status is false', async () => {
+      const { computeEffectiveRole } = await import('../src/lib/auth/userSync.ts');
+      const orig = process.env.OWNER_EMAIL;
+      try {
+        process.env.OWNER_EMAIL = ownerEmail;
+
+        const res = computeEffectiveRole({
+          email: 'aapkaastro1606@gmail.com',
+          isEmailVerified: false,
+          existingRole: 'STUDENT',
+        });
+        assert.strictEqual(res.role, 'STUDENT');
+        assert.strictEqual(res.isOwner, false);
+      } finally {
+        process.env.OWNER_EMAIL = orig;
+      }
+    });
+
+    it('should preserve existing staff roles (INSTRUCTOR, ADMIN) assigned via /admin/team', async () => {
+      const { computeEffectiveRole } = await import('../src/lib/auth/userSync.ts');
+      const orig = process.env.OWNER_EMAIL;
+      try {
+        process.env.OWNER_EMAIL = ownerEmail;
+
+        const resInstructor = computeEffectiveRole({
+          email: 'staff.instructor@viar.in',
+          isEmailVerified: true,
+          existingRole: 'INSTRUCTOR',
+          existingIsOwner: false,
+        });
+        assert.strictEqual(resInstructor.role, 'INSTRUCTOR');
+        assert.strictEqual(resInstructor.isOwner, false);
+        assert.strictEqual(resInstructor.wasDemoted, false);
+
+        const resAdmin = computeEffectiveRole({
+          email: 'staff.admin@viar.in',
+          isEmailVerified: true,
+          existingRole: 'ADMIN',
+          existingIsOwner: false,
+        });
+        assert.strictEqual(resAdmin.role, 'ADMIN');
+        assert.strictEqual(resAdmin.isOwner, false);
+        assert.strictEqual(resAdmin.wasDemoted, false);
+      } finally {
+        process.env.OWNER_EMAIL = orig;
+      }
+    });
+
+    it('should default regular students to STUDENT role with isOwner false', async () => {
+      const { computeEffectiveRole } = await import('../src/lib/auth/userSync.ts');
+      const orig = process.env.OWNER_EMAIL;
+      try {
+        process.env.OWNER_EMAIL = ownerEmail;
+
+        const res = computeEffectiveRole({
+          email: 'new.student@example.com',
+          isEmailVerified: true,
+          existingRole: null,
+          existingIsOwner: false,
+        });
+        assert.strictEqual(res.role, 'STUDENT');
+        assert.strictEqual(res.isOwner, false);
+        assert.strictEqual(res.wasDemoted, false);
+      } finally {
+        process.env.OWNER_EMAIL = orig;
+      }
+    });
+  });
+
 });
+

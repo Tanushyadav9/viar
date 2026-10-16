@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { assignRoleForUser, extractAuthFromRequest } from '@/lib/auth/permissions';
+import { extractAuthFromRequest } from '@/lib/auth/permissions';
+import { syncDatabaseUser } from '@/lib/auth/userSync';
 import { logger } from '@/lib/logger';
 
 /**
  * User JIT Session Sync API: /api/users/sync
  * 
- * Invoked by client upon sign-up or login with verified user info,
+ * Invoked upon sign-up or login with verified user info,
  * ensuring a real corresponding row exists in the PostgreSQL/Neon `User` table.
  */
 export async function POST(req: NextRequest) {
@@ -14,39 +15,23 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { id, clerkId, email, name, avatarUrl, phone } = body;
 
-    if (!email && !clerkId && !id) {
+    const finalClerkId = clerkId || id;
+    if (!finalClerkId) {
       return NextResponse.json(
-        { success: false, error: 'User identifier required' },
+        { success: false, error: 'Clerk user identifier required' },
         { status: 400 }
       );
     }
 
-    const cleanEmail = email ? email.trim().toLowerCase() : null;
-    const finalClerkId = clerkId || id;
-    const { role, isOwner } = assignRoleForUser(cleanEmail || '');
-
-    const user = await prisma.user.upsert({
-      where: cleanEmail ? { email: cleanEmail } : { clerkId: finalClerkId },
-      update: {
-        ...(finalClerkId ? { clerkId: finalClerkId } : {}),
-        ...(name ? { name: name.trim() } : {}),
-        ...(avatarUrl ? { avatarUrl } : {}),
-        ...(phone ? { phone } : {}),
-        role,
-        isOwner,
-      },
-      create: {
-        clerkId: finalClerkId,
-        email: cleanEmail,
-        name: name ? name.trim() : (cleanEmail ? cleanEmail.split('@')[0] : 'Student'),
-        avatarUrl: avatarUrl || null,
-        phone: phone || null,
-        role,
-        isOwner,
-        country: 'IN',
-        timezone: 'Asia/Kolkata',
-      },
+    const syncResult = await syncDatabaseUser({
+      clerkId: finalClerkId,
+      email,
+      name,
+      avatarUrl,
+      phone,
     });
+
+    const user = syncResult.user;
 
     logger.info('Synced user session to database', {
       service: 'auth',
@@ -55,6 +40,8 @@ export async function POST(req: NextRequest) {
       email: user.email,
       role: user.role,
       isOwner: user.isOwner,
+      linkedExistingEmail: syncResult.linkedExistingEmail,
+      demotedFromOwner: syncResult.demotedFromOwner,
     });
 
     return NextResponse.json({

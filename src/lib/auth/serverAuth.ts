@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 
 import { validateRedirectUrl } from './urlValidation';
+import { syncDatabaseUser } from './userSync';
 
 export { validateRedirectUrl };
 
@@ -23,14 +24,18 @@ export interface ServerAuthResult {
 }
 
 /**
- * Resolves the authenticated user on the server.
+ * Resolves the authenticated user on the server with Just-In-Time (JIT) Neon database sync.
  * 
- * OWNER DETECTION SECURITY GUARANTEES:
- * 1. Reads primary email directly from Clerk's currentUser() backend API.
- * 2. Confirms that verification status is strictly 'verified'.
- * 3. Compares verified email case-insensitively against process.env.OWNER_EMAIL.
- * 4. NEVER trusts default session claims (which do not contain email).
- * 5. NEVER trusts browser-supplied cookies or headers in production.
+ * CORE SECURITY & RELIABILITY GUARANTEES:
+ * 1. Just-In-Time (JIT) Sync: Creates/links the database User row on the first authenticated
+ *    server request, ensuring a valid row exists even if the Clerk webhook is delayed or missing.
+ * 2. Idempotent Linking: If a user row with the same email already exists (e.g. from an order),
+ *    it links the clerkId rather than throwing a duplicate constraint or creating duplicate rows.
+ * 3. Authoritative Role Computation:
+ *    - An account is recognized as OWNER IF AND ONLY IF its verified primary email
+ *      strictly equals OWNER_EMAIL (case-insensitively).
+ *    - A database OWNER for ANY other email is treated as STUDENT and logged.
+ *    - Staff access stays through /admin/team and StaffPermission.
  */
 export async function getServerAuthUser(): Promise<ServerAuthResult> {
   const fallbackResult: ServerAuthResult = {
@@ -62,6 +67,8 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
       if (primaryEmailObj && primaryEmailObj.verification?.status === 'verified') {
         isEmailVerified = true;
         verifiedEmail = primaryEmailObj.emailAddress.trim().toLowerCase();
+      } else if (primaryEmailObj) {
+        verifiedEmail = primaryEmailObj.emailAddress.trim().toLowerCase();
       }
     }
 
@@ -74,43 +81,51 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
       verifiedEmail === ownerEmail
     );
 
-    // Look up user row in Neon PostgreSQL database
-    let dbUser = null;
+    // Just-In-Time Sync: guarantees the database row exists on the first server request
+    let dbUser: ServerAuthResult['dbUser'] = null;
     try {
-      dbUser = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { clerkId: userId },
-            ...(verifiedEmail ? [{ email: verifiedEmail }] : []),
-          ],
-        },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          role: true,
-          isOwner: true,
-        },
+      const syncResult = await syncDatabaseUser({
+        clerkId: userId,
+        email: verifiedEmail || (clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase() ?? null),
+        name: clerkUser ? `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() : null,
+        phone: clerkUser?.phoneNumbers?.[0]?.phoneNumber || null,
+        avatarUrl: clerkUser?.imageUrl || null,
+        isEmailVerified,
       });
-
-      // If user is verified owner, ensure DB state reflects OWNER role
-      if (isOwner && dbUser && (!dbUser.isOwner || dbUser.role !== 'OWNER')) {
-        await prisma.user.update({
-          where: { id: dbUser.id },
-          data: { isOwner: true, role: 'OWNER' },
-        }).catch(() => {});
+      dbUser = syncResult.user;
+    } catch (syncError) {
+      console.warn('[getServerAuthUser] JIT syncDatabaseUser warning:', syncError);
+      // Fallback read in case of transient DB write issue
+      try {
+        dbUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { clerkId: userId },
+              ...(verifiedEmail ? [{ email: verifiedEmail }] : []),
+            ],
+          },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            isOwner: true,
+          },
+        });
+      } catch {
+        dbUser = null;
       }
-    } catch {
-      // Database connection error handling
-      dbUser = null;
     }
 
-    // Determine effective role
+    // Authoritative role computation
     let role: 'STUDENT' | 'INSTRUCTOR' | 'ADMIN' | 'OWNER' = 'STUDENT';
     if (isOwner) {
       role = 'OWNER';
-    } else if (dbUser?.role === 'ADMIN' || dbUser?.role === 'INSTRUCTOR' || dbUser?.role === 'OWNER') {
-      role = dbUser.role as 'INSTRUCTOR' | 'ADMIN' | 'OWNER';
+    } else if (dbUser?.role === 'ADMIN' || dbUser?.role === 'INSTRUCTOR') {
+      role = dbUser.role as 'INSTRUCTOR' | 'ADMIN';
+    } else {
+      // Database OWNER for non-owner email is treated strictly as STUDENT (and logged during sync)
+      role = 'STUDENT';
     }
 
     return {

@@ -342,8 +342,8 @@ Shows the unlocked masterclass dashboard for student `Rohan Singhania`, with all
 
 | Metric | Result | Standard | Status |
 | :--- | :--- | :--- | :--- |
-| **Unit & Integration Tests** | 141 passed, 0 failed (41 suites) | 100% Pass Rate | ✅ **PASSED** |
-| **Server Auth & Redirect Tests** | 18 passed, 0 failed | Open redirect, loops, owner detection | ✅ **PASSED** |
+| **Unit & Integration Tests** | 146 passed, 0 failed (42 suites) | 100% Pass Rate | ✅ **PASSED** |
+| **Server Auth & Redirect Tests** | 23 passed, 0 failed | Open redirect, loops, JIT sync, owner detection | ✅ **PASSED** |
 | **Translation Quality Tests** | 8 passed, 0 failed | Zero mixed English, full Devanagari | ✅ **PASSED** |
 | **ESLint Static Analysis** | 0 errors, 0 warnings | Strict Next.js & React Rules | ✅ **PASSED** |
 | **Production Build** | 60/60 routes statically prerendered | Zero build errors | ✅ **PASSED** |
@@ -398,3 +398,20 @@ Shows the unlocked masterclass dashboard for student `Rohan Singhania`, with all
 - Middleware detects host mismatch against `NEXT_PUBLIC_SITE_URL` (e.g. `www.viar.in` vs `viar.in`).
 - Issues an HTTP 308 Permanent Redirect to preserve request methods and prevent duplicate session cookie splits.
 - Root layout metadata applies `NEXT_PUBLIC_SITE_URL` to canonical tags and Open Graph metadata.
+
+---
+
+## 9. Just-In-Time Database User Sync & Anti-Tamper Role Architecture
+
+### 9.1 Guaranteed Database Row on Every Sign-In
+- **Just-In-Time (JIT) Sync (`src/lib/auth/serverAuth.ts`)**: Invoked on the very first authenticated server request (e.g. `/dashboard`, `/admin`, `/checkout`, etc.). Calls `syncDatabaseUser()` so the database row is guaranteed to exist even if Clerk webhooks are delayed, missing, or blocked by network interruptions.
+- **Webhook Sync (`/api/webhooks/clerk`)**: Svix-verified webhook handling `user.created`, `user.updated`, and `user.deleted`.
+
+### 9.2 Idempotent Linking by Unique Email
+- `syncDatabaseUser` in `src/lib/auth/userSync.ts` queries for existing records first by `clerkId`, then by `email`.
+- When an existing record with the same email is detected (e.g., from an order or manual invite), it links `clerkId` to that row instead of duplicating or triggering Postgres unique constraint errors (`P2002`).
+
+### 9.3 Anti-Tamper Role Computation
+- **Owner Invariant**: `OWNER` role and `isOwner: true` are granted **IF AND ONLY IF** the verified primary email address matches `OWNER_EMAIL` (`aapkaastro1606@gmail.com`).
+- **Demotion & Audit Logging**: Any database record holding `role: 'OWNER'` or `isOwner: true` for any other email address is immediately demoted to `STUDENT`, `isOwner` set to `false`, and logged as a security alert to `logger.securityAlert` and `prisma.activityLog` with action `UNAUTHORIZED_OWNER_DEMOTED`.
+- **Staff Access Preservation**: Existing staff roles (`INSTRUCTOR`, `ADMIN`) granted through `/admin/team` and managed via the `StaffPermission` table are preserved. All unprivileged sign-ins default to `STUDENT`.
