@@ -342,10 +342,11 @@ Shows the unlocked masterclass dashboard for student `Rohan Singhania`, with all
 
 | Metric | Result | Standard | Status |
 | :--- | :--- | :--- | :--- |
-| **Unit & Integration Tests** | 209 passed, 0 failed (59 suites) | 100% Pass Rate | ✅ **PASSED** |
+| **Unit & Integration Tests** | 226 passed, 0 failed (64 suites) | 100% Pass Rate | ✅ **PASSED** |
 | **Server Auth, RBAC & Staff Scoping Tests** | 30 passed, 0 failed | Open redirect, loops, JIT sync, owner detection, staff scoping | ✅ **PASSED** |
 | **Chatbot Architecture & Cost Control Tests** | 13 passed, 0 failed | Rate limiting (15/10m, 100/day, global cap), hashed IP, 500 chars, 8 msgs, provider swap | ✅ **PASSED** |
 | **AI Assistant Grounding & Multilingual Tests** | 43 passed, 0 failed (2 suites) | Zero hallucination, strictly grounded pricing & policies, EN/HI/Hinglish, safe refusal, 9 core rules | ✅ **PASSED** |
+| **AI Assistant Interface & Security Tests** | 17 passed, 0 failed | Link allowlist, route suppression, pre-filled WhatsApp, 4 chips, safe markdown | ✅ **PASSED** |
 | **Translation Quality Tests** | 8 passed, 0 failed | Zero mixed English, full Devanagari | ✅ **PASSED** |
 | **ESLint Static Analysis** | 0 errors, 0 warnings | Strict Next.js & React Rules | ✅ **PASSED** |
 | **Production Build** | 63/63 routes statically prerendered | Zero build errors | ✅ **PASSED** |
@@ -633,3 +634,72 @@ Every request is guarded by `buildGroundedSystemPrompt()` enforcing:
 7. **Privacy Warning**: Actively warns visitors not to share phone numbers, birth details, or payment info in the chat window.
 8. **Prompt Injection Resistance**: Refuses attempts to override rules, leak system prompts, disclose API keys, or role-play outside site topics.
 9. **Refusal of Abusive / Off-Topic Requests**: Politely refuses abusive or irrelevant inquiries and redirects visitors back to academy topics.
+
+---
+
+## 15. Floating AI Assistant Interface, Accessibility & Mobile Specifications
+
+### 15.1 Floating Trigger Button & Panel Sizing
+- **Floating Button (Bottom-Right)**:
+  - Positioned at `bottom-4 right-4 sm:bottom-6 sm:right-6 z-40` in the site's brand style (Amber gradient `from-amber-500 via-amber-400 to-amber-600`, dark slate typography, pulsing emerald beacon, and sparkles icon).
+  - Accessible name: `aria-label="Open VIAR AI Assistant"` / `"विहंगम ज्योतिष सहायक खोलें"` in Hindi.
+  - Does NOT open automatically. Starts closed and opens only upon explicit visitor action.
+- **Panel Dimensions**:
+  - **Desktop (>= 640px)**: Exactly `380×560px` (`sm:w-[380px] sm:h-[560px] sm:bottom-6 sm:right-6 sm:rounded-2xl`).
+  - **Mobile (< 640px / 390px Viewport)**: Full-height sheet (`fixed inset-0 bottom-0 w-full h-full rounded-none z-50`). Eliminates collisions with sticky bottom bars, banners, or popups on smartphones (tested on 390px iPhone viewport).
+
+### 15.2 Header Controls & Four Suggested-Question Chips
+- **Header Structure**:
+  - Assistant title (`VIAR AI Assistant` / `विहंगम एआई सहायक`) and dedicated **"AI assistant" badge** (`bg-amber-500/15 text-amber-300 border border-amber-500/30`).
+  - **"New chat" control** (`RotateCcw` icon button): Clears `sessionStorage` and resets conversation to initial greeting.
+  - **Close control** (`X` icon button): Closes panel and restores keyboard focus to trigger button.
+- **Four Suggested Chips**:
+  - Displayed immediately after greeting:
+    - **English**:
+      1. *"What is the course fee?"*
+      2. *"What are the 23 modules?"*
+      3. *"Who is the instructor?"*
+      4. *"How do I get certified?"*
+    - **Hindi**:
+      1. *"कोर्स की फीस कितनी है?"*
+      2. *"23 मॉड्यूल में क्या शामिल है?"*
+      3. *"आचार्य जी की योग्यता क्या है?"*
+      4. *"सर्टिफिकेट कैसे मिलेगा?"*
+  - Clicking any chip sends the inquiry immediately.
+
+### 15.3 Keyboard Accessibility (WCAG 2.1 AA)
+- **Focus Trap**: Implemented on `Tab` / `Shift+Tab` inside the open dialog (`dialogRef`), preventing focus from leaking into underlying document.
+- **Escape Key**: Pressing `Escape` immediately closes the assistant and returns focus to `triggerButtonRef`.
+- **`aria-live="polite"`**: Live region ensures incoming assistant messages are announced by screen readers without interrupting current speech.
+- **Visible Focus Rings**: All buttons, links, and inputs feature high-contrast focus rings (`focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none`).
+- **Prefers-Reduced-Motion**: All animations (pulsing beacon, typing bounce, entrance slide) respect user preferences via Tailwind `motion-reduce:animate-none motion-reduce:transition-none`.
+
+### 15.4 Route Suppression Logic
+- Automatically suppressed on:
+  - `/admin/*`, `/hi/admin/*`
+  - `/dashboard/*`, `/hi/dashboard/*`
+  - `/instructor/*`, `/hi/instructor/*`
+  - `/checkout/*`, `/hi/checkout/*`
+- Enforced fail-closed via `shouldSuppressAssistant(pathname)`.
+
+### 15.5 Safe Markdown & Strict Link Allowlist
+- **Zero Raw HTML**: Output is parsed into safe React elements using `renderSafeMarkdown()`. Never uses `dangerouslySetInnerHTML`.
+- **Strict Link Allowlist (`isAllowedLinkUrl`)**:
+  - ✅ Internal site paths starting with `/` (e.g. `/courses`, `/verify`, `/checkout?course=what-is-astrology`).
+  - ✅ Canonical site URLs (`https://viar.in/*`).
+  - ✅ Official WhatsApp links (`https://wa.me/919311215564`, `https://api.whatsapp.com/*`).
+  - ✅ Telephone links (`tel:+919311215564`).
+  - ❌ All third-party domains, protocol-relative links (`//...`), backslash escapes, `javascript:`, and `data:` URIs are rejected and rendered as safe plain text.
+
+### 15.6 `sessionStorage` Isolation & Privacy Policy Footer Note
+- **Session-Only Storage**: Messages are persisted strictly in `sessionStorage` (`viar_ai_chat_session`). Zero permanent `localStorage` tracking.
+- **Mandatory Footer Note**:
+  - *English*: `"AI assistant. Answers may be imperfect. For personal guidance please contact us. Privacy Policy"` (linking to `/privacy-policy`).
+  - *Hindi*: `"एआई सहायक। उत्तर अपूर्ण हो सकते हैं। व्यक्तिगत मार्गदर्शन के लिए संपर्क करें एवं गोपनीयता नीति देखें।"` (linking to `/privacy-policy`).
+
+### 15.7 Error / Timeout & Escalation Quick-Actions
+- **Friendly Error Handling**: On any HTTP 500, 502, 503, 504, or network timeout, displays a cordial message with a direct 1-click WhatsApp button.
+- **Persistent Escalation Bar**: Always available above the message input:
+  - **WhatsApp** (pre-filled with the visitor's last inquiry): `https://wa.me/919311215564?text=${encodeURIComponent(...)}`.
+  - **Call**: `tel:+919311215564`.
+  - **Booking / Checkout**: `/checkout?course=what-is-astrology`.

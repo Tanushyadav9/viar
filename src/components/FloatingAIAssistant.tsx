@@ -10,14 +10,22 @@ import {
   MessageCircle,
   Phone,
   GraduationCap,
-  ExternalLink,
+  RotateCcw,
   Bot,
   User,
 } from 'lucide-react';
 import { useLanguage } from '@/components/LanguageContext';
 import { ActionButton, generateGroundedAssistantResponse } from '@/lib/ai/assistantEngine';
+import {
+  shouldSuppressAssistant,
+  SUGGESTED_QUESTION_CHIPS,
+  buildEscalationWhatsAppUrl,
+  renderSafeMarkdown,
+} from '@/lib/ai/safeMarkdown';
 
-interface ChatMessage {
+const SESSION_STORAGE_KEY = 'viar_ai_chat_session';
+
+export interface ChatMessage {
   id: string;
   sender: 'assistant' | 'user';
   text: string;
@@ -38,27 +46,25 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [hasUnread, setHasUnread] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const triggerButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const liveRegionRef = useRef<HTMLDivElement>(null);
 
-  // Route Suppression: Hide completely on protected student/admin/instructor portals
-  const isProtectedPortal =
-    !pathname ||
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/admin') ||
-    pathname.startsWith('/instructor');
+  // 1. Route Suppression: Hide on /admin, /dashboard, /instructor, /checkout
+  const isSuppressed = shouldSuppressAssistant(pathname);
 
-  // Initial Welcome Message
+  // 2. Initial Welcome Greeting
   const getInitialMessage = useCallback((): ChatMessage => {
     return {
       id: 'welcome-init',
       sender: 'assistant',
       text: isHi
         ? 'नमस्ते! 🙏 मैं विहंगम ज्योतिष एवं अनुसंधान संस्थान (VIAR) का AI शैक्षणिक सहायक हूँ। आप मुझसे हमारे 23-मॉड्यूल वैदिक ज्योतिष कोर्स, ₹5,100 शिक्षण शुल्क, पाठ्यक्रम, आचार्य नीरज कुमार जी, या प्रवेश प्रक्रिया के बारे में कुछ भी पूछ सकते हैं। आप English, हिंदी या Hinglish में प्रश्न पूछ सकते हैं!'
-        : 'Namaste! 🙏 I am your VIAR Academic Assistant. I can answer any questions about our 23-module Vedic Astrology masterclass, the ₹5,100 INR one-time tuition, syllabus, Acharya Niraj Kumar, and the enrollment process. Feel free to ask in English, हिंदी, or Hinglish!',
+        : 'Namaste! 🙏 I am your VIAR Academic Assistant. I can answer any questions about our 23-module Vedic Astrology masterclass, the ₹5,100 INR tuition, syllabus, Acharya Niraj Kumar, and the enrollment process. Feel free to ask in English, हिंदी, or Hinglish!',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       actionButtons: [
         {
@@ -78,45 +84,119 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
     };
   }, [isHi]);
 
-  // Load chat history or set initial greeting
+  // 3. Load conversation from sessionStorage only (Zero localStorage usage)
   useEffect(() => {
-    if (messages.length === 0) {
-      setMessages([getInitialMessage()]);
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed);
+            setIsInitialized(true);
+            return;
+          }
+        }
+      }
+    } catch {
+      // Fallback if sessionStorage is disabled or corrupted
     }
-  }, [getInitialMessage, messages.length]);
 
-  // Auto-scroll to bottom of messages
+    setMessages([getInitialMessage()]);
+    setIsInitialized(true);
+  }, [getInitialMessage]);
+
+  // 4. Save messages to sessionStorage whenever updated
+  useEffect(() => {
+    if (!isInitialized || messages.length === 0) return;
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(messages));
+      }
+    } catch {
+      // Storage quota or privacy mode exception
+    }
+  }, [messages, isInitialized]);
+
+  // 5. Auto-scroll to bottom of messages container
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isOpen, isLoading]);
 
-  // Keyboard accessibility: ESC closes chat
+  // 6. Focus input when chat opens
   useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => inputRef.current?.focus(), 120);
+    }
+  }, [isOpen]);
+
+  // 7. Keyboard Accessibility: Focus Trap & Escape to Close
+  useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      // Escape closes dialog and restores focus to trigger button
+      if (e.key === 'Escape') {
+        e.preventDefault();
         setIsOpen(false);
+        triggerButtonRef.current?.focus();
+        return;
+      }
+
+      // Focus trap on Tab
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusableElements = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          // Shift + Tab: if on first element, wrap to last
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          // Tab: if on last element, wrap to first
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  // Focus input when chat opens
-  useEffect(() => {
-    if (isOpen) {
-      setHasUnread(false);
-      setTimeout(() => inputRef.current?.focus(), 150);
+  // 8. "New chat" Handler (Resets session and conversation)
+  const handleNewChat = useCallback(() => {
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+    } catch {
+      // Ignore sessionStorage exceptions
     }
-  }, [isOpen]);
+    setMessages([getInitialMessage()]);
+    setInputText('');
+    setIsLoading(false);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, [getInitialMessage]);
 
-  // Send Message Handler with Real-Time Streaming and Rate Limit Handling
+  // 9. Send Message Handler with Streaming, 500 Char Cap & Error Handling
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
     if (!text || isLoading) return;
 
-    // Strict 500 characters limit
+    // Strict 500 character limit
     if (text.length > 500) return;
 
     setInputText('');
@@ -136,7 +216,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     try {
-      // Call Streaming Server Route /api/chat with last 8 messages as context
+      // Context window strictly capped to last 8 messages
       const historyContext = messages.slice(-8).map((m) => ({
         role: m.sender === 'user' ? 'user' : 'assistant',
         content: m.text,
@@ -157,13 +237,13 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
         const limitReply =
           errorData?.message ||
           (isHi
-            ? 'आपने बातचीत की सीमा पार कर ली है। कृपया त्वरित सहायता के लिए व्हाट्सएप पर संपर्क करें।'
-            : "You've reached the conversation limit. Please chat directly with our team on WhatsApp for instant assistance.");
+            ? 'आपने संदेश भेजने की सीमा पार कर ली है। कृपया त्वरित सहायता के लिए आचार्य जी से सीधे व्हाट्सएप पर संपर्क करें।'
+            : "You have reached the conversation rate limit. Please connect directly with Acharya Niraj Kumar on WhatsApp for immediate support.");
 
-        const actionButtons: ActionButton[] = errorData?.actionButtons || [
+        const actionButtons: ActionButton[] = [
           {
             label: isHi ? 'व्हाट्सएप पर संपर्क करें' : 'Chat on WhatsApp (+91 93112 15564)',
-            url: 'https://wa.me/919311215564?text=Namaste%20Acharya%20ji%2C%20I%20have%20an%20inquiry%20regarding%20the%20VIAR%20Astrology%20Course.',
+            url: buildEscalationWhatsAppUrl(text, isHi),
             isExternal: true,
             type: 'whatsapp',
             variant: 'primary',
@@ -183,25 +263,8 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
         return;
       }
 
-      // Handle Server Unavailable (503)
-      if (res.status === 503) {
-        const fallback = generateGroundedAssistantResponse(text, { locale: isHi ? 'hi' : undefined });
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: asstId,
-            sender: 'assistant',
-            text: fallback.reply,
-            timestamp,
-            actionButtons: fallback.actionButtons,
-          },
-        ]);
-        return;
-      }
-
       // Handle Successful Streaming (200)
       if (res.ok && res.body) {
-        // Create initial placeholder assistant message in state
         setMessages((prev) => [
           ...prev,
           {
@@ -224,13 +287,11 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
           accumulatedText += chunk;
 
           setMessages((prev) =>
-            prev.map((m) =>
-              m.id === asstId ? { ...m, text: accumulatedText } : m
-            )
+            prev.map((m) => (m.id === asstId ? { ...m, text: accumulatedText } : m))
           );
         }
 
-        // Attach contextual action buttons after completion
+        // Contextual action buttons after completion
         const fallback = generateGroundedAssistantResponse(text, { locale: isHi ? 'hi' : undefined });
         setMessages((prev) =>
           prev.map((m) =>
@@ -238,30 +299,52 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
           )
         );
       } else {
-        // Fallback to deterministic grounded engine on HTTP non-200
-        const fallback = generateGroundedAssistantResponse(text, { locale: isHi ? 'hi' : undefined });
+        // HTTP 500, 502, 503, 504 -> Friendly message with direct WhatsApp escalation
+        const errorReply = isHi
+          ? 'वर्तमान में संपर्क स्थापित करने में समस्या आ रही है। कृपया त्वरित सहायता के लिए आचार्य नीरज कुमार जी से सीधे व्हाट्सएप (+91 93112 15564) पर संपर्क करें।'
+          : "I am having trouble connecting right now. Please reach out to Acharya Niraj Kumar directly on WhatsApp (+91 93112 15564) or call for immediate assistance.";
+
         setMessages((prev) => [
           ...prev,
           {
             id: asstId,
             sender: 'assistant',
-            text: fallback.reply,
+            text: errorReply,
             timestamp,
-            actionButtons: fallback.actionButtons,
+            actionButtons: [
+              {
+                label: isHi ? 'व्हाट्सएप पर पूछें' : 'Chat on WhatsApp',
+                url: buildEscalationWhatsAppUrl(text, isHi),
+                isExternal: true,
+                type: 'whatsapp',
+                variant: 'primary',
+              },
+            ],
           },
         ]);
       }
     } catch {
-      // Fallback to deterministic grounded engine on network/offline error
-      const fallback = generateGroundedAssistantResponse(text, { locale: isHi ? 'hi' : undefined });
+      // Network failure / offline error -> Friendly message with direct WhatsApp escalation
+      const errorReply = isHi
+        ? 'नेटवर्क संपर्क में समस्या आ रही है। कृपया त्वरित सहायता के लिए व्हाट्सएप (+91 93112 15564) पर संपर्क करें।'
+        : "Network connection error. Please connect directly on WhatsApp (+91 93112 15564) for immediate assistance.";
+
       setMessages((prev) => [
         ...prev,
         {
           id: asstId,
           sender: 'assistant',
-          text: fallback.reply,
+          text: errorReply,
           timestamp,
-          actionButtons: fallback.actionButtons,
+          actionButtons: [
+            {
+              label: isHi ? 'व्हाट्सएप पर पूछें' : 'Chat on WhatsApp',
+              url: buildEscalationWhatsAppUrl(text, isHi),
+              isExternal: true,
+              type: 'whatsapp',
+              variant: 'primary',
+            },
+          ],
         },
       ]);
     } finally {
@@ -269,27 +352,15 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
     }
   };
 
-  // Quick Suggested Prompt Pills
-  const suggestedPrompts = isHi
-    ? [
-        'कोर्स की फीस क्या है?',
-        '23 मॉड्यूल में क्या सिखाते हैं?',
-        'क्या यह लाइव है या रिकॉर्डेड?',
-        'क्या सर्टिफिकेट मिलेगा?',
-        'आचार्य जी से बात करनी है',
-      ]
-    : [
-        'What is the course fee?',
-        'What is in the 23-module syllabus?',
-        'Is it self-paced or live Zoom?',
-        'Do I get a verifiable certificate?',
-        'Talk to Acharya Niraj Kumar',
-      ];
+  // Find last question asked by user for pre-filled WhatsApp escalation
+  const lastUserQuestion = [...messages].reverse().find((m) => m.sender === 'user')?.text;
+  const escalationWhatsAppUrl = buildEscalationWhatsAppUrl(lastUserQuestion, isHi);
 
-  // Safety Guard & Route Suppression:
-  // 1. Do not render widget if not configured with valid API key (never show broken chatbot)
-  // 2. Hide completely on protected student/admin/instructor portals
-  if (!isConfigured || isProtectedPortal) {
+  // Suggested Chips (Exact 4 chips)
+  const suggestedChips = isHi ? SUGGESTED_QUESTION_CHIPS.hi : SUGGESTED_QUESTION_CHIPS.en;
+
+  // Route Suppression or Missing Config Guard (Never show broken chatbot)
+  if (!isConfigured || isSuppressed) {
     return null;
   }
 
@@ -297,93 +368,111 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
     <>
       {/* 1. FLOATING TRIGGER BUTTON (Bottom-Right) */}
       {!isOpen && (
-        <aside aria-label="VIAR AI Assistant" className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-50">
+        <aside
+          aria-label={isHi ? 'विहंगम ज्योतिष सहायक' : 'VIAR AI Assistant'}
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 motion-reduce:transition-none"
+        >
           <button
+            ref={triggerButtonRef}
             onClick={() => setIsOpen(true)}
             aria-expanded={isOpen}
             aria-controls="viar-ai-chat-window"
             aria-label={isHi ? 'विहंगम ज्योतिष सहायक खोलें' : 'Open VIAR AI Assistant'}
-            className="group relative flex items-center gap-3 px-4 py-3 sm:px-5 sm:py-3.5 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 text-slate-950 font-bold shadow-2xl shadow-amber-500/35 hover:shadow-amber-500/50 hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-amber-400/50"
+            className="group relative flex items-center gap-2.5 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 text-slate-950 font-bold shadow-xl shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-105 active:scale-95 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 motion-reduce:transition-none motion-reduce:hover:scale-100"
           >
             {/* Pulsing Beacon */}
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border border-slate-950"></span>
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-slate-950"></span>
             </span>
 
             {/* Sparkle Icon */}
-            <div className="w-6 h-6 rounded-full bg-slate-950/15 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-slate-950 animate-pulse" />
+            <div className="w-5 h-5 rounded-full bg-slate-950/15 flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-slate-950 animate-pulse motion-reduce:animate-none" />
             </div>
 
-            {/* Label */}
+            {/* Accessible Text Label in Site Brand Style */}
             <div className="flex flex-col text-left leading-tight">
               <span className="text-xs font-black uppercase tracking-wider text-slate-950">
                 {isHi ? 'ज्योतिष सहायक' : 'Ask VIAR AI'}
               </span>
               <span className="text-[10px] font-medium text-slate-900/80 hidden sm:inline">
-                {isHi ? 'शुल्क • पाठ्यक्रम • सहायता' : 'Fees • Syllabus • Instant Help'}
+                {isHi ? 'शुल्क • पाठ्यक्रम • सहायता' : 'Fees • Syllabus • Help'}
               </span>
             </div>
-
-            {/* Unread dot */}
-            {hasUnread && (
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-slate-950"></span>
-            )}
           </button>
         </aside>
       )}
 
-      {/* 2. CHAT WINDOW MODAL / DRAWER */}
+      {/* 2. CHAT PANEL (Desktop: 380×560; Mobile: Full-Height Sheet) */}
       {isOpen && (
         <section
+          ref={dialogRef}
           id="viar-ai-chat-window"
           role="dialog"
-          aria-modal="false"
-          aria-label={isHi ? 'विहंगम ज्योतिष शैक्षणिक सहायक' : 'VIAR Academic AI Assistant'}
-          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[420px] h-[560px] max-h-[85vh] rounded-2xl bg-slate-950 border border-amber-500/30 shadow-2xl shadow-amber-500/20 flex flex-col overflow-hidden backdrop-blur-xl animate-in fade-in slide-in-from-bottom-5 duration-200"
+          aria-modal="true"
+          aria-label={isHi ? 'विहंगम ज्योतिष एआई सहायक' : 'VIAR AI Assistant'}
+          className="fixed inset-0 sm:inset-auto bottom-0 sm:bottom-6 sm:right-6 w-full sm:w-[380px] h-full sm:h-[560px] rounded-none sm:rounded-2xl z-50 flex flex-col bg-slate-950 border border-amber-500/30 shadow-2xl shadow-amber-500/20 backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200 motion-reduce:animate-none"
         >
           {/* Header */}
-          <div className="px-4 py-3.5 bg-gradient-to-r from-amber-500/15 via-slate-900 to-indigo-950/40 border-b border-amber-500/20 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center font-bold shadow-md shadow-amber-500/20">
-                <Bot className="w-5 h-5 text-slate-950" />
+          <div className="px-4 py-3 bg-gradient-to-r from-amber-500/20 via-slate-900 to-amber-950/30 border-b border-amber-500/20 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center font-bold shadow-md shadow-amber-500/20">
+                <Bot className="w-4 h-4 text-slate-950" />
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-bold text-white tracking-wide">
-                    {isHi ? 'विहंगम शैक्षणिक सहायक' : 'VIAR Academic AI'}
+                    {isHi ? 'विहंगम एआई सहायक' : 'VIAR AI Assistant'}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    Live
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    {isHi ? 'एआई सहायक' : 'AI assistant'}
                   </span>
                 </div>
-                <span className="text-[11px] text-amber-300/80">
+                <span className="text-[10px] text-amber-300/80">
                   {isHi ? 'वैदिक ज्योतिष मास्टरक्लास • ₹5,100' : 'Vedic Astrology Masterclass • ₹5,100'}
                 </span>
               </div>
             </div>
 
-            <button
-              onClick={() => setIsOpen(false)}
-              aria-label={isHi ? 'चैट विंडो बंद करें' : 'Close chat window'}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              {/* "New chat" button */}
+              <button
+                onClick={handleNewChat}
+                aria-label={isHi ? 'नई बातचीत शुरू करें' : 'Start new chat'}
+                title={isHi ? 'नई बातचीत शुरू करें' : 'Start new chat'}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-white/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+
+              {/* Close button */}
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  triggerButtonRef.current?.focus();
+                }}
+                aria-label={isHi ? 'सहायक बंद करें' : 'Close assistant'}
+                title={isHi ? 'सहायक बंद करें' : 'Close assistant'}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
-          {/* Messages Scroll Area */}
+          {/* Messages Scroll Area (aria-live="polite" for screen reader announcements) */}
           <div
-            ref={chatContainerRef}
-            className="flex-1 p-4 overflow-y-auto space-y-3.5 text-xs sm:text-sm custom-scrollbar"
+            className="flex-1 p-3.5 overflow-y-auto space-y-3 text-xs sm:text-sm custom-scrollbar"
+            aria-live="polite"
+            aria-atomic="false"
           >
             {messages.map((m) => {
               const isUser = m.sender === 'user';
               return (
                 <div
                   key={m.id}
-                  className={`flex gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}
+                  className={`flex gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   {!isUser && (
                     <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
@@ -391,7 +480,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                     </div>
                   )}
 
-                  <div className={`max-w-[85%] space-y-2`}>
+                  <div className="max-w-[85%] space-y-1.5">
                     <div
                       className={`p-3 rounded-2xl ${
                         isUser
@@ -399,12 +488,17 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                           : 'bg-slate-900 border border-white/10 text-slate-200 rounded-tl-none leading-relaxed'
                       }`}
                     >
-                      <p className="whitespace-pre-line">{m.text}</p>
+                      {/* Safe text/markdown rendering (no raw HTML) */}
+                      {isUser ? (
+                        <p className="whitespace-pre-line">{m.text}</p>
+                      ) : (
+                        renderSafeMarkdown(m.text)
+                      )}
                     </div>
 
-                    {/* Action Buttons if attached */}
+                    {/* Contextual Action Buttons */}
                     {!isUser && m.actionButtons && m.actionButtons.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
                         {m.actionButtons.map((btn, idx) => {
                           const isWhatsApp = btn.type === 'whatsapp';
                           const isCall = btn.type === 'call';
@@ -416,7 +510,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                               href={btn.url}
                               target={btn.isExternal ? '_blank' : undefined}
                               rel={btn.isExternal ? 'noopener noreferrer' : undefined}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm ${
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                                 isEnroll
                                   ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
                                   : isWhatsApp
@@ -426,11 +520,10 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                                   : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/30'
                               }`}
                             >
-                              {isWhatsApp && <MessageCircle className="w-3.5 h-3.5" />}
-                              {isCall && <Phone className="w-3.5 h-3.5" />}
-                              {isEnroll && <GraduationCap className="w-3.5 h-3.5" />}
+                              {isWhatsApp && <MessageCircle className="w-3 h-3" />}
+                              {isCall && <Phone className="w-3 h-3" />}
+                              {isEnroll && <GraduationCap className="w-3 h-3" />}
                               <span>{btn.label}</span>
-                              {btn.isExternal && <ExternalLink className="w-2.5 h-2.5 opacity-70" />}
                             </Link>
                           );
                         })}
@@ -455,20 +548,41 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
               );
             })}
 
+            {/* Four Suggested-Question Chips (Shown right after initial greeting) */}
+            {messages.length <= 2 && (
+              <div className="pt-1 pb-2 space-y-1.5">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 px-1">
+                  {isHi ? 'सुझाए गए प्रश्न:' : 'Suggested questions:'}
+                </span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {suggestedChips.map((chip) => (
+                    <button
+                      key={chip}
+                      onClick={() => handleSendMessage(chip)}
+                      disabled={isLoading}
+                      className="p-2 rounded-xl text-left bg-slate-900/90 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-white/10 hover:border-amber-400/40 text-xs font-medium transition disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Typing Indicator */}
             {isLoading && (
-              <div className="flex gap-2.5 justify-start">
+              <div className="flex gap-2 justify-start">
                 <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin motion-reduce:animate-none" />
                 </div>
-                <div className="p-3 rounded-2xl bg-slate-900 border border-white/10 text-slate-400 rounded-tl-none flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce"></span>
+                <div className="p-2.5 rounded-2xl bg-slate-900 border border-white/10 text-slate-400 rounded-tl-none flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce motion-reduce:animate-none"></span>
                   <span
-                    className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce"
+                    className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce motion-reduce:animate-none"
                     style={{ animationDelay: '150ms' }}
                   ></span>
                   <span
-                    className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce"
+                    className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce motion-reduce:animate-none"
                     style={{ animationDelay: '300ms' }}
                   ></span>
                 </div>
@@ -478,22 +592,49 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Suggested Prompts Pills */}
-          <div className="px-3 py-2 bg-slate-900/60 border-t border-white/5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            {suggestedPrompts.map((prompt) => (
-              <button
-                key={prompt}
-                onClick={() => handleSendMessage(prompt)}
-                disabled={isLoading}
-                className="whitespace-nowrap px-2.5 py-1 rounded-full bg-white/5 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-white/10 hover:border-amber-400/40 text-[11px] font-medium transition disabled:opacity-40"
+          {/* Persistent Escalation Bar (Always available: WhatsApp pre-filled with last inquiry, Call, Booking link) */}
+          <div className="px-3 py-1.5 bg-slate-900/80 border-t border-white/10 flex items-center justify-between gap-1 shrink-0 text-[11px]">
+            <span className="text-[10px] text-slate-400 font-medium">
+              {isHi ? 'सहायता:' : 'Assistance:'}
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              {/* WhatsApp (Pre-filled with visitor's last inquiry) */}
+              <a
+                href={escalationWhatsAppUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={isHi ? 'व्हाट्सएप पर पूछें' : 'Ask on WhatsApp'}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400"
               >
-                {prompt}
-              </button>
-            ))}
+                <MessageCircle className="w-3 h-3 text-emerald-400" />
+                <span>WhatsApp</span>
+              </a>
+
+              {/* Call */}
+              <a
+                href="tel:+919311215564"
+                title={isHi ? 'कॉल करें' : 'Call'}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-950/80 hover:bg-sky-900 text-sky-300 border border-sky-500/40 transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400"
+              >
+                <Phone className="w-3 h-3 text-sky-400" />
+                <span>{isHi ? 'कॉल' : 'Call'}</span>
+              </a>
+
+              {/* Booking / Checkout link */}
+              <Link
+                href="/checkout?course=what-is-astrology"
+                title={isHi ? 'प्रवेश लें' : 'Enroll in course'}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-500/40 transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
+              >
+                <GraduationCap className="w-3 h-3 text-amber-400" />
+                <span>{isHi ? 'प्रवेश' : 'Enroll'}</span>
+              </Link>
+            </div>
           </div>
 
           {/* Input Form with 500 characters limit */}
-          <div className="p-3 bg-slate-950 border-t border-white/10">
+          <div className="p-3 bg-slate-950 border-t border-white/10 shrink-0">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -510,14 +651,14 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                   placeholder={
                     isHi
                       ? 'फीस, सिलेबस, या प्रवेश के बारे में पूछें...'
-                      : 'Ask about fee, syllabus, or Acharya ji... (EN/हिं/Hinglish)'
+                      : 'Ask fee, syllabus, Acharya ji... (EN/हिं/Hinglish)'
                   }
                   maxLength={500}
                   disabled={isLoading}
-                  className="w-full pl-3.5 pr-8 py-2.5 bg-slate-900/80 border border-white/15 focus:border-amber-400 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400 transition"
+                  className="w-full pl-3 pr-8 py-2 bg-slate-900/90 border border-white/15 focus:border-amber-400 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition"
                 />
                 {inputText.length > 0 && (
-                  <span className="absolute right-2.5 top-3 text-[10px] text-slate-500 font-mono">
+                  <span className="absolute right-2 top-2.5 text-[9px] text-slate-500 font-mono">
                     {500 - inputText.length}
                   </span>
                 )}
@@ -527,28 +668,47 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                 type="submit"
                 disabled={!inputText.trim() || isLoading}
                 aria-label={isHi ? 'संदेश भेजें' : 'Send message'}
-                className="w-10 h-10 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 flex items-center justify-center hover:opacity-95 active:scale-95 disabled:opacity-40 disabled:hover:opacity-40 disabled:active:scale-100 transition shadow-md shadow-amber-500/20"
+                className="w-9 h-9 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 flex items-center justify-center hover:opacity-95 active:scale-95 disabled:opacity-40 disabled:hover:opacity-40 disabled:active:scale-100 transition shadow-md shadow-amber-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
                 <Send className="w-4 h-4 text-slate-950" />
               </button>
             </form>
 
-            <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-500 px-1">
-              <span>{isHi ? 'सटीक उत्तर • zero hallucination' : 'Grounded in VIAR course facts'}</span>
-              <span>
-                <a
-                  href="https://wa.me/919311215564"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-amber-400/80 hover:text-amber-300 underline"
-                >
-                  WhatsApp: +91 93112 15564
-                </a>
-              </span>
-            </div>
+            {/* Mandatory Footer Note with Privacy Policy Link */}
+            <p className="mt-2 text-[10px] text-slate-400 text-center leading-normal">
+              {isHi ? (
+                <>
+                  एआई सहायक। उत्तर अपूर्ण हो सकते हैं। व्यक्तिगत मार्गदर्शन के लिए{' '}
+                  <Link
+                    href="/privacy-policy"
+                    className="text-amber-400 underline underline-offset-1 hover:text-amber-300 focus-visible:ring-1 focus-visible:ring-amber-400 rounded-sm"
+                  >
+                    संपर्क करें एवं गोपनीयता नीति देखें
+                  </Link>
+                  ।
+                </>
+              ) : (
+                <>
+                  AI assistant. Answers may be imperfect. For personal guidance please contact us.{' '}
+                  <Link
+                    href="/privacy-policy"
+                    className="text-amber-400 underline underline-offset-1 hover:text-amber-300 focus-visible:ring-1 focus-visible:ring-amber-400 rounded-sm"
+                  >
+                    Privacy Policy
+                  </Link>
+                </>
+              )}
+            </p>
           </div>
         </section>
       )}
+
+      {/* Screen Reader Live Region */}
+      <div ref={liveRegionRef} className="sr-only" aria-live="polite" aria-atomic="true">
+        {messages.length > 0 && messages[messages.length - 1].sender === 'assistant'
+          ? messages[messages.length - 1].text
+          : ''}
+      </div>
     </>
   );
 }
