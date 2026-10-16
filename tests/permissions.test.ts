@@ -18,7 +18,7 @@ import {
 import type { User, AdminSection } from '../src/lib/types.ts';
 
 describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => {
-  const ownerEmail = 'ask@aapkaastro.com';
+  const ownerEmail = 'aapkaastro1606@gmail.com';
   // Ensure default environment configuration for RBAC test suite
   process.env.OWNER_EMAIL = ownerEmail;
 
@@ -66,6 +66,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
         // Assert that ask@aapkaastro.com, admin@viar.in, and niraj@aapkaastro.com
         // have NO special access unless someone deliberately puts them in the real environment variable.
         const candidateEmails = [
+          'aapkaastro1606@gmail.com',
           'ask@aapkaastro.com',
           'admin@viar.in',
           'niraj@aapkaastro.com',
@@ -93,11 +94,12 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
     it('should recognize owner ONLY when explicitly configured in process.env.OWNER_EMAIL', () => {
       const origOwner = process.env.OWNER_EMAIL;
       try {
-        process.env.OWNER_EMAIL = 'ask@aapkaastro.com';
-        assert.strictEqual(getPrimaryOwnerEmail(), 'ask@aapkaastro.com');
-        assert.strictEqual(isSiteOwner('ask@aapkaastro.com'), true);
-        assert.strictEqual(isSiteOwner('  ASK@AAPKAASTRO.COM  '), true);
-        // admin@viar.in and niraj@aapkaastro.com are not in OWNER_EMAIL and thus NOT owners
+        process.env.OWNER_EMAIL = 'aapkaastro1606@gmail.com';
+        assert.strictEqual(getPrimaryOwnerEmail(), 'aapkaastro1606@gmail.com');
+        assert.strictEqual(isSiteOwner('aapkaastro1606@gmail.com'), true);
+        assert.strictEqual(isSiteOwner('  AAPKAASTRO1606@GMAIL.COM  '), true);
+        // ask@aapkaastro.com, admin@viar.in, and niraj@aapkaastro.com are NOT owners
+        assert.strictEqual(isSiteOwner('ask@aapkaastro.com'), false);
         assert.strictEqual(isSiteOwner('admin@viar.in'), false);
         assert.strictEqual(isSiteOwner('niraj@aapkaastro.com'), false);
       } finally {
@@ -110,12 +112,15 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
       const origOwner = process.env.OWNER_EMAIL;
       const origSuper = process.env.SUPERADMIN_EMAILS;
       try {
-        process.env.OWNER_EMAIL = 'ask@aapkaastro.com';
-        process.env.SUPERADMIN_EMAILS = 'admin@viar.in,niraj@aapkaastro.com';
+        process.env.OWNER_EMAIL = 'aapkaastro1606@gmail.com';
+        process.env.SUPERADMIN_EMAILS = 'superadmin1@example.com,superadmin2@example.com';
 
-        assert.strictEqual(isSiteOwner('ask@aapkaastro.com'), true);
-        assert.strictEqual(isSiteOwner('admin@viar.in'), true);
-        assert.strictEqual(isSiteOwner('niraj@aapkaastro.com'), true);
+        assert.strictEqual(isSiteOwner('aapkaastro1606@gmail.com'), true);
+        assert.strictEqual(isSiteOwner('superadmin1@example.com'), true);
+        assert.strictEqual(isSiteOwner('superadmin2@example.com'), true);
+        assert.strictEqual(isSiteOwner('ask@aapkaastro.com'), false);
+        assert.strictEqual(isSiteOwner('admin@viar.in'), false);
+        assert.strictEqual(isSiteOwner('niraj@aapkaastro.com'), false);
         assert.strictEqual(isSiteOwner('other@example.com'), false);
       } finally {
         if (origOwner !== undefined) process.env.OWNER_EMAIL = origOwner;
@@ -128,7 +133,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
     it('should recognize owner user object with verified owner email when env is configured', () => {
       const origOwner = process.env.OWNER_EMAIL;
       try {
-        process.env.OWNER_EMAIL = 'ask@aapkaastro.com';
+        process.env.OWNER_EMAIL = 'aapkaastro1606@gmail.com';
         assert.strictEqual(isSiteOwner(ownerUser), true);
       } finally {
         if (origOwner !== undefined) process.env.OWNER_EMAIL = origOwner;
@@ -139,7 +144,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
     it('should NEVER grant owner status by accident of testing (e.g. email containing "admin")', () => {
       const origOwner = process.env.OWNER_EMAIL;
       try {
-        process.env.OWNER_EMAIL = 'ask@aapkaastro.com';
+        process.env.OWNER_EMAIL = 'aapkaastro1606@gmail.com';
         const deceptiveEmails = [
           'fakeadmin@gmail.com',
           'admin@attacker.com',
@@ -164,7 +169,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
     it('should return false for regular staff and students', () => {
       const origOwner = process.env.OWNER_EMAIL;
       try {
-        process.env.OWNER_EMAIL = 'ask@aapkaastro.com';
+        process.env.OWNER_EMAIL = 'aapkaastro1606@gmail.com';
         assert.strictEqual(isSiteOwner(staffUser), false);
         assert.strictEqual(isSiteOwner(studentUser), false);
         assert.strictEqual(isSiteOwner(null), false);
@@ -180,8 +185,8 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
     it('should automatically assign OWNER role when verified email matches OWNER_EMAIL', () => {
       const origOwner = process.env.OWNER_EMAIL;
       try {
-        process.env.OWNER_EMAIL = 'ask@aapkaastro.com';
-        const result = assignRoleForUser('ask@aapkaastro.com');
+        process.env.OWNER_EMAIL = 'aapkaastro1606@gmail.com';
+        const result = assignRoleForUser('aapkaastro1606@gmail.com');
         assert.strictEqual(result.role, 'OWNER');
         assert.strictEqual(result.isOwner, true);
       } finally {
@@ -238,10 +243,10 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
 
     it('should reject email spoofing tricks and subdomains mimicking owner address', () => {
       const spoofAttempts = [
-        'ask@aapkaastro.com.fake.com',
-        'ask@aapkaastro.com@evil.com',
-        'fake-ask@aapkaastro.com',
-        'ask@aapkaastro.com.attacker.org',
+        'aapkaastro1606@gmail.com.fake.com',
+        'aapkaastro1606@gmail.com@evil.com',
+        'fake-aapkaastro1606@gmail.com',
+        'aapkaastro1606@gmail.com.attacker.org',
         'ask@aapkaastro.co',
         'ask@aapkaastro.org',
       ];
@@ -378,12 +383,12 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
         userId: 'usr_clerk_staff_123',
         section: 'quizzes',
         accessLevel: 'VIEW' as const,
-        grantedByUserId: 'ask@aapkaastro.com',
+        grantedByUserId: 'aapkaastro1606@gmail.com',
         grantedAt: new Date().toISOString(),
         revokedAt: null,
       };
 
-      assert.strictEqual(perm.grantedByUserId, 'ask@aapkaastro.com');
+      assert.strictEqual(perm.grantedByUserId, 'aapkaastro1606@gmail.com');
       assert.strictEqual(isSiteOwner(perm.grantedByUserId), true);
     });
   });
@@ -466,7 +471,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
           userId: 'staff-viewer',
           section: 'courses',
           accessLevel: 'VIEW' as const,
-          grantedByUserId: 'ask@aapkaastro.com',
+          grantedByUserId: 'aapkaastro1606@gmail.com',
           grantedAt: new Date().toISOString(),
           revokedAt: null,
         },
@@ -500,7 +505,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
           userId: 'staff-ex',
           section: 'courses',
           accessLevel: 'MANAGE' as const,
-          grantedByUserId: 'ask@aapkaastro.com',
+          grantedByUserId: 'aapkaastro1606@gmail.com',
           grantedAt: '2026-09-01T00:00:00.000Z',
           revokedAt: '2026-09-22T00:00:00.000Z',
         },
@@ -529,7 +534,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
 
         // Verify with email string directly
         const emailCheck = checkStaffSectionAccess({
-          user: 'ask@aapkaastro.com',
+          user: 'aapkaastro1606@gmail.com',
           section,
           requiredLevel: 'MANAGE',
         });
@@ -555,12 +560,12 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
           return `${header}.${payload}.mock_clerk_signature`;
         };
 
-        // 1. Real Clerk Session for Site Owner (ask@aapkaastro.com)
+        // 1. Real Clerk Session for Site Owner (aapkaastro1606@gmail.com)
         const mockOwnerReq = {
           cookies: {
             get: (name: string) =>
               name === '__session'
-                ? { value: makeClerkToken('ask@aapkaastro.com', 'user-owner') }
+                ? { value: makeClerkToken('aapkaastro1606@gmail.com', 'user-owner') }
                 : undefined,
           },
           headers: { get: () => null },
@@ -587,7 +592,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
             userId: 'priya.staff@viar.in',
             section: 'courses',
             accessLevel: 'VIEW' as const,
-            grantedByUserId: 'ask@aapkaastro.com',
+            grantedByUserId: 'aapkaastro1606@gmail.com',
             grantedAt: new Date().toISOString(),
             revokedAt: null,
           },
@@ -655,7 +660,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
                 : name === 'viar_user_role'
                 ? { value: 'OWNER' }
                 : name === 'viar_user_email'
-                ? { value: encodeURIComponent('ask@aapkaastro.com') }
+                ? { value: encodeURIComponent('aapkaastro1606@gmail.com') }
                 : undefined,
           },
           headers: { get: () => null },
@@ -682,7 +687,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
               name === 'x-user-role'
                 ? 'OWNER'
                 : name === 'x-user-email'
-                ? 'ask@aapkaastro.com'
+                ? 'aapkaastro1606@gmail.com'
                 : null,
           },
         };
@@ -704,7 +709,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
         const payload = Buffer.from(
           JSON.stringify({
             sub: 'user_clerk_owner_99',
-            email: 'ask@aapkaastro.com',
+            email: 'aapkaastro1606@gmail.com',
             exp: Math.floor(Date.now() / 1000) + 3600,
           })
         ).toString('base64url');
@@ -793,7 +798,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
         const ownerDecision = evaluateRouteAccess({
           pathname: path,
           sessionToken: 'session-owner-123',
-          userEmail: 'ask@aapkaastro.com',
+          userEmail: 'aapkaastro1606@gmail.com',
         });
         assert.strictEqual(ownerDecision.action, 'allow', `Owner should be allowed on ${path}`);
       }

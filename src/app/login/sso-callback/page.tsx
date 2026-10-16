@@ -27,7 +27,7 @@ export default function ViarLoginSSOCallbackPage() {
           </span>
           <div className="flex items-center gap-1.5 text-[11px] text-emerald-400">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Encrypted Single Sign-On Handshake</span>
+            <span>Encrypted Authentication Handshake</span>
           </div>
         </div>
 

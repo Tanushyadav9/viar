@@ -182,7 +182,7 @@ export async function updatePaymentSettings(params: {
 
   // 4. Dispatch High-Priority Security Alert Email to Owner
   // Altering payment settings alters where visitor funds are directed.
-  const ownerEmail = process.env.OWNER_EMAIL || 'ask@aapkaastro.com';
+  const ownerEmail = process.env.OWNER_EMAIL || 'aapkaastro1606@gmail.com';
   try {
     await emailService.sendEmail({
       to: ownerEmail,

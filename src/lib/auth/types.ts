@@ -11,12 +11,12 @@ export interface AuthUser {
 }
 
 /**
- * Unified Multi-Domain Authentication Provider (Clerk Ecosystem)
- * Single free authentication approach across Viar.in, AapkaAstro.com, and DOW Consulting:
+ * Standalone Clerk Authentication Provider
+ * Dedicated authentication for Viar.in:
  * - Email / Password sign-in and sign-up
- * - Google OAuth Single Sign-On
+ * - Google OAuth Authentication
  * - No Phone OTP (zero SMS costs / no India DLT registration overhead)
- * - Multi-domain / Satellite SSO configuration
+ * - Standalone Clerk configuration
  */
 export interface AuthProvider {
   readonly name: string;
@@ -44,7 +44,7 @@ export interface AuthProvider {
   ): Promise<{ success: boolean; user?: AuthUser; error?: string }>;
 
   /**
-   * Initiate Google OAuth Single Sign-On via Clerk
+   * Initiate Google OAuth authentication via Clerk
    */
   signInWithGoogle(options?: {
     redirectUrl?: string;

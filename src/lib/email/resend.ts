@@ -37,7 +37,7 @@ export class ResendEmailService implements EmailService {
     this.apiKey = apiKey;
     // PLACEHOLDER: replace with client-approved sender details
     this.defaultFrom = fromAddress || 'Vihangam Institute of Astrology and Research <admissions@viar.in>';
-    this.defaultReplyTo = replyTo || 'ask@aapkaastro.com';
+    this.defaultReplyTo = replyTo || 'aapkaastro1606@gmail.com';
   }
 
   async sendEmail(payload: EmailPayload): Promise<EmailSendResult> {

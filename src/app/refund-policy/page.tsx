@@ -93,8 +93,8 @@ export default function RefundPolicyPage() {
               <ul className="list-disc pl-5 space-y-1 text-slate-400">
                 <li>
                   {isHi
-                    ? 'छात्र को अपना ऑर्डर संदर्भ संख्या, 12 अंकों का UTR और पंजीकृत फोन नंबर ask@aapkaastro.com अथवा व्हाट्सएप (+91 93112 15564) पर प्रेषित करना होता है।'
-                    : 'The student submits their refund request specifying Order Reference, original 12-digit UTR, and registered phone number to ask@aapkaastro.com or WhatsApp (+91 93112 15564).'}
+                    ? 'छात्र को अपना ऑर्डर संदर्भ संख्या, 12 अंकों का UTR और पंजीकृत फोन नंबर aapkaastro1606@gmail.com अथवा व्हाट्सएप (+91 93112 15564) पर प्रेषित करना होता है।'
+                    : 'The student submits their refund request specifying Order Reference, original 12-digit UTR, and registered phone number to aapkaastro1606@gmail.com or WhatsApp (+91 93112 15564).'}
                 </li>
                 <li>
                   {isHi
@@ -147,7 +147,7 @@ export default function RefundPolicyPage() {
                 <Mail className="w-4 h-4 text-amber-400 shrink-0" />
                 <div>
                   <div className="font-semibold text-white">Email Admissions</div>
-                  <a href="mailto:ask@aapkaastro.com" className="text-amber-400 underline">ask@aapkaastro.com</a>
+                  <a href="mailto:aapkaastro1606@gmail.com" className="text-amber-400 underline">aapkaastro1606@gmail.com</a>
                 </div>
               </div>
               <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 flex items-center gap-3">

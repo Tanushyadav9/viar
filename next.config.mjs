@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   env: {
-    OWNER_EMAIL: process.env.OWNER_EMAIL || 'ask@aapkaastro.com',
+    OWNER_EMAIL: process.env.OWNER_EMAIL || '',
   },
   images: {
     remotePatterns: [

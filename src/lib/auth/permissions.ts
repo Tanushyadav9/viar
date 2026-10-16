@@ -14,8 +14,7 @@
  * 2. Per-Section Staff Permissions (Cost & Scope Constraint):
  *    - Built using application-level checks and PostgreSQL `StaffPermission` table.
  *    - ZERO dependence on Clerk's paid Organizations add-on ($0 cost).
- *    - Per-site scope: Granting access to Viar.in blog/content DOES NOT give
- *      access to AapkaAstro.com or DOW Consulting unless explicitly granted there.
+ *    - Dedicated scope: Permissions are scoped exclusively to Viar.in.
  * ==============================================================================
  */
 

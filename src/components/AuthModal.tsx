@@ -84,10 +84,10 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
             Access your live class links, video recordings, and certificate.
           </p>
 
-          {/* Multi-Domain Satellite SSO Notice */}
+          {/* Standalone Authentication Notice */}
           <div className="mt-3 p-2 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center gap-1.5 text-[10px] text-slate-300">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span>Single Sign-On across Viar.in & Aapka Astro</span>
+            <span>Secure Student Authentication • Powered by Clerk</span>
           </div>
         </div>
 

@@ -15,7 +15,7 @@ export const PLACEHOLDER_SOCIAL_LINKS = {
   whatsapp: 'https://wa.me/919311215564',
   aapkaAstro: 'https://aapkaastro.com',
   phone: '+91 93112 15564',
-  email: 'ask@aapkaastro.com',
+  email: 'aapkaastro1606@gmail.com',
 };
 
 /* Real and cohort-verified student & client testimonials */
@@ -891,7 +891,7 @@ export const DEMO_USERS: User[] = [
   {
     id: 'user-admin-demo',
     name: 'Acharya Niraj Kumar',
-    email: 'ask@aapkaastro.com',
+    email: 'aapkaastro1606@gmail.com',
     role: 'OWNER',
     isOwner: true,
     timezone: 'Asia/Kolkata',

@@ -87,7 +87,7 @@ async function runProofLifecycle() {
   console.log('\n--- STEP 4: OWNER VERIFIES BANK CREDIT & ACTIVATES ACCESS ---');
   const approvalResult = await approveOrder({
     orderId: claimResult.order.id,
-    reviewedByEmail: 'ask@aapkaastro.com',
+    reviewedByEmail: 'aapkaastro1606@gmail.com',
     bankConfirmed: true, // Mandatory bank verification checklist item
   });
 

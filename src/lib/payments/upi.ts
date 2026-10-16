@@ -18,7 +18,7 @@ export const UPI_CONFIG = {
   payeeName: 'Vihangam Institute of Astrology and Research',
   ownerWhatsApp: '919311215564',
   ownerWhatsAppDisplay: '+91 93112 15564',
-  ownerEmail: 'ask@aapkaastro.com',
+  ownerEmail: 'aapkaastro1606@gmail.com',
   defaultAmountInr: 5100,
   currency: 'INR',
 };

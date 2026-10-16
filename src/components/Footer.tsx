@@ -262,11 +262,11 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="mailto:ask@aapkaastro.com"
+                  href="mailto:aapkaastro1606@gmail.com"
                   className="hover:text-amber-300 transition flex items-center gap-1.5"
                 >
                   <Mail className="w-3.5 h-3.5 text-amber-400" />
-                  <span>ask@aapkaastro.com</span>
+                  <span>aapkaastro1606@gmail.com</span>
                 </a>
               </li>
               <li>

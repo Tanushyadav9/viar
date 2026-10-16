@@ -25,8 +25,6 @@ export interface AppEnvConfig {
     clerkPublishableKey: string;
     clerkSecretKey: string;
     clerkWebhookSecret: string;
-    clerkDomain: string;
-    clerkIsSatellite: boolean;
     clerkSignInUrl: string;
     ownerEmail: string;
     superadminEmails: string[];
@@ -74,11 +72,6 @@ function getEnvVar(key: string, fallback: string = ''): string {
   return process.env[key] || fallback;
 }
 
-function getBooleanEnvVar(key: string, fallback: boolean = false): boolean {
-  const val = process.env[key];
-  if (val === undefined || val === '') return fallback;
-  return val.toLowerCase() === 'true' || val === '1';
-}
 
 export const env: AppEnvConfig = {
   nodeEnv: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
@@ -100,8 +93,6 @@ export const env: AppEnvConfig = {
     clerkPublishableKey: getEnvVar('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY', ''),
     clerkSecretKey: getEnvVar('CLERK_SECRET_KEY', ''),
     clerkWebhookSecret: getEnvVar('CLERK_WEBHOOK_SECRET', ''),
-    clerkDomain: getEnvVar('NEXT_PUBLIC_CLERK_DOMAIN', 'viar.in'),
-    clerkIsSatellite: getBooleanEnvVar('NEXT_PUBLIC_CLERK_IS_SATELLITE', true),
     clerkSignInUrl: getEnvVar('NEXT_PUBLIC_CLERK_SIGN_IN_URL', '/sign-in'),
     ownerEmail: getEnvVar('OWNER_EMAIL', ''),
     superadminEmails: getEnvVar('SUPERADMIN_EMAILS', '')
@@ -150,6 +141,6 @@ export const env: AppEnvConfig = {
     apiKey: getEnvVar('RESEND_API_KEY', ''),
     // PLACEHOLDER: replace with client-approved sender details
     fromAddress: getEnvVar('EMAIL_FROM', 'Vihangam Institute of Astrology and Research <admissions@viar.in>'),
-    replyTo: getEnvVar('EMAIL_REPLY_TO', 'ask@aapkaastro.com'),
+    replyTo: getEnvVar('EMAIL_REPLY_TO', 'aapkaastro1606@gmail.com'),
   },
 };

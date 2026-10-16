@@ -160,7 +160,7 @@ export default function PrivacyPolicyPage() {
             </p>
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-slate-300">
               <div className="font-semibold text-white">Vihangam Institute of Astrology and Research Data Privacy Officer</div>
-              <div>Email: <a href="mailto:ask@aapkaastro.com" className="text-amber-400 underline">ask@aapkaastro.com</a></div>
+              <div>Email: <a href="mailto:aapkaastro1606@gmail.com" className="text-amber-400 underline">aapkaastro1606@gmail.com</a></div>
               <div>Direct Desk: +91 93112 15564</div>
             </div>
           </section>

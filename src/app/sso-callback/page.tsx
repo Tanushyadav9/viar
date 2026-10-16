@@ -16,18 +16,18 @@ export default function ViarRootSSOCallbackPage() {
           Authenticating Session...
         </h1>
         <p className="text-xs sm:text-sm text-slate-400 mt-2">
-          Completing Single Sign-On handshake and redirecting to your dashboard.
+          Completing secure authentication handshake and redirecting to your dashboard.
         </p>
 
         {/* Handshake Card */}
         <div className="cosmic-card mt-6 p-6 rounded-2xl border border-white/10 shadow-2xl flex flex-col items-center justify-center space-y-3">
           <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
           <span className="text-xs font-semibold text-slate-300">
-            Verifying Single Sign-On credentials with Clerk...
+            Verifying credentials with Clerk...
           </span>
           <div className="flex items-center gap-1.5 text-[11px] text-emerald-400">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Encrypted Single Sign-On Handshake</span>
+            <span>Encrypted Authentication Handshake</span>
           </div>
         </div>
 

@@ -55,7 +55,7 @@ async function capture() {
     const ownerToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
       Buffer.from(JSON.stringify({
         sub: 'user_live_owner_niraj',
-        email: 'ask@aapkaastro.com',
+        email: 'aapkaastro1606@gmail.com',
         exp: Math.floor(Date.now() / 1000) + 86400,
       })).toString('base64url') + '.sig';
 
@@ -108,7 +108,7 @@ async function capture() {
             localStorage.setItem('viar_current_user', JSON.stringify({
               id: 'owner-acharya-niraj',
               name: 'Acharya Niraj Kumar',
-              email: 'ask@aapkaastro.com',
+              email: 'aapkaastro1606@gmail.com',
               role: 'OWNER',
               isOwner: true,
               timezone: 'Asia/Kolkata',
@@ -170,7 +170,7 @@ async function capture() {
             localStorage.setItem('viar_current_user', JSON.stringify({
               id: 'owner-acharya-niraj',
               name: 'Acharya Niraj Kumar',
-              email: 'ask@aapkaastro.com',
+              email: 'aapkaastro1606@gmail.com',
               role: 'OWNER',
               isOwner: true,
               timezone: 'Asia/Kolkata',

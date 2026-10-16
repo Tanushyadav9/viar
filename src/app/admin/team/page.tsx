@@ -306,7 +306,7 @@ export default function TeamManagementPage() {
               <KeyRound className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
               <div>
                 <strong className="text-slate-200">Owner Designation:</strong>
-                <p>Anchored to <code className="text-amber-300">ask@aapkaastro.com</code> via <code className="text-amber-300">OWNER_EMAIL</code>. Cannot be self-assigned or bypassed.</p>
+                <p>Anchored to <code className="text-amber-300">aapkaastro1606@gmail.com</code> via <code className="text-amber-300">OWNER_EMAIL</code>. Cannot be self-assigned or bypassed.</p>
               </div>
             </div>
             <div className="flex items-start gap-2">

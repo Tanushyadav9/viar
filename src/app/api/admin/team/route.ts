@@ -40,7 +40,7 @@ const serverPermissionsFallback: StaffPermission[] = [
     userId: 'user-staff-content',
     section: 'courses',
     accessLevel: 'MANAGE',
-    grantedByUserId: 'ask@aapkaastro.com',
+    grantedByUserId: 'aapkaastro1606@gmail.com',
     grantedAt: '2026-09-20T10:00:00.000Z',
     revokedAt: null,
   },
@@ -49,7 +49,7 @@ const serverPermissionsFallback: StaffPermission[] = [
     userId: 'user-staff-content',
     section: 'quizzes',
     accessLevel: 'MANAGE',
-    grantedByUserId: 'ask@aapkaastro.com',
+    grantedByUserId: 'aapkaastro1606@gmail.com',
     grantedAt: '2026-09-20T10:00:00.000Z',
     revokedAt: null,
   },
@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
     }
 
     const validLevel: StaffAccessLevel = accessLevel === 'VIEW' ? 'VIEW' : 'MANAGE';
-    const grantedBy = callerEmail || 'ask@aapkaastro.com';
+    const grantedBy = callerEmail || process.env.OWNER_EMAIL || 'aapkaastro1606@gmail.com';
 
     // 1. Attempt Prisma creation
     try {

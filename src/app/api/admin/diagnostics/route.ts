@@ -1,22 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth as getClerkAuth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/config/env';
 import { extractAuthFromRequest, isSiteOwner, isDevSimulationAllowed } from '@/lib/auth/permissions';
 
 export const dynamic = 'force-dynamic';
 
+function maskEmail(email: string | null | undefined): string {
+  if (!email || !email.includes('@')) return '***';
+  const [local, domain] = email.split('@');
+  if (local.length <= 2) {
+    return `${local[0]}***@${domain}`;
+  }
+  return `${local[0]}***${local[local.length - 1]}@${domain}`;
+}
+
 /**
  * Owner-Only Diagnostics API: /api/admin/diagnostics
  * 
- * Reports deep infrastructure telemetry for the live platform:
- * - Database reachable & ping latency
- * - Applied Prisma migrations from _prisma_migrations
- * - Row counts for all core entities
- * - Clerk key mode (LIVE or TEST derived strictly from prefix)
- * - Timestamp of the last Clerk webhook received
- * - Boolean true/false status for required environment variables (NEVER secret values)
+ * Deep infrastructure telemetry and diagnostic verification:
+ * 1. Clerk runtime key mode (LIVE or TEST prefix) & secret key flags
+ * 2. Server-side auth() session recognition, cookie names (never values), and host (apex vs www)
+ * 3. Database reachability, currentUser DB row, last Clerk webhook, user count, and last 5 sign-ups (masked)
+ * 4. Required environment variables checklist, satellite variables check, and applied migrations count
+ * 5. Architectural mapping: data locations, owner assignment paths, script database targets
  * 
- * ACCESS: Restricted strictly to the Site Owner.
+ * ACCESS: Strictly restricted to the Site Owner.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -45,7 +54,44 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 1. Database Reachability & Ping
+    // 1. Host Info (Apex vs WWW vs Localhost)
+    const rawHost =
+      req.headers.get('x-forwarded-host') ||
+      req.headers.get('host') ||
+      req.nextUrl.host ||
+      '';
+    const hostClassification: 'apex' | 'www' | 'localhost' | 'other' =
+      rawHost.includes('www.')
+        ? 'www'
+        : rawHost.includes('localhost') || rawHost.includes('127.0.0.1')
+        ? 'localhost'
+        : rawHost.includes('viar.in')
+        ? 'apex'
+        : 'other';
+
+    // 2. Cookie Names Received (CRITICAL: names only, NEVER values)
+    const cookieNames = req.cookies.getAll().map((c) => c.name);
+
+    // 3. Server-side Clerk auth() check
+    let clerkSessionRecognized = false;
+    let clerkUserId: string | null = null;
+    let clerkSessionIdPrefix: string | null = null;
+
+    try {
+      const serverAuth = await getClerkAuth();
+      if (serverAuth && serverAuth.userId) {
+        clerkSessionRecognized = true;
+        clerkUserId = serverAuth.userId;
+        if (serverAuth.sessionId) {
+          clerkSessionIdPrefix = `${serverAuth.sessionId.substring(0, 8)}...`;
+        }
+      }
+    } catch {
+      // In case of missing credentials or local testing
+      clerkSessionRecognized = false;
+    }
+
+    // 4. Database Reachability & Ping
     let dbReachable = false;
     let dbLatencyMs: number | null = null;
     let dbError: string | null = null;
@@ -70,7 +116,7 @@ export async function GET(req: NextRequest) {
       dbError = err instanceof Error ? err.message.split('\n')[0] : 'Database unreachable';
     }
 
-    // 2. Applied Migrations
+    // 5. Applied Migrations
     let appliedMigrationsCount = 0;
     let migrationsList: Array<{ id: string; migration_name: string; finished_at: string }> = [];
     if (dbReachable) {
@@ -90,7 +136,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 3. Row Counts for Key Tables
+    // 6. Row Counts for Key Tables
     const tableCounts: Record<string, number> = {
       users: 0,
       courses: 0,
@@ -140,9 +186,80 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 4. Clerk Configuration & Mode (Never print secrets!)
+    // 7. Check if Current User has a Database Row
+    let currentUserInDb = false;
+    let currentUserSummary: { id: string; maskedEmail: string; role: string; isOwner: boolean } | null = null;
+
+    if (dbReachable) {
+      try {
+        let userRow = null;
+        if (clerkUserId) {
+          userRow = await prisma.user.findFirst({
+            where: { clerkId: clerkUserId },
+            select: { id: true, email: true, role: true, isOwner: true },
+          });
+        }
+        if (!userRow && auth.userEmail) {
+          userRow = await prisma.user.findFirst({
+            where: { email: auth.userEmail },
+            select: { id: true, email: true, role: true, isOwner: true },
+          });
+        }
+        if (userRow) {
+          currentUserInDb = true;
+          currentUserSummary = {
+            id: userRow.id,
+            maskedEmail: maskEmail(userRow.email),
+            role: userRow.role,
+            isOwner: userRow.isOwner,
+          };
+        }
+      } catch {
+        currentUserInDb = false;
+      }
+    }
+
+    // 8. Last 5 Sign-Ups (Email strictly masked)
+    let lastFiveSignups: Array<{
+      id: string;
+      maskedEmail: string;
+      name: string;
+      role: string;
+      isOwner: boolean;
+      createdAt: string;
+    }> = [];
+
+    if (dbReachable) {
+      try {
+        const recent = await prisma.user.findMany({
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            isOwner: true,
+            createdAt: true,
+          },
+        });
+        lastFiveSignups = recent.map((u) => ({
+          id: u.id,
+          maskedEmail: maskEmail(u.email),
+          name: u.name,
+          role: u.role,
+          isOwner: u.isOwner,
+          createdAt: u.createdAt.toISOString(),
+        }));
+      } catch {
+        lastFiveSignups = [];
+      }
+    }
+
+    // 9. Clerk Configuration & Mode (Never print secrets!)
     const pubKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || env.auth?.clerkPublishableKey || '';
     const secKey = process.env.CLERK_SECRET_KEY || env.auth?.clerkSecretKey || '';
+    const webhookSec = process.env.CLERK_WEBHOOK_SECRET || env.auth?.clerkWebhookSecret || '';
 
     const clerkPublishableMode = pubKey.startsWith('pk_live_')
       ? 'LIVE'
@@ -158,7 +275,7 @@ export async function GET(req: NextRequest) {
 
     const clerkKeyPrefix = pubKey.length > 8 ? `${pubKey.substring(0, 8)}...` : 'None';
 
-    // 5. Time of Last Clerk Webhook Received
+    // 10. Time of Last Clerk Webhook Received
     let lastClerkWebhookReceivedAt: string | null = null;
     if (dbReachable) {
       try {
@@ -187,7 +304,20 @@ export async function GET(req: NextRequest) {
         (globalThis as unknown as { __lastClerkWebhookTimestamp?: string }).__lastClerkWebhookTimestamp || null;
     }
 
-    // 6. True/False List of Required Environment Variables (CRITICAL: ZERO secrets leaked)
+    // 11. Satellite Variables Status (Verify zero satellite variables are active)
+    const satelliteVarNames = [
+      'NEXT_PUBLIC_CLERK_IS_SATELLITE',
+      'NEXT_PUBLIC_CLERK_DOMAIN',
+      'CLERK_DOMAIN',
+      'CLERK_IS_SATELLITE',
+    ];
+    const satelliteVariables = satelliteVarNames.map((name) => ({
+      name,
+      isConfigured: Boolean(process.env[name] && process.env[name]!.trim().length > 0),
+    }));
+    const anySatelliteConfigured = satelliteVariables.some((v) => v.isConfigured);
+
+    // 12. True/False List of Required Environment Variables (CRITICAL: ZERO secrets leaked)
     const requiredEnvVars = [
       { name: 'DATABASE_URL', category: 'Database', required: true, description: 'PostgreSQL connection string with connection pooler' },
       { name: 'DIRECT_URL', category: 'Database', required: true, description: 'Direct unpooled PostgreSQL connection string for Prisma migrations' },
@@ -195,7 +325,7 @@ export async function GET(req: NextRequest) {
       { name: 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY', category: 'Authentication', required: true, description: 'Public Clerk publishable key' },
       { name: 'CLERK_SECRET_KEY', category: 'Authentication', required: true, description: 'Server-side Clerk secret key' },
       { name: 'CLERK_WEBHOOK_SECRET', category: 'Authentication', required: true, description: 'Svix signature secret for Clerk webhook synchronization' },
-      { name: 'OWNER_EMAIL', category: 'Authorization', required: true, description: 'Site Owner email (ask@aapkaastro.com)' },
+      { name: 'OWNER_EMAIL', category: 'Authorization', required: true, description: 'Site Owner email (aapkaastro1606@gmail.com)' },
       { name: 'SUPERADMIN_EMAILS', category: 'Authorization', required: false, description: 'Optional auxiliary superadmin email addresses' },
       { name: 'REDIS_URL', category: 'Cache & Rate Limiting', required: false, description: 'Upstash / Redis server URL for rate limiting' },
       { name: 'RESEND_API_KEY', category: 'Transactional Email', required: false, description: 'Resend transactional email delivery API token' },
@@ -213,9 +343,62 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    // 13. Data Storage Matrix & Architecture Reporting
+    const dataStorageMatrix = [
+      { dataType: 'Users & Roles', sourceOfTruth: 'Neon PostgreSQL (Prisma User table)', browserStorage: 'None (server-rendered session)' },
+      { dataType: 'Courses, Modules & Lessons', sourceOfTruth: 'Neon PostgreSQL (Prisma Course/Module/Lesson)', browserStorage: 'Read-only CDN / ISR' },
+      { dataType: 'Orders & Payments', sourceOfTruth: 'Neon PostgreSQL (Prisma Order table)', browserStorage: 'None (server-locked amounts & QR)' },
+      { dataType: 'Enrollments', sourceOfTruth: 'Neon PostgreSQL (Prisma Enrollment table)', browserStorage: 'None (verified server-side)' },
+      { dataType: 'Staff Permissions', sourceOfTruth: 'Neon PostgreSQL (Prisma StaffPermission table)', browserStorage: 'None' },
+      { dataType: 'Clerk Webhook Logs', sourceOfTruth: 'Neon PostgreSQL (Prisma ClerkWebhookEvent table)', browserStorage: 'None' },
+      { dataType: 'Static Course Seed Fallback', sourceOfTruth: 'src/lib/data.ts', browserStorage: 'Static bundle (initial seed only)' },
+      { dataType: 'Dev Simulation Store', sourceOfTruth: 'src/lib/store.ts (ViarStore)', browserStorage: 'localStorage (dead-code stripped in production)' },
+    ];
+
+    const ownerAssignmentPaths = [
+      {
+        path: 'Environment Variable Anchoring (Strict Single Source of Truth)',
+        mechanism: 'process.env.OWNER_EMAIL === "aapkaastro1606@gmail.com"',
+        enforcement: 'isSiteOwner() in src/lib/auth/permissions.ts verifies verified user email matches OWNER_EMAIL',
+        hardcodedFallbacks: 'Zero. Zero fallback emails allowed. Non-matching emails always fail-closed.',
+      },
+      {
+        path: 'Clerk Webhook Ingestion',
+        mechanism: 'src/app/api/webhooks/clerk/route.ts checks user.email === OWNER_EMAIL on user.created and user.updated',
+        enforcement: 'Sets isOwner: true, role: "OWNER" in PostgreSQL User table exclusively when email matches OWNER_EMAIL',
+        hardcodedFallbacks: 'Zero.',
+      },
+    ];
+
+    const scriptDatabaseTargets = [
+      { script: 'scripts/audit-db.mjs', target: 'Neon PostgreSQL (DATABASE_URL)', purpose: 'Audits table counts and schema' },
+      { script: 'scripts/seed-database.ts', target: 'Neon PostgreSQL (DATABASE_URL)', purpose: 'Seeds course and 23 modules into Prisma DB' },
+      { script: 'scripts/seed-bilingual-content.mjs', target: 'Neon PostgreSQL (DATABASE_URL)', purpose: 'Seeds Hindi & English curriculum content' },
+      { script: 'scripts/e2e-proof-flow.mjs', target: 'Neon PostgreSQL (DATABASE_URL)', purpose: 'Executes end-to-end UPI order, claim, approval & enrollment' },
+      { script: 'scripts/test-diagnostics-health.mjs', target: 'Local Next.js server & Neon DB', purpose: 'Pings /api/health and /api/admin/diagnostics' },
+      { script: 'scripts/capture-all-proof-screenshots.mjs', target: 'Headless Chrome against Next.js app', purpose: 'Captures proof screenshots for audit' },
+    ];
+
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
+      host: {
+        raw: rawHost,
+        classification: hostClassification,
+      },
+      serverSession: {
+        recognized: clerkSessionRecognized,
+        userId: clerkUserId,
+        sessionIdPrefix: clerkSessionIdPrefix,
+      },
+      cookiesReceived: {
+        count: cookieNames.length,
+        names: cookieNames,
+      },
+      currentUserInDb: {
+        hasRow: currentUserInDb,
+        user: currentUserSummary,
+      },
       database: {
         reachable: dbReachable,
         latencyMs: dbLatencyMs,
@@ -227,14 +410,25 @@ export async function GET(req: NextRequest) {
         list: migrationsList,
       },
       tableCounts,
+      lastFiveSignups,
       clerk: {
         keyMode: clerkPublishableMode,
         secretKeyMode: clerkSecretMode,
         keyPrefix: clerkKeyPrefix,
-        webhookSecretConfigured: Boolean(process.env.CLERK_WEBHOOK_SECRET || env.auth?.clerkWebhookSecret),
+        secretKeyConfigured: Boolean(secKey && secKey.trim().length > 0),
+        webhookSecretConfigured: Boolean(webhookSec && webhookSec.trim().length > 0),
         lastWebhookReceivedAt: lastClerkWebhookReceivedAt,
       },
+      satellite: {
+        anyConfigured: anySatelliteConfigured,
+        variables: satelliteVariables,
+      },
       environmentVariables: envChecklist,
+      architectureAudit: {
+        dataStorageMatrix,
+        ownerAssignmentPaths,
+        scriptDatabaseTargets,
+      },
     });
   } catch (error: unknown) {
     return NextResponse.json(

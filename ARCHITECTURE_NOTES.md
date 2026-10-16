@@ -34,7 +34,7 @@ flowchart LR
 ### How an Account Becomes Owner
 1. The primary owner email is configured via the environment variable `OWNER_EMAIL`:
    ```bash
-   OWNER_EMAIL="ask@aapkaastro.com"
+   OWNER_EMAIL="aapkaastro1606@gmail.com"
    ```
 2. When a user registers or logs in via Clerk, application code checks their verified email against `OWNER_EMAIL`.
 3. If and only if the verified email matches, the account is automatically granted `isOwner: true` and `role: 'OWNER'`.
@@ -44,7 +44,7 @@ flowchart LR
 > [!WARNING]
 > Before going live in production, the client must verify that **`OWNER_EMAIL`** is set in the hosting environment (e.g., Vercel / Railway) to his real email address:
 > ```bash
-> OWNER_EMAIL=ask@aapkaastro.com
+> OWNER_EMAIL=aapkaastro1606@gmail.com
 > ```
 
 ---

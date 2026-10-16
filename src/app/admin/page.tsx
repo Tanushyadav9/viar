@@ -420,7 +420,7 @@ export default function AdminPortalPage() {
         user = {
           id: 'owner-acharya-niraj',
           name: 'Acharya Niraj Kumar',
-          email: 'ask@aapkaastro.com',
+          email: primaryOwnerEmail || 'aapkaastro1606@gmail.com',
           role: 'OWNER',
           isOwner: true,
           timezone: 'Asia/Kolkata',

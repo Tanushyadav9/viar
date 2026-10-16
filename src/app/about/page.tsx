@@ -173,11 +173,11 @@ export default function AboutPage() {
                   <span>+91 93112 15564</span>
                 </a>
                 <a
-                  href="mailto:ask@aapkaastro.com"
+                  href="mailto:aapkaastro1606@gmail.com"
                   className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-xs font-medium inline-flex items-center gap-1.5 hover:bg-white/10 transition"
                 >
                   <Mail className="w-3.5 h-3.5 text-amber-400" />
-                  <span>ask@aapkaastro.com</span>
+                  <span>aapkaastro1606@gmail.com</span>
                 </a>
               </div>
 

@@ -5,40 +5,21 @@ import { assignRoleForUser } from './permissions';
 
 /**
  * ============================================================================
- * CLERK MULTI-DOMAIN / SATELLITE SSO INTEGRATION ARCHITECTURE
+ * CLERK STANDALONE AUTHENTICATION ARCHITECTURE
  * ============================================================================
  * 
- * Final Confirmed Auth Decision:
- * - Clerk Email/Password + Google OAuth ONLY.
+ * Auth Decisions:
+ * - Clerk Email/Password + Google OAuth.
+ * - Viar.in uses its own standalone Clerk application with zero shared satellite login.
  * - Phone OTP has been dropped everywhere (zero SMS carrier costs, no DLT registration).
- * - Multi-domain / Satellite SSO configuration connects Viar.in and AapkaAstro.com
- *   into a single unified user pool.
  * 
- * Architecture Blueprint:
- * 1. In Clerk Dashboard (https://dashboard.clerk.com):
- *    - PRIMARY DOMAIN: `aapkaastro.com`
- *    - SATELLITE DOMAIN: `viar.in`
- * 
- * 2. Environment Variables (.env / Vercel):
- *    // TODO: SWITCH BACK TO LIVE CLERK KEYS ONCE viar.in DNS IS VERIFIED
- *    // Keys must be provided via environment variables (NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY & CLERK_SECRET_KEY).
- *    // Zero fallback default keys are hardcoded in application code.
- *    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_... (or pk_live_...)
- *    CLERK_SECRET_KEY=sk_test_... (or sk_live_...)
- *    NEXT_PUBLIC_CLERK_DOMAIN="viar.in"
- *    NEXT_PUBLIC_CLERK_IS_SATELLITE="true"
- *    NEXT_PUBLIC_CLERK_SIGN_IN_URL="https://aapkaastro.com/sign-in"
- * 
- * 3. Identity Model:
- *    User identity is anchored by unique `id` (Clerk User ID `usr_...`).
- *    Both `email` and `phone` are optional identity attributes, ensuring that if
- *    phone sign-in is ever enabled in the Clerk Dashboard in the future, it is a
- *    0-code-change toggle.
+ * Identity Model:
+ * User identity is anchored by unique `id` (Clerk User ID `user_...`).
  * ============================================================================
  */
 
 class DefaultAuthProvider implements AuthProvider {
-  readonly name = 'ClerkMultiDomainAuthProvider';
+  readonly name = 'ClerkStandaloneAuthProvider';
 
   async getCurrentUser(): Promise<AuthUser | null> {
     if (typeof window === 'undefined') return null;

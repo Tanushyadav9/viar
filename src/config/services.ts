@@ -30,7 +30,7 @@ export const SISTER_SERVICES: Record<'aapkaAstro' | 'dowConsulting', SisterServi
     badge: 'Sister Platform',
     logo: '/images/aapkaastro-logo.png',
     phone: '+91 93112 15564',
-    email: 'ask@aapkaastro.com',
+    email: 'aapkaastro1606@gmail.com',
     whatsappUrl: 'https://wa.me/919311215564',
   },
   dowConsulting: {
@@ -43,7 +43,7 @@ export const SISTER_SERVICES: Record<'aapkaAstro' | 'dowConsulting', SisterServi
     ctaText: 'Inquire for Corporate Advisory',
     badge: 'Enterprise Advisory',
     phone: '+91 93112 15564',
-    email: 'ask@aapkaastro.com',
+    email: 'aapkaastro1606@gmail.com',
     whatsappUrl: 'https://wa.me/919311215564?text=Hello%20Acharya%20ji,%20I%20am%20interested%20in%20Corporate%20Advisory%20consultation.',
   },
 };

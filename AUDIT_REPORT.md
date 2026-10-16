@@ -2,7 +2,7 @@
 **Project:** Vihangam Institute of Astrology and Research (`viar.in`)  
 **Audited Date & Time:** October 15, 2026 | Next.js 14.2.35 App Router  
 **Production Site:** [https://viar.in/](https://viar.in/)  
-**Primary Astrologer & Site Owner:** Acharya Niraj Kumar (`ask@aapkaastro.com` / +91 93112 15564)  
+**Primary Astrologer & Site Owner:** Acharya Niraj Kumar (`aapkaastro1606@gmail.com` / +91 93112 15564)  
 **Git Commit Hash:** `1545b42` (Pushed to `origin/main` & `myfork/main`)  
 
 ---
@@ -113,6 +113,40 @@ No pending migrations to apply.
 
 ---
 
+### 1.4 Authentication, Middleware & Architectural Audit
+
+#### 1.4.1 Standalone Clerk Configuration (Zero Satellite Domains)
+- **Standalone Instance:** Viar.in operates as an independent, standalone Clerk application. Clerk's free tier does not support satellite domains; all cross-site configurations (`NEXT_PUBLIC_CLERK_IS_SATELLITE`, `NEXT_PUBLIC_CLERK_DOMAIN`, cross-site `SIGN_IN_URL`) have been completely purged from `.env`, `.env.example`, `next.config.mjs`, and `src/config/env.ts`.
+- **Claim Removal:** All cross-site claims (such as "Single Sign-On across Viar.in, AapkaAstro & DOW Consulting") have been removed from login, signup, and modal dialogs.
+- **Diagnostics Verification:** The Owner Diagnostics endpoint explicitly checks that `NEXT_PUBLIC_CLERK_IS_SATELLITE`, `NEXT_PUBLIC_CLERK_DOMAIN`, `CLERK_DOMAIN`, and `CLERK_IS_SATELLITE` are absent (`isConfigured: false`).
+
+#### 1.4.2 Active Middleware Confirmation
+- **Convention:** In Next.js 14 with a `src/` directory, `src/middleware.ts` is the sole middleware entry point recognized and executed by Next.js on all matched routes. There is no root `middleware.ts`.
+- **Session Evaluation:** Middleware parses verified session claims, enforces fail-closed route protection for `/admin`, handles `/hi` bilingual rewrites, sets locale cookies, and applies strict security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`).
+
+#### 1.4.3 Owner Designation Mechanism (Strict Fail-Closed)
+- **Single Source of Truth:** Platform ownership is anchored exclusively to the environment variable:
+  ```bash
+  OWNER_EMAIL="aapkaastro1606@gmail.com"
+  ```
+- **Code Paths That Can Assign OWNER:**
+  1. **Runtime Authorization (`isSiteOwner` in `src/lib/auth/permissions.ts`):** Evaluates verified user email against `process.env.OWNER_EMAIL || env.auth.ownerEmail`. If and only if the email matches, owner permissions are granted.
+  2. **Clerk Webhook Synchronization (`/api/webhooks/clerk`):** On `user.created` and `user.updated`, compares user email with `OWNER_EMAIL` to set `isOwner: true` and `role: 'OWNER'` in PostgreSQL.
+- **Zero Hardcoded Fallbacks:** Legacy emails (`ask@aapkaastro.com`, `admin@viar.in`, `niraj@aapkaastro.com`) have been completely purged from application code, seeds, and documentation as owners or admins. Tests assert that these addresses are rejected.
+
+#### 1.4.4 Scripts Database Targets
+All automation and audit scripts target the Neon PostgreSQL database via `process.env.DATABASE_URL`:
+| Script | Target Database | Purpose |
+| :--- | :--- | :--- |
+| `scripts/audit-db.mjs` | Neon PostgreSQL (`DATABASE_URL`) | Inspects table counts, migration history, and entity integrity. |
+| `scripts/seed-database.ts` | Neon PostgreSQL (`DATABASE_URL`) | Seeds course, modules, lessons, and initial cohort from `data.ts`. |
+| `scripts/seed-bilingual-content.mjs` | Neon PostgreSQL (`DATABASE_URL`) | Seeds Devanagari Hindi and English content across curriculum tables. |
+| `scripts/e2e-proof-flow.mjs` | Neon PostgreSQL (`DATABASE_URL`) | Runs end-to-end UPI order creation, payment claim, Owner approval, and enrollment. |
+| `scripts/test-diagnostics-health.mjs` | Neon PostgreSQL (`DATABASE_URL`) | Pings `/api/health` and verifies diagnostics telemetry logic. |
+| `scripts/capture-all-proof-screenshots.mjs` | Local Next.js Server & Chrome | Renders and captures proof screenshots for the visual audit gallery. |
+
+---
+
 ## 2. Complete Purge of Razorpay and Stripe
 
 All third-party payment gateway code, dependencies, and mentions have been permanently expunged:
@@ -215,7 +249,7 @@ The Owner checks the mandatory checklist: *"I have confirmed this amount is cred
   "id": "cmv9tkrq600025qmsym40kk6a",
   "status": "APPROVED",
   "bankConfirmed": true,
-  "reviewedBy": "ask@aapkaastro.com",
+  "reviewedBy": "aapkaastro1606@gmail.com",
   "reviewedAt": "2026-10-15T17:35:47.101Z",
   "enrollmentId": "cmv9tl17u00065qmsd8sozhoi"
 }

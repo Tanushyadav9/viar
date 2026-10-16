@@ -378,7 +378,7 @@ export const ViarStore = {
         userId: 'user-staff-content',
         section: 'courses',
         accessLevel: 'MANAGE',
-        grantedByUserId: 'ask@aapkaastro.com',
+        grantedByUserId: 'aapkaastro1606@gmail.com',
         grantedAt: '2026-09-20T10:00:00.000Z',
         revokedAt: null,
       },
@@ -387,7 +387,7 @@ export const ViarStore = {
         userId: 'user-staff-content',
         section: 'quizzes',
         accessLevel: 'MANAGE',
-        grantedByUserId: 'ask@aapkaastro.com',
+        grantedByUserId: 'aapkaastro1606@gmail.com',
         grantedAt: '2026-09-20T10:00:00.000Z',
         revokedAt: null,
       },
@@ -411,7 +411,7 @@ export const ViarStore = {
     userId: string,
     sections: (AdminSection | string)[],
     accessLevel: StaffAccessLevel = 'MANAGE',
-    grantedByUserId: string = 'ask@aapkaastro.com'
+    grantedByUserId: string = 'aapkaastro1606@gmail.com'
   ): void {
     const allPerms = this.getStaffPermissions();
     const nowIso = new Date().toISOString();
@@ -517,7 +517,7 @@ export const ViarStore = {
       newId,
       validNormalized,
       params.accessLevel || 'MANAGE',
-      params.grantedByUserId || 'ask@aapkaastro.com'
+      params.grantedByUserId || 'aapkaastro1606@gmail.com'
     );
 
     return newUser;

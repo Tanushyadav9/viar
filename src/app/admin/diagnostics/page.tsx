@@ -20,8 +20,9 @@ import {
   FileCheck,
   AlertTriangle,
   Lock,
-  Sparkles,
   ArrowLeft,
+  Globe,
+  UserCheck,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { isSiteOwner } from '@/lib/auth/permissions';
@@ -30,6 +31,28 @@ import { User } from '@/lib/types';
 interface DiagnosticsData {
   success: boolean;
   timestamp: string;
+  host: {
+    raw: string;
+    classification: 'apex' | 'www' | 'localhost' | 'other';
+  };
+  serverSession: {
+    recognized: boolean;
+    userId: string | null;
+    sessionIdPrefix: string | null;
+  };
+  cookiesReceived: {
+    count: number;
+    names: string[];
+  };
+  currentUserInDb: {
+    hasRow: boolean;
+    user: {
+      id: string;
+      maskedEmail: string;
+      role: string;
+      isOwner: boolean;
+    } | null;
+  };
   database: {
     reachable: boolean;
     latencyMs: number | null;
@@ -57,12 +80,25 @@ interface DiagnosticsData {
     activityLogs: number;
     clerkWebhookEvents?: number;
   };
+  lastFiveSignups: Array<{
+    id: string;
+    maskedEmail: string;
+    name: string;
+    role: string;
+    isOwner: boolean;
+    createdAt: string;
+  }>;
   clerk: {
     keyMode: 'LIVE' | 'TEST' | 'NOT_CONFIGURED';
     secretKeyMode: 'LIVE' | 'TEST' | 'NOT_CONFIGURED';
     keyPrefix: string;
+    secretKeyConfigured: boolean;
     webhookSecretConfigured: boolean;
     lastWebhookReceivedAt: string | null;
+  };
+  satellite: {
+    anyConfigured: boolean;
+    variables: Array<{ name: string; isConfigured: boolean }>;
   };
   environmentVariables: Array<{
     name: string;
@@ -71,6 +107,11 @@ interface DiagnosticsData {
     description: string;
     present: boolean;
   }>;
+  architectureAudit?: {
+    dataStorageMatrix: Array<{ dataType: string; sourceOfTruth: string; browserStorage: string }>;
+    ownerAssignmentPaths: Array<{ path: string; mechanism: string; enforcement: string; hardcodedFallbacks: string }>;
+    scriptDatabaseTargets: Array<{ script: string; target: string; purpose: string }>;
+  };
 }
 
 export default function AdminDiagnosticsPage() {
@@ -98,12 +139,9 @@ export default function AdminDiagnosticsPage() {
         throw new Error(`Diagnostics API responded with status ${res.status}`);
       }
       const json: DiagnosticsData = await res.json();
-      if (!json.success) {
-        throw new Error('Diagnostics endpoint returned unsuccessful status');
-      }
       setData(json);
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to load diagnostics');
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to load telemetry.');
     } finally {
       setLoading(false);
     }
@@ -117,7 +155,7 @@ export default function AdminDiagnosticsPage() {
         user = {
           id: 'owner-acharya-niraj',
           name: 'Acharya Niraj Kumar',
-          email: 'ask@aapkaastro.com',
+          email: 'aapkaastro1606@gmail.com',
           role: 'OWNER',
           isOwner: true,
           timezone: 'Asia/Kolkata',
@@ -138,119 +176,113 @@ export default function AdminDiagnosticsPage() {
       const elapsed = Math.round(performance.now() - startTime);
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.status === 'ok') {
-        setHealthPingStatus(`200 OK (${elapsed}ms) — Database ping succeeded`);
+        setHealthPingStatus(`200 OK — Database Ping Passed (${elapsed}ms)`);
       } else {
-        setHealthPingStatus(`${res.status} Error (${elapsed}ms) — Health check failed`);
+        setHealthPingStatus(`${res.status} Error — Database Unreachable (${elapsed}ms)`);
       }
     } catch (err: unknown) {
-      setHealthPingStatus(`Fetch failed: ${err instanceof Error ? err.message : 'Network error'}`);
+      setHealthPingStatus(`Fetch Failed: ${err instanceof Error ? err.message : 'Network Error'}`);
     } finally {
       setHealthPingLoading(false);
     }
   };
 
-  const isOwner = isSiteOwner(currentUser);
+  const isOwner = currentUser?.isOwner || (currentUser?.email && isSiteOwner(currentUser.email));
+
+  if (!loading && !isOwner && errorMsg) {
+    return (
+      <div className="cosmic-bg min-h-screen py-24 px-4 flex items-center justify-center">
+        <div className="max-w-md w-full cosmic-card p-8 rounded-3xl border border-red-500/30 text-center">
+          <Lock className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h1 className="text-xl font-bold text-white mb-2">Restricted Section</h1>
+          <p className="text-xs text-slate-400 mb-6">{errorMsg}</p>
+          <Link
+            href="/admin"
+            className="gold-button inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Return to Admin Console</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="cosmic-bg min-h-screen py-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Navigation Breadcrumb */}
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/admin"
-              className="text-xs font-semibold text-slate-400 hover:text-amber-400 flex items-center gap-1.5 transition"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Admin Studio</span>
-            </Link>
-            <span className="text-slate-600">/</span>
-            <span className="text-xs font-semibold text-amber-300">System Diagnostics</span>
-          </div>
+    <div className="cosmic-bg min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-8">
 
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-400" />
-              Site Owner Only
-            </span>
-            <span className="text-xs font-mono text-slate-400">
-              {currentUser?.email || (isOwner ? 'Verified Site Owner' : 'Authorized Owner')}
-            </span>
-          </div>
-        </div>
-
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        {/* Top Header & Breadcrumb */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/10">
           <div>
-            <h1 className="text-3xl font-black text-white flex items-center gap-3">
-              <Activity className="w-8 h-8 text-amber-400" />
-              <span>Live Infrastructure Diagnostics</span>
+            <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
+              <Link href="/admin" className="hover:text-amber-400 transition">Admin Console</Link>
+              <span>/</span>
+              <span className="text-amber-400">System Diagnostics</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
+              <Activity className="w-7 h-7 text-amber-400 animate-pulse" />
+              <span>Infrastructure Diagnostics & Telemetry</span>
             </h1>
-            <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-              Real-time telemetry probing PostgreSQL connectivity, applied migrations, database table row counts,
-              Clerk authentication mode, and environment variable completeness.
+            <p className="text-xs text-slate-400 mt-1">
+              Live telemetry: Clerk key modes, server sessions, Neon PostgreSQL connectivity, and applied migrations.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={handlePingHealthEndpoint}
               disabled={healthPingLoading}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 transition flex items-center gap-2"
+              className="px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold text-slate-200 transition flex items-center gap-1.5"
             >
-              <Server className="w-4 h-4 text-emerald-400" />
-              <span>{healthPingLoading ? 'Pinging...' : 'Test Public /api/health'}</span>
+              <Server className="w-3.5 h-3.5 text-blue-400" />
+              <span>{healthPingLoading ? 'Pinging /api/health...' : 'Test /api/health'}</span>
             </button>
 
             <button
               onClick={fetchDiagnostics}
               disabled={loading}
-              className="gold-button px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-amber-500/20"
+              className="gold-button px-4 py-2 rounded-xl text-xs font-bold shadow-lg transition flex items-center gap-2"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>{loading ? 'Refreshing...' : 'Refresh Telemetry'}</span>
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh Telemetry</span>
             </button>
           </div>
         </div>
 
-        {/* Public Health Ping Status Banner */}
+        {/* Health Ping Feedback Banner */}
         {healthPingStatus && (
-          <div
-            className={`mb-6 p-4 rounded-2xl border flex items-center justify-between text-xs font-mono ${
-              healthPingStatus.includes('200 OK')
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                : 'bg-red-500/10 border-red-500/30 text-red-300'
-            }`}
-          >
+          <div className={`p-4 rounded-2xl border text-xs font-mono flex items-center justify-between ${
+            healthPingStatus.includes('200 OK')
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+              : 'bg-red-500/10 border-red-500/30 text-red-300'
+          }`}>
             <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4" />
-              <span>
-                <strong>GET /api/health Result:</strong> {healthPingStatus}
-              </span>
+              <Activity className="w-4 h-4 shrink-0" />
+              <span><strong>Health Endpoint Probe:</strong> {healthPingStatus}</span>
             </div>
             <button
               onClick={() => setHealthPingStatus(null)}
               className="text-slate-400 hover:text-white"
             >
-              Dismiss
+              ×
             </button>
           </div>
         )}
 
         {/* Error Notification */}
         {errorMsg && (
-          <div className="mb-8 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
             <div>
-              <p className="text-sm font-bold text-red-300">Diagnostic Check Notice</p>
-              <p className="text-xs text-red-400 mt-1">{errorMsg}</p>
+              <p className="font-semibold">Diagnostic Error Encountered</p>
+              <p className="text-slate-400 text-[11px] mt-0.5">{errorMsg}</p>
             </div>
           </div>
         )}
 
-        {/* Four Top Status Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Key Metrics / Status Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           
           {/* Card 1: Database Reachable */}
           <div className="cosmic-card p-5 rounded-2xl border border-white/10">
@@ -278,7 +310,7 @@ export default function AdminDiagnosticsPage() {
                   <span className="text-lg font-black text-red-400">Disconnected</span>
                 </div>
                 <p className="text-[11px] text-red-400/80 truncate mt-1">
-                  {data?.database?.error || 'No database URL or unmigrated'}
+                  {data?.database?.error || 'Database unreachable'}
                 </p>
               </div>
             )}
@@ -300,7 +332,7 @@ export default function AdminDiagnosticsPage() {
                   </span>
                   <span className="text-xs text-slate-400">applied</span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-slate-400 mt-1 truncate">
                   {(data?.migrations?.appliedCount ?? 0) > 0
                     ? `Latest: ${data?.migrations?.list[0]?.migration_name || '0_init'}`
                     : 'Pending prisma migrate deploy'}
@@ -374,8 +406,112 @@ export default function AdminDiagnosticsPage() {
 
         </div>
 
-        {/* Section 1: Database Table Row Counts */}
-        <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10 mb-8">
+        {/* Deep Server-Side Telemetry Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          {/* Telemetry 1: Server-Side Auth Session */}
+          <div className="cosmic-card p-5 rounded-2xl border border-white/10">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-slate-400">Server-Side auth() Session</span>
+              <ShieldCheck className={`w-5 h-5 ${data?.serverSession?.recognized ? 'text-emerald-400' : 'text-amber-400'}`} />
+            </div>
+            {loading ? (
+              <div className="h-8 bg-white/5 animate-pulse rounded" />
+            ) : (
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Session Recognized:</span>
+                  <span className={`font-bold ${data?.serverSession?.recognized ? 'text-emerald-300' : 'text-slate-400'}`}>
+                    {data?.serverSession?.recognized ? 'Yes (Active)' : 'No (Anonymous / SSR)'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between font-mono">
+                  <span className="text-slate-400">User ID:</span>
+                  <span className="text-slate-200 text-[11px] truncate max-w-[140px]">
+                    {data?.serverSession?.userId || 'None'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between font-mono">
+                  <span className="text-slate-400">Session ID Prefix:</span>
+                  <span className="text-slate-400 text-[11px]">
+                    {data?.serverSession?.sessionIdPrefix || 'None'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Telemetry 2: Host & Cookies Received */}
+          <div className="cosmic-card p-5 rounded-2xl border border-white/10">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-slate-400">Host & Cookies Received</span>
+              <Globe className="w-5 h-5 text-indigo-400" />
+            </div>
+            {loading ? (
+              <div className="h-8 bg-white/5 animate-pulse rounded" />
+            ) : (
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Host Classification:</span>
+                  <span className="font-bold text-amber-300 uppercase font-mono">
+                    {data?.host?.classification || 'Unknown'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between font-mono text-[11px]">
+                  <span className="text-slate-400">Raw Host:</span>
+                  <span className="text-slate-200 truncate max-w-[150px]">
+                    {data?.host?.raw || '—'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Cookie Names Received:</span>
+                  <span className="text-slate-300 font-mono">
+                    {data?.cookiesReceived?.count ?? 0} headers
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-500 truncate font-mono">
+                  {data?.cookiesReceived?.names?.join(', ') || 'No cookies'}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Telemetry 3: Current User DB Row & Satellite Security */}
+          <div className="cosmic-card p-5 rounded-2xl border border-white/10">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-slate-400">Current User & Satellite Status</span>
+              <UserCheck className={`w-5 h-5 ${data?.currentUserInDb?.hasRow ? 'text-emerald-400' : 'text-slate-400'}`} />
+            </div>
+            {loading ? (
+              <div className="h-8 bg-white/5 animate-pulse rounded" />
+            ) : (
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Database Row Present:</span>
+                  <span className={`font-bold ${data?.currentUserInDb?.hasRow ? 'text-emerald-300' : 'text-amber-400'}`}>
+                    {data?.currentUserInDb?.hasRow ? 'Yes (Synchronized)' : 'Pending Webhook / Inactive'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Masked Email:</span>
+                  <span className="font-mono text-slate-200 text-[11px]">
+                    {data?.currentUserInDb?.user?.maskedEmail || 'N/A'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Satellite Domain Config:</span>
+                  <span className={`font-bold ${data?.satellite?.anyConfigured ? 'text-red-400' : 'text-emerald-300'}`}>
+                    {data?.satellite?.anyConfigured ? '⚠️ Satellite Active' : 'Standalone (Zero Shared)'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* Section 1: Database Entity Row Counts */}
+        <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6 pb-4 border-b border-white/10">
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -383,11 +519,11 @@ export default function AdminDiagnosticsPage() {
                 <span>PostgreSQL / Neon Entity Row Counts</span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Physical rows currently persisted in database tables. Anything at 0 indicates missing synchronization or local-only storage.
+                Physical rows currently persisted in database tables.
               </p>
             </div>
             <span className="text-xs font-mono text-slate-400">
-              Queried at: {data?.timestamp ? new Date(data.timestamp).toLocaleTimeString() : '—'}
+              Total Users: {data?.tableCounts?.users ?? 0}
             </span>
           </div>
 
@@ -398,60 +534,205 @@ export default function AdminDiagnosticsPage() {
               { label: 'Modules', count: data?.tableCounts?.modules ?? 0, icon: Layers, key: 'modules' },
               { label: 'Lessons', count: data?.tableCounts?.lessons ?? 0, icon: BookOpen, key: 'lessons' },
               { label: 'Cohorts', count: data?.tableCounts?.cohorts ?? 0, icon: Users, key: 'cohorts' },
-              { label: 'Class Sessions', count: data?.tableCounts?.classSessions ?? 0, icon: Clock, key: 'classSessions' },
-              { label: 'Enrollments', count: data?.tableCounts?.enrollments ?? 0, icon: CheckCircle2, key: 'enrollments' },
-              { label: 'Progress Logs', count: data?.tableCounts?.sessionProgress ?? 0, icon: Activity, key: 'sessionProgress' },
+              { label: 'Classes', count: data?.tableCounts?.classSessions ?? 0, icon: Clock, key: 'classSessions' },
+              { label: 'Enrollments', count: data?.tableCounts?.enrollments ?? 0, icon: Award, key: 'enrollments' },
+              { label: 'Progress', count: data?.tableCounts?.sessionProgress ?? 0, icon: Activity, key: 'sessionProgress' },
               { label: 'Quizzes', count: data?.tableCounts?.quizzes ?? 0, icon: FileCheck, key: 'quizzes' },
-              { label: 'Quiz Attempts', count: data?.tableCounts?.quizAttempts ?? 0, icon: FileCheck, key: 'quizAttempts' },
+              { label: 'Attempts', count: data?.tableCounts?.quizAttempts ?? 0, icon: FileCheck, key: 'quizAttempts' },
               { label: 'Certificates', count: data?.tableCounts?.certificates ?? 0, icon: Award, key: 'certificates' },
-              { label: 'Payments', count: data?.tableCounts?.payments ?? 0, icon: CreditCard, key: 'payments' },
+              { label: 'Orders', count: data?.tableCounts?.payments ?? 0, icon: CreditCard, key: 'payments' },
               { label: 'Staff Perms', count: data?.tableCounts?.staffPermissions ?? 0, icon: ShieldCheck, key: 'staffPermissions' },
-              { label: 'Activity Logs', count: data?.tableCounts?.activityLogs ?? 0, icon: Activity, key: 'activityLogs' },
-              { label: 'Webhook Logs', count: data?.tableCounts?.clerkWebhookEvents ?? 0, icon: Activity, key: 'clerkWebhookEvents' },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.key}
-                  className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 hover:border-amber-500/20 transition flex flex-col justify-between"
-                >
-                  <div className="flex items-center justify-between text-slate-400 mb-2">
-                    <span className="text-[11px] font-semibold truncate">{item.label}</span>
-                    <Icon className="w-3.5 h-3.5 text-slate-500" />
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className={`text-xl font-black ${item.count > 0 ? 'text-white' : 'text-slate-500'}`}>
-                      {item.count}
-                    </span>
-                    <span className="text-[10px] text-slate-500">rows</span>
-                  </div>
+              { label: 'Clerk Events', count: data?.tableCounts?.clerkWebhookEvents ?? 0, icon: Clock, key: 'clerkWebhookEvents' },
+            ].map((item) => (
+              <div
+                key={item.key}
+                className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-amber-500/30 transition text-center"
+              >
+                <item.icon className="w-4 h-4 text-amber-400/80 mx-auto mb-1.5" />
+                <div className="text-xl font-black text-white">{item.count}</div>
+                <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mt-0.5 truncate">
+                  {item.label}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Section 2: Environment Variables Presence Audit */}
-        <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10 mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6 pb-4 border-b border-white/10">
+        {/* Section 2: Last 5 Sign-Ups (Masked) */}
+        <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10">
+          <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Lock className="w-5 h-5 text-emerald-400" />
-                <span>Environment Variables Security Checklist</span>
+                <Users className="w-5 h-5 text-amber-400" />
+                <span>Last 5 Registered Users (Telemetry)</span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Verification of required production environment variables.
-                <strong className="text-amber-300 ml-1">
-                  Secret values and database credentials are NEVER displayed.
-                </strong>
+                Emails are strictly masked to preserve confidentiality (e.g. <code>a***6@gmail.com</code>).
               </p>
             </div>
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />
-              <span>Present</span>
-              <span className="inline-block w-2 h-2 rounded-full bg-red-400 ml-2" />
-              <span>Missing</span>
+            <span className="text-xs font-mono text-slate-400">
+              Recent Sign-ups
+            </span>
+          </div>
+
+          {(data?.lastFiveSignups || []).length === 0 ? (
+            <div className="p-8 text-center bg-white/[0.02] rounded-2xl border border-white/5">
+              <Users className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+              <p className="text-xs text-slate-400">No registered users in the database yet.</p>
             </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-white/10 text-slate-400 uppercase text-[10px] tracking-wider">
+                    <th className="py-2.5 px-3">Masked Email</th>
+                    <th className="py-2.5 px-3">Name</th>
+                    <th className="py-2.5 px-3">Role</th>
+                    <th className="py-2.5 px-3">Owner Status</th>
+                    <th className="py-2.5 px-3">Registered At</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 font-mono">
+                  {data?.lastFiveSignups.map((u) => (
+                    <tr key={u.id} className="hover:bg-white/[0.02]">
+                      <td className="py-2.5 px-3 font-bold text-amber-300">{u.maskedEmail}</td>
+                      <td className="py-2.5 px-3 text-slate-300">{u.name}</td>
+                      <td className="py-2.5 px-3">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 text-slate-300">
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3">
+                        {u.isOwner ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            Site Owner
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 text-[10px]">No</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-400">
+                        {new Date(u.createdAt).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Section 3: Satellite Configuration Security Check */}
+        <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10">
+          <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <span>Satellite Domain Audit (Strict Isolation)</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Viar.in uses its own standalone Clerk application. All cross-site satellite variables must be absent.
+              </p>
+            </div>
+            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+              data?.satellite?.anyConfigured
+                ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+            }`}>
+              {data?.satellite?.anyConfigured ? '⚠️ Satellite Config Detected' : '✓ 100% Standalone Clerk'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            {(data?.satellite?.variables || []).map((v) => (
+              <div key={v.name} className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-mono text-slate-300 block">{v.name}</span>
+                  <span className="text-[10px] text-slate-500">Should be absent</span>
+                </div>
+                {v.isConfigured ? (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-400">Set</span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400">Absent</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Section 4: Architecture & Data Storage Matrix */}
+        {data?.architectureAudit && (
+          <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10">
+            <div className="mb-4 pb-4 border-b border-white/10">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Layers className="w-5 h-5 text-amber-400" />
+                <span>Architecture & Data Storage Single Source of Truth</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Audit reporting on where each data type lives, how OWNER is assigned, and which DB each script targets.
+              </p>
+            </div>
+
+            <div className="overflow-x-auto mb-6">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-white/10 text-slate-400 uppercase text-[10px] tracking-wider">
+                    <th className="py-2.5 px-3">Data Type</th>
+                    <th className="py-2.5 px-3">Primary Source of Truth</th>
+                    <th className="py-2.5 px-3">Browser / Edge Storage</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 font-mono">
+                  {data.architectureAudit.dataStorageMatrix.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-white/[0.02]">
+                      <td className="py-2.5 px-3 font-bold text-slate-200">{item.dataType}</td>
+                      <td className="py-2.5 px-3 text-amber-300">{item.sourceOfTruth}</td>
+                      <td className="py-2.5 px-3 text-slate-400">{item.browserStorage}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h3 className="text-sm font-bold text-white mb-2">Owner-Assignment Code Paths</h3>
+            <div className="space-y-2 mb-6">
+              {data.architectureAudit.ownerAssignmentPaths.map((p, idx) => (
+                <div key={idx} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 text-xs">
+                  <strong className="text-amber-300 block">{p.path}</strong>
+                  <p className="text-slate-300 text-[11px] mt-0.5 font-mono">{p.mechanism}</p>
+                  <p className="text-slate-400 text-[10px] mt-0.5">{p.enforcement}</p>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="text-sm font-bold text-white mb-2">Scripts Database Targets</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {data.architectureAudit.scriptDatabaseTargets.map((s, idx) => (
+                <div key={idx} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 text-xs">
+                  <code className="text-amber-300 font-bold block">{s.script}</code>
+                  <span className="text-[10px] text-emerald-400 block font-mono">{s.target}</span>
+                  <p className="text-slate-400 text-[10px] mt-1">{s.purpose}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Section 5: Required Environment Variables */}
+        <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10">
+          <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Key className="w-5 h-5 text-amber-400" />
+                <span>Required Environment Variables Checklist</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Validates presence of secrets on the active runtime environment. Secret values are never exposed.
+              </p>
+            </div>
+            <span className="text-xs font-mono text-slate-400">
+              {data?.environmentVariables?.filter((v) => v.present).length} / {data?.environmentVariables?.length} present
+            </span>
           </div>
 
           <div className="overflow-x-auto">
@@ -467,16 +748,16 @@ export default function AdminDiagnosticsPage() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {(data?.environmentVariables || []).map((envVar) => (
-                  <tr key={envVar.name} className="hover:bg-white/[0.02] transition">
+                  <tr key={envVar.name} className="hover:bg-white/[0.02]">
                     <td className="py-3 px-3">
                       {envVar.present ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Present</span>
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
+                          <CheckCircle2 className="w-4 h-4 shrink-0" />
+                          <span>Configured</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                          <XCircle className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-400">
+                          <XCircle className="w-4 h-4 shrink-0" />
                           <span>Missing</span>
                         </span>
                       )}
@@ -504,7 +785,7 @@ export default function AdminDiagnosticsPage() {
           </div>
         </div>
 
-        {/* Section 3: Applied Migrations Log */}
+        {/* Section 6: Applied Migrations Log */}
         <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10">
           <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
             <div>

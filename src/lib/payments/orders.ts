@@ -379,7 +379,7 @@ export async function claimOrderPayment(params: {
   } catch {}
 
   // 2. Email the Owner when student clicks "I have paid"
-  const ownerEmail = process.env.OWNER_EMAIL || 'ask@aapkaastro.com';
+  const ownerEmail = process.env.OWNER_EMAIL || 'aapkaastro1606@gmail.com';
   try {
     await emailService.sendPaymentClaimed({
       ownerEmail,

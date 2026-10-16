@@ -142,7 +142,7 @@ describe('Webhook & Payment Verification Logic', () => {
       assert.strictEqual(studentRoleInfo.isOwner, false);
 
       // Test owner user creation mapping (only recognized when OWNER_EMAIL is set)
-      const ownerEmail = 'ask@aapkaastro.com';
+      const ownerEmail = 'aapkaastro1606@gmail.com';
       const origOwner = process.env.OWNER_EMAIL;
       try {
         process.env.OWNER_EMAIL = ownerEmail;

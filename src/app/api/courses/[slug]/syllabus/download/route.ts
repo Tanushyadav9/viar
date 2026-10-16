@@ -289,7 +289,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   </p>
 
   <div class="footer">
-    <div>Vihangam Institute of Astrology and Research (VIAR) • ask@aapkaastro.com • WhatsApp: +91 93112 15564</div>
+    <div>Vihangam Institute of Astrology and Research (VIAR) • aapkaastro1606@gmail.com • WhatsApp: +91 93112 15564</div>
     <div>Official Syllabus Document • https://viar.in/courses/${course.slug}</div>
   </div>
 
