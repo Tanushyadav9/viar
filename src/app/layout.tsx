@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { LanguageProvider } from '@/components/LanguageContext';
 import WelcomeCohortModal from '@/components/WelcomeCohortModal';
+import FloatingAIAssistant from '@/components/FloatingAIAssistant';
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -138,6 +139,7 @@ export default function RootLayout({
                 <main className="flex-grow">{children}</main>
                 <Footer />
                 <WelcomeCohortModal />
+                <FloatingAIAssistant />
               </LanguageProvider>
             </ThemeProvider>
           </ClerkProvider>
@@ -151,6 +153,7 @@ export default function RootLayout({
               <main className="flex-grow">{children}</main>
               <Footer />
               <WelcomeCohortModal />
+              <FloatingAIAssistant />
             </LanguageProvider>
           </ThemeProvider>
         )}

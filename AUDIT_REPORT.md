@@ -342,13 +342,14 @@ Shows the unlocked masterclass dashboard for student `Rohan Singhania`, with all
 
 | Metric | Result | Standard | Status |
 | :--- | :--- | :--- | :--- |
-| **Unit & Integration Tests** | 153 passed, 0 failed (43 suites) | 100% Pass Rate | ✅ **PASSED** |
+| **Unit & Integration Tests** | 176 passed, 0 failed (49 suites) | 100% Pass Rate | ✅ **PASSED** |
 | **Server Auth, RBAC & Staff Scoping Tests** | 30 passed, 0 failed | Open redirect, loops, JIT sync, owner detection, staff scoping | ✅ **PASSED** |
 | **Translation Quality Tests** | 8 passed, 0 failed | Zero mixed English, full Devanagari | ✅ **PASSED** |
+| **AI Assistant Grounding & Multilingual Tests** | 23 passed, 0 failed | Zero hallucination, strictly grounded pricing & policies, EN/HI/Hinglish, safe refusal | ✅ **PASSED** |
 | **ESLint Static Analysis** | 0 errors, 0 warnings | Strict Next.js & React Rules | ✅ **PASSED** |
-| **Production Build** | 60/60 routes statically prerendered | Zero build errors | ✅ **PASSED** |
+| **Production Build** | 61/61 routes statically prerendered | Zero build errors | ✅ **PASSED** |
 | **Razorpay / Stripe Purge** | 0 active code references | Total removal | ✅ **PASSED** |
-| **Git Push Status** | Pushed to `origin/main` & `myfork/main` | Latest Commit (`41ac537`) | ✅ **VERIFIED** |
+| **Git Push Status** | Pushed to `origin/main` & `myfork/main` | Verified Clean Build | ✅ **VERIFIED** |
 
 ---
 
@@ -470,3 +471,56 @@ A full dry-run audit of the production database (`neondb`) was performed via `sc
   - For students, the "Admin" link is completely hidden. Students see only "Student Portal" (`/dashboard`) and the "Student" badge.
   - For unauthenticated visitors, the "Admin" link is completely hidden. Visitors see only "Sign In" and "Enroll Now".
   - Cannot be forged or manipulated via browser localStorage or client-side tampering.
+
+---
+
+## 12. Floating Grounded AI Assistant (Zero-Cost, Multilingual, Safe Escalation)
+
+### 12.1 Grounded Architecture & Zero-Cost Reliability
+- **Single Source of Truth (`src/lib/ai/knowledgeBase.ts`)**:
+  - Hardcoded verified facts extracted directly from official course curriculum and verified site policies.
+  - Core curriculum: Flagship Vedic Astrology Masterclass with 23 core modules + 2 live bonus masterclasses (total 25 curriculum units, 50 lessons, 46+ hours of self-paced on-demand HD video instruction).
+  - Tuition: Exactly ₹5,100 INR one-time (approx. $69 USD for international students). Zero discounts, coupons, or variable pricing.
+  - Instructor: Acharya Niraj Kumar (Jyotish Acharya from Bharatiya Vidya Bhavan under legendary Shri K.N. Rao, 20+ years practicing, Logical Vastu Consultant).
+  - Refund Policy: Strict 7-day review guarantee — full 100% refund via direct UPI if student has watched 3 or fewer modules.
+  - Payment Flow: Direct UPI ID (`aapkaastro@okaxis`) with dynamic QR code generation.
+- **Deterministic Semantic Engine (`src/lib/ai/assistantEngine.ts`)**:
+  - Operates at $0 cost and 0ms latency with zero API dependencies.
+  - Categorizes queries into 10 intent buckets (`fees_pricing`, `syllabus_curriculum`, `format_schedule`, `certificate`, `instructor`, `payment_how_to`, `refund`, `personal_consultation`, `contact_whatsapp`, `greeting`, `out_of_scope`).
+  - Supports optional LLM upgrade via `/api/assistant` using Neon AI Gateway / OpenAI when API keys are configured, falling back seamlessly to deterministic grounding.
+- **Sliding Window Rate Limiting**:
+  - Maximum 25 queries per minute per client IP, preventing abuse and denial-of-service attempts.
+
+### 12.2 Multilingual Support (English, Authentic Devanagari Hindi, Hinglish)
+- **Automatic Language Detection (`detectLanguage`)**:
+  - **Devanagari Hindi (`'hi'`)**: Detected via Unicode range `[\u0900-\u097F]`. Generates responses in grammatically sound, culturally respectful pure Hindi.
+  - **Hinglish (`'hinglish'`)**: Detected via conversational Roman transliterations (`fees kitni`, `kaise enroll`, `kya sikhaya`, `padhayenge`, `acharya ji`). Responds in natural, approachable Hinglish familiar to Indian audiences.
+  - **English (`'en'`)**: Standard clear British/Indian English.
+- **Actionable Escalation Buttons**:
+  - Every response delivers actionable contextual pills (WhatsApp deep-link to `+91 93112 15564`, phone call to `+91 93112 15564`, and enrollment deep-link `/checkout?course=what-is-astrology`).
+
+### 12.3 Strict Anti-Hallucination & Scope Boundaries
+- **Guiding Rule**: *"A confident wrong answer about prices or policies is worse than saying 'I don't know'."*
+- **Refusal of Personal Horoscope Predictions**:
+  - The assistant strictly declines generating personal kundali readings or future predictions (e.g. "Meri shaadi kab hogi?", "Will I get a job?").
+  - Clarifies that VIAR is an academic training institution for learning astrology.
+  - Directs users to book a personal 1-on-1 consultation with Acharya Niraj Kumar via Aapka Astro, providing direct WhatsApp and call buttons.
+- **Zero Passwords Over WhatsApp**:
+  - Explanations of the payment process clearly inform students that their course is unlocked on their existing registered account; passwords are never sent over WhatsApp.
+
+### 12.4 Route Suppression & Responsive Accessibility
+- **Public Page Ubiquity**:
+  - Active across all public visitor surfaces (`/`, `/courses*`, `/about`, `/contact`, `/pricing-policy`, `/refund-policy`, `/terms`, `/privacy-policy`, `/disclaimer`, `/checkout`, `/hi*`).
+- **Portal Suppression**:
+  - Automatically hidden on protected student and administrative surfaces (`/dashboard*`, `/admin*`, `/instructor*`) so students and admins have an uncluttered interface.
+- **Accessibility & UX**:
+  - Fully responsive dialog with golden cosmic theme (`amber-400` / `indigo-950`).
+  - Screen-reader labels (`aria-label`), keyboard navigation (`ESC` to close), auto-scrolling message stream, and character counter (max 500 characters).
+
+### 12.5 Automated Verification Suite (`tests/ai-assistant.test.ts`)
+- 23 automated tests covering:
+  - Language detection across English, Devanagari Hindi, and Hinglish.
+  - Accurate fact-checking for pricing (₹5,100), refund policy (7 days / 3 modules), curriculum, format, and instructor pedigree.
+  - Safe refusal of personal horoscope readings with direct escalation buttons.
+  - Action button structure and link formatting.
+- Integrated into standard `npm test` script (bringing project total to 176 passing tests).

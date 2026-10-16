@@ -8,7 +8,7 @@
     "build": "node scripts/prisma-generate.mjs && next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --experimental-strip-types --test tests/orders.test.ts tests/webhooks.test.ts tests/quiz-certificate.test.ts tests/timezone.test.ts tests/email-policy.test.ts tests/permissions.test.ts tests/email.test.ts tests/production-hardening.test.ts tests/walkthrough.test.ts tests/content-gating.test.ts tests/e2e-gating-lifecycle.test.ts tests/i18n.test.ts tests/server-auth.test.ts"
+    "test": "node --experimental-strip-types --test tests/orders.test.ts tests/webhooks.test.ts tests/quiz-certificate.test.ts tests/timezone.test.ts tests/email-policy.test.ts tests/permissions.test.ts tests/email.test.ts tests/production-hardening.test.ts tests/walkthrough.test.ts tests/content-gating.test.ts tests/e2e-gating-lifecycle.test.ts tests/i18n.test.ts tests/server-auth.test.ts tests/ai-assistant.test.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.39.7",
