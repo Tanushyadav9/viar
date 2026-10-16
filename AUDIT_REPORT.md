@@ -3,7 +3,7 @@
 **Audited Date & Time:** October 15, 2026 | Next.js 14.2.35 App Router  
 **Production Site:** [https://viar.in/](https://viar.in/)  
 **Primary Astrologer & Site Owner:** Acharya Niraj Kumar (`aapkaastro1606@gmail.com` / +91 93112 15564)  
-**Git Commit Hash:** `1545b42` (Pushed to `origin/main` & `myfork/main`)  
+**Git Commit Hash:** `41ac537` (Pushed to `origin/main` & `myfork/main`)  
 
 ---
 
@@ -342,13 +342,13 @@ Shows the unlocked masterclass dashboard for student `Rohan Singhania`, with all
 
 | Metric | Result | Standard | Status |
 | :--- | :--- | :--- | :--- |
-| **Unit & Integration Tests** | 146 passed, 0 failed (42 suites) | 100% Pass Rate | ✅ **PASSED** |
-| **Server Auth & Redirect Tests** | 23 passed, 0 failed | Open redirect, loops, JIT sync, owner detection | ✅ **PASSED** |
+| **Unit & Integration Tests** | 153 passed, 0 failed (43 suites) | 100% Pass Rate | ✅ **PASSED** |
+| **Server Auth, RBAC & Staff Scoping Tests** | 30 passed, 0 failed | Open redirect, loops, JIT sync, owner detection, staff scoping | ✅ **PASSED** |
 | **Translation Quality Tests** | 8 passed, 0 failed | Zero mixed English, full Devanagari | ✅ **PASSED** |
 | **ESLint Static Analysis** | 0 errors, 0 warnings | Strict Next.js & React Rules | ✅ **PASSED** |
 | **Production Build** | 60/60 routes statically prerendered | Zero build errors | ✅ **PASSED** |
 | **Razorpay / Stripe Purge** | 0 active code references | Total removal | ✅ **PASSED** |
-| **Git Push Status** | Pushed to `origin/main` & `myfork/main` | Latest Commit | ✅ **VERIFIED** |
+| **Git Push Status** | Pushed to `origin/main` & `myfork/main` | Latest Commit (`41ac537`) | ✅ **VERIFIED** |
 
 ---
 
