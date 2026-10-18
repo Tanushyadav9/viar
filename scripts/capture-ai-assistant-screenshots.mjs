@@ -111,7 +111,7 @@ async function capture() {
 
     // A. Desktop English Closed
     console.log('\n[1/8] Capturing Desktop English Closed (/)');
-    await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle2', timeout: 30000 });
+    await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForSelector('button[aria-controls="viar-ai-chat-window"]', { timeout: 15000 });
     await new Promise((r) => setTimeout(r, 600));
     await takeScreenshot('08_ai_assistant_desktop_closed_en.png', 'Desktop English Homepage with Closed AI Floating Trigger');
@@ -125,7 +125,7 @@ async function capture() {
 
     // C. Desktop Hindi Closed
     console.log('\n[3/8] Capturing Desktop Hindi Closed (/hi)');
-    await page.goto(`http://localhost:${PORT}/hi`, { waitUntil: 'networkidle2', timeout: 30000 });
+    await page.goto(`http://localhost:${PORT}/hi`, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForSelector('button[aria-controls="viar-ai-chat-window"]', { timeout: 15000 });
     await new Promise((r) => setTimeout(r, 600));
     await takeScreenshot('10_ai_assistant_desktop_closed_hi.png', 'Desktop Hindi Homepage with Closed AI Floating Trigger');
@@ -144,7 +144,7 @@ async function capture() {
 
     // E. Mobile English Closed
     console.log('\n[5/8] Capturing Mobile English Closed (/)');
-    await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle2', timeout: 30000 });
+    await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForSelector('button[aria-controls="viar-ai-chat-window"]', { timeout: 15000 });
     await new Promise((r) => setTimeout(r, 600));
     await takeScreenshot('12_ai_assistant_mobile_closed_en.png', 'Mobile (390px) English with Floating Trigger (no collisions)');
@@ -158,7 +158,7 @@ async function capture() {
 
     // G. Mobile Hindi Closed
     console.log('\n[7/8] Capturing Mobile Hindi Closed (/hi)');
-    await page.goto(`http://localhost:${PORT}/hi`, { waitUntil: 'networkidle2', timeout: 30000 });
+    await page.goto(`http://localhost:${PORT}/hi`, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForSelector('button[aria-controls="viar-ai-chat-window"]', { timeout: 15000 });
     await new Promise((r) => setTimeout(r, 600));
     await takeScreenshot('14_ai_assistant_mobile_closed_hi.png', 'Mobile (390px) Hindi with Floating Trigger');

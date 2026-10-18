@@ -366,7 +366,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
 
   return (
     <>
-      {/* 1. FLOATING TRIGGER BUTTON (Bottom-Right) */}
+      {/* 1. FLOATING TRIGGER BUTTON (Bottom-Right, Compact Circular FAB) */}
       {!isOpen && (
         <aside
           aria-label={isHi ? 'विहंगम ज्योतिष सहायक' : 'VIAR AI Assistant'}
@@ -379,28 +379,22 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
             aria-expanded={isOpen}
             aria-controls="viar-ai-chat-window"
             aria-label={isHi ? 'विहंगम ज्योतिष सहायक खोलें' : 'Open VIAR AI Assistant'}
-            className="group relative flex items-center gap-2.5 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 text-slate-950 font-bold shadow-xl shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-105 active:scale-95 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 motion-reduce:transition-none motion-reduce:hover:scale-100"
+            title={isHi ? 'विहंगम ज्योतिष एआई सहायक' : 'VIAR AI Assistant'}
+            className="group relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-600 text-slate-950 shadow-xl shadow-amber-500/35 hover:shadow-amber-500/55 hover:scale-110 active:scale-95 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 motion-reduce:transition-none motion-reduce:hover:scale-100"
           >
-            {/* Pulsing Beacon */}
-            <span className="relative flex h-2.5 w-2.5">
+            {/* Pulsing Emerald Beacon at top-right corner */}
+            <span className="absolute top-1 right-1 flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-slate-950"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-slate-950"></span>
             </span>
 
-            {/* Sparkle Icon */}
-            <div className="w-5 h-5 rounded-full bg-slate-950/15 flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-slate-950 animate-pulse motion-reduce:animate-none" />
-            </div>
+            {/* AI Assistant Sparkle Icon */}
+            <Sparkles className="w-6 h-6 text-slate-950 transition-transform duration-300 group-hover:rotate-12 motion-reduce:transition-none" />
 
-            {/* Accessible Text Label in Site Brand Style */}
-            <div className="flex flex-col text-left leading-tight">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-950">
-                {isHi ? 'ज्योतिष सहायक' : 'Ask VIAR AI'}
-              </span>
-              <span className="text-[10px] font-medium text-slate-900/80 hidden sm:inline">
-                {isHi ? 'शुल्क • पाठ्यक्रम • सहायता' : 'Fees • Syllabus • Help'}
-              </span>
-            </div>
+            {/* Screen Reader Label */}
+            <span className="sr-only">
+              {isHi ? 'विहंगम ज्योतिष एआई सहायक' : 'Open VIAR AI Assistant'}
+            </span>
           </button>
         </aside>
       )}

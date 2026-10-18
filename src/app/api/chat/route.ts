@@ -12,6 +12,7 @@ import {
   retrieveRelevantKnowledgeContext,
   logUnansweredQuestion,
 } from '@/lib/ai/knowledgeRetriever';
+import { generateGroundedAssistantResponse } from '@/lib/ai/assistantEngine';
 
 export const runtime = 'nodejs';
 
@@ -189,12 +190,12 @@ export async function POST(req: NextRequest) {
       // Record rate limit usage on successful start
       recordChatUsage(hashedId);
     } catch (err: unknown) {
-      clearTimeout(timeoutId);
       const isAbort =
         err instanceof Error &&
         (err.name === 'AbortError' || err.message.includes('aborted'));
 
       if (isAbort) {
+        clearTimeout(timeoutId);
         return NextResponse.json(
           {
             error: 'gateway_timeout',
@@ -204,23 +205,22 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      console.error('[Chat API Provider Error]:', err);
-      return NextResponse.json(
-        {
-          error: 'provider_error',
-          message: 'Unable to contact the AI model. Please connect directly on WhatsApp (+91 93112 15564).',
-          actionButtons: [
-            {
-              label: 'Chat on WhatsApp',
-              url: VIAR_ACADEMY_FACTS.contacts.whatsappUrl,
-              isExternal: true,
-              type: 'whatsapp',
-              variant: 'primary',
-            },
-          ],
+      console.warn('[Chat API] Upstream provider error; activating deterministic grounded response stream:', err);
+      // Fail-safe: Stream 100% verified grounded response so visitor never receives a broken chatbot error
+      const grounded = generateGroundedAssistantResponse(rawMessage);
+      const groundedReply = grounded.reply;
+      const chunks = groundedReply.match(/[\s\S]{1,24}/g) || [groundedReply];
+
+      textStream = new ReadableStream<string>({
+        async start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(chunk);
+          }
+          controller.close();
         },
-        { status: 502 }
-      );
+      });
+
+      recordChatUsage(hashedId);
     }
 
     // 7. Encode and Stream to Client

@@ -13,6 +13,11 @@ import {
   recordChatUsage,
   hashClientIdentifier,
 } from '../src/lib/ai/rateLimiter.ts';
+import {
+  getChatProvider,
+  GeminiChatProvider,
+  OpenAIChatProvider,
+} from '../src/lib/ai/chatProvider.ts';
 
 /**
  * 50-Question Evaluation Dataset covering all required categories:
@@ -649,6 +654,61 @@ describe('Non-Model Automated Tests (Security, Rate Limiting, Sanitization, Mask
       const res = generateGroundedAssistantResponse(query);
       assert.ok(res.reply.includes('5,100'));
       assert.strictEqual(res.confidence, 'high');
+    });
+  });
+
+  describe('8. Gemini Provider Support & Key Auto-Detection', () => {
+    it('should route to GeminiChatProvider when CHATBOT_PROVIDER is gemini', () => {
+      const originalProvider = process.env.CHATBOT_PROVIDER;
+      const originalKey = process.env.CHATBOT_API_KEY;
+      try {
+        process.env.CHATBOT_PROVIDER = 'gemini';
+        process.env.CHATBOT_API_KEY = 'test_key';
+        const provider = getChatProvider();
+        assert.strictEqual(provider.name, 'gemini');
+        assert.ok(provider instanceof GeminiChatProvider);
+        assert.strictEqual(provider.model, 'gemini-1.5-flash');
+      } finally {
+        process.env.CHATBOT_PROVIDER = originalProvider;
+        process.env.CHATBOT_API_KEY = originalKey;
+      }
+    });
+
+    it('should auto-detect Gemini when CHATBOT_API_KEY starts with AIzaSy', () => {
+      const originalProvider = process.env.CHATBOT_PROVIDER;
+      const originalKey = process.env.CHATBOT_API_KEY;
+      const originalModel = process.env.CHATBOT_MODEL;
+      try {
+        process.env.CHATBOT_PROVIDER = 'openai'; // Even if left as openai
+        process.env.CHATBOT_API_KEY = 'AIzaSyA_dummy_google_gemini_key_12345';
+        process.env.CHATBOT_MODEL = 'gpt-4o-mini'; // Even if left as legacy gpt-4o-mini
+        const provider = getChatProvider();
+        assert.strictEqual(provider.name, 'gemini');
+        assert.ok(provider instanceof GeminiChatProvider);
+        assert.strictEqual(provider.model, 'gemini-1.5-flash'); // Auto-normalized to gemini-1.5-flash
+      } finally {
+        process.env.CHATBOT_PROVIDER = originalProvider;
+        process.env.CHATBOT_API_KEY = originalKey;
+        process.env.CHATBOT_MODEL = originalModel;
+      }
+    });
+
+    it('should preserve explicit Gemini model like gemini-2.0-flash', () => {
+      const originalProvider = process.env.CHATBOT_PROVIDER;
+      const originalKey = process.env.CHATBOT_API_KEY;
+      const originalModel = process.env.CHATBOT_MODEL;
+      try {
+        process.env.CHATBOT_PROVIDER = 'gemini';
+        process.env.CHATBOT_API_KEY = 'AIzaSyA_dummy_google_gemini_key_12345';
+        process.env.CHATBOT_MODEL = 'gemini-2.0-flash';
+        const provider = getChatProvider();
+        assert.strictEqual(provider.name, 'gemini');
+        assert.strictEqual(provider.model, 'gemini-2.0-flash');
+      } finally {
+        process.env.CHATBOT_PROVIDER = originalProvider;
+        process.env.CHATBOT_API_KEY = originalKey;
+        process.env.CHATBOT_MODEL = originalModel;
+      }
     });
   });
 });
