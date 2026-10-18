@@ -80,6 +80,12 @@ enum StaffAccessLevel {
   MANAGE
 }
 
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+}
+
 // ------------------------------------------------------------------------------
 // 1. USER
 // ------------------------------------------------------------------------------
@@ -732,5 +738,77 @@ model UnansweredQuestion {
   @@index([count])
   @@map("unanswered_questions")
 }
+
+// ------------------------------------------------------------------------------
+// 19. CONTENT STUDIO (Editable Site Content & Typed Collections)
+// ------------------------------------------------------------------------------
+
+model ContentItem {
+  id          String            @id @default(cuid())
+  collection  String            // 'site_settings' | 'faqs' | 'hero' | 'about' | 'testimonials' | 'announcements' | 'contact' | 'legal'
+  key         String            // Unique identifier within collection (e.g. 'phone_primary', 'faq_fee_structure')
+  titleEn     String?           @map("title_en")
+  titleHi     String?           @map("title_hi")
+  contentEn   String?           @map("content_en") @db.Text
+  contentHi   String?           @map("content_hi") @db.Text
+  metadata    Json?             // Structured attributes (links, badge, icon, numbers, author)
+  status      ContentStatus     @default(PUBLISHED)
+  sortOrder   Int               @default(0) @map("sort_order")
+  createdById String?           @map("created_by_id")
+  updatedById String?           @map("updated_by_id")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  revisions   ContentRevision[]
+
+  @@unique([collection, key])
+  @@index([collection, status])
+  @@index([sortOrder])
+  @@map("content_items")
+}
+
+// ------------------------------------------------------------------------------
+// 20. CONTENT REVISIONS (Immutable Snapshots & 1-Click Restore)
+// ------------------------------------------------------------------------------
+
+model ContentRevision {
+  id            String      @id @default(cuid())
+  contentId     String      @map("content_id")
+  contentItem   ContentItem @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  collection    String
+  key           String
+  snapshot      Json        // Full JSON snapshot of the item before/at save
+  changeSummary String?     @map("change_summary")
+  createdById   String?     @map("created_by_id")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  @@index([contentId])
+  @@index([collection, key])
+  @@index([createdAt])
+  @@map("content_revisions")
+}
+
+// ------------------------------------------------------------------------------
+// 21. MEDIA ASSETS (Cloudflare R2 Public Media Library)
+// ------------------------------------------------------------------------------
+
+model MediaAsset {
+  id          String   @id @default(cuid())
+  filename    String
+  url         String
+  altTextEn   String   @map("alt_text_en")
+  altTextHi   String?  @map("alt_text_hi")
+  mimeType    String   @map("mime_type")
+  sizeBytes   Int      @map("size_bytes")
+  width       Int?
+  height      Int?
+  createdById String?  @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@map("media_assets")
+}
+
 
 

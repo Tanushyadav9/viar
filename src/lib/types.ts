@@ -12,9 +12,56 @@ export type ViarSection =
   | 'students'
   | 'quizzes'
   | 'analytics'
-  | 'payments';
+  | 'payments'
+  | 'content'
+  | 'media';
 
 export type AdminSection = ViarSection | 'staff';
+
+export type ContentStatus = 'DRAFT' | 'PUBLISHED' | 'HIDDEN';
+
+export interface ContentItem {
+  id: string;
+  collection: string;
+  key: string;
+  titleEn?: string | null;
+  titleHi?: string | null;
+  contentEn?: string | null;
+  contentHi?: string | null;
+  metadata?: Record<string, unknown> | null;
+  status: ContentStatus;
+  sortOrder: number;
+  createdById?: string | null;
+  updatedById?: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface ContentRevision {
+  id: string;
+  contentId: string;
+  collection: string;
+  key: string;
+  snapshot: Record<string, unknown>;
+  changeSummary?: string | null;
+  createdById?: string | null;
+  createdAt: string | Date;
+}
+
+export interface MediaAsset {
+  id: string;
+  filename: string;
+  url: string;
+  altTextEn: string;
+  altTextHi?: string | null;
+  mimeType: string;
+  sizeBytes: number;
+  width?: number | null;
+  height?: number | null;
+  createdById?: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
 
 export interface StaffPermission {
   id: string;

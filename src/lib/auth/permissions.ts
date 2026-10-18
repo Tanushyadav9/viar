@@ -42,6 +42,8 @@ export interface AdminSectionMeta {
  * courses, cohorts, students, quizzes, analytics, payments
  */
 export const VIAR_SECTIONS: readonly ViarSection[] = [
+  'content',
+  'media',
   'courses',
   'cohorts',
   'students',
@@ -51,6 +53,8 @@ export const VIAR_SECTIONS: readonly ViarSection[] = [
 ] as const;
 
 export const ADMIN_SECTIONS: readonly AdminSection[] = [
+  'content',
+  'media',
   'courses',
   'cohorts',
   'students',
@@ -61,6 +65,18 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
 ] as const;
 
 export const ADMIN_SECTIONS_META: Record<AdminSection, AdminSectionMeta> = {
+  content: {
+    key: 'content',
+    title: 'Content Studio (Site Text & Pages)',
+    shortTitle: 'Content Studio',
+    description: 'Add, edit, hide or translate page headlines, FAQs, about instructor text, and hero banners.',
+  },
+  media: {
+    key: 'media',
+    title: 'Media Library & Site Assets',
+    shortTitle: 'Media Library',
+    description: 'Upload, manage, and optimize images, banners, and student certificates.',
+  },
   courses: {
     key: 'courses',
     title: 'Course Catalog & Syllabi',

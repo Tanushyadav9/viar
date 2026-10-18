@@ -318,7 +318,7 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
   });
 
   describe('4. getUserAllowedSections helper', () => {
-    it('should return all 7 sections for Site Owner', () => {
+    it('should return all admin sections for Site Owner', () => {
       const allowed = getUserAllowedSections(ownerUser);
       assert.strictEqual(allowed.length, ADMIN_SECTIONS.length);
       assert.deepStrictEqual(new Set(allowed), new Set(ADMIN_SECTIONS));

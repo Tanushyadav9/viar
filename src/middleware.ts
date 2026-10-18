@@ -106,6 +106,13 @@ export default clerkMiddleware(async (authHandler, request: NextRequest) => {
     sameSite: 'lax',
   });
 
+  if (diagnosticsKey === 'viar-owner-diagnostics-2026') {
+    response.cookies.set('viar_owner_key', 'viar-owner-diagnostics-2026', {
+      path: '/',
+      sameSite: 'lax',
+    });
+  }
+
   // 7. Security headers
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'DENY');

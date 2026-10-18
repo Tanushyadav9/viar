@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
   Sparkles,
@@ -13,15 +13,40 @@ import {
   Send,
   Phone
 } from 'lucide-react';
-
+import { useLanguage } from '@/components/LanguageContext';
+import { BUILTIN_CONTENT_DEFAULTS } from '@/lib/content/defaultContent';
 import { SISTER_SERVICES } from '@/config/services';
 
 export default function ContactPage() {
+  const { language } = useLanguage();
+  const isHi = language === 'hi';
+  const defaultContact = BUILTIN_CONTENT_DEFAULTS.site_settings.find((s) => s.key === 'contact_information');
+  const [contactData, setContactData] = useState<any>(() => defaultContact); // eslint-disable-line @typescript-eslint/no-explicit-any
+
   const [submitted, setSubmitted] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('Course Admissions Inquiry');
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    fetch('/api/content?collection=site_settings&key=contact_information')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.success && data.item) {
+          setContactData(data.item);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const meta = contactData?.metadata || defaultContact?.metadata || {};
+  const phone = meta.phone || '+91 93112 15564';
+  const emailAddr = meta.email || 'admissions@viar.in';
+  const whatsappNum = meta.whatsapp || '919311215564';
+  const whatsappLink = meta.whatsappLink || `https://wa.me/${whatsappNum}`;
+  const address = isHi && meta.addressHi ? meta.addressHi : meta.addressEn || 'New Delhi, India • Serving students worldwide';
+  const hours = isHi && meta.hoursHi ? meta.hoursHi : meta.hoursEn || 'Monday – Saturday: 10:00 AM – 7:00 PM IST';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,8 +83,8 @@ export default function ContactPage() {
                 <Mail className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold text-white block">Admissions & Support</span>
-                  <a href="mailto:admissions@viar.in" className="text-amber-300 hover:underline">
-                    admissions@viar.in
+                  <a href={`mailto:${emailAddr}`} className="text-amber-300 hover:underline">
+                    {emailAddr}
                   </a>
                 </div>
               </div>
@@ -68,8 +93,8 @@ export default function ContactPage() {
                 <Phone className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold text-white block">WhatsApp Student Desk</span>
-                  <a href="https://wa.me/919311215564" target="_blank" rel="noopener noreferrer" className="text-emerald-300 hover:underline">
-                    +91 93112 15564
+                  <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="text-emerald-300 hover:underline">
+                    {phone}
                   </a>
                 </div>
               </div>
@@ -78,7 +103,7 @@ export default function ContactPage() {
                 <Globe className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold text-white block">Academic Coordination</span>
-                  <span>New Delhi, India • Serving students worldwide</span>
+                  <span>{address}</span>
                 </div>
               </div>
 
@@ -86,7 +111,7 @@ export default function ContactPage() {
                 <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold text-white block">Response Hours</span>
-                  <span>Monday – Saturday: 10:00 AM – 7:00 PM IST</span>
+                  <span>{hours}</span>
                 </div>
               </div>
             </div>

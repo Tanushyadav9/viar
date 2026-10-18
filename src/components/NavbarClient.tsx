@@ -119,7 +119,7 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
     { label: t('nav.about', 'About Instructor'), href: '/about', active: pathname === '/about' },
     { label: t('nav.contact', 'Contact'), href: '/contact', active: pathname === '/contact' },
     { label: t('nav.verify', 'Verify'), href: '/verify', active: pathname.startsWith('/verify') },
-    ...(showAdminNav ? [{ label: t('nav.admin', 'Admin'), href: '/admin', active: pathname.startsWith('/admin') }] : []),
+    ...(showAdminNav ? [{ label: t('nav.admin', 'Admin Panel'), href: '/admin', active: pathname.startsWith('/admin') }] : []),
   ];
 
   if (!mounted) {

@@ -23,11 +23,17 @@ import { ViarStore } from '@/lib/store';
 import { Course, Cohort } from '@/lib/types';
 import { PLACEHOLDER_TESTIMONIALS } from '@/lib/data';
 import { SISTER_SERVICES } from '@/config/services';
+import { useLanguage } from '@/components/LanguageContext';
+import { BUILTIN_CONTENT_DEFAULTS } from '@/lib/content/defaultContent';
 
 export default function HomePage() {
+  const { language } = useLanguage();
+  const isHi = language === 'hi';
   const [course, setCourse] = useState<Course | null>(null);
   const [cohort, setCohort] = useState<Cohort | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [heroContent, setHeroContent] = useState<any>(() => BUILTIN_CONTENT_DEFAULTS.hero[0]); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [faqsList, setFaqsList] = useState<any[]>(() => BUILTIN_CONTENT_DEFAULTS.faqs); // eslint-disable-line @typescript-eslint/no-explicit-any
 
   useEffect(() => {
     const flagship = ViarStore.getCourseBySlug('what-is-astrology');
@@ -35,6 +41,25 @@ export default function HomePage() {
 
     const cohorts = ViarStore.getCohorts('course-what-is-astrology');
     if (cohorts.length > 0) setCohort(cohorts[0]);
+
+    // Resilient dynamic content fetching with zero crash guarantee
+    fetch('/api/content?collection=hero&key=homepage_main_hero')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.success && data.item) {
+          setHeroContent(data.item);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/content?collection=faqs')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.success && data.items && data.items.length > 0) {
+          setFaqsList(data.items);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   return (
@@ -70,20 +95,40 @@ export default function HomePage() {
                 height={18}
                 className="w-4 h-4 object-contain inline-block"
               />
-              <span>Vihangam Institute of Astrology and Research • By Aapka Astro</span>
+              <span>
+                {isHi
+                  ? heroContent?.metadata?.badgeHi || heroContent?.metadata?.badgeEn || 'विहंगम ज्योतिष एवं अनुसंधान संस्थान • By Aapka Astro'
+                  : heroContent?.metadata?.badgeEn || 'Vihangam Institute of Astrology and Research • By Aapka Astro'}
+              </span>
             </div>
 
             {/* Headline */}
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1] mb-6">
-              Learn Vedic Astrology <br className="hidden sm:inline" />
-              <span className="gold-gradient-text">From Sacred Principles</span> <br className="hidden sm:inline" />
-              to Real Chart Mastery
+              {isHi && heroContent?.titleHi ? (
+                heroContent.titleHi
+              ) : (
+                heroContent?.titleEn || (
+                  <>
+                    Learn Vedic Astrology <br className="hidden sm:inline" />
+                    <span className="gold-gradient-text">From Sacred Principles</span> <br className="hidden sm:inline" />
+                    to Real Chart Mastery
+                  </>
+                )
+              )}
             </h1>
 
             {/* Subtitle */}
             <p className="text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed mb-10 font-normal">
-              A comprehensive self-paced video education platform run by <strong className="text-amber-300">Acharya Niraj Kumar</strong> (Jyotish Acharya, Bharatiya Vidya Bhavan New Delhi; founder of <a href="https://aapkaastro.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Aapka Astro</a>). 
-              Blending 20+ years of traditional learning from Baidyanath Dham (Deoghar) with 20+ years of senior executive leadership, trusted by students and clients across India and abroad, and backed by a community of 26,000+ followers.
+              {isHi && heroContent?.contentHi ? (
+                heroContent.contentHi
+              ) : (
+                heroContent?.contentEn || (
+                  <>
+                    A comprehensive self-paced video education platform run by <strong className="text-amber-300">Acharya Niraj Kumar</strong> (Jyotish Acharya, Bharatiya Vidya Bhavan New Delhi; founder of <a href="https://aapkaastro.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Aapka Astro</a>). 
+                    Blending 20+ years of traditional learning from Baidyanath Dham (Deoghar) with 20+ years of senior executive leadership, trusted by students and clients across India and abroad, and backed by a community of 26,000+ followers.
+                  </>
+                )
+              )}
             </p>
 
             {/* CTA Group */}
@@ -762,28 +807,35 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center mb-12">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400 mb-2">Clear Answers</h2>
-            <h3 className="text-3xl font-extrabold text-white">Frequently Asked Questions</h3>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400 mb-2">
+              {isHi ? 'स्पष्ट उत्तर' : 'Clear Answers'}
+            </h2>
+            <h3 className="text-3xl font-extrabold text-white">
+              {isHi ? 'अक्सर पूछे जाने वाले प्रश्न' : 'Frequently Asked Questions'}
+            </h3>
           </div>
 
           <div className="space-y-4">
-            {course?.faqs.map((faq, index) => {
+            {(faqsList && faqsList.length > 0 ? faqsList : course?.faqs || []).map((faq, index: number) => {
+              const f = faq as Record<string, string | undefined>;
               const isOpen = openFaq === index;
+              const questionText = isHi && f.titleHi ? f.titleHi : f.titleEn || f.question;
+              const answerText = isHi && f.contentHi ? f.contentHi : f.contentEn || f.answer;
               return (
                 <div
-                  key={index}
+                  key={faq.id || faq.key || index}
                   className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden transition"
                 >
                   <button
                     onClick={() => setOpenFaq(isOpen ? null : index)}
                     className="w-full text-left px-6 py-4 flex items-center justify-between gap-4 font-semibold text-white text-sm sm:text-base hover:text-amber-300 transition"
                   >
-                    <span>{faq.question}</span>
+                    <span>{questionText}</span>
                     <span className="text-amber-400 text-lg">{isOpen ? '−' : '+'}</span>
                   </button>
                   {isOpen && (
                     <div className="px-6 pb-4 pt-1 text-sm text-slate-300 leading-relaxed border-t border-white/5">
-                      {faq.answer}
+                      {answerText}
                     </div>
                   )}
                 </div>

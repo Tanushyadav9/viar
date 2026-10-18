@@ -28,7 +28,13 @@ import {
   MessageCircle,
   RefreshCw,
   Smartphone,
+  FileText,
+  Image as ImageIcon,
+  HelpCircle,
 } from 'lucide-react';
+import AdminHomeHub, { RecentActivityItem } from '@/components/admin/AdminHomeHub';
+import ContentStudio from '@/components/admin/ContentStudio';
+import MediaLibrary from '@/components/admin/MediaLibrary';
 import { ViarStore } from '@/lib/store';
 import {
   ScheduledClass,
@@ -141,21 +147,20 @@ export default function AdminPortalClient({
   });
   const [staffUsers, setStaffUsers] = useState<User[]>([]);
   const [allStaffPermissions, setAllStaffPermissions] = useState<StaffPermission[]>([]);
-  const [activeTab, setActiveTab] = useState<AdminSection>(() => {
+  const [activeTab, setActiveTab] = useState<AdminSection | 'home'>(() => {
     if (typeof window !== 'undefined') {
       const sp = new URLSearchParams(window.location.search);
       const tabParam = sp.get('tab') as AdminSection;
-      if (tabParam && ADMIN_SECTIONS.includes(tabParam)) {
+      if (tabParam && (ADMIN_SECTIONS as readonly string[]).includes(tabParam)) {
         if (serverIsOwner || (serverAllowedSections && serverAllowedSections.includes(tabParam))) {
           return tabParam;
         }
       }
     }
-    if (serverAllowedSections && serverAllowedSections.length > 0) {
-      return serverAllowedSections[0];
-    }
-    return 'cohorts';
+    return 'home';
   });
+  const [selectedContentCollection, setSelectedContentCollection] = useState<string>('site_settings');
+  const [recentActivities, setRecentActivities] = useState<RecentActivityItem[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [classes, setClasses] = useState<ScheduledClass[]>([]);
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
@@ -266,6 +271,17 @@ export default function AdminPortalClient({
         setOrders(data.orders || []);
         if (data.countsByStatus) {
           setOrderCounts(data.countsByStatus);
+        }
+        if (data.orders && data.orders.length > 0) {
+          const acts: RecentActivityItem[] = data.orders.slice(0, 6).map((o: AdminOrder) => ({
+            id: o.id,
+            type: 'payment',
+            title: o.status === 'APPROVED' ? `Enrollment Approved (${o.orderReference})` : `UPI Payment Claimed (${o.orderReference})`,
+            description: `₹${o.amount.toLocaleString()} ${o.currency} • ${o.studentName || o.studentEmail || 'Student'} (UTR: ${o.utr || 'Pending'})`,
+            timestamp: o.claimedAt || o.createdAt,
+            author: o.reviewedBy || undefined,
+          }));
+          setRecentActivities(acts);
         }
       } else {
         setOrderActionError(data?.error || 'Failed to fetch orders queue');
@@ -500,11 +516,11 @@ export default function AdminPortalClient({
   const allowedSections = (serverAllowedSections && serverAllowedSections.length > 0)
     ? serverAllowedSections
     : getUserAllowedSections(currentUser);
-  const isCurrentTabAllowed = isOwner || allowedSections.includes(activeTab);
+  const isCurrentTabAllowed = isOwner || activeTab === 'home' || (allowedSections as string[]).includes(activeTab);
 
-  // Clamp activeTab for non-owner staff so they always land on their granted section
+  // Clamp activeTab for non-owner staff so they always land on their granted section or home
   useEffect(() => {
-    if (!isOwner && allowedSections.length > 0 && !allowedSections.includes(activeTab)) {
+    if (!isOwner && allowedSections.length > 0 && activeTab !== 'home' && !(allowedSections as string[]).includes(activeTab)) {
       setActiveTab(allowedSections[0]);
     }
   }, [isOwner, allowedSections, activeTab]);
@@ -804,6 +820,19 @@ export default function AdminPortalClient({
 
         {/* Tab Navigation with Dynamic Permission Locks */}
         <div className="flex border-b border-white/10 mb-8 overflow-x-auto gap-1">
+          {/* Admin Home Hub Tab */}
+          <button
+            onClick={() => setActiveTab('home')}
+            className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 ${
+              activeTab === 'home'
+                ? 'border-amber-400 text-amber-300'
+                : 'border-transparent text-slate-400 hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span>Admin Home</span>
+          </button>
+
           {ADMIN_SECTIONS.map((sec) => {
             // Hide staff tab from non-owners completely
             if (sec === 'staff' && !isOwner) return null;
@@ -828,6 +857,8 @@ export default function AdminPortalClient({
                 }`}
               >
                 {!isAllowed && <Lock className="w-3 h-3 text-amber-400/70" />}
+                {sec === 'content' && <FileText className="w-4 h-4 text-indigo-400" />}
+                {sec === 'media' && <ImageIcon className="w-4 h-4 text-sky-400" />}
                 {sec === 'courses' && <BookOpen className="w-4 h-4" />}
                 {sec === 'cohorts' && <Calendar className="w-4 h-4" />}
                 {sec === 'students' && <Users className="w-4 h-4" />}
@@ -878,9 +909,54 @@ export default function AdminPortalClient({
           </div>
         )}
 
+        {/* TAB: ADMIN HOME HUB */}
+        {isCurrentTabAllowed && activeTab === 'home' && (
+          <AdminHomeHub
+            isOwner={isOwner}
+            userEmail={currentUser?.email || ''}
+            allowedSections={allowedSections}
+            onSelectSection={(sec, opts) => {
+              setActiveTab(sec);
+              if (opts?.collection) {
+                setSelectedContentCollection(opts.collection);
+              }
+            }}
+            pendingOrdersCount={orderCounts.PAYMENT_CLAIMED || 0}
+            recentActivities={recentActivities}
+          />
+        )}
+
+        {/* TAB: CONTENT STUDIO */}
+        {isCurrentTabAllowed && activeTab === 'content' && (
+          <ContentStudio
+            isOwner={isOwner}
+            userEmail={currentUser?.email || ''}
+            initialCollection={selectedContentCollection}
+            onActivityLogged={loadAdminData}
+          />
+        )}
+
+        {/* TAB: MEDIA LIBRARY */}
+        {isCurrentTabAllowed && activeTab === 'media' && (
+          <MediaLibrary
+            isOwner={isOwner}
+            userEmail={currentUser?.email || ''}
+          />
+        )}
+
         {/* TAB: COHORTS & SCHEDULE */}
         {isCurrentTabAllowed && activeTab === 'cohorts' && (
           <div className="space-y-8">
+            {/* Non-technical Help Panel */}
+            <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
+              <div className="flex items-start gap-2.5">
+                <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-300">
+                  <strong className="text-amber-300">💡 How to manage class sessions:</strong> Select your cohort batch below to view all scheduled classes. Click &quot;Edit Class&quot; to change Zoom or Google Meet links, meeting passcodes, or add lecture recordings once a class concludes.
+                </p>
+              </div>
+            </div>
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
                 <h3 className="text-lg font-bold text-white">Cohorts, Live Class Schedule & Links</h3>
@@ -1015,6 +1091,16 @@ export default function AdminPortalClient({
         {/* TAB: COURSES */}
         {isCurrentTabAllowed && activeTab === 'courses' && (
           <div className="space-y-6">
+            {/* Non-technical Help Panel */}
+            <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
+              <div className="flex items-start gap-2.5">
+                <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-300">
+                  <strong className="text-amber-300">💡 How to manage courses:</strong> Review published courses below. Click &quot;Add New Course to Catalog&quot; to expand the curriculum, or update existing course descriptions and student fees.
+                </p>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold text-white">Multi-Course Catalog Engine</h3>
@@ -1070,6 +1156,16 @@ export default function AdminPortalClient({
         {/* TAB: STUDENTS / ROSTER */}
         {isCurrentTabAllowed && activeTab === 'students' && (
           <div className="space-y-6">
+            {/* Non-technical Help Panel */}
+            <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
+              <div className="flex items-start gap-2.5">
+                <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-300">
+                  <strong className="text-amber-300">💡 How to manage students:</strong> Search registered students by name or email. Click &quot;Add Student Manually&quot; to grant scholarship or offline enrollment access.
+                </p>
+              </div>
+            </div>
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="relative w-full sm:w-72">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -1144,6 +1240,15 @@ export default function AdminPortalClient({
         {/* TAB: PAYMENTS & UPI VERIFICATION */}
         {isCurrentTabAllowed && activeTab === 'payments' && (
           <div className="space-y-6">
+            {/* Non-technical Help Panel */}
+            <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
+              <div className="flex items-start gap-2.5">
+                <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-300">
+                  <strong className="text-amber-300">💡 How to verify UPI payments:</strong> Match the 12-digit UTR submitted by the student with your bank app statement. Once verified, check the bank confirmation box and click &quot;Approve Payment&quot; to instantly activate their course.
+                </p>
+              </div>
+            </div>
             
             {/* WhatsApp Confirmation Banner */}
             {lastVerifiedWhatsAppUrl && (
@@ -1575,6 +1680,16 @@ export default function AdminPortalClient({
         {/* TAB: QUIZZES & CERTIFICATES */}
         {isCurrentTabAllowed && activeTab === 'quizzes' && (
           <div className="space-y-6">
+            {/* Non-technical Help Panel */}
+            <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
+              <div className="flex items-start gap-2.5">
+                <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-300">
+                  <strong className="text-amber-300">💡 How to manage exams &amp; certificates:</strong> Inspect student exam attempts and verify authentic certificates issued under the VIAR Institute accreditation.
+                </p>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold text-white">Quizzes, Exams & Official Certificate Registry</h3>
@@ -1634,6 +1749,16 @@ export default function AdminPortalClient({
         {/* TAB: ANALYTICS & PLATFORM TELEMETRY */}
         {isCurrentTabAllowed && activeTab === 'analytics' && (
           <div className="space-y-6">
+            {/* Non-technical Help Panel */}
+            <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
+              <div className="flex items-start gap-2.5">
+                <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-300">
+                  <strong className="text-amber-300">💡 How to view analytics:</strong> Monitor student engagement across batches, video watch progress, and certification pass rates in real time.
+                </p>
+              </div>
+            </div>
+
             <div className="cosmic-card p-6 rounded-2xl border border-white/10">
               <h3 className="text-lg font-bold text-white mb-1">Platform Telemetry & Academic Analytics</h3>
               <p className="text-xs text-slate-400 mb-6">
@@ -1710,6 +1835,16 @@ export default function AdminPortalClient({
         {/* TAB: STAFF ROLES & PERMISSIONS (OWNER ONLY) */}
         {isCurrentTabAllowed && activeTab === 'staff' && isOwner && (
           <div className="space-y-6">
+            {/* Non-technical Help Panel */}
+            <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
+              <div className="flex items-start gap-2.5">
+                <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-300">
+                  <strong className="text-amber-300">💡 How to assign staff permissions:</strong> Only you (Site Owner) can see this screen. Click &quot;Add Staff Member&quot; to delegate access to specific tiles. Staff can never modify payment settings or legal pages.
+                </p>
+              </div>
+            </div>
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
