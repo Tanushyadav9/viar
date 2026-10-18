@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Sparkles,
   X,
@@ -11,7 +12,6 @@ import {
   Phone,
   GraduationCap,
   RotateCcw,
-  Bot,
   User,
 } from 'lucide-react';
 import { useLanguage } from '@/components/LanguageContext';
@@ -380,16 +380,25 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
             aria-controls="viar-ai-chat-window"
             aria-label={isHi ? 'विहंगम ज्योतिष सहायक खोलें' : 'Open VIAR AI Assistant'}
             title={isHi ? 'विहंगम ज्योतिष एआई सहायक' : 'VIAR AI Assistant'}
-            className="group relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-600 text-slate-950 shadow-xl shadow-amber-500/35 hover:shadow-amber-500/55 hover:scale-110 active:scale-95 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 motion-reduce:transition-none motion-reduce:hover:scale-100"
+            className="group relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-600 p-[2px] shadow-xl shadow-amber-500/40 hover:shadow-amber-500/60 hover:scale-110 active:scale-95 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 motion-reduce:transition-none motion-reduce:hover:scale-100"
           >
             {/* Pulsing Emerald Beacon at top-right corner */}
-            <span className="absolute top-1 right-1 flex h-3 w-3">
+            <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 z-10">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-slate-950"></span>
+              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-slate-950"></span>
             </span>
 
-            {/* AI Assistant Sparkle Icon */}
-            <Sparkles className="w-6 h-6 text-slate-950 transition-transform duration-300 group-hover:rotate-12 motion-reduce:transition-none" />
+            {/* Website Logo Image Container */}
+            <div className="w-full h-full rounded-full bg-white dark:bg-slate-950 flex items-center justify-center p-2 overflow-hidden shadow-inner">
+              <Image
+                src="/images/logo-icon.png"
+                alt="VIAR AI Logo"
+                width={38}
+                height={38}
+                className="w-full h-full object-contain drop-shadow transition-transform duration-300 group-hover:scale-110 motion-reduce:transition-none"
+                priority
+              />
+            </div>
 
             {/* Screen Reader Label */}
             <span className="sr-only">
@@ -412,8 +421,16 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
           {/* Header */}
           <div className="px-4 py-3 bg-gradient-to-r from-amber-500/20 via-slate-900 to-amber-950/30 border-b border-amber-500/20 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center font-bold shadow-md shadow-amber-500/20">
-                <Bot className="w-4 h-4 text-slate-950" />
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 p-[1.5px] shadow-md shadow-amber-500/25 shrink-0">
+                <div className="w-full h-full bg-white dark:bg-slate-950 rounded-[10px] flex items-center justify-center p-1 overflow-hidden">
+                  <Image
+                    src="/images/logo-icon.png"
+                    alt="VIAR AI Logo"
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
@@ -470,8 +487,14 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                   className={`flex gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   {!isUser && (
-                    <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <div className="w-6 h-6 rounded-lg bg-white dark:bg-slate-900 border border-amber-500/40 p-0.5 flex items-center justify-center shrink-0 mt-0.5 overflow-hidden shadow-sm">
+                      <Image
+                        src="/images/logo-icon.png"
+                        alt="VIAR"
+                        width={20}
+                        height={20}
+                        className="w-full h-full object-contain"
+                      />
                     </div>
                   )}
 
