@@ -5,8 +5,63 @@ import Link from 'next/link';
 import { Sparkles, Clock, CheckCircle2, ArrowRight, BookOpen, Bell, Mail, X } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Course } from '@/lib/types';
+import { useLanguage } from '@/components/LanguageContext';
+
+const COURSE_HINDI_MAP: Record<string, {
+  title: string;
+  tagline: string;
+  description: string;
+  highlights: string[];
+  badge?: string;
+}> = {
+  'course-flagship-astrology': {
+    title: 'सम्पूर्ण वैदिक ज्योतिष: मूल सिद्धांतों से कुंडली महारत',
+    tagline: '23 संरचित पाठों में पवित्र विज्ञान सीखें — प्रथम सिद्धांतों से वास्तविक कुंडली तक।',
+    description: 'ग्रहों, राशियों, भावों, नक्षत्रों, गोचर और दशा प्रणालियों का विस्तृत अध्ययन। वास्तविक कुंडलियों के साथ भविष्यवाणियां करने में सक्षम बनें।',
+    badge: 'प्रमुख मास्टरक्लास',
+    highlights: [
+      'वैदिक ज्योतिष के संपूर्ण विज्ञान को कवर करने वाले 23 व्यापक वीडियो मॉड्यूल',
+      '2 बोनस वास्तविक कुंडली मास्टरक्लास: करियर विश्लेषण एवं विवाह समय-निर्धारण',
+      '100% स्व-चालित: कभी भी, किसी भी उपकरण से आजीवन पहुंच के साथ अध्ययन करें',
+    ],
+  },
+  'course-vastu-shastra': {
+    title: 'आपके घर के लिए वास्तु शास्त्र',
+    tagline: 'दिशात्मक और ब्रह्मांडीय ऊर्जाओं के साथ रहने के स्थानों का संतुलन।',
+    description: 'जानें कि 8 मुख्य दिशाएं, पंच महाभूत और वास्तु ज्यामिति किस प्रकार स्वास्थ्य, समृद्धि और मन की शांति को प्रभावित करते हैं।',
+    badge: 'शीघ्र आ रहा है',
+    highlights: [
+      '8 मुख्य दिशाएं और उनके अधिष्ठाता ग्रह व देवता',
+      'मुख्य द्वार, रसोईघर और शयनकक्ष की आदर्श ऊर्जावान स्थिति',
+      'बिना किसी तोड़-फोड़ के धातु, रंग और प्रतीकों से वास्तु सुधार',
+    ],
+  },
+  'course-gemstone-science': {
+    title: 'रत्न विज्ञान 101',
+    tagline: 'वैदिक रत्न चिकित्सा का भौतिक और आध्यात्मिक विज्ञान।',
+    description: 'जानें कि प्राकृतिक रत्न किस प्रकार सूक्ष्म ऊर्जा क्षेत्र में ग्रहीय किरणों को रूपांतरित करते हैं। पहचान, परीक्षण और कुंडली आधारित सटीक धारण विधि सीखें।',
+    badge: 'शीघ्र आ रहा है',
+    highlights: [
+      '9 मुख्य रत्नों (नवरत्न) का स्पेक्ट्रम और जैविक तरंग प्रभाव',
+      'प्राकृतिक बनाम सिंथेटिक रत्नों की प्रयोगशाला पहचान',
+      'कुंडली के अनुसार अनुकूल रत्न और धातु चयन के सटीक नियम',
+    ],
+  },
+  'course-vedic-numerology': {
+    title: 'व्यावहारिक वैदिक अंकशास्त्र',
+    tagline: 'अंकों के ब्रह्मांडीय स्पंदन और जीवन पथ मार्गदर्शन।',
+    description: 'मूलांक, भाग्यांक और नामांक की गणना। नाम सुधार, व्यावसायिक सफलता और अनुकूल तिथियों के निर्धारण का व्यावहारिक विज्ञान।',
+    badge: 'शीघ्र आ रहा है',
+    highlights: [
+      'मूलांक एवं भाग्यांक की वैदिक गणना विधि',
+      'व्यावसायिक और व्यक्तिगत सफलता हेतु नाम स्पंदन संतुलन',
+      'मासिक व वार्षिक चक्रों के अनुसार शुभ समय का चयन',
+    ],
+  },
+};
 
 export default function CoursesPage() {
+  const { isHi } = useLanguage();
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<string>('All');
   const [notifyCourse, setNotifyCourse] = useState<Course | null>(null);
@@ -67,28 +122,35 @@ export default function CoursesPage() {
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-400/10 border border-amber-400/25 text-amber-300 text-xs font-semibold uppercase tracking-wider mb-4">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Academic Curriculum</span>
+            <span>{isHi ? 'शैक्षणिक पाठ्यक्रम' : 'Academic Curriculum'}</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
-            Astrology Course Catalog
+            {isHi ? 'ज्योतिष पाठ्यक्रम सूची' : 'Astrology Course Catalog'}
           </h1>
           <p className="text-slate-300 text-base leading-relaxed">
-            All courses at Vihangam Institute of Astrology and Research (VIAR) are delivered as structured, self-paced video modules with comprehensive notes, real chart walkthroughs, and verifiable certification.
+            {isHi
+              ? 'विहंगम ज्योतिष एवं अनुसंधान संस्थान (VIAR) के सभी पाठ्यक्रम संरचित, स्व-चालित (self-paced) वीडियो मॉड्यूल, व्यापक नोट्स, वास्तविक कुंडली विश्लेषण और सत्यापन योग्य प्रमाणपत्र के साथ प्रदान किए जाते हैं।'
+              : 'All courses at Vihangam Institute of Astrology and Research (VIAR) are delivered as structured, self-paced video modules with comprehensive notes, real chart walkthroughs, and verifiable certification.'}
           </p>
 
           {/* Level Filter Tabs */}
           <div className="flex items-center justify-center gap-2 mt-8 flex-wrap">
-            {['All', 'Beginner', 'Intermediate', 'Advanced'].map((lvl) => (
+            {[
+              { id: 'All', labelEn: 'All Courses', labelHi: 'सभी पाठ्यक्रम' },
+              { id: 'Beginner', labelEn: 'Beginner Level', labelHi: 'प्रारंभिक स्तर' },
+              { id: 'Intermediate', labelEn: 'Intermediate Level', labelHi: 'मध्यम स्तर' },
+              { id: 'Advanced', labelEn: 'Advanced Level', labelHi: 'उन्नत स्तर' },
+            ].map((tab) => (
               <button
-                key={lvl}
-                onClick={() => setSelectedLevel(lvl)}
+                key={tab.id}
+                onClick={() => setSelectedLevel(tab.id)}
                 className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
-                  selectedLevel === lvl
+                  selectedLevel === tab.id
                     ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
                     : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
                 }`}
               >
-                {lvl === 'All' ? 'All Courses' : `${lvl} Level`}
+                {isHi ? tab.labelHi : tab.labelEn}
               </button>
             ))}
           </div>
@@ -99,6 +161,17 @@ export default function CoursesPage() {
           {filteredCourses.map((course) => {
             const isFeatured = course.featured;
             const isComingSoon = course.isComingSoon;
+            const hiData = COURSE_HINDI_MAP[course.id];
+            const courseTitle = isHi && hiData?.title ? hiData.title : course.title;
+            const courseTagline = isHi && hiData?.tagline ? hiData.tagline : course.tagline;
+            const courseDesc = isHi && hiData?.description ? hiData.description : course.description;
+            const courseHighlights = isHi && hiData?.highlights ? hiData.highlights : course.highlights;
+
+            const badgeText = isComingSoon
+              ? (isHi ? 'शीघ्र आ रहा है' : 'Coming Soon')
+              : (isHi
+                  ? (hiData?.badge || (course.level === 'Beginner' ? 'प्रारंभिक' : course.level === 'Intermediate' ? 'मध्यम' : 'उन्नत'))
+                  : (course.badge || course.level));
 
             return (
               <div
@@ -122,28 +195,28 @@ export default function CoursesPage() {
                           : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                       }`}
                     >
-                      {isComingSoon ? 'Coming Soon' : course.badge || course.level}
+                      {badgeText}
                     </span>
                     <span className="text-xs text-slate-400 flex items-center gap-1.5 font-medium">
                       <Clock className="w-3.5 h-3.5 text-amber-400" />
                       {course.deliveryMode === 'SELF_PACED'
-                        ? `${course.totalClasses} Video Modules • Self-Paced`
-                        : `${course.durationWeeks} Weeks • ${course.totalClasses} Classes`}
+                        ? (isHi ? `${course.totalClasses} वीडियो मॉड्यूल • स्व-अध्ययन` : `${course.totalClasses} Video Modules • Self-Paced`)
+                        : (isHi ? `${course.durationWeeks} सप्ताह • ${course.totalClasses} कक्षाएं` : `${course.durationWeeks} Weeks • ${course.totalClasses} Classes`)}
                     </span>
                   </div>
 
                   <h2 className="text-2xl font-bold text-white mb-2 leading-snug">
-                    {course.title}
+                    {courseTitle}
                   </h2>
                   <p className="text-sm text-amber-300/90 font-medium mb-4">
-                    {course.tagline}
+                    {courseTagline}
                   </p>
                   <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6">
-                    {course.description}
+                    {courseDesc}
                   </p>
 
                   <div className="space-y-2.5 mb-6 text-xs text-slate-300">
-                    {course.highlights.slice(0, 3).map((hl, i) => (
+                    {courseHighlights.slice(0, 3).map((hl, i) => (
                       <div key={i} className="flex items-start gap-2">
                         <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                         <span>{hl}</span>
@@ -155,7 +228,9 @@ export default function CoursesPage() {
                 <div className="pt-6 border-t border-white/10 flex items-center justify-between">
                   <div>
                     <span className="text-xs text-slate-400 block font-medium">
-                      {isComingSoon ? 'Expected Tuition' : 'Tuition (One-Time)'}
+                      {isComingSoon
+                        ? (isHi ? 'अपेक्षित शुल्क' : 'Expected Tuition')
+                        : (isHi ? 'शिक्षण शुल्क (एकमुश्त)' : 'Tuition (One-Time)')}
                     </span>
                     <div className="flex items-baseline gap-2">
                       <span className="text-2xl font-black text-white">₹{course.priceInr.toLocaleString()}</span>
@@ -164,13 +239,12 @@ export default function CoursesPage() {
                   </div>
 
                   {isComingSoon ? (
-                    /* PLACEHOLDER: Not yet open for enrollment with Notify Me email capture */
                     <button
                       onClick={() => setNotifyCourse(course)}
                       className="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 flex items-center gap-1.5 transition"
                     >
                       <Bell className="w-3.5 h-3.5 text-purple-300" />
-                      <span>Notify Me</span>
+                      <span>{isHi ? 'मुझे सूचित करें' : 'Notify Me'}</span>
                     </button>
                   ) : (
                     <Link
@@ -181,7 +255,7 @@ export default function CoursesPage() {
                           : 'bg-white/10 hover:bg-white/15 text-white border border-white/10'
                       }`}
                     >
-                      <span>View Curriculum</span>
+                      <span>{isHi ? 'पाठ्यक्रम देखें' : 'View Curriculum'}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   )}
@@ -196,8 +270,14 @@ export default function CoursesPage() {
           <div className="flex items-center gap-3">
             <BookOpen className="w-6 h-6 text-amber-400 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-white">Want to suggest a specialized Jyotish cohort?</p>
-              <p className="text-xs text-slate-400">Our catalog expands with specialized cohorts on Muhurta, Medical Astrology, and Jaimini Sutras.</p>
+              <p className="text-sm font-semibold text-white">
+                {isHi ? 'क्या आप किसी विशेष ज्योतिष सत्र का सुझाव देना चाहते हैं?' : 'Want to suggest a specialized Jyotish cohort?'}
+              </p>
+              <p className="text-xs text-slate-400">
+                {isHi
+                  ? 'हमारी सूची में शीघ्र ही मुहूर्त, चिकित्सा ज्योतिष और जैमिनी सूत्रों पर विशेष कक्षाएं शामिल की जा रही हैं।'
+                  : 'Our catalog expands with specialized cohorts on Muhurta, Medical Astrology, and Jaimini Sutras.'}
+              </p>
             </div>
           </div>
           <a
@@ -206,7 +286,7 @@ export default function CoursesPage() {
             rel="noopener noreferrer"
             className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 transition shrink-0"
           >
-            Visit Aapka Astro Consultations &rarr;
+            {isHi ? 'आपका एस्ट्रो व्यक्तिगत परामर्श देखें →' : 'Visit Aapka Astro Consultations \u2192'}
           </a>
         </div>
 
@@ -228,25 +308,31 @@ export default function CoursesPage() {
             </div>
 
             <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400">
-              Early Cohort Notification
+              {isHi ? 'प्रथम बैच पूर्व-सूचना' : 'Early Cohort Notification'}
             </span>
             <h3 className="text-xl font-bold text-white mt-1 mb-2">
-              {notifyCourse.title}
+              {isHi && COURSE_HINDI_MAP[notifyCourse.id]?.title ? COURSE_HINDI_MAP[notifyCourse.id].title : notifyCourse.title}
             </h3>
             <p className="text-xs text-slate-300 mb-6">
-              Enter your email to receive priority notification and early-bird registration access the moment Batch 01 opens.
+              {isHi
+                ? 'बैच 01 का पंजीकरण शुरू होते ही प्राथमिकता सूचना और विशेष अर्ली-बर्ड छूट प्राप्त करने के लिए अपना ईमेल दर्ज करें।'
+                : 'Enter your email to receive priority notification and early-bird registration access the moment Batch 01 opens.'}
             </p>
 
             {notifySuccess ? (
               <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>You are on the priority notification list! We will email you upon launch.</span>
+                <span>
+                  {isHi
+                    ? 'आप प्राथमिकता सूची में शामिल हो चुके हैं! शुभारंभ पर हम आपको ईमेल भेजेंगे।'
+                    : 'You are on the priority notification list! We will email you upon launch.'}
+                </span>
               </div>
             ) : (
               <form onSubmit={handleNotifySubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Email Address
+                    {isHi ? 'ईमेल पता' : 'Email Address'}
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -265,7 +351,7 @@ export default function CoursesPage() {
                   type="submit"
                   className="w-full py-3 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/20 transition"
                 >
-                  Notify Me When Enrollment Opens
+                  {isHi ? 'नामांकन खुलने पर मुझे सूचित करें' : 'Notify Me When Enrollment Opens'}
                 </button>
               </form>
             )}

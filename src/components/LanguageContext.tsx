@@ -7,6 +7,7 @@ export type Language = Locale;
 
 interface LanguageContextType {
   language: Language;
+  isHi: boolean;
   setLanguage: (lang: Language) => void;
   toggleLanguage: () => void;
   t: (key: string, defaultText?: string) => string;
@@ -17,6 +18,7 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType>({
   language: 'en',
+  isHi: false,
   setLanguage: () => {},
   toggleLanguage: () => {},
   t: (key: string, defaultText?: string) => defaultText || key,
@@ -27,18 +29,44 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || '/';
   const router = useRouter();
 
-  // Deduce locale from URL pathname: /hi or /hi/... means Hindi
+  // Deduce initial locale
   const isHiUrl = pathname === '/hi' || pathname.startsWith('/hi/');
   const initialLocale: Locale = isHiUrl ? 'hi' : 'en';
 
   const [language, setLanguageState] = useState<Language>(initialLocale);
 
-  // Sync state when pathname changes
+  // Sync state when pathname or window location changes
   useEffect(() => {
-    const activeFromPath: Locale = pathname === '/hi' || pathname.startsWith('/hi/') ? 'hi' : 'en';
-    setLanguageState(activeFromPath);
+    let resolved: Locale = 'en';
+
+    if (typeof window !== 'undefined') {
+      const winPath = window.location.pathname || '';
+      if (winPath === '/hi' || winPath.startsWith('/hi/')) {
+        resolved = 'hi';
+      } else if (pathname === '/hi' || pathname.startsWith('/hi/')) {
+        resolved = 'hi';
+      } else {
+        const saved = localStorage.getItem('NEXT_LOCALE');
+        if (saved === 'hi') {
+          resolved = 'hi';
+        } else {
+          const cookieMatch = document.cookie.match(/(?:^|;\s*)NEXT_LOCALE=([^;]+)/);
+          if (cookieMatch && cookieMatch[1] === 'hi') {
+            resolved = 'hi';
+          }
+        }
+      }
+    } else {
+      resolved = pathname === '/hi' || pathname.startsWith('/hi/') ? 'hi' : 'en';
+    }
+
+    setLanguageState(resolved);
     try {
-      document.cookie = `${LOCALE_COOKIE_NAME}=${activeFromPath}; path=/; max-age=31536000; SameSite=Lax`;
+      document.cookie = `${LOCALE_COOKIE_NAME}=${resolved}; path=/; max-age=31536000; SameSite=Lax`;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('NEXT_LOCALE', resolved);
+        document.documentElement.lang = resolved;
+      }
     } catch {}
   }, [pathname]);
 
@@ -46,14 +74,18 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     (targetLang: Language) => {
       setLanguageState(targetLang);
 
-      // Save cookie
+      // Save cookie and local storage
       try {
         document.cookie = `${LOCALE_COOKIE_NAME}=${targetLang}; path=/; max-age=31536000; SameSite=Lax`;
-        localStorage.setItem('NEXT_LOCALE', targetLang);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('NEXT_LOCALE', targetLang);
+          document.documentElement.lang = targetLang;
+        }
       } catch {}
 
       // Calculate new target path while keeping visitor on the same page
-      let targetPath = pathname;
+      const winPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+      let targetPath = winPath || pathname;
       if (targetLang === 'hi') {
         if (!targetPath.startsWith('/hi')) {
           targetPath = targetPath === '/' ? '/hi' : `/hi${targetPath}`;
@@ -100,6 +132,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     <LanguageContext.Provider
       value={{
         language,
+        isHi: language === 'hi',
         setLanguage: switchLanguage,
         toggleLanguage,
         t,

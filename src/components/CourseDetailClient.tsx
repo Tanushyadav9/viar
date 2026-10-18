@@ -18,12 +18,14 @@ import {
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort } from '@/lib/types';
 import { PLACEHOLDER_TESTIMONIALS } from '@/lib/data';
+import { useLanguage } from '@/components/LanguageContext';
 
 interface CourseDetailClientProps {
   slug: string;
 }
 
 export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
+  const { isHi } = useLanguage();
   const [course, setCourse] = useState<Course | null>(null);
   const [cohort, setCohort] = useState<Cohort | null>(null);
   const [openModule, setOpenModule] = useState<number | null>(1);
@@ -119,9 +121,9 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
         
         {/* Breadcrumb Navigation */}
         <div className="flex items-center gap-2 text-xs text-slate-400 mb-8">
-          <Link href="/" className="hover:text-white transition">Home</Link>
+          <Link href="/" className="hover:text-white transition">{isHi ? 'होम' : 'Home'}</Link>
           <span>/</span>
-          <Link href="/courses" className="hover:text-white transition">Courses</Link>
+          <Link href="/courses" className="hover:text-white transition">{isHi ? 'पाठ्यक्रम' : 'Courses'}</Link>
           <span>/</span>
           <span className="text-amber-400 font-medium truncate max-w-xs">{course.title}</span>
         </div>
@@ -133,45 +135,55 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
           <div className="lg:col-span-7 space-y-6">
             <div className="flex flex-wrap items-center gap-3">
               <span className="px-3.5 py-1 rounded-full text-xs font-bold tracking-wide uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                {course.badge || 'Self-Paced Masterclass'}
+                {isHi ? 'सेल्फ-पेस्ड मास्टरक्लास' : (course.badge || 'Self-Paced Masterclass')}
               </span>
               <span className="text-xs text-slate-400">
-                Level: <strong className="text-slate-200">{course.level}</strong>
+                {isHi ? 'स्तर' : 'Level'}: <strong className="text-slate-200">
+                  {isHi ? (course.level === 'Beginner' ? 'प्रारंभिक' : course.level === 'Intermediate' ? 'मध्यम' : 'उन्नत') : course.level}
+                </strong>
               </span>
               <span className="text-xs text-slate-400">
-                Language: <strong className="text-slate-200">English + Hindi Technical Terms</strong>
+                {isHi ? 'भाषा' : 'Language'}: <strong className="text-slate-200">
+                  {isHi ? 'हिंदी एवं प्रामाणिक वैदिक शब्दावली' : 'English + Hindi Technical Terms'}
+                </strong>
               </span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
-              {course.title}
+              {isHi && slug === 'what-is-astrology'
+                ? 'सम्पूर्ण वैदिक ज्योतिष: मूल सिद्धांतों से कुंडली महारत'
+                : course.title}
             </h1>
 
             <p className="text-lg sm:text-xl text-amber-200/90 font-medium leading-relaxed">
-              {course.tagline}
+              {isHi && slug === 'what-is-astrology'
+                ? '23 संरचित पाठों में पवित्र विज्ञान सीखें — प्रथम सिद्धांतों से वास्तविक कुंडली तक।'
+                : course.tagline}
             </p>
 
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-              {course.description}
+              {isHi && slug === 'what-is-astrology'
+                ? 'ग्रहों, राशियों, भावों, नक्षत्रों, गोचर और दशा प्रणालियों का विस्तृत अध्ययन। वास्तविक कुंडलियों के साथ भविष्यवाणियां करने में सक्षम बनें।'
+                : course.description}
             </p>
 
             {/* Quick Metrics Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-white/10">
               <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-                <span className="block text-[11px] text-slate-400 uppercase tracking-wider">Format</span>
-                <span className="text-sm font-bold text-white">23 Video Modules</span>
+                <span className="block text-[11px] text-slate-400 uppercase tracking-wider">{isHi ? 'प्रारूप' : 'Format'}</span>
+                <span className="text-sm font-bold text-white">{isHi ? '23 वीडियो पाठ' : '23 Video Modules'}</span>
               </div>
               <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-                <span className="block text-[11px] text-slate-400 uppercase tracking-wider">Pace</span>
-                <span className="text-sm font-bold text-white">100% Self-Paced</span>
+                <span className="block text-[11px] text-slate-400 uppercase tracking-wider">{isHi ? 'गति' : 'Pace'}</span>
+                <span className="text-sm font-bold text-white">{isHi ? '100% स्व-अध्ययन' : '100% Self-Paced'}</span>
               </div>
               <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-                <span className="block text-[11px] text-slate-400 uppercase tracking-wider">Bonus</span>
-                <span className="text-sm font-bold text-white">2 Real Chart Cases</span>
+                <span className="block text-[11px] text-slate-400 uppercase tracking-wider">{isHi ? 'बोनस' : 'Bonus'}</span>
+                <span className="text-sm font-bold text-white">{isHi ? '2 लाइव कुंडली केस' : '2 Real Chart Cases'}</span>
               </div>
               <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-                <span className="block text-[11px] text-slate-400 uppercase tracking-wider">Credential</span>
-                <span className="text-sm font-bold text-amber-300">Exam & Certificate</span>
+                <span className="block text-[11px] text-slate-400 uppercase tracking-wider">{isHi ? 'प्रमाणन' : 'Credential'}</span>
+                <span className="text-sm font-bold text-amber-300">{isHi ? 'परीक्षा व प्रमाणपत्र' : 'Exam & Certificate'}</span>
               </div>
             </div>
 
@@ -188,17 +200,22 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-white">{course.instructor.name}</span>
+                  <span className="text-sm font-bold text-white">
+                    {isHi ? 'आचार्य नीरज कुमार' : course.instructor.name}
+                  </span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    Lead Astrologer
+                    {isHi ? 'मुख्य मार्गदर्शक' : 'Lead Astrologer'}
                   </span>
                 </div>
                 <p className="text-xs text-amber-400/90 font-medium">
-                  Founder, Aapka Astro • {course.instructor.experienceYears}+ Years Vedic Experience
+                  {isHi
+                    ? `संस्थापक, आपका एस्ट्रो • ${course.instructor.experienceYears}+ वर्ष वैदिक अनुभव`
+                    : `Founder, Aapka Astro • ${course.instructor.experienceYears}+ Years Vedic Experience`}
                 </p>
-                {/* PLACEHOLDER: replace with real content */}
                 <p className="text-xs text-slate-400 leading-relaxed pt-1">
-                  {course.instructor.bio}
+                  {isHi
+                    ? 'बैद्यनाथ धाम (देवघर) की प्राचीन परंपरा और 20+ वर्षों के कॉर्पोरेट कार्यकारी नेतृत्व का दुर्लभ संगम। देश-विदेश में हजारों छात्रों और परामर्शार्थियों द्वारा प्रशंसित।'
+                    : course.instructor.bio}
                 </p>
               </div>
             </div>
@@ -215,50 +232,52 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <div className="flex items-center gap-1.5 text-xs text-slate-400">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>Tuition Payment:</span>
+                  <span>{isHi ? 'शुल्क भुगतान:' : 'Tuition Payment:'}</span>
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                  Direct UPI QR (₹ INR)
+                  {isHi ? 'सीधा UPI QR (₹ INR)' : 'Direct UPI QR (₹ INR)'}
                 </span>
               </div>
 
               {/* Pricing Display */}
               <div>
                 <span className="text-xs font-semibold text-slate-400 block uppercase tracking-wider mb-1">
-                  One-Time Tuition Fee • Lifetime Access
+                  {isHi ? 'एकमुश्त शिक्षण शुल्क • आजीवन पहुंच' : 'One-Time Tuition Fee • Lifetime Access'}
                 </span>
                 <div className="flex items-baseline gap-3">
                   <span className="text-4xl font-black text-white">{price}</span>
                   <span className="text-base text-slate-500 line-through">{originalPrice}</span>
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    {discountPercent}% Off Launch
+                    {isHi ? `${discountPercent}% प्रारंभिक छूट` : `${discountPercent}% Off Launch`}
                   </span>
                 </div>
                 <p className="text-xs text-amber-400/90 font-medium mt-1">
-                  {savings} • All 23 video modules + 2 bonus masterclasses + certificate included
+                  {isHi
+                    ? `बचत ₹${((course.originalPriceInr || 11000) - (course.priceInr || 5100)).toLocaleString('en-IN')} • सभी 23 वीडियो पाठ + 2 बोनस मास्टरक्लास + प्रमाणपत्र सम्मिलित`
+                    : `${savings} • All 23 video modules + 2 bonus masterclasses + certificate included`}
                 </p>
               </div>
 
               {/* Course Delivery Details */}
               <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">Delivery Model</span>
+                  <span className="text-xs text-slate-400">{isHi ? 'अध्ययन प्रारूप' : 'Delivery Model'}</span>
                   <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300">
-                    100% Self-Paced
+                    {isHi ? '100% स्व-अध्ययन' : '100% Self-Paced'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Access Type</span>
-                  <span className="font-semibold text-white">Instant Lifetime Access</span>
+                  <span className="text-slate-400">{isHi ? 'पहुंच का प्रकार' : 'Access Type'}</span>
+                  <span className="font-semibold text-white">{isHi ? 'तत्काल आजीवन पहुंच' : 'Instant Lifetime Access'}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Total Lessons</span>
-                  <span className="font-semibold text-white">23 Modules + 2 Bonus Workshops</span>
+                  <span className="text-slate-400">{isHi ? 'कुल पाठ' : 'Total Lessons'}</span>
+                  <span className="font-semibold text-white">{isHi ? '23 मॉड्यूल + 2 बोनस कार्यशालाएं' : '23 Modules + 2 Bonus Workshops'}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-white/5">
-                  <span className="text-slate-400">Accreditation</span>
+                  <span className="text-slate-400">{isHi ? 'संस्थान प्रमाणन' : 'Accreditation'}</span>
                   <span className="font-semibold text-amber-400">
-                    Vihangam Institute (VIAR)
+                    {isHi ? 'विहंगम संस्थान (VIAR)' : 'Vihangam Institute (VIAR)'}
                   </span>
                 </div>
               </div>
@@ -268,18 +287,24 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                 <div className="space-y-4 pt-2">
                   <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center">
                     <span className="text-xs font-bold text-amber-300 uppercase tracking-wider block mb-1">
-                      Curriculum in Preparation
+                      {isHi ? 'पाठ्यक्रम तैयारी में है' : 'Curriculum in Preparation'}
                     </span>
                     <p className="text-xs text-slate-300">
-                      Enrollment for this syllabus opens shortly. Enter your email for priority admission.
+                      {isHi
+                        ? 'इस पाठ्यक्रम का नामांकन शीघ्र खुल रहा है। प्राथमिकता प्रवेश हेतु अपना ईमेल दर्ज करें।'
+                        : 'Enrollment for this syllabus opens shortly. Enter your email for priority admission.'}
                     </p>
                   </div>
 
                   {notifySuccess ? (
                     <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-1">
                       <CheckCircle2 className="w-5 h-5 text-emerald-400 mx-auto" />
-                      <p className="text-xs font-bold text-emerald-300">You are on the priority VIP list!</p>
-                      <p className="text-[11px] text-slate-400">We will email you the moment admissions open.</p>
+                      <p className="text-xs font-bold text-emerald-300">
+                        {isHi ? 'आप प्राथमिकता सूची में शामिल हो चुके हैं!' : 'You are on the priority VIP list!'}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        {isHi ? 'नामांकन शुरू होते ही हम आपको ईमेल भेजेंगे।' : 'We will email you the moment admissions open.'}
+                      </p>
                     </div>
                   ) : (
                     <form onSubmit={handleNotifySubmit} className="space-y-2">
@@ -288,7 +313,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                         required
                         value={notifyEmail}
                         onChange={(e) => setNotifyEmail(e.target.value)}
-                        placeholder="Enter your email address"
+                        placeholder={isHi ? 'अपना ईमेल पता दर्ज करें' : 'Enter your email address'}
                         className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
                       />
                       <button
@@ -296,7 +321,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                         className="gold-button w-full py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2"
                       >
                         <Bell className="w-4 h-4" />
-                        <span>Notify Me When Admissions Open</span>
+                        <span>{isHi ? 'नामांकन खुलने पर मुझे सूचित करें' : 'Notify Me When Admissions Open'}</span>
                       </button>
                     </form>
                   )}
@@ -307,12 +332,12 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                     href={`/checkout/${cohort.id}`}
                     className="gold-button w-full py-3.5 rounded-2xl text-center font-black text-sm block shadow-lg shadow-amber-500/20 tracking-wide uppercase"
                   >
-                    Start Learning Today • {price}
+                    {isHi ? `आज ही सीखना शुरू करें • ${price}` : `Start Learning Today • ${price}`}
                   </Link>
 
                   <p className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1.5">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Direct UPI Payment • Zero Gateway Fee • Fast Verification</span>
+                    <span>{isHi ? 'सीधा UPI भुगतान • शून्य गेटवे शुल्क • त्वरित सत्यापन' : 'Direct UPI Payment • Zero Gateway Fee • Fast Verification'}</span>
                   </p>
                 </div>
               ) : null}
@@ -321,23 +346,23 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
               <div className="pt-4 border-t border-white/10 space-y-2 text-xs text-slate-300">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>23 structured video modules with Acharya Niraj Kumar</span>
+                  <span>{isHi ? 'आचार्य नीरज कुमार के 23 संरचित वीडियो पाठ' : '23 structured video modules with Acharya Niraj Kumar'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>2 bonus real-world chart workshops (Career &amp; Marriage)</span>
+                  <span>{isHi ? '2 बोनस व्यावहारिक कुंडली कार्यशालाएं (करियर व विवाह)' : '2 bonus real-world chart workshops (Career & Marriage)'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>Permanent on-demand lifetime access on mobile &amp; desktop</span>
+                  <span>{isHi ? 'मोबाइल और लैपटॉप पर आजीवन ऑन-डिमांड पहुंच' : 'Permanent on-demand lifetime access on mobile & desktop'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>Graded 20-question final quiz + digital certificate</span>
+                  <span>{isHi ? '20 प्रश्नों की अंतिम परीक्षा + डिजिटल प्रमाणपत्र' : 'Graded 20-question final quiz + digital certificate'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>Verifiable credential slug on viar.in/verify</span>
+                  <span>{isHi ? 'viar.in/verify पर सत्यापन योग्य विशिष्ट कोड' : 'Verifiable credential slug on viar.in/verify'}</span>
                 </div>
               </div>
 
@@ -352,35 +377,39 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
             <div className="lg:col-span-5 space-y-4">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold uppercase tracking-wider">
                 <Video className="w-3.5 h-3.5 text-amber-400" />
-                <span>Free Preview Lesson</span>
+                <span>{isHi ? 'निःशुल्क पूर्वावलोकन पाठ' : 'Free Preview Lesson'}</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-                Experience Acharya Niraj Kumar&apos;s Teaching Style
+                {isHi ? 'आचार्य नीरज कुमार की शिक्षण शैली का अनुभव करें' : 'Experience Acharya Niraj Kumar\'s Teaching Style'}
               </h2>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                Sample the clarity, logic, and profound Vedic depth before enrolling. Watch this free introductory session demonstrating how astronomical angles, bhavas, and planetary karma are explained without fear or superstition.
+                {isHi
+                  ? 'नामांकन से पूर्व शिक्षण की स्पष्टता, तार्किकता और गहन वैदिक गहराई का प्रत्यक्ष अनुभव करें। यह निःशुल्क सत्र दर्शाता है कि खगोलीय कोण, भाव और कर्म के सिद्धांतों को बिना किसी भय या अंधविश्वास के कैसे सिखाया जाता है।'
+                  : 'Sample the clarity, logic, and profound Vedic depth before enrolling. Watch this free introductory session demonstrating how astronomical angles, bhavas, and planetary karma are explained without fear or superstition.'}
               </p>
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <span className="text-xs text-amber-400 font-semibold flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4" /> 100% Free Sample Lesson
+                  <CheckCircle2 className="w-4 h-4" /> {isHi ? '100% निःशुल्क पाठ' : '100% Free Sample Lesson'}
                 </span>
                 <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> No Card Required
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {isHi ? 'कार्ड की आवश्यकता नहीं' : 'No Card Required'}
                 </span>
               </div>
             </div>
 
             <div className="lg:col-span-7">
-              {/* PLACEHOLDER: Unverified video embed hibDdoH5kbQ removed. Client to provide verified official sample video URL. */}
+              {/* Official sample video placeholder with download link */}
               <div className="relative rounded-2xl border border-dashed border-amber-500/30 bg-gradient-to-b from-[#111827]/80 to-[#0a0f1a]/80 p-8 sm:p-10 text-center aspect-video flex flex-col items-center justify-center">
                 <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mb-3">
                   <Video className="w-7 h-7" />
                 </div>
                 <h3 className="text-lg sm:text-xl font-bold text-white mb-2">
-                  Sample Lecture Video Coming Soon
+                  {isHi ? 'नमूना व्याख्यान वीडियो शीघ्र उपलब्ध' : 'Sample Lecture Video Coming Soon'}
                 </h3>
                 <p className="text-slate-300 text-xs leading-relaxed max-w-sm mb-4">
-                  Full preview excerpts and sample video lessons are published here in the curriculum.
+                  {isHi
+                    ? 'पाठ्यक्रम के पूर्वावलोकन अंश यहां शीघ्र प्रकाशित किए जाएंगे।'
+                    : 'Full preview excerpts and sample video lessons are published here in the curriculum.'}
                 </p>
                 <a
                   href={`/api/courses/${course.slug}/syllabus/download?print=true`}
@@ -389,7 +418,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                   className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-semibold inline-flex items-center gap-2 transition"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Download Complete Syllabus (PDF)</span>
+                  <span>{isHi ? 'संपूर्ण पाठ्यक्रम डाउनलोड करें (PDF)' : 'Download Complete Syllabus (PDF)'}</span>
                 </a>
               </div>
             </div>
@@ -400,13 +429,15 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
         <div className="mb-20">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <span className="text-xs font-bold uppercase tracking-widest text-amber-400 block mb-2">
-              Comprehensive 23-Module Masterclass
+              {isHi ? 'व्यापक 23-मॉड्यूल मास्टरक्लास' : 'Comprehensive 23-Module Masterclass'}
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-              23 On-Demand Video Modules + 2 Bonus Case Studies
+              {isHi ? '23 ऑन-डिमांड वीडियो मॉड्यूल + 2 बोनस केस स्टडीज' : '23 On-Demand Video Modules + 2 Bonus Case Studies'}
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-2 mb-6">
-              Complete first-principles education: from planetary mechanics to reading live charts for career, marriage, and remedies.
+              {isHi
+                ? 'मूल सिद्धांतों से संपूर्ण शिक्षा: ग्रहों के गणित से लेकर करियर, विवाह और उपायों के लिए वास्तविक कुंडली विश्लेषण तक।'
+                : 'Complete first-principles education: from planetary mechanics to reading live charts for career, marriage, and remedies.'}
             </p>
 
             {/* Downloadable Syllabus Button */}
@@ -417,7 +448,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
               className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs font-bold text-slate-200 inline-flex items-center gap-2 transition shadow-md hover:border-amber-400/40"
             >
               <Download className="w-4 h-4 text-amber-400" />
-              <span>Download Complete 23-Module Curriculum (PDF)</span>
+              <span>{isHi ? 'संपूर्ण पाठ्यक्रम विवरण डाउनलोड करें (PDF)' : 'Download Complete 23-Module Curriculum (PDF)'}</span>
             </a>
           </div>
 
@@ -442,9 +473,11 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                         <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
                           module.isBonus ? 'bg-amber-500/30 text-amber-200 border border-amber-400/40' : 'bg-amber-500/20 text-amber-300'
                         }`}>
-                          {module.isBonus ? 'Bonus Masterclass' : `Module ${modNum}`}
+                          {module.isBonus ? (isHi ? 'बोनस मास्टरक्लास' : 'Bonus Masterclass') : (isHi ? `मॉड्यूल ${modNum}` : `Module ${modNum}`)}
                         </span>
-                        <span className="text-xs text-slate-400">~{module.durationMinutes || 75} Mins On-Demand Video</span>
+                        <span className="text-xs text-slate-400">
+                          {isHi ? `~${module.durationMinutes || 75} मिनट वीडियो` : `~${module.durationMinutes || 75} Mins On-Demand Video`}
+                        </span>
                       </div>
                       <h3 className="text-lg font-bold text-white">{module.title}</h3>
                       <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">{module.description}</p>
@@ -463,7 +496,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                     <div className="px-6 pb-6 pt-2 border-t border-white/5 space-y-4">
                       <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-1.5">
                         <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider block">
-                          Module Summary &amp; Explanatory Guide
+                          {isHi ? 'मॉड्यूल सारांश एवं मार्गदर्शिका' : 'Module Summary & Explanatory Guide'}
                         </span>
                         <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
                           {module.description}
@@ -473,7 +506,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                       {module.keyTopics && module.keyTopics.length > 0 && (
                         <div>
                           <span className="text-[11px] font-semibold text-amber-300 uppercase tracking-wider block mb-2">
-                            Key Concepts &amp; Topics Covered
+                            {isHi ? 'मुख्य अवधारणाएं एवं विषय' : 'Key Concepts & Topics Covered'}
                           </span>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {module.keyTopics.map((topic, i) => (
@@ -490,7 +523,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                       {Array.isArray(module.lessons) && module.lessons.length > 0 && (
                         <div className="space-y-2 pt-2">
                           <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
-                            Lessons in this Module
+                            {isHi ? 'इस मॉड्यूल के पाठ' : 'Lessons in this Module'}
                           </span>
                           <div className="space-y-1.5">
                             {module.lessons.map((lesson) => {
@@ -503,7 +536,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                                   <div className="flex items-center gap-2.5 min-w-0">
                                     {isPreview ? (
                                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                        Free Preview
+                                        {isHi ? 'निःशुल्क पूर्वावलोकन' : 'Free Preview'}
                                       </span>
                                     ) : (
                                       <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
@@ -513,7 +546,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                                     </span>
                                   </div>
                                   <span className="text-[10px] text-slate-500 shrink-0">
-                                    {isPreview ? 'Sample Available' : 'Enrolled Access'}
+                                    {isPreview ? (isHi ? 'नमूना उपलब्ध' : 'Sample Available') : (isHi ? 'नामांकित छात्रों के लिए' : 'Enrolled Access')}
                                   </span>
                                 </div>
                               );
@@ -525,9 +558,13 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                       <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5">
                           <Video className="w-4 h-4 text-amber-400 shrink-0" />
-                          <span className="text-xs font-semibold text-white">Full Video Masterclass + Downloadable Chart Cheatsheet</span>
+                          <span className="text-xs font-semibold text-white">
+                            {isHi ? 'पूर्ण वीडियो पाठ + डाउनलोड करने योग्य चीटशीट' : 'Full Video Masterclass + Downloadable Chart Cheatsheet'}
+                          </span>
                         </div>
-                        <span className="text-[11px] text-emerald-400 font-semibold">Included in Enrollment</span>
+                        <span className="text-[11px] text-emerald-400 font-semibold">
+                          {isHi ? 'नामांकन में सम्मिलित' : 'Included in Enrollment'}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -542,27 +579,35 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
           <div className="flex flex-col md:flex-row items-center gap-8">
             <div className="space-y-3">
               <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 uppercase tracking-wide">
-                Official Credential
+                {isHi ? 'आधिकारिक प्रमाणन' : 'Official Credential'}
               </span>
               <h3 className="text-2xl font-bold text-white">
-                Final Graded Assessment &amp; Verifiable Certificate
+                {isHi ? 'अंतिम परीक्षा एवं सत्यापन योग्य डिजिटल प्रमाणपत्र' : 'Final Graded Assessment & Verifiable Certificate'}
               </h3>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                Upon completing the 23 self-paced video modules, students unlock the 20-question comprehensive final assessment. Scoring 70% or higher generates an authentic digital Certificate of Completion from Vihangam Institute of Astrology and Research, verifiable worldwide at viar.in/verify.
+                {isHi
+                  ? '23 वीडियो मॉड्यूल पूर्ण करने के बाद विद्यार्थी 20 प्रश्नों की व्यापक अंतिम परीक्षा दे सकते हैं। 70% या अधिक अंक प्राप्त करने पर विहंगम ज्योतिष एवं अनुसंधान संस्थान (VIAR) द्वारा आधिकारिक डिजिटल प्रमाणपत्र प्रदान किया जाता है, जो viar.in/verify पर विश्व स्तर पर सत्यापन योग्य है।'
+                  : 'Upon completing the 23 self-paced video modules, students unlock the 20-question comprehensive final assessment. Scoring 70% or higher generates an authentic digital Certificate of Completion from Vihangam Institute of Astrology and Research, verifiable worldwide at viar.in/verify.'}
               </p>
               <div className="flex items-center gap-4 text-xs text-amber-400 pt-2">
-                <span>• 20 Multiple Choice Questions</span>
-                <span>• Instant Automated Scoring</span>
-                <span>• Unique Public Verification Slug</span>
+                <span>{isHi ? '• 20 बहुविकल्पीय प्रश्न' : '• 20 Multiple Choice Questions'}</span>
+                <span>{isHi ? '• तत्काल स्वचालित परिणाम' : '• Instant Automated Scoring'}</span>
+                <span>{isHi ? '• अद्वितीय सार्वजनिक सत्यापन कोड' : '• Unique Public Verification Slug'}</span>
               </div>
             </div>
             <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center shrink-0 w-full md:w-56">
               <div className="w-12 h-12 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-2">
                 <Sparkles className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-white block">Accredited by VIAR</span>
-              <span className="text-[10px] text-slate-400 block mt-0.5">Vihangam Institute of Astrology &amp; Research</span>
-              <span className="text-[10px] text-amber-300 block mt-0.5">Signed by Acharya Niraj Kumar</span>
+              <span className="text-xs font-bold text-white block">
+                {isHi ? 'VIAR द्वारा मान्यता प्राप्त' : 'Accredited by VIAR'}
+              </span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">
+                {isHi ? 'विहंगम ज्योतिष एवं अनुसंधान संस्थान' : 'Vihangam Institute of Astrology & Research'}
+              </span>
+              <span className="text-[10px] text-amber-300 block mt-0.5">
+                {isHi ? 'आचार्य नीरज कुमार द्वारा हस्ताक्षरित' : 'Signed by Acharya Niraj Kumar'}
+              </span>
             </div>
           </div>
         </div>
@@ -571,10 +616,10 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
         <div className="mb-20">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <span className="text-xs font-bold uppercase tracking-widest text-amber-400 block mb-2">
-              Student Experiences
+              {isHi ? 'छात्रों के अनुभव' : 'Student Experiences'}
             </span>
             <h2 className="text-2xl sm:text-3xl font-black text-white">
-              Trusted by 26,000+ Followers & Worldwide Cohorts
+              {isHi ? '26,000+ अनुयायियों एवं विश्वव्यापी छात्रों द्वारा प्रशंसित' : 'Trusted by 26,000+ Followers & Worldwide Cohorts'}
             </h2>
           </div>
 
@@ -599,7 +644,9 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
 
         {/* FAQs */}
         <div className="max-w-3xl mx-auto space-y-4 mb-16">
-          <h3 className="text-2xl font-bold text-white text-center mb-6">Frequently Asked Questions</h3>
+          <h3 className="text-2xl font-bold text-white text-center mb-6">
+            {isHi ? 'अक्सर पूछे जाने वाले प्रश्न' : 'Frequently Asked Questions'}
+          </h3>
           {course.faqs.map((faq, idx) => (
             <div key={idx} className="cosmic-card p-5 rounded-2xl border border-white/5 space-y-2">
               <h4 className="text-sm font-bold text-white">{faq.question}</h4>

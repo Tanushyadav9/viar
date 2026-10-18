@@ -17,6 +17,7 @@ import {
   Mail,
   X
 } from 'lucide-react';
+import { useLanguage } from '@/components/LanguageContext';
 
 const CREDENTIAL_GALLERY = [
   {
@@ -92,6 +93,7 @@ const CREDENTIAL_GALLERY = [
 ];
 
 export default function AboutPage() {
+  const { isHi } = useLanguage();
   const [activeModalImg, setActiveModalImg] = useState<{ src: string; title: string; institution: string } | null>(null);
 
   return (
@@ -103,25 +105,37 @@ export default function AboutPage() {
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-400/10 border border-amber-400/25 text-amber-300 text-xs font-semibold uppercase tracking-wider mb-4">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Pioneering Astrological Science & Research</span>
+              <span>{isHi ? 'अग्रणी ज्योतिष विज्ञान एवं अनुसंधान' : 'Pioneering Astrological Science & Research'}</span>
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-              Introduction to <span className="gold-gradient-text">Vihangam Institute of Astrology and Research</span>
+              {isHi ? (
+                <>विहंगम ज्योतिष एवं अनुसंधान संस्थान <span className="gold-gradient-text">का परिचय</span></>
+              ) : (
+                <>Introduction to <span className="gold-gradient-text">Vihangam Institute of Astrology and Research</span></>
+              )}
             </h1>
           </div>
 
           <div className="bg-gradient-to-b from-[#111827] to-[#0d131f] rounded-3xl border border-amber-500/30 p-8 sm:p-12 text-left space-y-6 shadow-2xl">
             <p className="text-slate-200 text-base sm:text-lg leading-relaxed">
-              Welcome to the Vihangam Institute of Astrology and Research, a pioneering institution dedicated to the exploration and understanding of astrology as a profound science and art. Established with the vision of bridging ancient wisdom with contemporary inquiry, the institute serves as a hub for both learners and practitioners who seek to delve into the intricacies of astrological principles, methodologies, and their practical applications in daily life.
+              {isHi
+                ? 'विहंगम ज्योतिष एवं अनुसंधान संस्थान (VIAR) में आपका स्वागत है — एक अग्रणी शैक्षणिक संस्थान जो ज्योतिष को एक गहन विज्ञान और कला के रूप में समझने और सिखाने के लिए समर्पित है। प्राचीन ज्ञान को समकालीन वैज्ञानिक अनुसंधान के साथ जोड़ने के दृष्टिकोण से स्थापित, यह संस्थान उन सभी शिक्षार्थियों और अभ्यासियों का प्रमुख केंद्र है जो ज्योतिषीय सिद्धांतों, विधियों और दैनिक जीवन में उनके व्यावहारिक अनुप्रयोगों का गंभीर अध्ययन करना चाहते हैं।'
+                : 'Welcome to the Vihangam Institute of Astrology and Research, a pioneering institution dedicated to the exploration and understanding of astrology as a profound science and art. Established with the vision of bridging ancient wisdom with contemporary inquiry, the institute serves as a hub for both learners and practitioners who seek to delve into the intricacies of astrological principles, methodologies, and their practical applications in daily life.'}
             </p>
             <p className="text-slate-300 text-base leading-relaxed">
-              At Vihangam, we believe that astrology is not merely a tool for prediction, but a lens through which we can gain insights into the human experience and our interconnectedness with the cosmos. Our approach combines rigorous academic research with experiential learning, ensuring that students and researchers not only grasp the theoretical foundations of astrology but also engage with its practical implications.
+              {isHi
+                ? 'विहंगम में हमारा दृढ़ विश्वास है कि ज्योतिष केवल भविष्यवाणियों का साधन नहीं है, बल्कि यह मानव जीवन के अनुभवों और ब्रह्मांड के साथ हमारे अंतर्संबंध को समझने का एक दिव्य माध्यम है। हमारा दृष्टिकोण गहन शैक्षणिक अनुसंधान को अनुभवात्मक शिक्षण के साथ जोड़ता है, जिससे शिक्षार्थी न केवल सैद्धांतिक आधार को समझें बल्कि उसके व्यावहारिक परिणामों का भी विश्लेषण कर सकें।'
+                : 'At Vihangam, we believe that astrology is not merely a tool for prediction, but a lens through which we can gain insights into the human experience and our interconnectedness with the cosmos. Our approach combines rigorous academic research with experiential learning, ensuring that students and researchers not only grasp the theoretical foundations of astrology but also engage with its practical implications.'}
             </p>
             <p className="text-slate-300 text-base leading-relaxed">
-              With a team of esteemed scholars and seasoned astrologers, the institute offers a comprehensive curriculum that encompasses various branches of astrology, including natal astrology, predictive techniques, and the study of transits, Nadi astrology, progressions, Kerala prashant. In addition to specialized courses, we also host workshops, seminars, and conferences that encourage dialogue, innovation, and the dissemination of astrological knowledge.
+              {isHi
+                ? 'विद्वान प्राध्यापकों और अनुभवी ज्योतिषियों के मार्गदर्शन में संस्थान एक व्यापक पाठ्यक्रम प्रदान करता है जिसमें जन्मकुंडली विश्लेषण, फलित तकनीक, ग्रह गोचर, नाड़ी ज्योतिष, वर्षफल और केरल प्रश्न पद्धति शामिल हैं। नियमित पाठ्यक्रमों के अतिरिक्त, हम कार्यशालाओं, संगोष्ठियों और सम्मेलनों का भी आयोजन करते हैं।'
+                : 'With a team of esteemed scholars and seasoned astrologers, the institute offers a comprehensive curriculum that encompasses various branches of astrology, including natal astrology, predictive techniques, and the study of transits, Nadi astrology, progressions, Kerala prashant. In addition to specialized courses, we also host workshops, seminars, and conferences that encourage dialogue, innovation, and the dissemination of astrological knowledge.'}
             </p>
             <p className="text-slate-300 text-base leading-relaxed">
-              Whether you are a curious novice or an established practitioner seeking to enhance your skills, Vihangam Institute of Astrology and Research provides a nurturing environment for exploration and growth. Join us as we embark on a journey to uncover the celestial patterns that shape our lives and illuminate our paths.
+              {isHi
+                ? 'चाहे आप एक जिज्ञासु नौसिखिए हों या अपने ज्ञान को विस्तार देने वाले अभ्यासी, विहंगम ज्योतिष एवं अनुसंधान संस्थान बौद्धिक अन्वेषण और व्यक्तिगत विकास के लिए एक आदर्श वातावरण प्रदान करता है। हमारे साथ इस ज्ञान यात्रा में जुड़ें।'
+                : 'Whether you are a curious novice or an established practitioner seeking to enhance your skills, Vihangam Institute of Astrology and Research provides a nurturing environment for exploration and growth. Join us as we embark on a journey to uncover the celestial patterns that shape our lives and illuminate our paths.'}
             </p>
           </div>
         </div>
@@ -130,13 +144,19 @@ export default function AboutPage() {
         <div className="text-center max-w-3xl mx-auto mb-12">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-400/10 border border-amber-400/25 text-amber-300 text-xs font-semibold uppercase tracking-wider mb-3">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Master Lineage, Science & Corporate Leadership</span>
+            <span>{isHi ? 'गुरु परंपरा, आधुनिक विज्ञान एवं कॉर्पोरेट नेतृत्व' : 'Master Lineage, Science & Corporate Leadership'}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
-            The Mind Behind <span className="gold-gradient-text">Aapka Astro & VIAR</span>
+            {isHi ? (
+              <>आपका एस्ट्रो एवं VIAR <span className="gold-gradient-text">के संस्थापक</span></>
+            ) : (
+              <>The Mind Behind <span className="gold-gradient-text">Aapka Astro & VIAR</span></>
+            )}
           </h2>
           <p className="text-slate-300 text-sm sm:text-base leading-relaxed mt-2">
-            Where traditional Vedic lineage meets corporate executive insight and empirical mathematical rigor.
+            {isHi
+              ? 'जहां पारंपरिक वैदिक परंपरा, कॉर्पोरेट कार्यकारी दृष्टिकोण और गणितीय सटीकता का संगम होता है।'
+              : 'Where traditional Vedic lineage meets corporate executive insight and empirical mathematical rigor.'}
           </p>
         </div>
 
@@ -157,8 +177,12 @@ export default function AboutPage() {
                   />
                 </div>
                 <div className="absolute -bottom-4 right-0 bg-[#0f172a] border border-amber-400/40 px-4 py-2 rounded-xl shadow-xl text-left">
-                  <p className="text-xs font-bold text-amber-300">Acharya Niraj Kumar</p>
-                  <p className="text-[10px] text-slate-400">Founder, Aapka Astro & Lead Instructor, VIAR</p>
+                  <p className="text-xs font-bold text-amber-300">
+                    {isHi ? 'आचार्य नीरज कुमार' : 'Acharya Niraj Kumar'}
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    {isHi ? 'संस्थापक, आपका एस्ट्रो एवं मुख्य मार्गदर्शक, VIAR' : 'Founder, Aapka Astro & Lead Instructor, VIAR'}
+                  </p>
                 </div>
               </div>
 
@@ -215,41 +239,49 @@ export default function AboutPage() {
 
             <div className="lg:col-span-7 space-y-6 text-slate-300 text-sm sm:text-base leading-relaxed">
               <div>
-                <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Master Instructor Profile</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-amber-400">
+                  {isHi ? 'मुख्य मार्गदर्शक का परिचय' : 'Master Instructor Profile'}
+                </span>
                 <h2 className="text-3xl sm:text-4xl font-black text-white mt-1">
-                  Acharya Niraj Kumar
+                  {isHi ? 'आचार्य नीरज कुमार' : 'Acharya Niraj Kumar'}
                 </h2>
                 <p className="text-xs sm:text-sm font-semibold text-amber-300 mt-1">
-                  Jyotish Acharya • AstroVastu Consultant • Corporate Leadership Veteran
+                  {isHi
+                    ? 'ज्योतिष आचार्य • एस्ट्रोवास्तु विशेषज्ञ • वरिष्ठ कॉर्पोरेट नेतृत्व'
+                    : 'Jyotish Acharya • AstroVastu Consultant • Corporate Leadership Veteran'}
                 </p>
               </div>
 
               <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm font-medium italic">
-                &ldquo;Aapka Astro and Vihangam Institute of Astrology and Research (VIAR) are led by Acharya Niraj Kumar, a practitioner who brings together deep traditional learning and rare real-world corporate leadership.&rdquo;
+                {isHi
+                  ? '“आपका एस्ट्रो और विहंगम ज्योतिष एवं अनुसंधान संस्थान (VIAR) का नेतृत्व आचार्य नीरज कुमार द्वारा किया जाता है, जो गहन पारंपरिक ज्ञान और दुर्लभ वास्तविक कॉर्पोरेट नेतृत्व का समन्वय प्रस्तुत करते हैं।”'
+                  : '“Aapka Astro and Vihangam Institute of Astrology and Research (VIAR) are led by Acharya Niraj Kumar, a practitioner who brings together deep traditional learning and rare real-world corporate leadership.”'}
               </div>
 
               <p>
-                {/* PLACEHOLDER: Replace with verified chart analysis count once confirmed across both sites */}
-                Raised in the spiritually rich ecosystem of <strong>Baidyanath Dham, Deoghar</strong>, his journey into astrology and Vastu began early, shaped by curiosity and disciplined guidance. Over the last two decades, he has studied, practiced, and refined his approach, <strong>trusted by students and clients across India and abroad</strong> through comprehensive chart interpretations and numerous Vastu consultations.
+                {isHi
+                  ? 'बैद्यनाथ धाम (देवघर) के आध्यात्मिक वातावरण में पले-बढ़े आचार्य नीरज कुमार की ज्योतिष और वास्तु में रुचि बाल्यकाल से ही जागृत हो गई थी। पिछले दो दशकों से अधिक समय में उन्होंने देश-विदेश के हजारों विद्यार्थियों और परामर्शार्थियों का सफल मार्गदर्शन किया है।'
+                  : 'Raised in the spiritually rich ecosystem of Baidyanath Dham, Deoghar, his journey into astrology and Vastu began early, shaped by curiosity and disciplined guidance. Over the last two decades, he has studied, practiced, and refined his approach, trusted by students and clients across India and abroad through comprehensive chart interpretations and numerous Vastu consultations.'}
               </p>
 
               <p>
-                What makes Acharya Niraj Kumar uniquely effective—especially in demystifying chart interpretation and teaching commercial Vastu—is his extensive corporate background. With over two decades in senior executive roles including <strong>Vice President and Business Head</strong> at major organizations such as <strong>Reliance Retail, Metro Cash & Carry, and NIF Food</strong>, he understands business realities, career crossroads, and executive leadership pressure firsthand.
+                {isHi
+                  ? 'आचार्य नीरज कुमार की पद्धति को जो बात सबसे विशिष्ट बनाती है, वह है उनका दो दशकों का शीर्ष कॉर्पोरेट कार्यकारी अनुभव। रिलायंस रिटेल (Reliance Retail), मेट्रो कैश एंड कैरी (Metro Cash & Carry), और एनआईएफ फूड (NIF Food) जैसी प्रतिष्ठित संस्थाओं में वाइस प्रेसिडेंट (VP) और बिजनेस हेड के रूप में उन्होंने व्यापारिक चुनौतियों और प्रबंधन के दबाव को प्रत्यक्ष रूप से जिया है।'
+                  : 'What makes Acharya Niraj Kumar uniquely effective—especially in demystifying chart interpretation and teaching commercial Vastu—is his extensive corporate background. With over two decades in senior executive roles including Vice President and Business Head at major organizations such as Reliance Retail, Metro Cash & Carry, and NIF Food, he understands business realities, career crossroads, and executive leadership pressure firsthand.'}
               </p>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-white/10 text-left">
                 <div className="p-3 rounded-xl bg-white/[0.03]">
                   <p className="text-2xl font-black text-amber-300">20+ Years</p>
-                  <p className="text-xs text-slate-400">Vedic Practice</p>
+                  <p className="text-xs text-slate-400">{isHi ? 'वैदिक अभ्यास' : 'Vedic Practice'}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.03]">
-                  {/* PLACEHOLDER: Replace with verified chart count once confirmed across both sites */}
-                  <p className="text-2xl font-black text-white">Trusted</p>
-                  <p className="text-xs text-slate-400">Across India & Abroad</p>
+                  <p className="text-2xl font-black text-white">{isHi ? 'सत्यापित' : 'Trusted'}</p>
+                  <p className="text-xs text-slate-400">{isHi ? 'देश-विदेश में प्रतिष्ठित' : 'Across India & Abroad'}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.03] col-span-2 sm:col-span-1">
                   <p className="text-2xl font-black text-emerald-400">26,000+</p>
-                  <p className="text-xs text-slate-400">Global Community</p>
+                  <p className="text-xs text-slate-400">{isHi ? 'वैश्विक समुदाय' : 'Global Community'}</p>
                 </div>
               </div>
 
@@ -261,8 +293,12 @@ export default function AboutPage() {
         {/* Credentials & Lineage Grid */}
         <div className="mb-20">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400 mb-2">Lineage & Learning</h2>
-            <h3 className="text-3xl font-extrabold text-white">Formal Qualifications & Traditional Credentials</h3>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400 mb-2">
+              {isHi ? 'परंपरा एवं अध्ययन' : 'Lineage & Learning'}
+            </h2>
+            <h3 className="text-3xl font-extrabold text-white">
+              {isHi ? 'औपचारिक योग्यताएं एवं पारंपरिक प्रमाण-पत्र' : 'Formal Qualifications & Traditional Credentials'}
+            </h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -274,8 +310,12 @@ export default function AboutPage() {
                   <GraduationCap className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-lg font-bold text-white">Vedic Lineage & Certifications</h4>
-                  <p className="text-xs text-amber-300">Certified by India&apos;s leading Jyotish authorities</p>
+                  <h4 className="text-lg font-bold text-white">
+                    {isHi ? 'वैदिक परंपरा एवं प्रमाणन' : 'Vedic Lineage & Certifications'}
+                  </h4>
+                  <p className="text-xs text-amber-300">
+                    {isHi ? 'भारत के शीर्ष ज्योतिषीय संस्थानों द्वारा प्रमाणित' : 'Certified by India\'s leading Jyotish authorities'}
+                  </p>
                 </div>
               </div>
 
@@ -283,50 +323,78 @@ export default function AboutPage() {
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block font-semibold">Trained under Late Guru Shri B. B. Tiwari</strong>
-                    <span>Direct lineage learning in classical Parashari Jyotish and ancient oral tradition.</span>
+                    <strong className="text-white block font-semibold">
+                      {isHi ? 'स्वर्गीय गुरु श्री बी. बी. तिवारी जी के सानिध्य में अध्ययन' : 'Trained under Late Guru Shri B. B. Tiwari'}
+                    </strong>
+                    <span>
+                      {isHi ? 'शास्त्रीय पाराशरी ज्योतिष और प्राचीन मौखिक गुरु-शिष्य परंपरा का प्रत्यक्ष अध्ययन।' : 'Direct lineage learning in classical Parashari Jyotish and ancient oral tradition.'}
+                    </span>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block font-semibold">Jyotish Acharya</strong>
-                    <span>Bhartiya Vidya Bhawan (K.N. Rao Institute) — premier classical Jyotish certification.</span>
+                    <strong className="text-white block font-semibold">
+                      {isHi ? 'ज्योतिष आचार्य' : 'Jyotish Acharya'}
+                    </strong>
+                    <span>
+                      {isHi ? 'भारतीय विद्या भवन (के. एन. राव संस्थान) — भारत का प्रतिष्ठित शास्त्रीय ज्योतिष प्रमाणन।' : 'Bhartiya Vidya Bhawan (K.N. Rao Institute) — premier classical Jyotish certification.'}
+                    </span>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block font-semibold">M.A. in Jyotish (IGNOU, 2024)</strong>
-                    <span>Postgraduate academic degree in Vedic astrological sciences and computational astronomy.</span>
+                    <strong className="text-white block font-semibold">
+                      {isHi ? 'एम.ए. ज्योतिष (IGNOU, 2024)' : 'M.A. in Jyotish (IGNOU, 2024)'}
+                    </strong>
+                    <span>
+                      {isHi ? 'वैदिक ज्योतिष विज्ञान और गणितीय खगोलशास्त्र में स्नातकोत्तर डिग्री।' : 'Postgraduate academic degree in Vedic astrological sciences and computational astronomy.'}
+                    </span>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block font-semibold">Nadi Parveen (ICAS)</strong>
-                    <span>Indian Council of Astrological Sciences — specialized techniques in Nadi astrology.</span>
+                    <strong className="text-white block font-semibold">
+                      {isHi ? 'नाड़ी प्रवीण (ICAS)' : 'Nadi Parveen (ICAS)'}
+                    </strong>
+                    <span>
+                      {isHi ? 'इंडियन काउंसिल ऑफ एस्ट्रोलॉजिकल साइंसेज — नाड़ी ज्योतिष में विशिष्ट तकनीकें।' : 'Indian Council of Astrological Sciences — specialized techniques in Nadi astrology.'}
+                    </span>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block font-semibold">Jyotish Prabhakar (IRIW under Dr. Pawan Sinha)</strong>
-                    <span>Advanced psychological analysis and karmic remedial frameworks.</span>
+                    <strong className="text-white block font-semibold">
+                      {isHi ? 'ज्योतिष प्रभाकर (IRIW डॉ. पवन सिन्हा के सानिध्य में)' : 'Jyotish Prabhakar (IRIW under Dr. Pawan Sinha)'}
+                    </strong>
+                    <span>
+                      {isHi ? 'उन्नत मनोवैज्ञानिक विश्लेषण और कर्म सुधार पद्धति।' : 'Advanced psychological analysis and karmic remedial frameworks.'}
+                    </span>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block font-semibold">Jyotish Visharad & Jyotish Mani (Bharat Jyotish Vidyapith)</strong>
-                    <span>Mastery of planetary transits, Dashas, and Muhurta selection.</span>
+                    <strong className="text-white block font-semibold">
+                      {isHi ? 'ज्योतिष विशारद एवं ज्योतिष मणि (भारत ज्योतिष विद्यापीठ)' : 'Jyotish Visharad & Jyotish Mani (Bharat Jyotish Vidyapith)'}
+                    </strong>
+                    <span>
+                      {isHi ? 'ग्रह गोचर, विंशोत्तरी दशा और मुहूर्त निर्णय में दक्षता।' : 'Mastery of planetary transits, Dashas, and Muhurta selection.'}
+                    </span>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block font-semibold">Advanced Devta & Energy Vastu (Divya Vastu)</strong>
-                    <span>Granular decoding of spatial energetic blueprints, micro-zones, and non-demolition remedies.</span>
+                    <strong className="text-white block font-semibold">
+                      {isHi ? 'उन्नत देवता एवं ऊर्जा वास्तु (दिव्य वास्तु)' : 'Advanced Devta & Energy Vastu (Divya Vastu)'}
+                    </strong>
+                    <span>
+                      {isHi ? 'सूक्ष्म ऊर्जा क्षेत्रों और बिना तोड़-फोड़ के वास्तु सुधार में महारत।' : 'Granular decoding of spatial energetic blueprints, micro-zones, and non-demolition remedies.'}
+                    </span>
                   </div>
                 </li>
               </ul>
@@ -339,8 +407,12 @@ export default function AboutPage() {
                   <Briefcase className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-lg font-bold text-white">Academic & Corporate Foundation</h4>
-                  <p className="text-xs text-sky-300">Executive realism meets timeless metaphysics</p>
+                  <h4 className="text-lg font-bold text-white">
+                    {isHi ? 'शैक्षणिक एवं कॉर्पोरेट आधार' : 'Academic & Corporate Foundation'}
+                  </h4>
+                  <p className="text-xs text-sky-300">
+                    {isHi ? 'व्यावहारिक यथार्थवाद और आध्यात्मिक ज्ञान का संगम' : 'Executive realism meets timeless metaphysics'}
+                  </p>
                 </div>
               </div>
 
@@ -348,43 +420,67 @@ export default function AboutPage() {
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block font-semibold">B.Sc. (Hons.) in Physics</strong>
-                    <span>Analytical, first-principles approach to celestial geometry, optics, and planetary vibrations.</span>
+                    <strong className="text-white block font-semibold">
+                      {isHi ? 'बी.एससी. (ऑनर्स) भौतिक विज्ञान' : 'B.Sc. (Hons.) in Physics'}
+                    </strong>
+                    <span>
+                      {isHi ? 'खगोलीय ज्यामिति, प्रकाशिकी और ग्रहीय कंपनों का वैज्ञानिक व विश्लेषणात्मक दृष्टिकोण।' : 'Analytical, first-principles approach to celestial geometry, optics, and planetary vibrations.'}
+                    </span>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block font-semibold">PGDBM in International Business & Marketing</strong>
-                    <span>Structured corporate management, cross-border operations, and business strategy.</span>
+                    <strong className="text-white block font-semibold">
+                      {isHi ? 'पीजीडीबीएम (अंतर्राष्ट्रीय व्यापार एवं विपणन)' : 'PGDBM in International Business & Marketing'}
+                    </strong>
+                    <span>
+                      {isHi ? 'व्यावसायिक प्रबंधन, बहुराष्ट्रीय संचालन और व्यापार रणनीति में विशेषज्ञता।' : 'Structured corporate management, cross-border operations, and business strategy.'}
+                    </span>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block font-semibold">Leadership Development & Change Management (XLRI)</strong>
-                    <span>Executive leadership credentials from one of Asia&apos;s most prestigious management institutions.</span>
+                    <strong className="text-white block font-semibold">
+                      {isHi ? 'नेतृत्व विकास एवं परिवर्तन प्रबंधन (XLRI)' : 'Leadership Development & Change Management (XLRI)'}
+                    </strong>
+                    <span>
+                      {isHi ? 'एशिया के शीर्ष प्रबंधन संस्थान से कार्यकारी नेतृत्व क्रेडेंशियल।' : 'Executive leadership credentials from one of Asia\'s most prestigious management institutions.'}
+                    </span>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block font-semibold">Former Vice President & Business Head</strong>
-                    <span>Executive leadership tenures at <strong>Reliance Retail</strong>, <strong>Metro Cash & Carry</strong>, and <strong>NIF Food</strong>.</span>
+                    <strong className="text-white block font-semibold">
+                      {isHi ? 'पूर्व वाइस प्रेसिडेंट (VP) एवं बिजनेस हेड' : 'Former Vice President & Business Head'}
+                    </strong>
+                    <span>
+                      {isHi ? 'रिलायंस रिटेल, मेट्रो कैश एंड कैरी, और एनआईएफ फूड में शीर्ष कार्यकारी नेतृत्व।' : 'Executive leadership tenures at Reliance Retail, Metro Cash & Carry, and NIF Food.'}
+                    </span>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block font-semibold">Strategic Corporate Vastu Practice</strong>
-                    <span>Translating ancient Vastu from abstract dogma into actionable strategy for productivity, leadership alignment, and retail throughput.</span>
+                    <strong className="text-white block font-semibold">
+                      {isHi ? 'व्यावहारिक कॉर्पोरेट वास्तु अभ्यास' : 'Strategic Corporate Vastu Practice'}
+                    </strong>
+                    <span>
+                      {isHi ? 'प्राचीन वास्तु को अंधविश्वास से मुक्त कर कार्यक्षमता, नेतृत्व संतुलन और व्यावसायिक सफलता की व्यावहारिक रणनीति बनाना।' : 'Translating ancient Vastu from abstract dogma into actionable strategy for productivity, leadership alignment, and retail throughput.'}
+                    </span>
                   </div>
                 </li>
               </ul>
 
               <div className="p-4 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-200 text-xs leading-relaxed">
-                <strong className="font-semibold block mb-1">Why this matters to Viar students:</strong>
-                Classes are not taught with vague superstitions or fatalistic warnings. Every concept is taught with astronomical mathematics, psychological nuance, and pragmatic real-world grounding.
+                <strong className="font-semibold block mb-1">
+                  {isHi ? 'VIAR के छात्रों के लिए यह क्यों महत्वपूर्ण है:' : 'Why this matters to Viar students:'}
+                </strong>
+                {isHi
+                  ? 'कक्षाओं में किसी भी प्रकार का अंधविश्वास या काल्पनिक भय नहीं सिखाया जाता। प्रत्येक विषय को खगोलीय गणित, मनोवैज्ञानिक अंतर्दृष्टि और व्यावहारिक धरातल पर तार्किक रूप से सिखाया जाता है।'
+                  : 'Classes are not taught with vague superstitions or fatalistic warnings. Every concept is taught with astronomical mathematics, psychological nuance, and pragmatic real-world grounding.'}
               </div>
             </div>
 
@@ -394,10 +490,16 @@ export default function AboutPage() {
         {/* Visual Credentials & Recognition Gallery */}
         <div className="mb-20">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400 mb-2">Verified Visual Proof</h2>
-            <h3 className="text-3xl font-extrabold text-white">Credentials & Recognition Gallery</h3>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400 mb-2">
+              {isHi ? 'सत्यापित दृश्य प्रमाण' : 'Verified Visual Proof'}
+            </h2>
+            <h3 className="text-3xl font-extrabold text-white">
+              {isHi ? 'प्रमाण-पत्र एवं सम्मान दीर्घा' : 'Credentials & Recognition Gallery'}
+            </h3>
             <p className="text-slate-400 text-sm mt-2">
-              Official certificates, awards, and lineage documentation from Aapka Astro archives.
+              {isHi
+                ? 'आपका एस्ट्रो अभिलेखागार से आधिकारिक प्रमाण पत्र, पुरस्कार और परंपरा दस्तावेज।'
+                : 'Official certificates, awards, and lineage documentation from Aapka Astro archives.'}
             </p>
           </div>
 
@@ -418,7 +520,7 @@ export default function AboutPage() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition flex items-end p-4">
                     <span className="text-xs text-amber-300 font-semibold flex items-center gap-1">
-                      <span>Click to view full credential</span>
+                      <span>{isHi ? 'पूरा प्रमाणपत्र देखने के लिए क्लिक करें' : 'Click to view full credential'}</span>
                       <ExternalLink className="w-3 h-3" />
                     </span>
                   </div>
@@ -475,32 +577,48 @@ export default function AboutPage() {
         {/* The 3 Educational Pillars of Viar */}
         <div className="mb-20">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400 mb-2">Our Core Standards</h2>
-            <h3 className="text-3xl font-extrabold text-white">How Vihangam Institute Differs</h3>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400 mb-2">
+              {isHi ? 'हमारे मुख्य मानक' : 'Our Core Standards'}
+            </h2>
+            <h3 className="text-3xl font-extrabold text-white">
+              {isHi ? 'विहंगम संस्थान की विशिष्टता' : 'How Vihangam Institute Differs'}
+            </h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="cosmic-card p-8 rounded-2xl border border-white/10">
               <Compass className="w-10 h-10 text-amber-400 mb-4" />
-              <h4 className="text-xl font-bold text-white mb-2">Mathematical Rigor</h4>
+              <h4 className="text-xl font-bold text-white mb-2">
+                {isHi ? 'गणितीय सटीकता' : 'Mathematical Rigor'}
+              </h4>
               <p className="text-sm text-slate-300 leading-relaxed">
-                We study Sidereal zodiacs, Ayanamsha mechanics, planetary longitude, and actual astronomical cycles rather than vague generic horoscopes.
+                {isHi
+                  ? 'हम सतही भविष्यवाणियों के बजाय वास्तविक अयनांश, ग्रहीय अक्षांश-देशांतर और खगोलीय चक्रों का अध्ययन करते हैं।'
+                  : 'We study Sidereal zodiacs, Ayanamsha mechanics, planetary longitude, and actual astronomical cycles rather than vague generic horoscopes.'}
               </p>
             </div>
 
             <div className="cosmic-card p-8 rounded-2xl border border-white/10">
               <Users className="w-10 h-10 text-amber-400 mb-4" />
-              <h4 className="text-xl font-bold text-white mb-2">Self-Paced Mastery</h4>
+              <h4 className="text-xl font-bold text-white mb-2">
+                {isHi ? 'स्व-अध्ययन में पूर्णता' : 'Self-Paced Mastery'}
+              </h4>
               <p className="text-sm text-slate-300 leading-relaxed">
-                23 structured video modules accessible 24/7 at your own speed, with comprehensive notes, real chart walkthroughs, and dedicated academic Q&amp;A support.
+                {isHi
+                  ? '23 संरचित वीडियो मॉड्यूल 24/7 आपकी सुविधानुसार उपलब्ध, विस्तृत नोट्स और वास्तविक कुंडली केस स्टडीज के साथ।'
+                  : '23 structured video modules accessible 24/7 at your own speed, with comprehensive notes, real chart walkthroughs, and dedicated academic Q&A support.'}
               </p>
             </div>
 
             <div className="cosmic-card p-8 rounded-2xl border border-white/10">
               <Award className="w-10 h-10 text-amber-400 mb-4" />
-              <h4 className="text-xl font-bold text-white mb-2">Verifiable Credential</h4>
+              <h4 className="text-xl font-bold text-white mb-2">
+                {isHi ? 'सत्यापन योग्य प्रमाणपत्र' : 'Verifiable Credential'}
+              </h4>
               <p className="text-sm text-slate-300 leading-relaxed">
-                Earn an authentic graduate certificate backed by a 20-question examination, signed by Acharya Niraj Kumar and verifiable at viar.in/verify.
+                {isHi
+                  ? '20 प्रश्नों की अंतिम परीक्षा उत्तीर्ण कर आचार्य नीरज कुमार द्वारा हस्ताक्षरित और viar.in/verify पर सत्यापन योग्य आधिकारिक प्रमाणपत्र प्राप्त करें।'
+                  : 'Earn an authentic graduate certificate backed by a 20-question examination, signed by Acharya Niraj Kumar and verifiable at viar.in/verify.'}
               </p>
             </div>
           </div>
@@ -519,9 +637,13 @@ export default function AboutPage() {
               />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-white mb-1">Looking for 1-on-1 Consultation Instead?</h3>
+              <h3 className="text-xl font-bold text-white mb-1">
+                {isHi ? 'क्या आप व्यक्तिगत परामर्श की तलाश में हैं?' : 'Looking for 1-on-1 Consultation Instead?'}
+              </h3>
               <p className="text-sm text-slate-300 max-w-2xl">
-                If you seek personal horoscope readings, marriage matching, or corporate advisory with Acharya Niraj Kumar, explore sister platform Aapka Astro (+91 93112 15564) or submit an executive corporate advisory inquiry.
+                {isHi
+                  ? 'यदि आप आचार्य नीरज कुमार से व्यक्तिगत जन्मकुंडली विश्लेषण, विवाह मिलान या कॉर्पोरेट वास्तु परामर्श चाहते हैं, तो हमारी सहयोगी संस्था आपका एस्ट्रो (+91 93112 15564) पर संपर्क करें।'
+                  : 'If you seek personal horoscope readings, marriage matching, or corporate advisory with Acharya Niraj Kumar, explore sister platform Aapka Astro (+91 93112 15564) or submit an executive corporate advisory inquiry.'}
               </p>
             </div>
           </div>
@@ -539,7 +661,7 @@ export default function AboutPage() {
               href="/contact"
               className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-200 bg-white/10 hover:bg-white/15 border border-white/15 inline-flex items-center gap-1.5"
             >
-              <span>Corporate Advisory Inquiries</span>
+              <span>{isHi ? 'कॉर्पोरेट परामर्श पूछताछ' : 'Corporate Advisory Inquiries'}</span>
             </Link>
           </div>
         </div>
@@ -550,7 +672,7 @@ export default function AboutPage() {
             href="/courses/what-is-astrology"
             className="gold-button inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-bold shadow-xl shadow-amber-500/20"
           >
-            <span>Explore Self-Paced Masterclass with Acharya Niraj Kumar</span>
+            <span>{isHi ? 'आचार्य नीरज कुमार के साथ सेल्फ-पेस्ड मास्टरक्लास देखें' : 'Explore Self-Paced Masterclass with Acharya Niraj Kumar'}</span>
             <ArrowRight className="w-5 h-5" />
           </Link>
         </div>

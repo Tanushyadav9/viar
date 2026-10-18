@@ -5,8 +5,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ShieldCheck, Video, Award, Clock, ExternalLink, Phone, Mail } from 'lucide-react';
 import { SISTER_SERVICES } from '@/config/services';
+import { useLanguage } from '@/components/LanguageContext';
 
 export default function Footer() {
+  const { isHi } = useLanguage();
+
   return (
     <footer className="border-t border-white/10 bg-[#05070a] text-slate-400 py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -17,15 +20,19 @@ export default function Footer() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  Ecosystem Cross-Promotion
+                  {isHi ? 'सहयोगी मंच' : 'Ecosystem Cross-Promotion'}
                 </span>
-                <span className="text-xs text-slate-400">Our Other Services</span>
+                <span className="text-xs text-slate-400">
+                  {isHi ? 'हमारी अन्य सेवाएं' : 'Our Other Services'}
+                </span>
               </div>
               <h3 className="text-lg font-bold text-white">
-                Explore Consultations & Corporate Advisory
+                {isHi ? 'परामर्श एवं कॉर्पोरेट सलाहकार सेवाएं' : 'Explore Consultations & Corporate Advisory'}
               </h3>
               <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-                Looking for 1-on-1 private chart readings or corporate muhurta consulting? Connect with our sister platforms founded by Acharya Niraj Kumar.
+                {isHi
+                  ? 'व्यक्तिगत कुंडली विश्लेषण अथवा कॉर्पोरेट मुहूर्त परामर्श के लिए आचार्य नीरज कुमार द्वारा स्थापित हमारे सहयोगी मंचों से जुड़ें।'
+                  : 'Looking for 1-on-1 private chart readings or corporate muhurta consulting? Connect with our sister platforms founded by Acharya Niraj Kumar.'}
               </p>
             </div>
 
@@ -50,7 +57,7 @@ export default function Footer() {
                 href="/contact"
                 className="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 inline-flex items-center gap-1.5 transition"
               >
-                <span>Corporate Advisory Inquiries</span>
+                <span>{isHi ? 'कॉर्पोरेट सलाहकार पूछताछ' : 'Corporate Advisory Inquiries'}</span>
               </Link>
             </div>
           </div>
@@ -63,9 +70,13 @@ export default function Footer() {
               <Video className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white">23 Video Modules</h4>
+              <h4 className="text-sm font-semibold text-white">
+                {isHi ? '23 वीडियो मॉड्यूल' : '23 Video Modules'}
+              </h4>
               <p className="text-xs text-slate-400 mt-0.5">
-                Comprehensive on-demand curriculum + 2 bonus chart reading masterclasses with lifetime access.
+                {isHi
+                  ? 'विस्तृत ऑन-डिमांड पाठ्यक्रम + 2 बोनस कुंडली विश्लेषण मास्टरक्लास आजीवन पहुंच के साथ।'
+                  : 'Comprehensive on-demand curriculum + 2 bonus chart reading masterclasses with lifetime access.'}
               </p>
             </div>
           </div>
@@ -75,9 +86,13 @@ export default function Footer() {
               <Clock className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white">Learn at Your Own Pace</h4>
+              <h4 className="text-sm font-semibold text-white">
+                {isHi ? 'अपनी गति से सीखें' : 'Learn at Your Own Pace'}
+              </h4>
               <p className="text-xs text-slate-400 mt-0.5">
-                100% self-paced from anywhere in the world. No live scheduling conflicts or rigid timetables.
+                {isHi
+                  ? 'विश्व में कहीं से भी 100% सेल्फ-पेस्ड। कोई समय-सारिणी या निश्चित समय का दबाव नहीं।'
+                  : '100% self-paced from anywhere in the world. No live scheduling conflicts or rigid timetables.'}
               </p>
             </div>
           </div>
@@ -87,9 +102,13 @@ export default function Footer() {
               <Award className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white">Verifiable Certification</h4>
+              <h4 className="text-sm font-semibold text-white">
+                {isHi ? 'सत्यापन योग्य प्रमाणन' : 'Verifiable Certification'}
+              </h4>
               <p className="text-xs text-slate-400 mt-0.5">
-                Pass the final evaluation to receive an official certificate from Vihangam Institute of Astrology and Research.
+                {isHi
+                  ? 'मूल्यांकन परीक्षा उत्तीर्ण करने पर विहंगम ज्योतिष एवं अनुसंधान संस्थान का आधिकारिक प्रमाणपत्र।'
+                  : 'Pass the final evaluation to receive an official certificate from Vihangam Institute of Astrology and Research.'}
               </p>
             </div>
           </div>
@@ -99,9 +118,13 @@ export default function Footer() {
               <ShieldCheck className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white">Aapka Astro Pedigree</h4>
+              <h4 className="text-sm font-semibold text-white">
+                {isHi ? 'आपका एस्ट्रो परंपरा' : 'Aapka Astro Pedigree'}
+              </h4>
               <p className="text-xs text-slate-400 mt-0.5">
-                Taught directly by Acharya Niraj Kumar, founder of aapkaastro.com.
+                {isHi
+                  ? 'aapkaastro.com के संस्थापक आचार्य नीरज कुमार द्वारा प्रत्यक्ष रूप से मार्गदर्शित।'
+                  : 'Taught directly by Acharya Niraj Kumar, founder of aapkaastro.com.'}
               </p>
             </div>
           </div>
@@ -125,19 +148,21 @@ export default function Footer() {
                   VIAR<span className="text-amber-400">.IN</span>
                 </span>
                 <span className="text-[10px] text-slate-400 tracking-wider uppercase font-medium">
-                  Vihangam Institute of Astrology & Research
+                  {isHi ? 'विहंगम ज्योतिष एवं अनुसंधान संस्थान' : 'Vihangam Institute of Astrology & Research'}
                 </span>
               </div>
             </div>
             <p className="text-sm text-slate-400 max-w-sm leading-relaxed mb-4">
-              The premier online astrology academy for students worldwide seeking authentic, mathematical, and compassionate Vedic Jyotish education.
+              {isHi
+                ? 'प्रामाणिक, गणितीय और कल्याणकारी वैदिक ज्योतिष शिक्षा के इच्छुक विद्यार्थियों के लिए भारत का अग्रणी ऑनलाइन संस्थान।'
+                : 'The premier online astrology academy for students worldwide seeking authentic, mathematical, and compassionate Vedic Jyotish education.'}
             </p>
             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-slate-300 max-w-sm">
               <p className="font-semibold text-amber-300 mb-1 flex items-center gap-1.5">
-                <span>Looking for private 1-on-1 consultations?</span>
+                <span>{isHi ? 'व्यक्तिगत 1-ऑन-1 परामर्श चाहते हैं?' : 'Looking for private 1-on-1 consultations?'}</span>
               </p>
               <p className="text-slate-400 leading-normal">
-                Visit our sister consultation practice at{' '}
+                {isHi ? 'हमारे सहयोगी परामर्श मंच पर जाएं: ' : 'Visit our sister consultation practice at '}
                 <a 
                   href="https://aapkaastro.com" 
                   target="_blank" 
@@ -151,57 +176,61 @@ export default function Footer() {
           </div>
 
           <div>
-            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">Courses</h5>
+            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">
+              {isHi ? 'पाठ्यक्रम' : 'Courses'}
+            </h5>
             <ul className="space-y-2.5 text-sm">
               <li>
                 <Link href="/courses/what-is-astrology" className="hover:text-amber-400 transition">
-                  What is Astrology (Flagship)
+                  {isHi ? 'ज्योतिष क्या है (प्रमुख पाठ्यक्रम)' : 'What is Astrology (Flagship)'}
                 </Link>
               </li>
               <li>
                 <Link href="/courses/vastu-shastra-for-your-home" className="hover:text-amber-400 transition">
-                  Vastu Shastra for Your Home
+                  {isHi ? 'गृह हेतु वास्तु शास्त्र' : 'Vastu Shastra for Your Home'}
                 </Link>
               </li>
               <li>
                 <Link href="/courses/gemstone-science-101" className="hover:text-amber-400 transition">
-                  Gemstone Science 101
+                  {isHi ? 'रत्न विज्ञान 101' : 'Gemstone Science 101'}
                 </Link>
               </li>
               <li>
                 <Link href="/courses/numerology-basics" className="hover:text-amber-400 transition">
-                  Numerology Basics
+                  {isHi ? 'अंक ज्योतिष के मूल तत्व' : 'Numerology Basics'}
                 </Link>
               </li>
               <li>
                 <Link href="/courses" className="hover:text-amber-400 transition text-slate-400">
-                  View Full Catalog
+                  {isHi ? 'संपूर्ण कैटलॉग देखें' : 'View Full Catalog'}
                 </Link>
               </li>
             </ul>
           </div>
 
           <div>
-            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">Academy & Lineage</h5>
+            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">
+              {isHi ? 'संस्थान एवं परंपरा' : 'Academy & Lineage'}
+            </h5>
             <ul className="space-y-2.5 text-sm">
               <li>
                 <Link href="/about" className="hover:text-amber-400 transition">
-                  About the Instructor
+                  {isHi ? 'आचार्य जी के बारे में' : 'About the Instructor'}
                 </Link>
               </li>
               <li>
                 <Link href="/courses" className="hover:text-amber-400 transition">
-                  Full Course Catalog
+                  {isHi ? 'संपूर्ण पाठ्यक्रम सूची' : 'Full Course Catalog'}
                 </Link>
               </li>
               <li>
                 <Link href="/contact" className="hover:text-amber-400 transition">
-                  Contact & Admissions
+                  {isHi ? 'संपर्क एवं प्रवेश' : 'Contact & Admissions'}
                 </Link>
               </li>
               <li>
                 <Link href="/instructor" className="hover:text-amber-400 transition text-amber-300">
-                  Instructor Suite
+                  {isHi ? 'मार्गदर्शक सूट' : 'Instructor Suite'}
                 </Link>
               </li>
               <li>
@@ -209,45 +238,49 @@ export default function Footer() {
                   href="/contact"
                   className="hover:text-sky-300 transition text-slate-400 flex items-center gap-1"
                 >
-                  <span>Corporate Advisory Inquiries</span>
+                  <span>{isHi ? 'कॉर्पोरेट सलाहकार पूछताछ' : 'Corporate Advisory Inquiries'}</span>
                 </Link>
               </li>
             </ul>
           </div>
 
           <div>
-            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">Student Portal</h5>
+            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">
+              {isHi ? 'छात्र पोर्टल' : 'Student Portal'}
+            </h5>
             <ul className="space-y-2.5 text-sm">
               <li>
                 <Link href="/dashboard" className="hover:text-amber-400 transition">
-                  Student Dashboard
+                  {isHi ? 'विद्यार्थी डैशबोर्ड' : 'Student Dashboard'}
                 </Link>
               </li>
               <li>
                 <Link href="/dashboard/courses/cohort-wia-batch-1" className="hover:text-amber-400 transition">
-                  23 Video Modules &amp; Masterclasses
+                  {isHi ? '23 वीडियो मॉड्यूल एवं मास्टरक्लास' : '23 Video Modules & Masterclasses'}
                 </Link>
               </li>
               <li>
                 <Link href="/dashboard/certificates" className="hover:text-amber-400 transition">
-                  My Certificates
+                  {isHi ? 'मेरे प्रमाणपत्र' : 'My Certificates'}
                 </Link>
               </li>
               <li>
                 <Link href="/dashboard/payments" className="hover:text-amber-400 transition">
-                  Purchase History & Receipts
+                  {isHi ? 'खरीद इतिहास एवं रसीदें' : 'Purchase History & Receipts'}
                 </Link>
               </li>
               <li>
                 <Link href="/verify" className="hover:text-amber-400 transition">
-                  Public Certificate Lookup
+                  {isHi ? 'प्रमाणपत्र सत्यापन खोज' : 'Public Certificate Lookup'}
                 </Link>
               </li>
             </ul>
           </div>
 
           <div>
-            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">Connect & Channels</h5>
+            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-4">
+              {isHi ? 'संपर्क एवं सोशल मीडिया' : 'Connect & Channels'}
+            </h5>
             <ul className="space-y-2.5 text-xs text-slate-400">
               <li>
                 <a
@@ -257,7 +290,7 @@ export default function Footer() {
                   className="hover:text-emerald-400 transition flex items-center gap-1.5 text-slate-300 font-medium"
                 >
                   <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>+91 93112 15564 (WhatsApp)</span>
+                  <span>+91 93112 15564 ({isHi ? 'व्हाट्सएप' : 'WhatsApp'})</span>
                 </a>
               </li>
               <li>
@@ -310,34 +343,40 @@ export default function Footer() {
         <div className="pt-8 pb-8 border-t border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
           <div className="flex items-center gap-2 text-slate-400">
             <ShieldCheck className="w-4 h-4 text-amber-400" />
-            <span className="font-semibold text-slate-300">Legal & Trust Policies</span>
+            <span className="font-semibold text-slate-300">
+              {isHi ? 'विधिक एवं सुरक्षा नीतियां' : 'Legal & Trust Policies'}
+            </span>
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-slate-400">
             <Link href="/terms" className="hover:text-amber-400 transition">
-              Terms of Service
+              {isHi ? 'सेवा की शर्तें' : 'Terms of Service'}
             </Link>
             <Link href="/privacy-policy" className="hover:text-amber-400 transition">
-              Privacy Policy
+              {isHi ? 'गोपनीयता नीति' : 'Privacy Policy'}
             </Link>
             <Link href="/refund-policy" className="hover:text-amber-400 transition">
-              Refund & Cancellation
+              {isHi ? 'धनवापसी एवं रद्दीकरण' : 'Refund & Cancellation'}
             </Link>
             <Link href="/disclaimer" className="hover:text-amber-400 transition">
-              Educational Disclaimer
+              {isHi ? 'शैक्षणिक अस्वीकरण' : 'Educational Disclaimer'}
             </Link>
             <Link href="/pricing-policy" className="hover:text-amber-400 transition">
-              Pricing Policy
+              {isHi ? 'मूल्य निर्धारण नीति' : 'Pricing Policy'}
             </Link>
           </div>
         </div>
 
         {/* Bottom bar */}
         <div className="pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <p>© {new Date().getFullYear()} Viar.in (Vihangam Institute of Astrology and Research). All rights reserved.</p>
+          <p>
+            {isHi
+              ? `© ${new Date().getFullYear()} Viar.in (विहंगम ज्योतिष एवं अनुसंधान संस्थान)। सर्वाधिकार सुरक्षित।`
+              : `© ${new Date().getFullYear()} Viar.in (Vihangam Institute of Astrology and Research). All rights reserved.`}
+          </p>
           <div className="flex items-center space-x-6">
-            <span>Powered by Aapka Astro Network</span>
-            <span>Secure 256-Bit SSL Encrypted</span>
-            <span>100% Self-Paced Video Learning</span>
+            <span>{isHi ? 'Aapka Astro नेटवर्क द्वारा संचालित' : 'Powered by Aapka Astro Network'}</span>
+            <span>{isHi ? 'सुरक्षित 256-बिट SSL एन्क्रिप्टेड' : 'Secure 256-Bit SSL Encrypted'}</span>
+            <span>{isHi ? '100% अपनी गति से वीडियो शिक्षा' : '100% Self-Paced Video Learning'}</span>
           </div>
         </div>
       </div>
