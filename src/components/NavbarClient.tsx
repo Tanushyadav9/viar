@@ -14,7 +14,8 @@ import {
   Sun, 
   Moon,
   Menu,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { COMMON_TIMEZONES, getUserLocalTimezone } from '@/lib/timezones';
@@ -43,10 +44,15 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [selectedTz, setSelectedTz] = useState<string>('Asia/Kolkata');
   const [isTzOpen, setIsTzOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const tzRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  const { isSignedIn } = useUser();
+  const { signOut } = useClerk();
 
   useEffect(() => {
     setMounted(true);
@@ -67,31 +73,42 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
   useEffect(() => {
     setIsMobileMenuOpen(false);
     setIsTzOpen(false);
+    setIsUserMenuOpen(false);
   }, [pathname]);
 
-  // Click outside to close timezone dropdown
+  // Click outside to close dropdowns
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (tzRef.current && !tzRef.current.contains(event.target as Node)) {
         setIsTzOpen(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
     }
-    if (isTzOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Keyboard accessibility: Escape key closes all open menus
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsTzOpen(false);
+        setIsUserMenuOpen(false);
+        setIsMobileMenuOpen(false);
+      }
     }
-  }, [isTzOpen]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleTzChange = (tz: string) => {
     setSelectedTz(tz);
     ViarStore.setTimezone(tz);
     setIsTzOpen(false);
-    // Dispatch storage event so other components update their timezone
     window.dispatchEvent(new Event('timezone-changed'));
   };
-
-  const { isSignedIn } = useUser();
-  const { signOut } = useClerk();
 
   const handleSignOut = async () => {
     try {
@@ -114,18 +131,53 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
   const isAuthenticated = Boolean(serverAuth?.isAuthenticated || isSignedIn || currentUser);
 
   const navLinks = [
-    { label: t('nav.courses', 'Courses'), href: '/courses', active: pathname === '/courses' },
-    { label: t('nav.flagship', 'Flagship Cohort'), href: '/courses/what-is-astrology', active: pathname === '/courses/what-is-astrology' },
-    { label: t('nav.about', 'About Instructor'), href: '/about', active: pathname === '/about' },
-    { label: t('nav.contact', 'Contact'), href: '/contact', active: pathname === '/contact' },
-    { label: t('nav.verify', 'Verify'), href: '/verify', active: pathname.startsWith('/verify') },
-    ...(showAdminNav ? [{ label: t('nav.admin', 'Admin Panel'), href: '/admin', active: pathname.startsWith('/admin') }] : []),
+    {
+      label: t('nav.courses', 'Courses'),
+      shortLabel: t('nav.courses', 'Courses'),
+      href: '/courses',
+      active: pathname === '/courses',
+    },
+    {
+      label: t('nav.flagship', 'Flagship Masterclass'),
+      shortLabel: t('nav.flagship_short', 'Flagship'),
+      href: '/courses/what-is-astrology',
+      active: pathname === '/courses/what-is-astrology',
+    },
+    {
+      label: t('nav.about', 'About Instructor'),
+      shortLabel: t('nav.about_short', 'About'),
+      href: '/about',
+      active: pathname === '/about',
+    },
+    {
+      label: t('nav.contact', 'Contact'),
+      shortLabel: t('nav.contact', 'Contact'),
+      href: '/contact',
+      active: pathname === '/contact',
+    },
+    {
+      label: t('nav.verify', 'Verify Certificate'),
+      shortLabel: t('nav.verify_short', 'Verify'),
+      href: '/verify',
+      active: pathname.startsWith('/verify'),
+    },
+    ...(showAdminNav
+      ? [
+          {
+            label: t('nav.admin', 'Admin Panel'),
+            shortLabel: t('nav.admin_short', 'Admin'),
+            href: '/admin',
+            active: pathname.startsWith('/admin'),
+          },
+        ]
+      : []),
   ];
 
+  // Hydration-safe skeleton placeholder
   if (!mounted) {
     return (
-      <header className="sticky top-0 z-50 border-b border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-[#07090e]/95 backdrop-blur-md">
-        <div className="max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-[#07090e]/95 backdrop-blur-md shadow-sm">
+        <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-2 sm:gap-4 box-border">
           <Link href="/" className="shrink-0 flex items-center gap-2.5 sm:gap-3">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 p-[1px] shadow-sm shadow-amber-500/20 shrink-0">
               <div className="w-full h-full bg-white dark:bg-[#07090e] rounded-[11px] flex items-center justify-center p-1">
@@ -139,32 +191,35 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
                 />
               </div>
             </div>
-            <div className="flex flex-col justify-center">
-              <div className="flex items-center gap-1.5 leading-none">
-                <span className="text-xl sm:text-2xl font-black tracking-wider text-slate-900 dark:text-white">
+            <div className="flex flex-col justify-center min-w-0">
+              <div className="flex items-baseline gap-1.5 leading-none">
+                <span className="text-xl sm:text-2xl font-black tracking-wider text-slate-900 dark:text-white leading-none">
                   VIAR<span className="text-amber-500">.IN</span>
                 </span>
-                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-600 dark:text-amber-400 border border-amber-400/20 leading-none">
+                <span className="hidden lg:inline-block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-600 dark:text-amber-400 border border-amber-400/20 leading-none align-baseline">
                   Institute
                 </span>
               </div>
-              <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap mt-1 leading-none">
-                Vihangam Institute of Astrology &amp; Research
-              </p>
             </div>
           </Link>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/login"
-              className="whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10"
-            >
-              Sign In
-            </Link>
+          <div className="hidden md:flex flex-1 items-center justify-center min-w-0 px-1 lg:px-2 gap-1 lg:gap-1.5 xl:gap-2.5">
+            {navLinks.map((link) => (
+              <span
+                key={link.href}
+                className="whitespace-nowrap px-1.5 lg:px-2 xl:px-3 py-1.5 text-xs xl:text-sm font-medium text-slate-600 dark:text-slate-300 shrink-0"
+              >
+                <span className="hidden xl:inline">{link.label}</span>
+                <span className="inline xl:hidden">{link.shortLabel}</span>
+              </span>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
             <Link
               href="/courses/what-is-astrology"
-              className="gold-button whitespace-nowrap px-4 py-1.5 rounded-xl text-xs font-bold shadow-md"
+              className="gold-button h-9 sm:h-10 px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-bold shadow-sm flex items-center gap-1.5 shrink-0 whitespace-nowrap"
             >
-              Enroll Now
+              <span className="hidden lg:inline">Enroll Now</span>
+              <span className="inline lg:hidden">Enroll</span>
             </Link>
           </div>
         </div>
@@ -173,16 +228,25 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-[#07090e]/95 backdrop-blur-md">
-      <div className="max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-3 xl:gap-6">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 dark:border-white/10 bg-white/95 dark:bg-[#07090e]/95 backdrop-blur-md shadow-sm">
+      <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[68px] flex items-center justify-between gap-2 sm:gap-4 box-border">
         
-        {/* 1. Logo and Brand Section */}
-        <Link href="/" className="shrink-0 flex items-center gap-2.5 sm:gap-3 group focus:outline-none">
+        {/* =========================================================================
+            ZONE 1: Logo & Brand Area (shrink-0)
+            - Logo icon + VIAR.IN + INSTITUTE badge aligned on ONE baseline
+            - Tagline visible strictly at >=1280px (xl:flex), hidden at 768-1279px and mobile
+            - Tagline truncated with ellipsis to prevent wrapping or horizontal expansion
+           ========================================================================= */}
+        <Link
+          href="/"
+          className="shrink-0 flex items-center gap-2.5 sm:gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded-xl"
+          aria-label="VIAR.IN - Vihangam Institute of Astrology and Research Home"
+        >
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 p-[1px] shadow-sm shadow-amber-500/20 shrink-0">
             <div className="w-full h-full bg-white dark:bg-[#07090e] rounded-[11px] flex items-center justify-center p-1 group-hover:scale-105 transition-transform duration-200">
               <Image
                 src="/images/logo-icon.png"
-                alt="VIAR - Vihangam Institute of Astrology and Research"
+                alt="VIAR Logo"
                 width={36}
                 height={36}
                 className="w-full h-full object-contain"
@@ -190,62 +254,80 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
               />
             </div>
           </div>
-          <div className="flex flex-col justify-center">
-            <div className="flex items-center gap-1.5 leading-none">
-              <span className="text-xl sm:text-2xl font-black tracking-wider text-slate-900 dark:text-white">
+          <div className="flex flex-col justify-center min-w-0">
+            <div className="flex items-baseline gap-1.5 leading-none">
+              <span className="text-xl sm:text-2xl font-black tracking-wider text-slate-900 dark:text-white leading-none">
                 VIAR<span className="text-amber-500">.IN</span>
               </span>
-              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-600 dark:text-amber-400 border border-amber-400/20 leading-none">
+              <span className="hidden lg:inline-block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-600 dark:text-amber-400 border border-amber-400/20 leading-none align-baseline">
                 Institute
               </span>
             </div>
-            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap mt-1 leading-none flex items-center gap-1">
-              <span className="hidden sm:inline">Vihangam Institute of Astrology &amp; Research</span>
-              <span className="sm:hidden">Vihangam Institute</span>
-              <span className="text-slate-300 dark:text-slate-600">•</span>
-              <span className="text-slate-400 dark:text-slate-500">By</span>
-              <a 
-                href="https://aapkaastro.com" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                onClick={(e) => e.stopPropagation()}
-                className="text-amber-600 dark:text-amber-300 hover:underline flex items-center gap-0.5 font-semibold transition-colors"
+            {/* Tagline: Visible strictly on >=1280px (xl:flex), hidden on 768-1279px and mobile */}
+            <p className="hidden xl:flex items-center gap-1 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate max-w-[320px] mt-1 leading-none">
+              <span className="truncate">Vihangam Institute of Astrology &amp; Research</span>
+              <span className="text-slate-300 dark:text-slate-600 shrink-0">•</span>
+              <span className="text-slate-400 dark:text-slate-500 shrink-0">By</span>
+              <span
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  window.open('https://aapkaastro.com', '_blank', 'noopener,noreferrer');
+                }}
+                className="text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-0.5 font-semibold cursor-pointer shrink-0 transition-colors"
                 title="Aapka Astro Consultation Practice"
               >
                 Aapka Astro
                 <ExternalLink className="w-2.5 h-2.5 inline" />
-              </a>
+              </span>
             </p>
           </div>
         </Link>
 
-        {/* 2 - 6. Primary Horizontal Navigation (Desktop: lg+) */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
+        {/* =========================================================================
+            ZONE 2: Centered Navigation (flex-1, centered, hidden < 768px)
+            - Flex: 1 with justify-center centers nav between logo and right actions
+            - 768-1279px: reduced gaps (gap-1 lg:gap-1.5) and compact padding for comfortable fit
+            - >=1280px: full gaps (xl:gap-2) and standard text size
+            - Focus states for keyboard accessibility
+           ========================================================================= */}
+        <nav
+          className="hidden md:flex flex-1 items-center justify-center min-w-0 px-1 lg:px-2 gap-1 lg:gap-1.5 xl:gap-2.5"
+          aria-label="Main Navigation"
+        >
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`whitespace-nowrap px-2.5 xl:px-3 py-1.5 text-xs xl:text-sm font-medium rounded-lg transition-colors ${
+              className={`whitespace-nowrap px-1.5 lg:px-2 xl:px-3 py-1.5 text-xs xl:text-sm font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 shrink-0 ${
                 link.active
                   ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 dark:bg-white/5 font-semibold'
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
               }`}
             >
-              {link.label}
+              <span className="hidden xl:inline">{link.label}</span>
+              <span className="inline xl:hidden">{link.shortLabel}</span>
             </Link>
           ))}
         </nav>
 
-        {/* 7 - 10. Utility & Action Controls (Desktop: lg+) */}
-        <div className="hidden lg:flex items-center gap-2 xl:gap-2.5 shrink-0">
+        {/* =========================================================================
+            ZONE 3: Right-Side Actions (Desktop: md:flex, shrink-0)
+            - Language toggle (English / हिन्दी)
+            - Dark mode toggle (Sun / Moon)
+            - Timezone dropdown (visible on >=1280px; also in User menu on <1280px)
+            - Primary CTA (~40px height, flex-shrink-0, fully visible)
+            - Compact User Menu for authenticated accounts (combines Student pill & actions)
+           ========================================================================= */}
+        <div className="hidden md:flex items-center gap-1.5 lg:gap-2 xl:gap-2.5 shrink-0">
           
           {/* Language Switcher (EN / HI) */}
           <LanguageSwitcher />
 
-          {/* 7. Dark Mode Toggle */}
+          {/* Dark Mode Toggle */}
           <button
             onClick={toggleTheme}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 transition-colors group"
+            className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 shrink-0"
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             aria-label="Toggle theme"
           >
@@ -256,140 +338,201 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
             )}
           </button>
 
-          {/* 8. Timezone Selector */}
-          <div className="relative" ref={tzRef}>
+          {/* Timezone Selector (Visible >=1280px in top row) */}
+          <div className="relative hidden xl:block" ref={tzRef}>
             <button
               onClick={() => setIsTzOpen(!isTzOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 transition-colors whitespace-nowrap"
+              className="h-9 sm:h-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 shrink-0"
               title="Change your local display timezone for scheduled classes"
+              aria-expanded={isTzOpen}
+              aria-haspopup="true"
+              aria-label="Select display timezone"
             >
               <Clock className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
-              <span className="max-w-[85px] xl:max-w-[125px] truncate">
+              <span className="max-w-[100px] truncate">
                 {COMMON_TIMEZONES.find((t) => t.tz === selectedTz)?.label || selectedTz}
               </span>
               <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
             </button>
 
             {isTzOpen && (
-              <div className="absolute right-0 mt-2 w-72 max-h-80 overflow-y-auto rounded-xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-amber-500/20 shadow-2xl p-2 z-50">
+              <div className="absolute right-0 mt-2 w-72 max-h-80 overflow-y-auto rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 shadow-2xl p-2 z-50">
                 <div className="px-3 py-2 border-b border-slate-100 dark:border-white/10 mb-1">
-                  <p className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+                  <p className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-amber-500" />
                     Select Your Timezone
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    All course timestamps and assessment windows will convert automatically.
+                    All course timestamps and assessment windows convert automatically.
                   </p>
                 </div>
-                {COMMON_TIMEZONES.map((t) => (
+                {COMMON_TIMEZONES.map((tzItem) => (
                   <button
-                    key={t.tz}
-                    onClick={() => handleTzChange(t.tz)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-colors ${
-                      selectedTz === t.tz
-                        ? 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-300 font-semibold'
+                    key={tzItem.tz}
+                    onClick={() => handleTzChange(tzItem.tz)}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+                      selectedTz === tzItem.tz
+                        ? 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-300 font-bold'
                         : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5'
                     }`}
                   >
-                    <span>{t.label}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">{t.offset}</span>
+                    <span>{tzItem.label}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">{tzItem.offset}</span>
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* 9 & 10. Sign In & Enroll Now / Authenticated State */}
+          {/* Authentication & Primary CTA Controls */}
           {!isAuthenticated ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 lg:gap-2">
               <Link
                 href="/login"
-                className="whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 transition-colors"
+                className="hidden xl:flex items-center h-9 sm:h-10 px-3 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
                 Sign In
               </Link>
               <Link
                 href="/courses/what-is-astrology"
-                className="gold-button whitespace-nowrap px-3.5 xl:px-4 py-1.5 rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5"
+                className="gold-button h-9 sm:h-10 px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
-                <span>Enroll Now</span>
+                <span className="hidden lg:inline">Enroll Now</span>
+                <span className="inline lg:hidden">Enroll</span>
               </Link>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              {isOwner ? (
-                <Link
-                  href="/admin"
-                  className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 whitespace-nowrap hover:bg-amber-500/30 transition"
-                  title="Site Owner Console"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Site Owner</span>
-                </Link>
-              ) : isStaff ? (
-                <span className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
-                  <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Staff</span>
-                </span>
-              ) : (
-                <span className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
-                  <GraduationCap className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Student</span>
-                </span>
-              )}
-
+            <div className="flex items-center gap-1.5 lg:gap-2">
+              {/* Primary CTA for Authenticated Accounts */}
               {showAdminNav ? (
                 <Link
                   href="/admin"
-                  className="whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 shadow-md shadow-amber-900/30 transition flex items-center gap-1.5"
+                  className="h-9 sm:h-10 px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 shadow-sm transition flex items-center gap-1.5 shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                 >
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-300 shrink-0" />
                   <span>Admin Console</span>
                 </Link>
               ) : (
                 <Link
                   href="/dashboard"
-                  className="gold-button whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5"
+                  className="gold-button h-9 sm:h-10 px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition flex items-center gap-1.5 shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                 >
-                  <GraduationCap className="w-3.5 h-3.5" />
+                  <GraduationCap className="w-3.5 h-3.5 shrink-0" />
                   <span>Student Portal</span>
                 </Link>
               )}
 
-              <button
-                onClick={handleSignOut}
-                className="whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 transition-colors"
-                title="Sign out of your account"
-              >
-                Sign Out
-              </button>
+              {/* Compact User Menu Dropdown (Unifies Student/Role Pill, Timezone, and Sign Out) */}
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="h-9 sm:h-10 px-2.5 rounded-xl flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 shrink-0"
+                  aria-expanded={isUserMenuOpen}
+                  aria-haspopup="true"
+                  aria-label="User Account Menu"
+                >
+                  {isOwner ? (
+                    <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-amber-500 shrink-0" />
+                      <span>Owner</span>
+                    </span>
+                  ) : isStaff ? (
+                    <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-purple-500 shrink-0" />
+                      <span>Staff</span>
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                      <GraduationCap className="w-3 h-3 text-emerald-500 shrink-0" />
+                      <span>Student</span>
+                    </span>
+                  )}
+                  <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                </button>
+
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-60 rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 shadow-2xl p-2 z-50">
+                    <div className="px-3 py-2 border-b border-slate-100 dark:border-white/10 mb-1">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {currentUser?.name || (isOwner ? 'Acharya Niraj Kumar' : 'User Account')}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                        {serverAuth?.email || currentUser?.email || 'Authenticated'}
+                      </p>
+                    </div>
+                    
+                    <Link
+                      href={showAdminNav ? '/admin' : '/dashboard'}
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 flex items-center gap-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                    >
+                      {showAdminNav ? <ShieldCheck className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <GraduationCap className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                      <span>{showAdminNav ? 'Admin Console' : 'Student Portal'}</span>
+                    </Link>
+
+                    {/* Timezone option inside user dropdown for screens <1280px */}
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setIsTzOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-between transition-colors xl:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span>Timezone</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono truncate max-w-[90px]">{selectedTz}</span>
+                    </button>
+
+                    <div className="border-t border-slate-100 dark:border-white/10 my-1"></div>
+
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        handleSignOut();
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                    >
+                      <LogOut className="w-3.5 h-3.5 shrink-0" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
         </div>
 
-        {/* Mobile / Tablet Controls (< lg) */}
-        <div className="flex lg:hidden items-center gap-2">
-          {/* Language Switcher on mobile */}
-          <LanguageSwitcher />
+        {/* =========================================================================
+            ZONE 4: Mobile & Tablet Compact Controls (< 768px)
+            - Compact CTA button ("Enroll" or "Portal" or "Admin") - fully visible!
+            - Hamburger Menu toggle button
+           ========================================================================= */}
+        <div className="flex md:hidden items-center gap-1.5 sm:gap-2 shrink-0">
+          
+          {/* Mobile CTA (Compact, always fully visible with zero truncation!) */}
+          {!isAuthenticated ? (
+            <Link
+              href="/courses/what-is-astrology"
+              className="gold-button h-9 px-3 rounded-xl text-xs font-bold shadow-sm flex items-center shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+            >
+              <span>Enroll</span>
+            </Link>
+          ) : (
+            <Link
+              href={showAdminNav ? '/admin' : '/dashboard'}
+              className="gold-button h-9 px-3 rounded-xl text-xs font-bold shadow-sm flex items-center shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+            >
+              <span>{showAdminNav ? 'Admin' : 'Portal'}</span>
+            </Link>
+          )}
 
-          {/* Theme Toggle on mobile */}
-          <button
-            onClick={toggleTheme}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 transition-colors"
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? (
-              <Sun className="w-4 h-4 text-amber-400" />
-            ) : (
-              <Moon className="w-4 h-4 text-amber-600" />
-            )}
-          </button>
-
-          {/* Hamburger Menu Button */}
+          {/* Hamburger Menu Toggle Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+            className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 shrink-0"
             aria-label="Toggle navigation menu"
             aria-expanded={isMobileMenuOpen}
           >
@@ -403,17 +546,24 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
 
       </div>
 
-      {/* Mobile Drawer (< lg) */}
+      {/* =========================================================================
+          ZONE 5: Mobile Slide-Down Drawer (< 768px)
+          - Contains all 5+ nav links with active highlights
+          - Language switcher (English / हिन्दी)
+          - Theme toggle (Light / Dark)
+          - Display timezone select
+          - Account sign-in / portal / sign-out actions
+         ========================================================================= */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden border-t border-slate-200/80 dark:border-white/10 bg-white/98 dark:bg-[#07090e]/98 backdrop-blur-xl px-4 py-4 space-y-4 shadow-xl">
-          {/* Mobile Navigation Links */}
-          <nav className="flex flex-col space-y-1">
+        <div className="md:hidden border-t border-slate-200/80 dark:border-white/10 bg-white/98 dark:bg-[#07090e]/98 backdrop-blur-xl px-4 py-4 space-y-4 shadow-xl">
+          {/* Navigation Links */}
+          <nav className="flex flex-col space-y-1" aria-label="Mobile Navigation">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`px-3 py-2 text-sm font-medium rounded-xl transition-colors flex items-center justify-between ${
+                className={`px-3 py-2 text-sm font-medium rounded-xl transition-colors flex items-center justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                   link.active
                     ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 dark:bg-white/5 font-semibold'
                     : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5'
@@ -425,11 +575,27 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
             ))}
           </nav>
 
-          {/* Mobile Language Switcher */}
-          <div className="pt-2 border-t border-slate-100 dark:border-white/10 flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Language / भाषा
-            </span>
+          {/* Mobile Controls: Language & Theme */}
+          <div className="pt-3 border-t border-slate-100 dark:border-white/10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Theme</span>
+              <button
+                onClick={toggleTheme}
+                className="h-8 px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              >
+                {theme === 'dark' ? (
+                  <>
+                    <Sun className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Light</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Dark</span>
+                  </>
+                )}
+              </button>
+            </div>
             <LanguageSwitcher />
           </div>
 
@@ -461,14 +627,14 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
                 <Link
                   href="/courses/what-is-astrology"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="gold-button w-full py-2.5 rounded-xl text-xs font-bold shadow-md text-center block"
+                  className="gold-button w-full py-2.5 rounded-xl text-xs font-bold shadow-md text-center block focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                 >
                   Enroll in Masterclass Now
                 </Link>
                 <Link
                   href="/login"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full py-2.5 rounded-xl text-xs font-semibold text-center text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 block"
+                  className="w-full py-2.5 rounded-xl text-xs font-semibold text-center text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 block focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                 >
                   Sign In to Account
                 </Link>
@@ -479,7 +645,7 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
                   <Link
                     href="/admin"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-600 to-amber-700 text-center block shadow-md"
+                    className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-600 to-amber-700 text-center block shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                   >
                     {isOwner ? 'Site Owner Admin Console' : 'Admin Console'}
                   </Link>
@@ -487,7 +653,7 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
                   <Link
                     href="/dashboard"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="gold-button w-full py-2.5 rounded-xl text-xs font-bold text-center block shadow-md"
+                    className="gold-button w-full py-2.5 rounded-xl text-xs font-bold text-center block shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                   >
                     Go to Student Portal
                   </Link>
@@ -497,7 +663,7 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
                     setIsMobileMenuOpen(false);
                     handleSignOut();
                   }}
-                  className="w-full py-2.5 rounded-xl text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10"
+                  className="w-full py-2.5 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                 >
                   Sign Out
                 </button>

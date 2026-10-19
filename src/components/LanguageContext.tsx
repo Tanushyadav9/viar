@@ -157,13 +157,13 @@ export function LanguageSwitcher({ className = '' }: { className?: string }) {
   return (
     <div
       aria-label="Language selection"
-      className={`inline-flex items-center rounded-xl p-0.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-semibold ${className}`}
+      className={`inline-flex items-center rounded-xl p-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-semibold shrink-0 h-9 sm:h-10 box-border ${className}`}
     >
       <button
         type="button"
         onClick={() => setLanguage('en')}
         aria-pressed={language === 'en'}
-        className={`px-2.5 py-1 rounded-lg transition-all ${
+        className={`h-full px-2.5 rounded-lg transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
           language === 'en'
             ? 'bg-amber-500 text-black font-bold shadow-sm'
             : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
@@ -175,7 +175,7 @@ export function LanguageSwitcher({ className = '' }: { className?: string }) {
         type="button"
         onClick={() => setLanguage('hi')}
         aria-pressed={language === 'hi'}
-        className={`px-2.5 py-1 rounded-lg transition-all ${
+        className={`h-full px-2.5 rounded-lg transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
           language === 'hi'
             ? 'bg-amber-500 text-black font-bold shadow-sm'
             : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'

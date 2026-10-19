@@ -64,12 +64,12 @@ export const BUILTIN_CONTENT_DEFAULTS: Record<string, BuiltinContentItem[]> = {
     {
       collection: 'site_settings',
       key: 'announcement_bar',
-      titleEn: 'Sitewide Announcement Bar',
-      titleHi: 'वेबसाइट घोषणा पट्टी',
+      titleEn: 'Self-Paced Masterclass Open',
+      titleHi: 'सेल्फ-पेस्ड मास्टरक्लास खुला है',
       contentEn:
-        'The Ultimate Astrology Course (23 Video Modules + 2 Bonus Workshops). Instant Lifetime Access! Enroll Today →',
+        'The Ultimate Astrology Course (23 Video Modules + 2 Bonus Workshops). Instant Lifetime Access!',
       contentHi:
-        'सम्पूर्ण वैदिक ज्योतिष कोर्स (23 वीडियो मॉड्यूल + 2 बोनस कार्यशालाएं)। आजीवन पहुंच! आज ही प्रवेश लें →',
+        'सम्पूर्ण वैदिक ज्योतिष कोर्स (23 वीडियो मॉड्यूल + 2 बोनस कार्यशालाएं)। आजीवन पहुंच!',
       metadata: {
         url: '/courses/what-is-astrology',
         active: true,

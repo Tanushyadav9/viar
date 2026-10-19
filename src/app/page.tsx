@@ -88,21 +88,26 @@ export default function HomePage() {
       
       {/* Top Notification Banner — Managed via Site Settings in Content Studio */}
       {announcementBar && announcementBar.metadata?.active !== false && announcementBar.status !== 'HIDDEN' && (
-        <div className="bg-gradient-to-r from-amber-600/20 via-amber-500/30 to-amber-600/20 border-b border-amber-500/30 py-2.5 px-4 text-center">
-          <p className="text-xs md:text-sm text-amber-200 font-medium flex items-center justify-center gap-2 flex-wrap">
-            <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-            </span>
-            <span className="font-bold text-amber-300">
+        <div className="w-full bg-amber-500/10 dark:bg-amber-500/15 border-b border-amber-500/20 dark:border-amber-500/30 py-2 sm:py-2.5 px-4 text-center box-border overflow-hidden">
+          <div className="max-w-[1280px] mx-auto flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap text-xs sm:text-sm font-medium leading-relaxed">
+            <span className="text-amber-600 dark:text-amber-400 font-bold shrink-0">◆</span>
+            <span className="font-bold text-amber-950 dark:text-amber-100">
               {isHi
                 ? announcementBar.titleHi || announcementBar.titleEn
-                : announcementBar.titleEn}
+                : announcementBar.titleEn}:
             </span>
-            <Link href={announcementBar.contentEn || '/courses/what-is-astrology'} className="underline font-bold text-white hover:text-amber-100 ml-1">
-              {isHi ? 'विवरण देखें →' : 'Enroll Today →'}
+            <span className="text-amber-900/90 dark:text-amber-200/90">
+              {(isHi
+                ? announcementBar.contentHi || announcementBar.contentEn
+                : announcementBar.contentEn)?.replace(/\s*(?:Enroll Today|आज ही प्रवेश लें)\s*→/gi, '')}
+            </span>
+            <Link
+              href={announcementBar.metadata?.url || '/courses/what-is-astrology'}
+              className="underline font-bold text-amber-950 dark:text-white hover:text-amber-600 dark:hover:text-amber-200 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded px-1 transition-colors"
+            >
+              {isHi ? 'प्रवेश लें →' : 'Enroll Today →'}
             </Link>
-          </p>
+          </div>
         </div>
       )}
 
