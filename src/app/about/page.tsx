@@ -664,8 +664,15 @@ export default function AboutPage() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Visit DOW Consulting (opens in a new tab)"
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#6D28D9] dark:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 inline-flex items-center justify-center gap-1.5 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#6D28D9] dark:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 inline-flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
             >
+              <Image
+                src="/images/dowconsulting-logo.png"
+                alt="DOW Consulting"
+                width={56}
+                height={18}
+                className="h-4 w-auto object-contain brightness-110"
+              />
               <span>{isHi ? 'कॉर्पोरेट परामर्श पूछताछ' : 'Corporate Advisory Inquiries'}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>

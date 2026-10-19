@@ -42,6 +42,7 @@ export const SISTER_SERVICES: Record<'aapkaAstro' | 'dowConsulting', SisterServi
       'Strategic Vedic timing (Muhurta), executive leadership alignment, corporate launch planning, and commercial real estate Vastu advisory.',
     ctaText: 'Corporate Advisory Inquiries',
     badge: 'Enterprise Advisory',
+    logo: '/images/dowconsulting-logo.png',
     phone: '+91 93112 15564',
     email: 'aapkaastro1606@gmail.com',
     whatsappUrl: 'https://wa.me/919311215564?text=Hello%20Acharya%20ji,%20I%20am%20interested%20in%20Corporate%20Advisory%20consultation.',

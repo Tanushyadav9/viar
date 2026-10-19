@@ -176,9 +176,18 @@ export default function ContactPage() {
 
             {/* Corporate Advisory Note */}
             <div className="cosmic-card p-6 rounded-2xl border border-sky-500/20 bg-[#0d1424] space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-sky-300">
-                {isHi ? 'कॉर्पोरेट सलाहकार' : SISTER_SERVICES.dowConsulting.badge}
-              </span>
+              <div className="flex items-center justify-between mb-2">
+                <Image
+                  src="/images/dowconsulting-logo.png"
+                  alt="DOW Consulting Logo"
+                  width={100}
+                  height={28}
+                  className="h-6 w-auto object-contain brightness-110"
+                />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-sky-300">
+                  {isHi ? 'कॉर्पोरेट सलाहकार' : SISTER_SERVICES.dowConsulting.badge}
+                </span>
+              </div>
               <h4 className="text-sm font-bold text-white">{SISTER_SERVICES.dowConsulting.name}</h4>
               <p className="text-xs text-slate-300 leading-relaxed">
                 {isHi

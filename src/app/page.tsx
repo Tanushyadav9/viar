@@ -16,8 +16,7 @@ import {
   BookOpen,
   ExternalLink,
   Flame,
-  Star,
-  Building2
+  Star
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort, ContentItem } from '@/lib/types';
@@ -1038,10 +1037,18 @@ export default function HomePage() {
             <div className="cosmic-card p-8 rounded-2xl border border-sky-500/30 hover:border-sky-400/50 transition flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <Image
+                      src="/images/dowconsulting-logo.png"
+                      alt="DOW Consulting Logo"
+                      width={120}
+                      height={32}
+                      className="h-8 w-auto object-contain brightness-110"
+                    />
+                  </div>
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
                     {isHi ? 'कॉर्पोरेट सलाहकार' : SISTER_SERVICES.dowConsulting.badge}
                   </span>
-                  <Building2 className="w-4 h-4 text-sky-400" />
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-2">{SISTER_SERVICES.dowConsulting.name}</h3>
                 <p className="text-xs font-semibold text-sky-300 mb-4">
