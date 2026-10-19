@@ -51,10 +51,31 @@ export const BUILTIN_CONTENT_DEFAULTS: Record<string, BuiltinContentItem[]> = {
       key: 'contact_email',
       titleEn: 'Official Academy Email',
       titleHi: 'आधिकारिक संस्थान ईमेल',
-      contentEn: 'aapkaastro1606@gmail.com',
-      contentHi: 'aapkaastro1606@gmail.com',
-      metadata: { mailto: 'mailto:aapkaastro1606@gmail.com', icon: 'Mail', type: 'email' },
+      contentEn: 'contact@viar.in',
+      contentHi: 'contact@viar.in',
+      metadata: {
+        mailto: 'mailto:contact@viar.in',
+        icon: 'Mail',
+        type: 'email',
+        note: 'Public inquiry email (strictly not Owner login)',
+      },
       sortOrder: 3,
+    },
+    {
+      collection: 'site_settings',
+      key: 'announcement_bar',
+      titleEn: 'Sitewide Announcement Bar',
+      titleHi: 'वेबसाइट घोषणा पट्टी',
+      contentEn:
+        'The Ultimate Astrology Course (23 Video Modules + 2 Bonus Workshops). Instant Lifetime Access! Enroll Today →',
+      contentHi:
+        'सम्पूर्ण वैदिक ज्योतिष कोर्स (23 वीडियो मॉड्यूल + 2 बोनस कार्यशालाएं)। आजीवन पहुंच! आज ही प्रवेश लें →',
+      metadata: {
+        url: '/courses/what-is-astrology',
+        active: true,
+        type: 'announcement_bar',
+      },
+      sortOrder: 35,
     },
     {
       collection: 'site_settings',
@@ -252,31 +273,174 @@ export const BUILTIN_CONTENT_DEFAULTS: Record<string, BuiltinContentItem[]> = {
     },
   ],
 
-  // 5. STUDENT TESTIMONIALS & TRUST SIGNALS
+  // 5. STUDENT TESTIMONIALS & TRUST SIGNALS (Client Management Spec: required consent note, initials/name, city, quote, course, date)
   testimonials: [
     {
       collection: 'testimonials',
       key: 'testimonial_1',
-      titleEn: 'Rajesh Malhotra — Corporate Executive & Astrological Researcher',
-      titleHi: 'राजेश मल्होत्रा — कॉर्पोरेट कार्यकारी एवं ज्योतिष अध्येता',
+      titleEn: 'Rajesh M. (Mumbai, India)',
+      titleHi: 'राजेश एम. (मुंबई, भारत)',
       contentEn:
         '"Acharya ji\'s corporate background combined with classical Jyotish brings unmatched clarity. Every rule is explained with logical reasoning and real chart examples. Truly the most authentic astrology course available online."',
       contentHi:
         '"आचार्य जी की कॉर्पोरेट पृष्ठभूमि और शास्त्रीय ज्योतिष का समन्वय अद्भुत स्पष्टता लाता है। प्रत्येक नियम को तार्किक कारणों और वास्तविक उदाहरणों के साथ समझाया गया है।"',
-      metadata: { location: 'Mumbai, India', rating: 5, avatar: '/images/avatar-1.png' },
+      metadata: {
+        name: 'Rajesh M.',
+        city: 'Mumbai, India',
+        course: 'The Ultimate Astrology Course',
+        date: '2026-03',
+        rating: 5,
+        consentGiven: true,
+        consentNote: 'Explicit written consent provided by student via email on 2026-03-10',
+      },
       sortOrder: 1,
     },
     {
       collection: 'testimonials',
       key: 'testimonial_2',
-      titleEn: 'Dr. Sunita Sharma — Medical Professional & Vedic Learner',
-      titleHi: 'डॉ. सुनीता शर्मा — चिकित्सा पेशेवर एवं वैदिक शिक्षार्थी',
+      titleEn: 'Dr. Sunita S. (New Delhi, India)',
+      titleHi: 'डॉ. सुनीता एस. (नई दिल्ली, भारत)',
       contentEn:
         '"The 23 modules are structured brilliantly. As a doctor, I appreciated the systematic, non-superstitious approach to planetary energies and dasha timing. Worth every rupee."',
       contentHi:
         '"23 मॉड्यूल की संरचना बेहद वैज्ञानिक है। अंधविश्वास रहित और प्रामाणिक शिक्षण पद्धति इसे अद्वितीय बनाती है। हर गंभीर शिक्षार्थी को यह कोर्स अवश्य करना चाहिए।"',
-      metadata: { location: 'New Delhi, India', rating: 5, avatar: '/images/avatar-2.png' },
+      metadata: {
+        name: 'Dr. Sunita S.',
+        city: 'New Delhi, India',
+        course: 'The Ultimate Astrology Course',
+        date: '2026-02',
+        rating: 5,
+        consentGiven: true,
+        consentNote: 'Explicit written consent provided by student via WhatsApp on 2026-02-18',
+      },
       sortOrder: 2,
     },
   ],
+
+  // 6. PROMOTIONAL POPUP (Headline, text, image, dates, enabled)
+  popup: [
+    {
+      collection: 'popup',
+      key: 'course_promo_popup',
+      titleEn: '50% Off Your First Astrology Masterclass',
+      titleHi: 'प्रथम ज्योतिष मास्टरक्लास पर 50% की विशेष छूट',
+      contentEn:
+        'Join Acharya Niraj Kumar\'s 23-module flagship masterclass. Learn authentic Parashari Jyotish from first principles with instant lifetime access and official certification.',
+      contentHi:
+        'आचार्य नीरज कुमार जी के 23-मॉड्यूल फ्लैगशिप मास्टरक्लास में प्रवेश लें। पवित्र वैदिक सिद्धांतों से वास्तविक कुंडली तक सीखें।',
+      metadata: {
+        enabled: true,
+        imageUrl: '/images/Acharya_Niraj_Kumar_Solo.jpg',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+        buttonLabelEn: 'Claim 50% Off & Enroll Now',
+        buttonLabelHi: '50% छूट के साथ प्रवेश लें',
+        url: '/courses/what-is-astrology',
+      },
+      sortOrder: 1,
+    },
+  ],
+
+  // 7. CERTIFICATE TEMPLATE TEXT (Institute name and signatory line)
+  certificate_template: [
+    {
+      collection: 'certificate_template',
+      key: 'institute_name',
+      titleEn: 'Vihangam Institute of Astrology and Research (VIAR)',
+      titleHi: 'विहंगम ज्योतिष एवं अनुसंधान संस्थान (VIAR)',
+      contentEn: 'Official academic institution issuing verifiable certification for Vedic astrology.',
+      contentHi: 'वैदिक ज्योतिष हेतु आधिकारिक सत्यापन-योग्य प्रमाणपत्र जारी करने वाला शैक्षणिक संस्थान।',
+      metadata: {
+        acronym: 'VIAR',
+        registryUrl: 'https://viar.in/verify',
+      },
+      sortOrder: 1,
+    },
+    {
+      collection: 'certificate_template',
+      key: 'signatory_line',
+      titleEn: 'Acharya Niraj Kumar, Founder & Jyotish Acharya',
+      titleHi: 'आचार्य नीरज कुमार, संस्थापक एवं ज्योतिष आचार्य',
+      contentEn: 'Founder, Lead Astrologer & Verification Signatory',
+      contentHi: 'संस्थापक, मुख्य ज्योतिषाचार्य एवं सत्यापन हस्ताक्षरकर्ता',
+      metadata: {
+        title: 'Founder & Master Astrologer',
+        partnerLine: 'In academic partnership with Aapka Astro (aapkaastro.com)',
+      },
+      sortOrder: 2,
+    },
+  ],
+
+  // 8. LEGAL PAGES (Owner-only editor with version history and "pending lawyer review" flag)
+  legal: [
+    {
+      collection: 'legal',
+      key: 'terms_of_service',
+      titleEn: 'VIAR Terms of Service & Academy Enrollment Agreement',
+      titleHi: 'VIAR सेवा की शर्तें एवं अकादमी प्रवेश अनुबंध',
+      contentEn:
+        'Welcome to Vihangam Institute of Astrology and Research (VIAR, viar.in). By enrolling in our courses, you agree to these academic terms. Course content is for personal education only. Sharing login credentials or redistributing video lectures is strictly prohibited.',
+      contentHi:
+        'विहंगम ज्योतिष एवं अनुसंधान संस्थान (VIAR) में आपका स्वागत है। हमारे पाठ्यक्रमों में प्रवेश लेकर आप इन शैक्षणिक शर्तों से सहमत होते हैं। सामग्री केवल व्यक्तिगत अध्ययन हेतु है।',
+      metadata: {
+        pendingLawyerReview: false,
+        lastReviewedDate: '2026-04-01',
+      },
+      sortOrder: 1,
+    },
+    {
+      collection: 'legal',
+      key: 'refund_policy',
+      titleEn: 'VIAR 7-Day Satisfaction & 100% Refund Policy',
+      titleHi: 'VIAR 7-दिवसीय संतुष्टि एवं 100% शुल्क वापसी नीति',
+      contentEn:
+        'We stand behind the academic depth of our masterclass. If you have completed 3 or fewer modules within 7 calendar days of enrollment, you may request a 100% full refund via UPI or bank transfer with zero deductions.',
+      contentHi:
+        'हम अपने पाठ्यक्रम की गुणवत्ता के प्रति पूर्णतः आश्वस्त हैं। यदि प्रवेश के 7 दिनों के भीतर और अधिकतम 3 मॉड्यूल देखने तक आपको लगता है कि यह पाठ्यक्रम आपके लिए नहीं है, तो आप 100% शुल्क वापसी का अनुरोध कर सकते हैं।',
+      metadata: {
+        pendingLawyerReview: false,
+        lastReviewedDate: '2026-04-01',
+      },
+      sortOrder: 2,
+    },
+    {
+      collection: 'legal',
+      key: 'privacy_policy',
+      titleEn: 'VIAR Student Privacy & Data Protection Policy',
+      titleHi: 'VIAR छात्र गोपनीयता एवं डेटा सुरक्षा नीति',
+      contentEn:
+        'VIAR respects student privacy. We never sell student data, share phone numbers with advertisers, or store plain-text payment passwords.',
+      contentHi:
+        'VIAR छात्र गोपनीयता का पूर्ण सम्मान करता है। हम कभी भी छात्र डेटा नहीं बेचते हैं और न ही तीसरे पक्ष से साझा करते हैं।',
+      metadata: {
+        pendingLawyerReview: false,
+        lastReviewedDate: '2026-04-01',
+      },
+      sortOrder: 3,
+    },
+  ],
+
+  // 9. BLOG OR ANNOUNCEMENTS
+  announcements: [
+    {
+      collection: 'announcements',
+      key: 'announcement_batch',
+      titleEn: 'Admissions Open for Self-Paced Masterclass',
+      titleHi: 'सेल्फ-पेस्ड मास्टरक्लास हेतु प्रवेश खुला है',
+      contentEn:
+        'Enroll today to receive instant access to all 23 HD video modules and 2 bonus chart interpretation workshops.',
+      contentHi:
+        'आज ही प्रवेश लें और सभी 23 एचडी वीडियो पाठों तथा 2 बोनस कार्यशालाओं का तत्काल एक्सेस पाएं।',
+      metadata: {
+        active: true,
+        url: '/courses/what-is-astrology',
+        date: '2026-04-15',
+      },
+      sortOrder: 1,
+    },
+  ],
 };
+
+// Aliases for seamless collection discovery
+BUILTIN_CONTENT_DEFAULTS.homepage = BUILTIN_CONTENT_DEFAULTS.hero;
+

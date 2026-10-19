@@ -109,6 +109,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Public contact email MUST NOT be the Owner login address
+    if (normalizedCollection === 'site_settings' && String(key).toLowerCase() === 'contact_email') {
+      const emailValue = (contentEn || contentHi || '').trim().toLowerCase();
+      if (emailValue === 'aapkaastro1606@gmail.com') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'The public contact email cannot be the private Owner login email (aapkaastro1606@gmail.com). Please use a dedicated public inquiry address such as contact@viar.in or admissions@viar.in.',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Testimonials MUST include a required consent note before publishing
+    if (normalizedCollection === 'testimonials' && status === 'PUBLISHED') {
+      const meta = (typeof metadata === 'object' && metadata !== null) ? metadata : {};
+      if (!meta.consentGiven || !meta.consentNote || !String(meta.consentNote).trim()) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'A required consent note is mandatory to publish student testimonials (e.g. "Written consent received via email").',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Quick status toggle action
     if (action === 'status' && id && status) {
       const updated = await updateContentStatus(

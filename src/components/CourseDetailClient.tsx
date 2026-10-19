@@ -14,11 +14,12 @@ import {
   Download,
   Video,
   Lock,
+  MessageCircle,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
-import { Course, Cohort } from '@/lib/types';
-import { PLACEHOLDER_TESTIMONIALS } from '@/lib/data';
+import { Course, Cohort, ContentItem } from '@/lib/types';
 import { useLanguage } from '@/components/LanguageContext';
+import { BUILTIN_CONTENT_DEFAULTS } from '@/lib/content/defaultContent';
 
 interface CourseDetailClientProps {
   slug: string;
@@ -32,6 +33,21 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
   const [notifyEmail, setNotifyEmail] = useState('');
   const [notifySuccess, setNotifySuccess] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [testimonialsList, setTestimonialsList] = useState<ContentItem[]>(() => (BUILTIN_CONTENT_DEFAULTS.testimonials || []) as ContentItem[]);
+
+  const publishedLessonsCount = React.useMemo(() => {
+    if (!course) return 0;
+    if (course.modules && course.modules.length > 0) {
+      const total = course.modules.reduce((acc, m) => {
+        if (m.lessons && m.lessons.length > 0) {
+          return acc + m.lessons.filter((l) => l.isPublished !== false).length;
+        }
+        return acc + (m.isPublished !== false ? 1 : 0);
+      }, 0);
+      if (total > 0) return total;
+    }
+    return course.totalClasses || 23;
+  }, [course]);
 
   useEffect(() => {
     function loadFallback() {
@@ -63,6 +79,15 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
         }
       })
       .catch(() => loadFallback());
+
+    fetch('/api/content?collection=testimonials')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && Array.isArray(data.items)) {
+          setTestimonialsList(data.items);
+        }
+      })
+      .catch(() => {});
   }, [slug]);
 
   const handleNotifySubmit = (e: React.FormEvent) => {
@@ -157,7 +182,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
 
             <p className="text-lg sm:text-xl text-amber-200/90 font-medium leading-relaxed">
               {isHi && slug === 'what-is-astrology'
-                ? '23 संरचित पाठों में पवित्र विज्ञान सीखें — प्रथम सिद्धांतों से वास्तविक कुंडली तक।'
+                ? `${publishedLessonsCount} संरचित पाठों में पवित्र विज्ञान सीखें — प्रथम सिद्धांतों से वास्तविक कुंडली तक।`
                 : course.tagline}
             </p>
 
@@ -171,7 +196,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-white/10">
               <div className="p-3 rounded-xl bg-white/5 border border-white/5">
                 <span className="block text-[11px] text-slate-400 uppercase tracking-wider">{isHi ? 'प्रारूप' : 'Format'}</span>
-                <span className="text-sm font-bold text-white">{isHi ? '23 वीडियो पाठ' : '23 Video Modules'}</span>
+                <span className="text-sm font-bold text-white">{isHi ? `${publishedLessonsCount} वीडियो पाठ` : `${publishedLessonsCount} Video Modules`}</span>
               </div>
               <div className="p-3 rounded-xl bg-white/5 border border-white/5">
                 <span className="block text-[11px] text-slate-400 uppercase tracking-wider">{isHi ? 'गति' : 'Pace'}</span>
@@ -253,8 +278,8 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                 </div>
                 <p className="text-xs text-amber-400/90 font-medium mt-1">
                   {isHi
-                    ? `बचत ₹${((course.originalPriceInr || 11000) - (course.priceInr || 5100)).toLocaleString('en-IN')} • सभी 23 वीडियो पाठ + 2 बोनस मास्टरक्लास + प्रमाणपत्र सम्मिलित`
-                    : `${savings} • All 23 video modules + 2 bonus masterclasses + certificate included`}
+                    ? `बचत ₹${((course.originalPriceInr || 11000) - (course.priceInr || 5100)).toLocaleString('en-IN')} • सभी ${publishedLessonsCount} वीडियो पाठ + 2 बोनस मास्टरक्लास + प्रमाणपत्र सम्मिलित`
+                    : `${savings} • All ${publishedLessonsCount} video modules + 2 bonus masterclasses + certificate included`}
                 </p>
               </div>
 
@@ -272,7 +297,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-400">{isHi ? 'कुल पाठ' : 'Total Lessons'}</span>
-                  <span className="font-semibold text-white">{isHi ? '23 मॉड्यूल + 2 बोनस कार्यशालाएं' : '23 Modules + 2 Bonus Workshops'}</span>
+                  <span className="font-semibold text-white">{isHi ? `${publishedLessonsCount} मॉड्यूल + 2 बोनस कार्यशालाएं` : `${publishedLessonsCount} Modules + 2 Bonus Workshops`}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-white/5">
                   <span className="text-slate-400">{isHi ? 'संस्थान प्रमाणन' : 'Accreditation'}</span>
@@ -327,26 +352,54 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                   )}
                 </div>
               ) : cohort ? (
-                <div className="space-y-3">
-                  <Link
-                    href={`/checkout/${cohort.id}`}
-                    className="gold-button w-full py-3.5 rounded-2xl text-center font-black text-sm block shadow-lg shadow-amber-500/20 tracking-wide uppercase"
-                  >
-                    {isHi ? `आज ही सीखना शुरू करें • ${price}` : `Start Learning Today • ${price}`}
-                  </Link>
+                course.acceptingEnrollments === false ? (
+                  <div className="space-y-3">
+                    <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center">
+                      <span className="text-xs font-bold text-amber-300 uppercase tracking-wider block mb-1">
+                        {isHi ? 'प्रवेश अस्थायी रूप से स्थगित' : 'Admissions Currently Paused'}
+                      </span>
+                      <p className="text-xs text-slate-300">
+                        {isHi
+                          ? 'इस बैच में ऑनलाइन प्रवेश अभी बंद है। आगामी तिथियों हेतु आचार्य जी से व्हाट्सएप पर संपर्क करें।'
+                          : 'Online checkout is currently paused for this batch. Enquire directly on WhatsApp for upcoming admissions.'}
+                      </p>
+                    </div>
+                    <a
+                      href={`https://wa.me/919311215564?text=${encodeURIComponent(
+                        isHi
+                          ? `नमस्ते आचार्य जी, मैं "${course.title}" पाठ्यक्रम में प्रवेश हेतु पूछताछ करना चाहता/चाहती हूँ।`
+                          : `Hello Acharya Ji, I would like to enquire about admissions for "${course.title}".`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3.5 rounded-2xl text-center font-black text-sm block shadow-lg shadow-emerald-500/20 tracking-wide uppercase bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center justify-center gap-2"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>{isHi ? 'व्हाट्सएप पर पूछताछ करें' : 'Enquire on WhatsApp'}</span>
+                    </a>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <Link
+                      href={`/checkout/${cohort.id}`}
+                      className="gold-button w-full py-3.5 rounded-2xl text-center font-black text-sm block shadow-lg shadow-amber-500/20 tracking-wide uppercase"
+                    >
+                      {isHi ? `आज ही सीखना शुरू करें • ${price}` : `Start Learning Today • ${price}`}
+                    </Link>
 
-                  <p className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{isHi ? 'सीधा UPI भुगतान • शून्य गेटवे शुल्क • त्वरित सत्यापन' : 'Direct UPI Payment • Zero Gateway Fee • Fast Verification'}</span>
-                  </p>
-                </div>
+                    <p className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{isHi ? 'सीधा UPI भुगतान • शून्य गेटवे शुल्क • त्वरित सत्यापन' : 'Direct UPI Payment • Zero Gateway Fee • Fast Verification'}</span>
+                    </p>
+                  </div>
+                )
               ) : null}
 
               {/* Guarantees Checklist */}
               <div className="pt-4 border-t border-white/10 space-y-2 text-xs text-slate-300">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>{isHi ? 'आचार्य नीरज कुमार के 23 संरचित वीडियो पाठ' : '23 structured video modules with Acharya Niraj Kumar'}</span>
+                  <span>{isHi ? `आचार्य नीरज कुमार के ${publishedLessonsCount} संरचित वीडियो पाठ` : `${publishedLessonsCount} structured video modules with Acharya Niraj Kumar`}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
@@ -429,10 +482,10 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
         <div className="mb-20">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <span className="text-xs font-bold uppercase tracking-widest text-amber-400 block mb-2">
-              {isHi ? 'व्यापक 23-मॉड्यूल मास्टरक्लास' : 'Comprehensive 23-Module Masterclass'}
+              {isHi ? `व्यापक ${publishedLessonsCount}-मॉड्यूल मास्टरक्लास` : `Comprehensive ${publishedLessonsCount}-Module Masterclass`}
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-              {isHi ? '23 ऑन-डिमांड वीडियो मॉड्यूल + 2 बोनस केस स्टडीज' : '23 On-Demand Video Modules + 2 Bonus Case Studies'}
+              {isHi ? `${publishedLessonsCount} ऑन-डिमांड वीडियो मॉड्यूल + 2 बोनस केस स्टडीज` : `${publishedLessonsCount} On-Demand Video Modules + 2 Bonus Case Studies`}
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-2 mb-6">
               {isHi
@@ -448,7 +501,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
               className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs font-bold text-slate-200 inline-flex items-center gap-2 transition shadow-md hover:border-amber-400/40"
             >
               <Download className="w-4 h-4 text-amber-400" />
-              <span>{isHi ? 'संपूर्ण पाठ्यक्रम विवरण डाउनलोड करें (PDF)' : 'Download Complete 23-Module Curriculum (PDF)'}</span>
+              <span>{isHi ? `संपूर्ण ${publishedLessonsCount}-मॉड्यूल पाठ्यक्रम विवरण डाउनलोड करें (PDF)` : `Download Complete ${publishedLessonsCount}-Module Curriculum (PDF)`}</span>
             </a>
           </div>
 
@@ -586,8 +639,8 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
               </h3>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                 {isHi
-                  ? '23 वीडियो मॉड्यूल पूर्ण करने के बाद विद्यार्थी 20 प्रश्नों की व्यापक अंतिम परीक्षा दे सकते हैं। 70% या अधिक अंक प्राप्त करने पर विहंगम ज्योतिष एवं अनुसंधान संस्थान (VIAR) द्वारा आधिकारिक डिजिटल प्रमाणपत्र प्रदान किया जाता है, जो viar.in/verify पर विश्व स्तर पर सत्यापन योग्य है।'
-                  : 'Upon completing the 23 self-paced video modules, students unlock the 20-question comprehensive final assessment. Scoring 70% or higher generates an authentic digital Certificate of Completion from Vihangam Institute of Astrology and Research, verifiable worldwide at viar.in/verify.'}
+                  ? `${publishedLessonsCount} वीडियो मॉड्यूल पूर्ण करने के बाद विद्यार्थी 20 प्रश्नों की व्यापक अंतिम परीक्षा दे सकते हैं। 70% या अधिक अंक प्राप्त करने पर विहंगम ज्योतिष एवं अनुसंधान संस्थान (VIAR) द्वारा आधिकारिक डिजिटल प्रमाणपत्र प्रदान किया जाता है, जो viar.in/verify पर विश्व स्तर पर सत्यापन योग्य है।`
+                  : `Upon completing the ${publishedLessonsCount} self-paced video modules, students unlock the 20-question comprehensive final assessment. Scoring 70% or higher generates an authentic digital Certificate of Completion from Vihangam Institute of Astrology and Research, verifiable worldwide at viar.in/verify.`}
               </p>
               <div className="flex items-center gap-4 text-xs text-amber-400 pt-2">
                 <span>{isHi ? '• 20 बहुविकल्पीय प्रश्न' : '• 20 Multiple Choice Questions'}</span>
@@ -612,35 +665,49 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
           </div>
         </div>
 
-        {/* Testimonials Grid */}
-        <div className="mb-20">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span className="text-xs font-bold uppercase tracking-widest text-amber-400 block mb-2">
-              {isHi ? 'छात्रों के अनुभव' : 'Student Experiences'}
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-white">
-              {isHi ? '26,000+ अनुयायियों एवं विश्वव्यापी छात्रों द्वारा प्रशंसित' : 'Trusted by 26,000+ Followers & Worldwide Cohorts'}
-            </h2>
-          </div>
+        {/* Testimonials Grid — "Render nothing when there are none" */}
+        {testimonialsList && testimonialsList.length > 0 ? (
+          <div className="mb-20">
+            <div className="text-center max-w-2xl mx-auto mb-12">
+              <span className="text-xs font-bold uppercase tracking-widest text-amber-400 block mb-2">
+                {isHi ? 'छात्रों के अनुभव' : 'Student Experiences'}
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-white">
+                {isHi ? 'विश्वव्यापी छात्रों एवं अध्येताओं का विश्वास' : 'Trusted by Worldwide Scholars & Cohorts'}
+              </h2>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {PLACEHOLDER_TESTIMONIALS.slice(0, 3).map((t) => (
-              <div key={t.id} className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4">
-                <div className="flex items-center gap-1 text-amber-400">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-amber-400" />
-                  ))}
-                </div>
-                <h4 className="text-sm font-bold text-white">&ldquo;{t.highlight}&rdquo;</h4>
-                <p className="text-xs text-slate-300 leading-relaxed">{t.content}</p>
-                <div className="pt-2 border-t border-white/5">
-                  <span className="text-xs font-semibold text-white block">{t.name}</span>
-                  <span className="text-[10px] text-slate-400 block">{t.location} • {t.role}</span>
-                </div>
-              </div>
-            ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {testimonialsList.slice(0, 3).map((t) => {
+                const meta = (t.metadata || {}) as Record<string, unknown>;
+                const quote = isHi ? t.contentHi || t.contentEn : t.contentEn;
+                const author = isHi ? t.titleHi || t.titleEn : t.titleEn;
+                const location = String(meta.city || meta.location || '');
+                const courseName = String(meta.course || '');
+                const rating = typeof meta.rating === 'number' ? meta.rating : 5;
+
+                return (
+                  <div key={t.id || t.key} className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-1 text-amber-400">
+                        {[...Array(rating)].map((_, i) => (
+                          <Star key={i} className="w-4 h-4 fill-amber-400" />
+                        ))}
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed italic">&ldquo;{quote}&rdquo;</p>
+                    </div>
+                    <div className="pt-2 border-t border-white/5">
+                      <span className="text-xs font-semibold text-white block">{author}</span>
+                      <span className="text-[10px] text-slate-400 block">
+                        {[location, courseName].filter(Boolean).join(' • ')}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        ) : null}
 
         {/* FAQs */}
         <div className="max-w-3xl mx-auto space-y-4 mb-16">

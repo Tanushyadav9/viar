@@ -34,6 +34,7 @@ interface CheckoutCourse {
   originalPriceInr?: number;
   highlights?: string[];
   totalClasses?: number;
+  acceptingEnrollments?: boolean;
 }
 
 interface OrderRecord {
@@ -141,7 +142,7 @@ function CheckoutContent() {
 
   // 2. Automatically generate / lock order once user & course are ready
   const initOrder = React.useCallback(async (phoneToUse?: string) => {
-    if (!course) return;
+    if (!course || course.acceptingEnrollments === false) return;
     const cleanPhone = (phoneToUse || phone).trim();
     if (!cleanPhone || cleanPhone.replace(/[^0-9]/g, '').length < 10) {
       return; // Wait for student to provide phone number
@@ -242,6 +243,55 @@ function CheckoutContent() {
         <div className="text-center">
           <Sparkles className="w-8 h-8 text-amber-400 mx-auto animate-spin mb-4" />
           <p className="text-slate-300 text-sm">Loading checkout details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2.5 ADMISSIONS PAUSED: When acceptingEnrollments is false, block checkout and redirect to WhatsApp
+  if (course.acceptingEnrollments === false) {
+    return (
+      <div className="cosmic-bg min-h-screen py-16 flex items-center justify-center px-4">
+        <div className="cosmic-card p-8 rounded-3xl border border-amber-500/30 max-w-lg w-full text-center space-y-6">
+          <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+            <MessageCircle className="w-8 h-8" />
+          </div>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-widest text-amber-400 block mb-1">
+              {language === 'hi' ? 'प्रवेश अस्थायी रूप से स्थगित' : 'Admissions Currently Paused'}
+            </span>
+            <h1 className="text-2xl font-black text-white">
+              {course.title}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
+              {language === 'hi'
+                ? 'इस पाठ्यक्रम के लिए ऑनलाइन चेकआउट एवं नया पंजीकरण वर्तमान में बंद है। आगामी बैच की तिथियों व सीट उपलब्धता हेतु आचार्य जी से व्हाट्सएप पर संपर्क करें।'
+                : 'Online registration and automated checkout are currently paused for this course. Please contact Acharya Niraj Kumar directly on WhatsApp to enquire about upcoming admissions and batch schedules.'}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <a
+              href={`https://wa.me/919311215564?text=${encodeURIComponent(
+                language === 'hi'
+                  ? `नमस्ते आचार्य जी, मैं "${course.title}" पाठ्यक्रम में प्रवेश हेतु पूछताछ करना चाहता/चाहती हूँ।`
+                  : `Hello Acharya Ji, I would like to enquire about admissions for "${course.title}".`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3.5 rounded-2xl text-center font-black text-sm block shadow-lg shadow-emerald-500/20 tracking-wide uppercase bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center justify-center gap-2"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>{language === 'hi' ? 'व्हाट्सएप पर पूछताछ करें' : 'Enquire on WhatsApp'}</span>
+            </a>
+
+            <Link
+              href={`/courses/${course.slug}`}
+              className="text-xs text-slate-400 hover:text-white transition"
+            >
+              ← {language === 'hi' ? 'पाठ्यक्रम विवरण पर वापस जाएं' : 'Back to Course Details'}
+            </Link>
+          </div>
         </div>
       </div>
     );

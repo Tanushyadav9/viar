@@ -20,8 +20,7 @@ import {
   Building2
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
-import { Course, Cohort } from '@/lib/types';
-import { PLACEHOLDER_TESTIMONIALS } from '@/lib/data';
+import { Course, Cohort, ContentItem } from '@/lib/types';
 import { SISTER_SERVICES } from '@/config/services';
 import { useLanguage } from '@/components/LanguageContext';
 import { BUILTIN_CONTENT_DEFAULTS } from '@/lib/content/defaultContent';
@@ -34,6 +33,10 @@ export default function HomePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [heroContent, setHeroContent] = useState<any>(() => BUILTIN_CONTENT_DEFAULTS.hero[0]); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [faqsList, setFaqsList] = useState<any[]>(() => BUILTIN_CONTENT_DEFAULTS.faqs); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [announcementBar, setAnnouncementBar] = useState<ContentItem | null | undefined>(() => {
+    return (BUILTIN_CONTENT_DEFAULTS.site_settings || []).find((s) => s.key === 'announcement_bar') as ContentItem | undefined;
+  });
+  const [testimonialsList, setTestimonialsList] = useState<ContentItem[]>(() => (BUILTIN_CONTENT_DEFAULTS.testimonials || []) as ContentItem[]);
 
   useEffect(() => {
     const flagship = ViarStore.getCourseBySlug('what-is-astrology');
@@ -60,29 +63,48 @@ export default function HomePage() {
         }
       })
       .catch(() => {});
+
+    fetch('/api/content?collection=site_settings&key=announcement_bar')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.success && data.item) {
+          setAnnouncementBar(data.item);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/content?collection=testimonials')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.success && Array.isArray(data.items)) {
+          setTestimonialsList(data.items);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   return (
     <div className="cosmic-bg min-h-screen">
       
-      {/* Top Notification Banner */}
-      <div className="bg-gradient-to-r from-amber-600/20 via-amber-500/30 to-amber-600/20 border-b border-amber-500/30 py-2.5 px-4 text-center">
-        <p className="text-xs md:text-sm text-amber-200 font-medium flex items-center justify-center gap-2 flex-wrap">
-          <span className="flex h-2 w-2 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-          </span>
-          <span className="font-bold text-amber-300">
-            {isHi ? 'सेल्फ-पेस्ड मास्टरक्लास खुला है:' : 'Self-Paced Masterclass Open:'}
-          </span>{' '}
-          {isHi
-            ? 'सम्पूर्ण वैदिक ज्योतिष कोर्स (23 वीडियो मॉड्यूल + 2 बोनस कार्यशालाएं)। आजीवन असीमित पहुंच!'
-            : 'The Ultimate Astrology Course (23 Video Modules + 2 Bonus Workshops). Instant Lifetime Access!'}
-          <Link href="/courses/what-is-astrology" className="underline font-bold text-white hover:text-amber-100 ml-1">
-            {isHi ? 'आज ही नामांकन करें →' : 'Enroll Today →'}
-          </Link>
-        </p>
-      </div>
+      {/* Top Notification Banner — Managed via Site Settings in Content Studio */}
+      {announcementBar && announcementBar.metadata?.active !== false && announcementBar.status !== 'HIDDEN' && (
+        <div className="bg-gradient-to-r from-amber-600/20 via-amber-500/30 to-amber-600/20 border-b border-amber-500/30 py-2.5 px-4 text-center">
+          <p className="text-xs md:text-sm text-amber-200 font-medium flex items-center justify-center gap-2 flex-wrap">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+            </span>
+            <span className="font-bold text-amber-300">
+              {isHi
+                ? announcementBar.titleHi || announcementBar.titleEn
+                : announcementBar.titleEn}
+            </span>
+            <Link href={announcementBar.contentEn || '/courses/what-is-astrology'} className="underline font-bold text-white hover:text-amber-100 ml-1">
+              {isHi ? 'विवरण देखें →' : 'Enroll Today →'}
+            </Link>
+          </p>
+        </div>
+      )}
 
       {/* Hero Section */}
       <section className="relative pt-16 pb-24 md:pt-24 md:pb-32 overflow-hidden">
@@ -765,70 +787,80 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Student Testimonials Section */}
-      <section className="py-20 bg-[#090d16] border-t border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-xs font-bold uppercase tracking-widest text-amber-400">
-              {isHi ? 'विद्यार्थियों के अनुभव' : 'Student Experiences'}
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mt-2 mb-4">
-              {isHi ? 'भारत और विश्वभर के विद्यार्थियों का विश्वास' : 'Trusted by Students Across India & Worldwide'}
-            </h2>
-            <p className="text-slate-400 text-sm sm:text-base">
-              {isHi
-                ? 'आचार्य नीरज कुमार जी से सीखने वाले कामकाजी पेशेवरों, शिक्षकों और अंतरराष्ट्रीय विद्यार्थियों के प्रामाणिक अनुभव।'
-                : 'Read authentic feedback from working professionals, educators, and global learners who study with Acharya Niraj Kumar.'}
-            </p>
-          </div>
+      {/* Student Testimonials Section — "Render nothing when there are none" */}
+      {testimonialsList && testimonialsList.length > 0 ? (
+        <section className="py-20 bg-[#090d16] border-t border-white/10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <span className="text-xs font-bold uppercase tracking-widest text-amber-400">
+                {isHi ? 'विद्यार्थियों के अनुभव' : 'Student Experiences'}
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white mt-2 mb-4">
+                {isHi ? 'भारत और विश्वभर के विद्यार्थियों का विश्वास' : 'Trusted by Students Across India & Worldwide'}
+              </h2>
+              <p className="text-slate-400 text-sm sm:text-base">
+                {isHi
+                  ? 'आचार्य नीरज कुमार जी से सीखने वाले कामकाजी पेशेवरों, शिक्षकों और अंतरराष्ट्रीय विद्यार्थियों के प्रामाणिक अनुभव।'
+                  : 'Read authentic feedback from working professionals, educators, and global learners who study with Acharya Niraj Kumar.'}
+              </p>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {PLACEHOLDER_TESTIMONIALS.map((test) => (
-              <div
-                key={test.id}
-                className="cosmic-card p-6 rounded-2xl border border-white/10 flex flex-col justify-between hover:border-amber-500/30 transition relative"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-1">
-                      {[...Array(test.rating)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                      ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {testimonialsList.map((test) => {
+                const meta = (test.metadata || {}) as Record<string, unknown>;
+                const quote = isHi ? test.contentHi || test.contentEn : test.contentEn;
+                const author = isHi ? test.titleHi || test.titleEn : test.titleEn;
+                const location = String(meta.city || meta.location || '');
+                const courseName = String(meta.course || '');
+                const rating = typeof meta.rating === 'number' ? meta.rating : 5;
+                const isInternational = Boolean(meta.isInternational);
+
+                return (
+                  <div
+                    key={test.id || test.key}
+                    className="cosmic-card p-6 rounded-2xl border border-white/10 flex flex-col justify-between hover:border-amber-500/30 transition relative"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-1">
+                          {[...Array(rating)].map((_, i) => (
+                            <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                          ))}
+                        </div>
+                        {isInternational ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30 flex items-center gap-1">
+                            <Globe className="w-3 h-3" />
+                            {isHi ? 'अंतरराष्ट्रीय' : 'International'}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <p className="text-sm font-semibold text-amber-200 mb-2 italic">
+                        &ldquo;{quote}&rdquo;
+                      </p>
                     </div>
-                    {test.isInternational && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30 flex items-center gap-1">
-                        <Globe className="w-3 h-3" />
-                        {isHi ? 'अंतरराष्ट्रीय' : 'International'}
-                      </span>
-                    )}
-                  </div>
 
-                  <p className="text-sm font-semibold text-amber-200 mb-2">
-                    &ldquo;{isHi ? (test.id === 'test-1' ? 'अद्वितीय स्पष्टता और तार्किक दृष्टिकोण' : test.id === 'test-2' ? 'अंधविश्वास-मुक्त, वैज्ञानिक दृष्टिकोण' : 'वैश्विक शिक्षार्थियों हेतु उत्कृष्ट मंच') : test.highlight}&rdquo;
-                  </p>
-                  <p className="text-xs text-slate-300 leading-relaxed mb-6">
-                    {isHi ? (test.id === 'test-1' ? 'आचार्य जी की कॉर्पोरेट पृष्ठभूमि और शास्त्रीय ज्योतिष का समन्वय अद्भुत स्पष्टता लाता है। प्रत्येक नियम को तार्किक कारणों और वास्तविक उदाहरणों के साथ समझाया गया है।' : test.id === 'test-2' ? '23 मॉड्यूल की संरचना बेहद वैज्ञानिक है। एक चिकित्सक के रूप में, मैंने ग्रहों की ऊर्जा और दशा समय के व्यवस्थित, गैर-अंधविश्वासी दृष्टिकोण की बहुत सराहना की।' : 'लंदन से अध्ययन करते हुए, अपनी गति से सीखने की सुविधा मेरे व्यस्त शेड्यूल में बिल्कुल सटीक रही। कुंडली व्याख्या का आत्मविश्वास बहुत बढ़ा है।') : test.content}
-                  </p>
-                </div>
-
-                <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-xs font-bold text-white">{test.name}</h3>
-                    <p className="text-[11px] text-slate-400">
-                      {isHi ? (test.id === 'test-1' ? 'वरिष्ठ कॉर्पोरेट निदेशक' : test.id === 'test-2' ? 'चिकित्सक एवं वैदिक शिक्षार्थी' : 'फाइनेंशियल एनालिस्ट') : test.role}
-                    </p>
+                    <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xs font-bold text-white">{author}</h3>
+                        {courseName ? (
+                          <p className="text-[11px] text-slate-400">{courseName}</p>
+                        ) : null}
+                      </div>
+                      {location ? (
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          {location}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  <span className="text-[11px] text-slate-500 font-medium">
-                    {test.location}
-                  </span>
-                </div>
-              </div>
-            ))}
+                );
+              })}
+            </div>
+
           </div>
-
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       {/* Sample Lecture Preview Section */}
       <section className="py-20 bg-[#090d16] border-t border-white/10">

@@ -333,6 +333,8 @@ export const INITIAL_COURSES: Course[] = [
     originalPriceInr: 11000,
     originalPriceUsd: 129,
     isPublished: true,
+    status: 'PUBLISHED',
+    acceptingEnrollments: true,
     featured: true,
     badge: 'Self-Paced Masterclass',
     instructor: {

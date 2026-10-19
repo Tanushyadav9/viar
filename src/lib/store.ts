@@ -110,6 +110,23 @@ export const ViarStore = {
     setStorageItem(STORAGE_KEYS.COURSES, courses);
   },
 
+  updateCourse(id: string, updates: Partial<Course>): Course | null {
+    const courses = this.getCourses();
+    const index = courses.findIndex((c) => c.id === id || c.slug === id);
+    if (index === -1) return null;
+    courses[index] = { ...courses[index], ...updates };
+    setStorageItem(STORAGE_KEYS.COURSES, courses);
+    return courses[index];
+  },
+
+  deleteCourse(id: string): boolean {
+    const courses = this.getCourses();
+    const filtered = courses.filter((c) => c.id !== id && c.slug !== id);
+    if (filtered.length === courses.length) return false;
+    setStorageItem(STORAGE_KEYS.COURSES, filtered);
+    return true;
+  },
+
   // Cohorts
   getCohorts(courseId?: string): Cohort[] {
     const cohorts = getStorageItem<Cohort[]>(STORAGE_KEYS.COHORTS, INITIAL_COHORTS);

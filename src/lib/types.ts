@@ -103,8 +103,9 @@ export interface CourseModule {
   videoThumbnail?: string;
   keyTopics?: string[];
   isBonus?: boolean;
+  isPublished?: boolean;
   resources?: ClassResource[];
-  lessons?: Array<{ id: string; title: string; isFreePreview?: boolean; order?: number; type?: string }>;
+  lessons?: Array<{ id: string; title: string; isFreePreview?: boolean; order?: number; type?: string; isPublished?: boolean }>;
 }
 
 export interface Course {
@@ -126,6 +127,8 @@ export interface Course {
   originalPriceInr: number;
   originalPriceUsd: number;
   isPublished: boolean;
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'COMING_SOON';
+  acceptingEnrollments?: boolean;
   featured: boolean;
   isComingSoon?: boolean;
   thumbnailUrl?: string;

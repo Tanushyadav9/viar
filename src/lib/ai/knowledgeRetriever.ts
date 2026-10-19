@@ -1,6 +1,7 @@
 import { prisma } from '../prisma.ts';
 import { ACADEMIC_SERVICES_KNOWLEDGE } from './knowledge/services.ts';
 import { ABOUT_INSTITUTE_KNOWLEDGE } from './knowledge/about.ts';
+import { BUILTIN_CONTENT_DEFAULTS } from '../content/defaultContent.ts';
 
 export interface LiveAcademyData {
   courseTitle: string;
@@ -51,19 +52,80 @@ export async function getLiveAcademyData(): Promise<LiveAcademyData> {
       take: 2,
     });
 
-    // 4. Fetch Owner-Editable Custom Knowledge Entries
-    const customEntries = await prisma.knowledgeEntry.findMany({
-      where: { published: true },
-      select: {
-        id: true,
-        question: true,
-        answer: true,
-        language: true,
-        category: true,
-      },
-      orderBy: { orderIndex: 'asc' },
-      take: 20,
-    });
+    // 4. Fetch Owner-Editable FAQs from Content Studio
+    let customEntries: Array<{ id: string; question: string; answer: string; language: string; category: string }> = [];
+    try {
+      const contentFaqs = await prisma.contentItem.findMany({
+        where: { collection: 'faqs', status: 'PUBLISHED' },
+        orderBy: { sortOrder: 'asc' },
+      });
+      if (contentFaqs && contentFaqs.length > 0) {
+        customEntries = contentFaqs.flatMap((item) => {
+          const cat = ((item.metadata as Record<string, unknown>)?.category as string) || 'General';
+          const arr: Array<{ id: string; question: string; answer: string; language: string; category: string }> = [];
+          if (item.titleEn && item.contentEn) {
+            arr.push({
+              id: `${item.id || item.key}-en`,
+              question: item.titleEn,
+              answer: item.contentEn,
+              language: 'en',
+              category: cat,
+            });
+          }
+          if (item.titleHi && item.contentHi) {
+            arr.push({
+              id: `${item.id || item.key}-hi`,
+              question: item.titleHi,
+              answer: item.contentHi,
+              language: 'hi',
+              category: cat,
+            });
+          }
+          return arr;
+        });
+      }
+    } catch {}
+
+    // Fall back to legacy KnowledgeEntry if contentItem is empty
+    if (customEntries.length === 0) {
+      try {
+        const legacyEntries = await prisma.knowledgeEntry.findMany({
+          where: { published: true },
+          select: {
+            id: true,
+            question: true,
+            answer: true,
+            language: true,
+            category: true,
+          },
+          orderBy: { orderIndex: 'asc' },
+          take: 20,
+        });
+        if (legacyEntries && legacyEntries.length > 0) {
+          customEntries = legacyEntries;
+        }
+      } catch {}
+    }
+
+    // Deterministic fallback to built-in FAQs if tables are empty
+    if (customEntries.length === 0) {
+      customEntries = (BUILTIN_CONTENT_DEFAULTS.faqs || []).flatMap((f) => [
+        {
+          id: `${f.key}-en`,
+          question: f.titleEn,
+          answer: f.contentEn,
+          language: 'en',
+          category: ((f.metadata as Record<string, unknown>)?.category as string) || 'General',
+        },
+        {
+          id: `${f.key}-hi`,
+          question: f.titleHi,
+          answer: f.contentHi,
+          language: 'hi',
+          category: ((f.metadata as Record<string, unknown>)?.category as string) || 'General',
+        },
+      ]);
+    }
 
     return {
       courseTitle: course?.title || 'Vedic Astrology Masterclass: What is Astrology',
@@ -80,7 +142,23 @@ export async function getLiveAcademyData(): Promise<LiveAcademyData> {
     };
   } catch (error) {
     console.warn('[KnowledgeRetriever] Database read fallback applied:', error);
-    // Safe deterministic defaults if database is momentarily unreachable
+    const fallbackFaqs = (BUILTIN_CONTENT_DEFAULTS.faqs || []).flatMap((f) => [
+      {
+        id: `${f.key}-en`,
+        question: f.titleEn,
+        answer: f.contentEn,
+        language: 'en',
+        category: ((f.metadata as Record<string, unknown>)?.category as string) || 'General',
+      },
+      {
+        id: `${f.key}-hi`,
+        question: f.titleHi,
+        answer: f.contentHi,
+        language: 'hi',
+        category: ((f.metadata as Record<string, unknown>)?.category as string) || 'General',
+      },
+    ]);
+
     return {
       courseTitle: 'Vedic Astrology Masterclass: What is Astrology',
       priceInr: 5100,
@@ -88,7 +166,7 @@ export async function getLiveAcademyData(): Promise<LiveAcademyData> {
       upiVpa: 'aapkaastro@okaxis',
       payeeName: 'Vihangam Institute of Astrology and Research',
       activeCohorts: [{ batchName: 'Cohort Admissions Active', startDate: 'Self-Paced Instant Access', capacity: 50 }],
-      customKnowledgeEntries: [],
+      customKnowledgeEntries: fallbackFaqs,
     };
   }
 }

@@ -12,7 +12,9 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
-import { Course, Cohort } from '@/lib/types';
+import { Course, Cohort, CourseModule, ContentItem } from '@/lib/types';
+import { BUILTIN_CONTENT_DEFAULTS } from '@/lib/content/defaultContent';
+import { useLanguage } from '@/components/LanguageContext';
 
 interface WelcomeCohortModalProps {
   /** Override session key for testing or customization */
@@ -29,9 +31,11 @@ export default function WelcomeCohortModal({
   delayMs = 1800,
 }: WelcomeCohortModalProps) {
   const pathname = usePathname();
+  const { isHi } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [course, setCourse] = useState<Course | null>(null);
   const [cohort, setCohort] = useState<Cohort | null>(null);
+  const [popupContent, setPopupContent] = useState<ContentItem | null | undefined>(() => BUILTIN_CONTENT_DEFAULTS.popup?.[0] as ContentItem | undefined);
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
@@ -139,8 +143,25 @@ export default function WelcomeCohortModal({
         // Fallback to ViarStore initialized state
       });
 
+    // Fetch promotional popup content dynamically from Content Studio
+    fetch('/api/content?collection=popup&key=course_promo_popup')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && data.item) {
+          setPopupContent(data.item);
+          if (data.item.metadata?.enabled === false || data.item.status === 'HIDDEN') {
+            setIsOpen(false);
+          }
+        }
+      })
+      .catch(() => {});
+
     const effectiveDelay = forceOpen ? 0 : delayMs;
     const timer = setTimeout(() => {
+      // Check if popup has been disabled by Owner
+      if (popupContent?.metadata?.enabled === false || popupContent?.status === 'HIDDEN') {
+        return;
+      }
       try {
         if (!forceOpen) {
           sessionStorage.setItem(sessionKey, 'true');
@@ -152,7 +173,7 @@ export default function WelcomeCohortModal({
     }, effectiveDelay);
 
     return () => clearTimeout(timer);
-  }, [pathname, sessionKey, dismissKey, delayMs]);
+  }, [pathname, sessionKey, dismissKey, delayMs, popupContent]);
 
   // 6. Dismissible via Escape key
   useEffect(() => {
@@ -173,6 +194,25 @@ export default function WelcomeCohortModal({
   const targetCohort = cohort || ViarStore.getCohorts()[0];
   const priceFormatted = `₹${(course.priceInr || 5100).toLocaleString('en-IN')}`;
   const originalPriceFormatted = `₹${(course.originalPriceInr || 11000).toLocaleString('en-IN')}`;
+
+  const publishedLessonsCount =
+    (course.modules && course.modules.length > 0)
+      ? course.modules.reduce((acc: number, m: CourseModule) => acc + (m.lessons ? m.lessons.filter((l) => l.isPublished !== false).length : 0), 0)
+      : (course.totalClasses || 23);
+
+  const popupMeta = (popupContent?.metadata || {}) as Record<string, unknown>;
+
+  const modalTitle = (isHi ? (popupContent?.titleHi || popupContent?.titleEn) : (popupContent?.titleEn || popupContent?.titleHi)) || 'The Ultimate Astrology Course';
+  const modalSubtitle = (isHi ? (popupContent?.contentHi || popupContent?.contentEn) : (popupContent?.contentEn || popupContent?.contentHi)) || `Basics of Vedic Astrology • ${publishedLessonsCount} Video Modules + 2 Bonus Workshops`;
+  const datesLabel = (popupMeta.dates as string) ||
+    (popupMeta.startDate && popupMeta.endDate
+      ? `${popupMeta.startDate} – ${popupMeta.endDate}`
+      : (isHi ? 'प्रवेश प्रारंभ' : 'Launch Enrollment Open'));
+  const modalImageUrl = (popupMeta.imageUrl as string) || '/images/Acharya_Niraj_Kumar_Headshot.jpg';
+  const modalLinkUrl = (popupMeta.linkUrl as string) || (popupMeta.url as string) || `/checkout/${targetCohort?.id || 'cohort-wia-batch-1'}`;
+  const modalButtonLabel = isHi
+    ? ((popupMeta.buttonLabelHi as string) || (popupMeta.buttonLabelEn as string) || 'अभी प्रवेश लें — तुरंत एक्सेस')
+    : ((popupMeta.buttonLabelEn as string) || (popupMeta.buttonLabelHi as string) || 'Enroll Now — Instant Access');
 
   return (
     <div
@@ -307,7 +347,7 @@ export default function WelcomeCohortModal({
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#E8A33D]/25 text-[#7B2D26] border border-[#E8A33D]/60 shadow-sm">
               <Sparkles className="w-3.5 h-3.5 text-[#C1662F] shrink-0" />
               <span className="tracking-wide uppercase text-[10px] sm:text-[11px] font-extrabold font-body">
-                Launch Enrollment Open
+                {datesLabel}
               </span>
             </div>
           </div>
@@ -319,10 +359,10 @@ export default function WelcomeCohortModal({
               data-testid="viar-welcome-modal-title"
               className="text-lg sm:text-2xl font-black text-[#7B2D26] font-heading tracking-normal leading-snug sm:leading-normal mb-1.5 pt-0.5"
             >
-              The Ultimate Astrology Course
+              {modalTitle}
             </h2>
             <p className="text-xs sm:text-sm font-semibold text-[#C1662F] font-body leading-normal">
-              Basics of Vedic Astrology • 23 Video Modules + 2 Bonus Workshops
+              {modalSubtitle}
             </p>
           </div>
 
@@ -333,7 +373,7 @@ export default function WelcomeCohortModal({
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full p-[2.5px] bg-gradient-to-tr from-[#7B2D26] via-[#E8A33D] to-[#7B2D26] shadow-md shadow-[#7B2D26]/20">
                 <div className="w-full h-full rounded-full overflow-hidden border-2 border-[#FFFDF9] bg-[#F5EADB]">
                   <Image
-                    src="/images/Acharya_Niraj_Kumar_Headshot.jpg"
+                    src={modalImageUrl}
                     alt="Acharya Niraj Kumar"
                     width={80}
                     height={80}
@@ -361,7 +401,7 @@ export default function WelcomeCohortModal({
           <div className="grid grid-cols-2 gap-2.5 mb-3.5 text-center">
             <div className="bg-[#FFFDF9] border border-[#E8A33D]/30 rounded-xl p-2.5 shadow-sm">
               <div className="font-heading font-bold text-[#7B2D26] text-xs sm:text-sm">
-                23 Video Modules
+                {publishedLessonsCount} Video Modules
               </div>
               <div className="font-body text-[10px] text-[#3B2A1E]/75 font-medium mt-0.5">
                 + 2 Bonus Real Chart Labs
@@ -400,7 +440,7 @@ export default function WelcomeCohortModal({
             <li className="flex items-start gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-[#7B2D26] shrink-0 mt-0.5" />
               <span>
-                <strong>23 On-Demand Modules:</strong> 9 Planets, 12 Houses, Rashis, Dashas &amp; Drishti
+                <strong>{publishedLessonsCount} On-Demand Modules:</strong> 9 Planets, 12 Houses, Rashis, Dashas &amp; Drishti
               </span>
             </li>
             <li className="flex items-start gap-2">
@@ -420,11 +460,11 @@ export default function WelcomeCohortModal({
           {/* 8. Call to Action & Dismiss Link */}
           <div className="space-y-2.5">
             <Link
-              href={`/checkout/${targetCohort?.id || 'cohort-wia-batch-1'}`}
+              href={modalLinkUrl}
               onClick={handleClose}
               className="w-full py-3.5 px-6 rounded-xl font-heading font-bold text-sm sm:text-base shadow-lg shadow-[#7B2D26]/20 flex items-center justify-center gap-2 bg-gradient-to-r from-[#7B2D26] via-[#8c332b] to-[#7B2D26] text-white hover:brightness-110 active:scale-[0.99] transition cursor-pointer tracking-wide border border-[#E8A33D]/40"
             >
-              <span>Enroll Now — Instant Access</span>
+              <span>{modalButtonLabel}</span>
               <ArrowRight className="w-4 h-4 text-[#E8A33D]" />
             </Link>
 

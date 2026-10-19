@@ -285,6 +285,7 @@ export async function PATCH(
     if (body.passingScore !== undefined) dataToUpdate.passingScore = Number(body.passingScore);
     if (body.certificateEnabled !== undefined) dataToUpdate.certificateEnabled = Boolean(body.certificateEnabled);
     if (body.isComingSoon !== undefined) dataToUpdate.isComingSoon = Boolean(body.isComingSoon);
+    if (body.acceptingEnrollments !== undefined) dataToUpdate.acceptingEnrollments = Boolean(body.acceptingEnrollments);
     if (body.status !== undefined) dataToUpdate.status = body.status;
 
     // Owner price updates (never changes existing historical enrollments)

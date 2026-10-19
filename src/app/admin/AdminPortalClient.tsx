@@ -192,6 +192,21 @@ export default function AdminPortalClient({
   const [newCoursePriceInr, setNewCoursePriceInr] = useState('19999');
   const [newCourseWeeks, setNewCourseWeeks] = useState('8');
   const [newCourseClasses, setNewCourseClasses] = useState('16');
+  const [newCourseStatus, setNewCourseStatus] = useState<'DRAFT' | 'PUBLISHED' | 'ARCHIVED'>('DRAFT');
+  const [newCourseAccepting, setNewCourseAccepting] = useState(true);
+
+  // Edit Course Modal
+  const [isEditCourseOpen, setIsEditCourseOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [editCourseTitle, setEditCourseTitle] = useState('');
+  const [editCourseTagline, setEditCourseTagline] = useState('');
+  const [editCoursePriceInr, setEditCoursePriceInr] = useState('');
+  const [editCourseWeeks, setEditCourseWeeks] = useState('');
+  const [editCourseClasses, setEditCourseClasses] = useState('');
+  const [editCourseLevel, setEditCourseLevel] = useState<Course['level']>('Advanced');
+  const [editCourseDescription, setEditCourseDescription] = useState('');
+  const [editCourseStatus, setEditCourseStatus] = useState<'DRAFT' | 'PUBLISHED' | 'ARCHIVED'>('PUBLISHED');
+  const [editCourseAccepting, setEditCourseAccepting] = useState(true);
 
   // Add Staff Member Modal
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
@@ -592,7 +607,7 @@ export default function AdminPortalClient({
     loadAdminData();
   };
 
-  const handleCreateCourse = (e: React.FormEvent) => {
+  const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCourseTitle) return;
 
@@ -612,7 +627,9 @@ export default function AdminPortalClient({
       priceUsd: 0,
       originalPriceInr: Math.round((parseInt(newCoursePriceInr) || 19999) * 1.5),
       originalPriceUsd: 0,
-      isPublished: true,
+      isPublished: newCourseStatus === 'PUBLISHED',
+      status: newCourseStatus,
+      acceptingEnrollments: newCourseAccepting,
       featured: false,
       instructor: {
         name: 'Acharya Niraj Kumar',
@@ -623,7 +640,7 @@ export default function AdminPortalClient({
         aapkaAstroUrl: 'https://aapkaastro.com',
       },
       highlights: [
-        '23 Structured on-demand video modules',
+        `${newCourseClasses} Structured on-demand video modules`,
         'Direct chart critique and oral exams',
       ],
       prerequisites: ['Foundational understanding of 12 rashis and 9 grahas'],
@@ -636,8 +653,115 @@ export default function AdminPortalClient({
     };
 
     ViarStore.addCourse(newCourse);
+    try {
+      await fetch('/api/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newCourse.title,
+          slug: newCourse.slug,
+          shortDescription: newCourse.tagline,
+          description: newCourse.description,
+          priceInr: newCourse.priceInr,
+          durationWeeks: newCourse.durationWeeks,
+          totalClasses: newCourse.totalClasses,
+          status: newCourseStatus,
+          acceptingEnrollments: newCourseAccepting,
+          level: newCourse.level,
+        }),
+      });
+    } catch {}
+
     setIsNewCourseOpen(false);
     setNewCourseTitle('');
+    setNewCourseTagline('');
+    loadAdminData();
+  };
+
+  const handleToggleAcceptingEnrollments = async (crs: Course) => {
+    const newVal = crs.acceptingEnrollments === false ? true : false;
+    ViarStore.updateCourse(crs.id, { acceptingEnrollments: newVal });
+    try {
+      await fetch(`/api/courses/${crs.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acceptingEnrollments: newVal }),
+      });
+    } catch {}
+    loadAdminData();
+  };
+
+  const handleUpdateCourseStatus = async (crs: Course, newStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED') => {
+    ViarStore.updateCourse(crs.id, {
+      status: newStatus,
+      isPublished: newStatus === 'PUBLISHED',
+    });
+    try {
+      await fetch(`/api/courses/${crs.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+    } catch {}
+    loadAdminData();
+  };
+
+  const handleDeleteDraftCourse = async (crs: Course) => {
+    if (crs.status !== 'DRAFT') {
+      alert('Only draft courses can be deleted. Published courses with potential enrollments must be archived.');
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to permanently delete draft course "${crs.title}"? This cannot be undone.`)) {
+      return;
+    }
+    ViarStore.deleteCourse(crs.id);
+    try {
+      await fetch(`/api/courses/${crs.slug}`, { method: 'DELETE' });
+    } catch {}
+    loadAdminData();
+  };
+
+  const handleOpenEditCourse = (crs: Course) => {
+    setEditingCourse(crs);
+    setEditCourseTitle(crs.title);
+    setEditCourseTagline(crs.tagline || '');
+    setEditCoursePriceInr(String(crs.priceInr || 5100));
+    setEditCourseWeeks(String(crs.durationWeeks || 8));
+    setEditCourseClasses(String(crs.totalClasses || 16));
+    setEditCourseLevel(crs.level || 'Advanced');
+    setEditCourseStatus((crs.status === 'ARCHIVED' || crs.status === 'DRAFT' || crs.status === 'PUBLISHED') ? crs.status : (crs.isPublished ? 'PUBLISHED' : 'DRAFT'));
+    setEditCourseAccepting(crs.acceptingEnrollments !== false);
+    setIsEditCourseOpen(true);
+  };
+
+  const handleSaveEditCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCourse) return;
+
+    const updates: Partial<Course> = {
+      title: editCourseTitle.trim(),
+      tagline: editCourseTagline.trim(),
+      priceInr: parseInt(editCoursePriceInr) || editingCourse.priceInr,
+      durationWeeks: parseInt(editCourseWeeks) || editingCourse.durationWeeks,
+      totalClasses: parseInt(editCourseClasses) || editingCourse.totalClasses,
+      level: editCourseLevel,
+      description: editCourseDescription.trim(),
+      status: editCourseStatus,
+      isPublished: editCourseStatus === 'PUBLISHED',
+      acceptingEnrollments: editCourseAccepting,
+    };
+
+    ViarStore.updateCourse(editingCourse.id, updates);
+    try {
+      await fetch(`/api/courses/${editingCourse.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+    } catch {}
+
+    setIsEditCourseOpen(false);
+    setEditingCourse(null);
     loadAdminData();
   };
 
@@ -1119,36 +1243,152 @@ export default function AdminPortalClient({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {courses.map((crs) => (
-                <div key={crs.id} className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-300">
-                      {crs.level}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      {crs.durationWeeks} Weeks • {crs.totalClasses} Classes
-                    </span>
-                  </div>
+              {courses.map((crs) => {
+                const courseStatus = crs.status || (crs.isPublished ? 'PUBLISHED' : 'DRAFT');
+                const isAccepting = crs.acceptingEnrollments !== false;
+                const publishedLessonsCount = crs.modules?.reduce((acc, m) => {
+                  if (m.lessons && m.lessons.length > 0) {
+                    return acc + m.lessons.filter((l) => l.isPublished !== false).length;
+                  }
+                  return acc + (m.isPublished !== false ? 1 : 0);
+                }, 0) || crs.totalClasses || 0;
+                const totalModulesCount = crs.modules?.length || crs.totalClasses || 0;
 
-                  <div>
-                    <h4 className="text-base font-bold text-white">{crs.title}</h4>
-                    <p className="text-xs text-slate-400 mt-1">{crs.description}</p>
-                  </div>
+                return (
+                  <div key={crs.id} className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-300">
+                            {crs.level}
+                          </span>
+                          <span
+                            className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${
+                              courseStatus === 'PUBLISHED'
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : courseStatus === 'ARCHIVED'
+                                ? 'bg-slate-700 text-slate-300 border border-slate-600'
+                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            }`}
+                          >
+                            {courseStatus}
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-400">
+                          {crs.durationWeeks} Weeks • {crs.totalClasses} Classes
+                        </span>
+                      </div>
 
-                  <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs">
-                    <div>
-                      <span className="text-slate-400">Tuition:</span>
-                      <span className="font-bold text-white ml-1">₹{crs.priceInr.toLocaleString('en-IN')}</span>
+                      <div>
+                        <h4 className="text-base font-bold text-white">{crs.title}</h4>
+                        {crs.tagline && <p className="text-xs text-amber-300/80 mt-0.5 font-medium">{crs.tagline}</p>}
+                        <p className="text-xs text-slate-400 mt-1 line-clamp-2">{crs.description}</p>
+                      </div>
+
+                      {/* Visible Published Lesson Count — "Never advertise 23 modules when fewer lessons are live" */}
+                      <div className="p-3 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
+                          <span className="text-slate-300 font-medium">
+                            <strong className="text-white">{publishedLessonsCount}</strong> Published Lessons Live ({totalModulesCount} Modules)
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-mono">Dynamic Count</span>
+                      </div>
+
+                      {/* Accepting Enrolments Switch */}
+                      <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-bold text-white block">Accepting Enrolments</span>
+                          <span className="text-[11px] text-slate-400 block">
+                            {isAccepting
+                              ? 'Online checkout & UPI QR active'
+                              : 'Paused — button shows "Enquire on WhatsApp"'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleAcceptingEnrollments(crs)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                            isAccepting
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
+                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30'
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full ${isAccepting ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                          <span>{isAccepting ? 'Accepting' : 'Paused (WhatsApp)'}</span>
+                        </button>
+                      </div>
                     </div>
-                    <Link
-                      href={`/courses/${crs.slug}`}
-                      className="text-amber-400 font-bold hover:underline"
-                    >
-                      View Live Page &rarr;
-                    </Link>
+
+                    <div className="pt-4 border-t border-white/10 space-y-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <div>
+                          <span className="text-slate-400">Tuition:</span>
+                          <span className="font-bold text-white ml-1">₹{crs.priceInr.toLocaleString('en-IN')}</span>
+                        </div>
+                        <Link
+                          href={`/courses/${crs.slug}`}
+                          className="text-amber-400 font-bold hover:underline flex items-center gap-1"
+                        >
+                          <span>View Live Page</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditCourse(crs)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-white flex items-center gap-1 border border-white/10"
+                          >
+                            <Edit className="w-3 h-3 text-amber-400" />
+                            <span>Edit</span>
+                          </button>
+
+                          {courseStatus === 'PUBLISHED' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateCourseStatus(crs, 'ARCHIVED')}
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/5"
+                            >
+                              Archive
+                            </button>
+                          ) : courseStatus === 'ARCHIVED' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateCourseStatus(crs, 'PUBLISHED')}
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30"
+                            >
+                              Publish
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateCourseStatus(crs, 'PUBLISHED')}
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30"
+                            >
+                              Publish Draft
+                            </button>
+                          )}
+                        </div>
+
+                        {courseStatus === 'DRAFT' && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDraftCourse(crs)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/20 flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>Delete Draft</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -2416,6 +2656,33 @@ export default function AdminPortalClient({
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">Initial Status</label>
+                    <select
+                      value={newCourseStatus}
+                      onChange={(e) => setNewCourseStatus(e.target.value as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED')}
+                      className="w-full px-3 py-2 rounded-xl bg-[#0f172a] border border-white/10 text-white"
+                    >
+                      <option value="DRAFT">Draft</option>
+                      <option value="PUBLISHED">Published</option>
+                      <option value="ARCHIVED">Archived</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">Enrolments</label>
+                    <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newCourseAccepting}
+                        onChange={(e) => setNewCourseAccepting(e.target.checked)}
+                        className="rounded border-white/20 text-amber-500 focus:ring-0"
+                      />
+                      <span className="text-white text-xs">Accepting</span>
+                    </label>
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
                   <button
                     type="button"
@@ -2429,6 +2696,143 @@ export default function AdminPortalClient({
                     className="gold-button px-5 py-2 rounded-xl font-bold"
                   >
                     Create Course
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* EDIT COURSE MODAL */}
+        {isEditCourseOpen && editingCourse && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#0f172a] border border-amber-500/40 rounded-2xl p-6 sm:p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-bold text-white mb-1">Edit Course Details</h3>
+              <p className="text-xs text-slate-400 mb-6">
+                Update course parameters, catalog visibility, and enrolment status.
+              </p>
+
+              <form onSubmit={handleSaveEditCourse} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-300 mb-1 font-semibold">Course Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={editCourseTitle}
+                    onChange={(e) => setEditCourseTitle(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-semibold">Tagline / Subtitle</label>
+                  <input
+                    type="text"
+                    value={editCourseTagline}
+                    onChange={(e) => setEditCourseTagline(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 font-semibold">Description</label>
+                  <textarea
+                    rows={3}
+                    value={editCourseDescription}
+                    onChange={(e) => setEditCourseDescription(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">Tuition (INR)</label>
+                    <input
+                      type="number"
+                      value={editCoursePriceInr}
+                      onChange={(e) => setEditCoursePriceInr(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">Skill Level</label>
+                    <select
+                      value={editCourseLevel}
+                      onChange={(e) => setEditCourseLevel(e.target.value as Course['level'])}
+                      className="w-full px-3 py-2 rounded-xl bg-[#0f172a] border border-white/10 text-white"
+                    >
+                      <option value="Beginner">Beginner</option>
+                      <option value="Intermediate">Intermediate</option>
+                      <option value="Advanced">Advanced</option>
+                      <option value="All Levels">All Levels</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">Duration (Weeks)</label>
+                    <input
+                      type="number"
+                      value={editCourseWeeks}
+                      onChange={(e) => setEditCourseWeeks(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">Total Classes</label>
+                    <input
+                      type="number"
+                      value={editCourseClasses}
+                      onChange={(e) => setEditCourseClasses(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">Publication Status</label>
+                    <select
+                      value={editCourseStatus}
+                      onChange={(e) => setEditCourseStatus(e.target.value as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED')}
+                      className="w-full px-3 py-2 rounded-xl bg-[#0f172a] border border-white/10 text-white"
+                    >
+                      <option value="PUBLISHED">Published</option>
+                      <option value="DRAFT">Draft</option>
+                      <option value="ARCHIVED">Archived</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">Accepting Enrolments</label>
+                    <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editCourseAccepting}
+                        onChange={(e) => setEditCourseAccepting(e.target.checked)}
+                        className="rounded border-white/20 text-amber-500 focus:ring-0"
+                      />
+                      <span className="text-white text-xs font-semibold">
+                        {editCourseAccepting ? 'Yes (Admissions Open)' : 'No (Paused)'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditCourseOpen(false);
+                      setEditingCourse(null);
+                    }}
+                    className="px-4 py-2 rounded-xl text-slate-300 bg-white/5 hover:bg-white/10"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="gold-button px-5 py-2 rounded-xl font-bold"
+                  >
+                    Save Changes
                   </button>
                 </div>
               </form>

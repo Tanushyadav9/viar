@@ -153,6 +153,10 @@ export async function createOrGetActiveOrder(params: {
     throw new Error('Course not found.');
   }
 
+  if (course.acceptingEnrollments === false) {
+    throw new Error('This course is not currently accepting new online enrollments. Please enquire on WhatsApp.');
+  }
+
   const lockedAmount = course.priceInr || 5100;
 
   // 2. Load payment settings

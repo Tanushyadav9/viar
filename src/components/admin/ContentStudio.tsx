@@ -43,34 +43,49 @@ interface CollectionOption {
 const COLLECTIONS: CollectionOption[] = [
   {
     id: 'site_settings',
-    label: 'Contact Info & Phone',
-    description: 'WhatsApp number, phone, email, and institute hours.',
+    label: '1. Site Settings & Contact',
+    description: 'WhatsApp number, phone, public contact email (not owner login), social links & announcement bar.',
   },
   {
     id: 'hero',
-    label: 'Homepage Headlines & Banners',
-    description: 'Main hero headline, welcoming pill, and action buttons.',
-  },
-  {
-    id: 'faqs',
-    label: 'Frequently Asked Questions',
-    description: 'Student admission, class, certificate, and payment questions.',
+    label: '2. Homepage & Hero',
+    description: 'Hero headline, sub-headline, buttons, section texts & featured courses.',
   },
   {
     id: 'about',
-    label: 'About Instructor & Bio',
-    description: 'Acharya Niraj Kumar credentials, lineage, and background.',
+    label: '3. Institute & Instructor',
+    description: 'Acharya Niraj Kumar About text, instructor photo, bio & approved credentials.',
+  },
+  {
+    id: 'faqs',
+    label: '4. FAQ & Student Questions',
+    description: 'Answers read by website visitors and the live AI chatbot.',
   },
   {
     id: 'testimonials',
-    label: 'Student Experiences',
-    description: 'Student reviews, ratings, and course testimonials.',
+    label: '5. Student Testimonials',
+    description: 'Student quotes, city, course, date, and mandatory explicit consent note.',
+  },
+  {
+    id: 'popup',
+    label: '6. Course Promotion Popup',
+    description: 'Course promo modal (headline, text, image, dates, enabled).',
+  },
+  {
+    id: 'certificate_template',
+    label: '7. Certificate Template Text',
+    description: 'Institute accreditation name & verification signatory line.',
   },
   {
     id: 'legal',
-    label: 'Legal Policies (Owner Only)',
-    description: 'Terms of service, refund policy, and privacy notice.',
+    label: '8. Legal Pages (Owner Only)',
+    description: 'Terms of service, refund policy, and pending lawyer review flag.',
     ownerOnly: true,
+  },
+  {
+    id: 'announcements',
+    label: '9. Blog & Announcements',
+    description: 'Academy notice board, batch admissions announcements & updates.',
   },
 ];
 
@@ -110,6 +125,7 @@ export default function ContentStudio({
   const [formContentEn, setFormContentEn] = useState('');
   const [formContentHi, setFormContentHi] = useState('');
   const [formStatus, setFormStatus] = useState<ContentStatus>('PUBLISHED');
+  const [formMetadata, setFormMetadata] = useState<Record<string, unknown>>({});
   const [formChangeSummary, setFormChangeSummary] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showLivePreview, setShowLivePreview] = useState(true);
@@ -166,14 +182,28 @@ export default function ContentStudio({
     setFormContentEn(item.contentEn || '');
     setFormContentHi(item.contentHi || '');
     setFormStatus(item.status || 'PUBLISHED');
+    setFormMetadata({ ...(item.metadata || {}) });
     setFormChangeSummary('');
     setActiveLangTab('en');
     setErrorMessage(null);
     setSuccessMessage(null);
   };
 
-  // Quick New Item (e.g. for FAQs or Testimonials)
+  // Quick New Item (e.g. for FAQs, Testimonials, Announcements)
   const handleCreateNewItem = () => {
+    const initialMeta: Record<string, unknown> = {};
+    if (activeCollection === 'testimonials') {
+      initialMeta.rating = 5;
+      initialMeta.consentGiven = false;
+      initialMeta.consentNote = '';
+    } else if (activeCollection === 'popup') {
+      initialMeta.enabled = true;
+      initialMeta.startDate = new Date().toISOString().split('T')[0];
+      initialMeta.endDate = new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0];
+    } else if (activeCollection === 'legal') {
+      initialMeta.pendingLawyerReview = false;
+    }
+
     const newItem: FormattedContent = {
       collection: activeCollection,
       key: `${activeCollection}_${Date.now()}`,
@@ -181,7 +211,7 @@ export default function ContentStudio({
       titleHi: '',
       contentEn: '',
       contentHi: '',
-      metadata: {},
+      metadata: initialMeta,
       status: 'PUBLISHED',
       sortOrder: items.length + 1,
       isCustomized: true,
@@ -264,11 +294,30 @@ export default function ContentStudio({
       return;
     }
 
+    const statusToSave = targetStatus || formStatus;
+
+    // Validation: Testimonials require explicit consent note before publishing
+    if (editingItem.collection === 'testimonials' && statusToSave === 'PUBLISHED') {
+      const consentGiven = Boolean(formMetadata.consentGiven);
+      const consentNote = String(formMetadata.consentNote || '').trim();
+      if (!consentGiven || !consentNote) {
+        alert('A required consent note is mandatory to publish student testimonials (e.g. "Written consent received via email on [Date]"). Please provide the consent note and confirm student consent.');
+        return;
+      }
+    }
+
+    // Validation: Public contact email cannot be the Owner login address
+    if (editingItem.collection === 'site_settings' && editingItem.key === 'contact_email') {
+      const emailVal = (formContentEn || formContentHi || '').trim().toLowerCase();
+      if (emailVal === 'aapkaastro1606@gmail.com') {
+        alert('The public contact email cannot be the private Owner login email (aapkaastro1606@gmail.com). Please provide an official inquiries address such as contact@viar.in or admissions@viar.in.');
+        return;
+      }
+    }
+
     setIsSaving(true);
     setErrorMessage(null);
     setSuccessMessage(null);
-
-    const statusToSave = targetStatus || formStatus;
 
     try {
       const res = await fetch('/api/admin/content', {
@@ -281,6 +330,7 @@ export default function ContentStudio({
           titleHi: formTitleHi.trim(),
           contentEn: formContentEn,
           contentHi: formContentHi,
+          metadata: formMetadata,
           status: statusToSave,
           sortOrder: editingItem.sortOrder,
           changeSummary:
@@ -476,7 +526,7 @@ export default function ContentStudio({
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               </button>
 
-              {['faqs', 'testimonials'].includes(activeCollection) && (
+              {['faqs', 'testimonials', 'announcements'].includes(activeCollection) && (
                 <button
                   onClick={handleCreateNewItem}
                   className="gold-button px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md"
@@ -485,6 +535,16 @@ export default function ContentStudio({
                   <span>Add New Item</span>
                 </button>
               )}
+            </div>
+          </div>
+
+          {/* Non-technical How To Panel */}
+          <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
+            <div className="flex items-start gap-2.5">
+              <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-slate-300">
+                <strong className="text-amber-300">💡 How to manage content:</strong> Click &quot;Edit&quot; on any item below to update its English and Hindi text. You can save as Draft or Publish live with one click. Use &quot;Hide&quot; to temporarily remove an item without permanently deleting it.
+              </p>
             </div>
           </div>
 
@@ -504,6 +564,12 @@ export default function ContentStudio({
               {items.map((item, index) => {
                 const isHidden = item.status === 'HIDDEN';
                 const isDraft = item.status === 'DRAFT';
+                const itemMeta = (item.metadata || {}) as Record<string, unknown>;
+                const isPendingLawyer = Boolean(itemMeta.pendingLawyerReview);
+                const isTestimonialConsent = item.collection === 'testimonials' && Boolean(itemMeta.consentGiven);
+                const isPopupEnabled = item.collection === 'popup' && itemMeta.enabled !== false;
+                const isAnnouncementActive = item.key === 'announcement_bar' && itemMeta.active !== false;
+
                 return (
                   <div
                     key={item.key || index}
@@ -528,6 +594,48 @@ export default function ContentStudio({
                         >
                           {item.status}
                         </span>
+
+                        {isPendingLawyer && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            ⚠️ Pending Lawyer Review
+                          </span>
+                        )}
+
+                        {item.collection === 'testimonials' && (
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                              isTestimonialConsent
+                                ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+                                : 'bg-red-500/10 text-red-300 border border-red-500/20'
+                            }`}
+                          >
+                            {isTestimonialConsent ? '✓ Consent Verified' : '✕ Consent Needed'}
+                          </span>
+                        )}
+
+                        {item.collection === 'popup' && (
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                              isPopupEnabled
+                                ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+                                : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                            }`}
+                          >
+                            {isPopupEnabled ? 'Popup Active' : 'Popup Paused'}
+                          </span>
+                        )}
+
+                        {item.key === 'announcement_bar' && (
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                              isAnnouncementActive
+                                ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+                                : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                            }`}
+                          >
+                            {isAnnouncementActive ? 'Bar Active' : 'Bar Paused'}
+                          </span>
+                        )}
 
                         {!item.titleHi && (
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
@@ -640,6 +748,16 @@ export default function ContentStudio({
             >
               <X className="w-4 h-4" />
             </button>
+          </div>
+
+          {/* Non-technical How To Edit Panel */}
+          <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
+            <div className="flex items-start gap-2.5">
+              <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-slate-300">
+                <strong className="text-amber-300">💡 How to edit:</strong> Update text in the English and Hindi tabs. Formatting is limited to safe headings, bold, lists, and verified links. Use &quot;Save as Draft&quot; to review, or &quot;Publish to Website&quot; to push live immediately without redeploying.
+              </p>
+            </div>
           </div>
 
           {/* Hindi Missing Warning Indicator */}
@@ -846,6 +964,295 @@ export default function ContentStudio({
                   />
                 </div>
               </div>
+
+              {/* Collection-Specific Metadata Editors */}
+              {editingItem.collection === 'testimonials' && (
+                <div className="p-4 rounded-2xl bg-amber-500/[0.03] border border-amber-500/20 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                    <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                      Student Details &amp; Mandatory Consent
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Student Name or Initials *</label>
+                      <input
+                        type="text"
+                        value={String(formMetadata.name || '')}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, name: e.target.value })}
+                        placeholder="e.g. Rajesh M. or Priya S."
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">City / Region *</label>
+                      <input
+                        type="text"
+                        value={String(formMetadata.city || '')}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, city: e.target.value })}
+                        placeholder="e.g. Mumbai, India or London, UK"
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Course Completed *</label>
+                      <input
+                        type="text"
+                        value={String(formMetadata.course || '')}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, course: e.target.value })}
+                        placeholder="e.g. The Ultimate Astrology Course"
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Review Date *</label>
+                      <input
+                        type="text"
+                        value={String(formMetadata.date || '')}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, date: e.target.value })}
+                        placeholder="e.g. 2026-03"
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Required Consent Note (Mandatory for publishing) */}
+                  <div className="pt-2 border-t border-white/10 space-y-2">
+                    <label className="block text-xs font-bold text-amber-300">
+                      Required Consent Note (Mandatory before publishing) *
+                    </label>
+                    <input
+                      type="text"
+                      value={String(formMetadata.consentNote || '')}
+                      onChange={(e) => setFormMetadata({ ...formMetadata, consentNote: e.target.value })}
+                      placeholder='e.g. "Written consent received via email on 2026-03-10 from student"'
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-amber-500/30 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                    />
+                    <label className="flex items-center gap-2 text-xs text-slate-200 cursor-pointer pt-1">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formMetadata.consentGiven)}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, consentGiven: e.target.checked })}
+                        className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 bg-white/10 border-white/20"
+                      />
+                      <span>Student provided explicit written consent to publish this feedback on VIAR.in</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Popup Promo Modal Controls */}
+              {editingItem.collection === 'popup' && (
+                <div className="p-4 rounded-2xl bg-amber-500/[0.03] border border-amber-500/20 space-y-3 text-xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <h4 className="font-bold text-amber-300 uppercase tracking-wider">
+                        Course Promotion Popup Controls
+                      </h4>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-white">
+                      <input
+                        type="checkbox"
+                        checked={formMetadata.enabled !== false}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, enabled: e.target.checked })}
+                        className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 bg-white/10 border-white/20"
+                      />
+                      <span>{formMetadata.enabled !== false ? 'Popup Enabled (Active)' : 'Popup Paused'}</span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Start Date</label>
+                      <input
+                        type="date"
+                        value={String(formMetadata.startDate || '')}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, startDate: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">End Date</label>
+                      <input
+                        type="date"
+                        value={String(formMetadata.endDate || '')}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, endDate: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Badge / Announcement Text</label>
+                      <input
+                        type="text"
+                        value={String(formMetadata.dates || '')}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, dates: e.target.value })}
+                        placeholder="Launch Enrollment Open"
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Destination URL (CTA Link)</label>
+                      <input
+                        type="text"
+                        value={String(formMetadata.linkUrl || formMetadata.url || '')}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, linkUrl: e.target.value, url: e.target.value })}
+                        placeholder="/checkout/cohort-wia-batch-1"
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-slate-300 font-semibold mb-1">Image URL</label>
+                      <input
+                        type="text"
+                        value={String(formMetadata.imageUrl || '')}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, imageUrl: e.target.value })}
+                        placeholder="/images/Acharya_Niraj_Kumar_Solo.jpg"
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Button Label (English)</label>
+                      <input
+                        type="text"
+                        value={String(formMetadata.buttonLabelEn || '')}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, buttonLabelEn: e.target.value })}
+                        placeholder="Enroll Now — Instant Access"
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-semibold mb-1">Button Label (Hindi)</label>
+                      <input
+                        type="text"
+                        value={String(formMetadata.buttonLabelHi || '')}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, buttonLabelHi: e.target.value })}
+                        placeholder="अभी प्रवेश लें — तुरंत एक्सेस"
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Legal Pages Controls (Owner Only + Pending Lawyer Review) */}
+              {editingItem.collection === 'legal' && (
+                <div className="p-4 rounded-2xl bg-amber-500/[0.04] border border-amber-500/30 space-y-3 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-300 flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-amber-400" />
+                      <span>Legal Compliance Flag (Owner Only)</span>
+                    </span>
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-amber-200">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formMetadata.pendingLawyerReview)}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, pendingLawyerReview: e.target.checked })}
+                        className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 bg-white/10 border-white/20"
+                      />
+                      <span>Flag: Pending Lawyer Review</span>
+                    </label>
+                  </div>
+                  {Boolean(formMetadata.pendingLawyerReview) && (
+                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs">
+                      ⚠️ <strong>Notice:</strong> This legal document is marked as <em>Pending Lawyer Review</em>. Visitors and administrators will see this flag until counsel sign-off is complete.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Site Settings & Announcement Bar Controls */}
+              {editingItem.collection === 'site_settings' && editingItem.key === 'announcement_bar' && (
+                <div className="p-4 rounded-2xl bg-amber-500/[0.03] border border-amber-500/20 space-y-3 text-xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <span className="font-bold text-amber-300">Sitewide Announcement Bar</span>
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-white">
+                      <input
+                        type="checkbox"
+                        checked={formMetadata.active !== false}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, active: e.target.checked })}
+                        className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 bg-white/10 border-white/20"
+                      />
+                      <span>{formMetadata.active !== false ? 'Bar Active (Visible)' : 'Bar Disabled (Hidden)'}</span>
+                    </label>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Target Link URL</label>
+                    <input
+                      type="text"
+                      value={String(formMetadata.url || '')}
+                      onChange={(e) => setFormMetadata({ ...formMetadata, url: e.target.value })}
+                      placeholder="/courses/what-is-astrology"
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Public Contact Email Advisory */}
+              {editingItem.collection === 'site_settings' && editingItem.key === 'contact_email' && (
+                <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-200 text-xs leading-relaxed">
+                  💡 <strong>Public Inquiry Policy:</strong> Must be a public inquiries address (e.g. <code>contact@viar.in</code> or <code>admissions@viar.in</code>). The Site Owner&apos;s private login address (<code>aapkaastro1606@gmail.com</code>) cannot be used as the public contact email.
+                </div>
+              )}
+
+              {/* About Instructor Photo */}
+              {editingItem.collection === 'about' && (
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 space-y-2 text-xs">
+                  <label className="block text-slate-300 font-semibold">Instructor Photo URL</label>
+                  <input
+                    type="text"
+                    value={String(formMetadata.photoUrl || '')}
+                    onChange={(e) => setFormMetadata({ ...formMetadata, photoUrl: e.target.value })}
+                    placeholder="/images/Acharya_Niraj_Kumar_Solo.jpg"
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              )}
+
+              {/* Certificate Template Controls */}
+              {editingItem.collection === 'certificate_template' && (
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 space-y-2 text-xs">
+                  <label className="block text-slate-300 font-semibold">Signatory Title &amp; Partner Line</label>
+                  <input
+                    type="text"
+                    value={String(formMetadata.partnerLine || '')}
+                    onChange={(e) => setFormMetadata({ ...formMetadata, partnerLine: e.target.value })}
+                    placeholder="In academic partnership with Aapka Astro (aapkaastro.com)"
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              )}
+
+              {/* Announcements Target Link & Active Toggle */}
+              {editingItem.collection === 'announcements' && (
+                <div className="p-4 rounded-2xl bg-amber-500/[0.03] border border-amber-500/20 space-y-3 text-xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <span className="font-bold text-amber-300">Announcement Status</span>
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-white">
+                      <input
+                        type="checkbox"
+                        checked={formMetadata.active !== false}
+                        onChange={(e) => setFormMetadata({ ...formMetadata, active: e.target.checked })}
+                        className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 bg-white/10 border-white/20"
+                      />
+                      <span>{formMetadata.active !== false ? 'Active on Notice Board' : 'Hidden from Notice Board'}</span>
+                    </label>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Target Link URL</label>
+                    <input
+                      type="text"
+                      value={String(formMetadata.url || '')}
+                      onChange={(e) => setFormMetadata({ ...formMetadata, url: e.target.value })}
+                      placeholder="/courses/what-is-astrology"
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right: Live Preview Pane */}
