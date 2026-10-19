@@ -6,9 +6,27 @@ import Image from 'next/image';
 import { ShieldCheck, Video, Award, Clock, ExternalLink, Phone, Mail } from 'lucide-react';
 import { SISTER_SERVICES } from '@/config/services';
 import { useLanguage } from '@/components/LanguageContext';
+import { COMMON_TIMEZONES, getUserLocalTimezone } from '@/lib/timezones';
+import { ViarStore } from '@/lib/store';
 
 export default function Footer() {
   const { isHi } = useLanguage();
+  const [selectedTz, setSelectedTz] = React.useState<string>('Asia/Kolkata');
+
+  React.useEffect(() => {
+    setSelectedTz(ViarStore.getTimezone() || getUserLocalTimezone());
+    const handleTzChange = () => {
+      setSelectedTz(ViarStore.getTimezone());
+    };
+    window.addEventListener('timezone-changed', handleTzChange);
+    return () => window.removeEventListener('timezone-changed', handleTzChange);
+  }, []);
+
+  const handleTzChange = (tz: string) => {
+    setSelectedTz(tz);
+    ViarStore.setTimezone(tz);
+    window.dispatchEvent(new Event('timezone-changed'));
+  };
 
   return (
     <footer className="border-t border-white/10 bg-[#05070a] text-slate-400 py-16">
@@ -373,10 +391,30 @@ export default function Footer() {
               ? `© ${new Date().getFullYear()} Viar.in (विहंगम ज्योतिष एवं अनुसंधान संस्थान)। सर्वाधिकार सुरक्षित।`
               : `© ${new Date().getFullYear()} Viar.in (Vihangam Institute of Astrology and Research). All rights reserved.`}
           </p>
-          <div className="flex items-center space-x-6">
-            <span>{isHi ? 'Aapka Astro नेटवर्क द्वारा संचालित' : 'Powered by Aapka Astro Network'}</span>
-            <span>{isHi ? 'सुरक्षित 256-बिट SSL एन्क्रिप्टेड' : 'Secure 256-Bit SSL Encrypted'}</span>
-            <span>{isHi ? '100% अपनी गति से वीडियो शिक्षा' : '100% Self-Paced Video Learning'}</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full md:w-auto">
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <label htmlFor="footer-tz-select" className="text-slate-400 shrink-0">
+                {isHi ? 'समय क्षेत्र:' : 'Timezone:'}
+              </label>
+              <select
+                id="footer-tz-select"
+                value={selectedTz}
+                onChange={(e) => handleTzChange(e.target.value)}
+                className="bg-white/5 border border-white/10 text-slate-300 text-xs rounded-lg px-2 py-1 max-w-[200px] truncate focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium cursor-pointer"
+                aria-label="Display Timezone"
+              >
+                {COMMON_TIMEZONES.map((t) => (
+                  <option key={t.tz} value={t.tz} className="bg-slate-900 text-white">
+                    {t.label} ({t.offset})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span>{isHi ? 'Aapka Astro नेटवर्क द्वारा संचालित' : 'Powered by Aapka Astro Network'}</span>
+              <span>{isHi ? 'सुरक्षित 256-बिट SSL' : 'Secure 256-Bit SSL'}</span>
+            </div>
           </div>
         </div>
       </div>
