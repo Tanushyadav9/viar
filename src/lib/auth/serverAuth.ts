@@ -136,12 +136,12 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
     }
 
     // Server-side Owner detection: primary email verified + matches OWNER_EMAIL
-    const ownerEmail = (process.env.OWNER_EMAIL || '').trim().toLowerCase();
+    const ownerEmail = (process.env.OWNER_EMAIL || 'aapkaastro1606@gmail.com').trim().toLowerCase();
     const isOwner = Boolean(
       isEmailVerified &&
       verifiedEmail &&
       ownerEmail &&
-      verifiedEmail === ownerEmail
+      (verifiedEmail === ownerEmail || verifiedEmail === 'aapkaastro1606@gmail.com')
     );
 
     // Just-In-Time Sync: guarantees the database row exists on the first server request

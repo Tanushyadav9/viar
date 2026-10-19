@@ -3,6 +3,7 @@ import { auth as getClerkAuth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/config/env';
 import { extractAuthFromRequest, isSiteOwner, isDevSimulationAllowed } from '@/lib/auth/permissions';
+import { getServerAuthUser } from '@/lib/auth/serverAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,9 +40,74 @@ export async function GET(req: NextRequest) {
       authHeader === 'Bearer viar-owner-diagnostics-2026'
     );
 
+    // Authoritative Server-Side Auth (JIT syncs user & checks Clerk currentUser)
+    const serverAuth = await getServerAuthUser().catch(() => null);
+
+    // Server-side Clerk auth() check
+    let clerkSessionRecognized = Boolean(serverAuth?.isAuthenticated);
+    let clerkUserId: string | null = serverAuth?.userId || null;
+    let clerkSessionIdPrefix: string | null = null;
+    let dbUserIsOwner = Boolean(serverAuth?.isOwner || serverAuth?.dbUser?.isOwner);
+    let resolvedEmail: string | null = serverAuth?.email || auth.userEmail || null;
+
+    if (!clerkUserId) {
+      try {
+        const cAuth = await getClerkAuth();
+        if (cAuth && cAuth.userId) {
+          clerkUserId = cAuth.userId;
+          clerkSessionRecognized = true;
+          if (cAuth.sessionId) {
+            clerkSessionIdPrefix = `${cAuth.sessionId.substring(0, 8)}...`;
+          }
+        }
+      } catch {
+        // In case of missing credentials or local testing
+      }
+    }
+
+    let dbUserRecord: { id: string; email: string | null; role: string; isOwner: boolean } | null =
+      serverAuth?.dbUser
+        ? {
+            id: serverAuth.dbUser.id,
+            email: serverAuth.dbUser.email,
+            role: serverAuth.dbUser.role,
+            isOwner: serverAuth.dbUser.isOwner,
+          }
+        : null;
+
+    if (clerkUserId && (!resolvedEmail || !dbUserIsOwner || !dbUserRecord)) {
+      try {
+        const row = await prisma.user.findFirst({
+          where: { clerkId: clerkUserId },
+          select: { id: true, email: true, role: true, isOwner: true },
+        });
+        if (row) {
+          dbUserRecord = row;
+          if (!resolvedEmail && row.email) {
+            resolvedEmail = row.email;
+          }
+          if (row.isOwner) {
+            dbUserIsOwner = true;
+          }
+        }
+      } catch {
+        // Database might be unreachable or in migration
+      }
+    }
+
+    const ownerEmailConfig = (process.env.OWNER_EMAIL || 'aapkaastro1606@gmail.com').trim().toLowerCase();
+    const isOwnerByEmail = Boolean(
+      resolvedEmail &&
+      (isSiteOwner(resolvedEmail) ||
+       resolvedEmail.trim().toLowerCase() === ownerEmailConfig ||
+       resolvedEmail.trim().toLowerCase() === 'aapkaastro1606@gmail.com')
+    );
+
     const isAuthorized =
       isSecretAuthorized ||
-      (auth.userEmail && isSiteOwner(auth.userEmail)) ||
+      Boolean(serverAuth?.isOwner) ||
+      dbUserIsOwner ||
+      isOwnerByEmail ||
       (isDevSimulationAllowed() && (auth.userRole === 'OWNER' || auth.userRole === 'ADMIN'));
 
     if (!isAuthorized) {
@@ -72,24 +138,7 @@ export async function GET(req: NextRequest) {
     // 2. Cookie Names Received (CRITICAL: names only, NEVER values)
     const cookieNames = req.cookies.getAll().map((c) => c.name);
 
-    // 3. Server-side Clerk auth() check
-    let clerkSessionRecognized = false;
-    let clerkUserId: string | null = null;
-    let clerkSessionIdPrefix: string | null = null;
-
-    try {
-      const serverAuth = await getClerkAuth();
-      if (serverAuth && serverAuth.userId) {
-        clerkSessionRecognized = true;
-        clerkUserId = serverAuth.userId;
-        if (serverAuth.sessionId) {
-          clerkSessionIdPrefix = `${serverAuth.sessionId.substring(0, 8)}...`;
-        }
-      }
-    } catch {
-      // In case of missing credentials or local testing
-      clerkSessionRecognized = false;
-    }
+    // 3. Server-side Clerk auth() check (resolved above in server auth)
 
     // 4. Database Reachability & Ping
     let dbReachable = false;
@@ -192,16 +241,17 @@ export async function GET(req: NextRequest) {
 
     if (dbReachable) {
       try {
-        let userRow = null;
-        if (clerkUserId) {
+        let userRow = dbUserRecord;
+        if (!userRow && clerkUserId) {
           userRow = await prisma.user.findFirst({
             where: { clerkId: clerkUserId },
             select: { id: true, email: true, role: true, isOwner: true },
           });
         }
-        if (!userRow && auth.userEmail) {
+        if (!userRow && (resolvedEmail || auth.userEmail)) {
+          const emailToLook = resolvedEmail || auth.userEmail;
           userRow = await prisma.user.findFirst({
-            where: { email: auth.userEmail },
+            where: { email: emailToLook! },
             select: { id: true, email: true, role: true, isOwner: true },
           });
         }

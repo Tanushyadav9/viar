@@ -27,6 +27,7 @@ import {
 import { ViarStore } from '@/lib/store';
 import { isSiteOwner } from '@/lib/auth/permissions';
 import { User } from '@/lib/types';
+import { useUser } from '@clerk/nextjs';
 
 interface DiagnosticsData {
   success: boolean;
@@ -115,6 +116,7 @@ interface DiagnosticsData {
 }
 
 export default function AdminDiagnosticsPage() {
+  const { user: clerkUser } = useUser();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [data, setData] = useState<DiagnosticsData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -149,6 +151,23 @@ export default function AdminDiagnosticsPage() {
 
   useEffect(() => {
     let user = ViarStore.getCurrentUser();
+    if (!user && clerkUser) {
+      const email =
+        clerkUser.primaryEmailAddress?.emailAddress ||
+        clerkUser.emailAddresses?.[0]?.emailAddress ||
+        '';
+      const isOwnerAccount =
+        isSiteOwner(email) || email.trim().toLowerCase() === 'aapkaastro1606@gmail.com';
+      user = {
+        id: clerkUser.id,
+        name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'Acharya Niraj Kumar',
+        email,
+        role: isOwnerAccount ? 'OWNER' : 'STUDENT',
+        isOwner: isOwnerAccount,
+        timezone: 'Asia/Kolkata',
+        enrolledCohortIds: [],
+      };
+    }
     if (!user && typeof window !== 'undefined') {
       const sp = new URLSearchParams(window.location.search);
       if (sp.get('key') === 'viar-owner-diagnostics-2026') {
@@ -165,7 +184,7 @@ export default function AdminDiagnosticsPage() {
     }
     setCurrentUser(user);
     fetchDiagnostics();
-  }, [fetchDiagnostics]);
+  }, [fetchDiagnostics, clerkUser]);
 
   const handlePingHealthEndpoint = async () => {
     setHealthPingLoading(true);
@@ -187,7 +206,17 @@ export default function AdminDiagnosticsPage() {
     }
   };
 
-  const isOwner = currentUser?.isOwner || (currentUser?.email && isSiteOwner(currentUser.email));
+  const clerkEmail =
+    clerkUser?.primaryEmailAddress?.emailAddress ||
+    clerkUser?.emailAddresses?.[0]?.emailAddress ||
+    '';
+
+  const isOwner = Boolean(
+    currentUser?.isOwner ||
+    (currentUser?.email && (isSiteOwner(currentUser.email) || currentUser.email.trim().toLowerCase() === 'aapkaastro1606@gmail.com')) ||
+    (clerkEmail && (isSiteOwner(clerkEmail) || clerkEmail.trim().toLowerCase() === 'aapkaastro1606@gmail.com')) ||
+    data?.currentUserInDb?.user?.isOwner
+  );
 
   if (!loading && !isOwner && errorMsg) {
     return (
