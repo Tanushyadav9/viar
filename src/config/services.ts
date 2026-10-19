@@ -35,12 +35,12 @@ export const SISTER_SERVICES: Record<'aapkaAstro' | 'dowConsulting', SisterServi
   },
   dowConsulting: {
     name: 'Corporate Advisory',
-    domain: 'Private Executive Advisory',
-    url: '/contact',
+    domain: 'dowconsulting.in',
+    url: 'https://dowconsulting.in/',
     tagline: 'Strategic Business Timing & Commercial Vastu',
     description:
       'Strategic Vedic timing (Muhurta), executive leadership alignment, corporate launch planning, and commercial real estate Vastu advisory.',
-    ctaText: 'Inquire for Corporate Advisory',
+    ctaText: 'Corporate Advisory Inquiries',
     badge: 'Enterprise Advisory',
     phone: '+91 93112 15564',
     email: 'aapkaastro1606@gmail.com',

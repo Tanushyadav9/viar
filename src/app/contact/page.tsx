@@ -193,6 +193,18 @@ export default function ContactPage() {
                 {' '}{isHi ? 'अथवा व्हाट्सएप' : 'or WhatsApp'}{' '}
                 <a href="https://wa.me/919311215564" target="_blank" rel="noopener noreferrer" className="text-emerald-300 underline font-semibold">+91 93112 15564</a>.
               </p>
+              <div className="pt-2">
+                <a
+                  href={SISTER_SERVICES.dowConsulting.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Visit DOW Consulting (opens in a new tab)"
+                  className="text-xs font-bold text-sky-300 hover:text-sky-200 inline-flex items-center gap-1 transition"
+                >
+                  <span>{isHi ? 'DOW Consulting वेबसाइट देखें' : 'Visit DOW Consulting'}</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
             </div>
 
           </div>

@@ -54,12 +54,13 @@ export default function Footer() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 w-full sm:w-auto">
               <a
                 href={SISTER_SERVICES.aapkaAstro.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 inline-flex items-center gap-2 transition"
+                aria-label="Visit Aapka Astro (opens in a new tab)"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 inline-flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 shrink-0"
               >
                 <Image
                   src="/images/aapkaastro-logo.png"
@@ -69,14 +70,18 @@ export default function Footer() {
                   className="h-4 w-auto object-contain brightness-110"
                 />
                 <span>{SISTER_SERVICES.aapkaAstro.name}</span>
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
               </a>
-              <Link
-                href="/contact"
-                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 inline-flex items-center gap-1.5 transition"
+              <a
+                href={SISTER_SERVICES.dowConsulting.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Visit DOW Consulting (opens in a new tab)"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-500/10 hover:bg-purple-500/20 text-[#6D28D9] dark:text-purple-300 border border-purple-500/30 inline-flex items-center justify-center gap-2 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 shrink-0"
               >
                 <span>{isHi ? 'कॉर्पोरेट सलाहकार पूछताछ' : 'Corporate Advisory Inquiries'}</span>
-              </Link>
+                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+              </a>
             </div>
           </div>
         </div>
@@ -252,12 +257,16 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/contact"
-                  className="hover:text-sky-300 transition text-slate-400 flex items-center gap-1"
+                <a
+                  href={SISTER_SERVICES.dowConsulting.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Visit DOW Consulting (opens in a new tab)"
+                  className="hover:text-purple-300 transition text-slate-400 inline-flex items-center gap-1"
                 >
                   <span>{isHi ? 'कॉर्पोरेट सलाहकार पूछताछ' : 'Corporate Advisory Inquiries'}</span>
-                </Link>
+                  <ExternalLink className="w-3 h-3 text-slate-500" />
+                </a>
               </li>
             </ul>
           </div>

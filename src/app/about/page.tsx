@@ -18,6 +18,7 @@ import {
   X
 } from 'lucide-react';
 import { useLanguage } from '@/components/LanguageContext';
+import { SISTER_SERVICES } from '@/config/services';
 
 const CREDENTIAL_GALLERY = [
   {
@@ -647,22 +648,27 @@ export default function AboutPage() {
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 w-full sm:w-auto">
             <a
-              href="https://aapkaastro.com"
+              href={SISTER_SERVICES.aapkaAstro.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="gold-button px-5 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
+              aria-label="Visit Aapka Astro (opens in a new tab)"
+              className="gold-button px-5 py-2.5 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
             >
               <span>AapkaAstro.com</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
-            <Link
-              href="/contact"
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-200 bg-white/10 hover:bg-white/15 border border-white/15 inline-flex items-center gap-1.5"
+            <a
+              href={SISTER_SERVICES.dowConsulting.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Visit DOW Consulting (opens in a new tab)"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#6D28D9] dark:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 inline-flex items-center justify-center gap-1.5 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
             >
               <span>{isHi ? 'कॉर्पोरेट परामर्श पूछताछ' : 'Corporate Advisory Inquiries'}</span>
-            </Link>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
           </div>
         </div>
 

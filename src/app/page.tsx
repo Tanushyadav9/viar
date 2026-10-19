@@ -1054,12 +1054,15 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="pt-6 border-t border-white/10">
-                <Link
+                <a
                   href={SISTER_SERVICES.dowConsulting.url}
-                  className="px-5 py-3 rounded-xl text-xs font-bold text-center block bg-sky-600/20 hover:bg-sky-600/30 text-sky-200 border border-sky-500/40 transition"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Visit DOW Consulting (opens in a new tab)"
+                  className="px-5 py-3 rounded-xl text-xs font-bold text-center block bg-sky-600/20 hover:bg-sky-600/30 text-sky-200 border border-sky-500/40 transition hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
                 >
                   {isHi ? 'कॉर्पोरेट परामर्श हेतु संपर्क करें →' : `${SISTER_SERVICES.dowConsulting.ctaText} →`}
-                </Link>
+                </a>
               </div>
             </div>
 
