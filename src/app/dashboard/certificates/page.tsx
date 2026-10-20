@@ -24,6 +24,44 @@ export default function StudentCertificatesPage() {
   useEffect(() => {
     const allCerts = ViarStore.getCertificates();
     setCerts(allCerts);
+
+    // Fetch live user session and enrollments/certificates
+    fetch('/api/users/sync')
+      .then((r) => r.json())
+      .then((uData) => {
+        const uid = uData?.user?.id || uData?.user?.clerkId;
+        if (uid) {
+          fetch(`/api/enrollments?userId=${encodeURIComponent(uid)}`)
+            .then((r) => r.json())
+            .then((eData) => {
+              if (eData.success && Array.isArray(eData.enrollments)) {
+                const dbCerts = eData.enrollments
+                  .filter((enr) => enr.certificateVerificationCode)
+                  .map((enr) => ({
+                    id: enr.certificateId || `cert-${enr.id}`,
+                    certificateNumber: enr.certificateVerificationCode,
+                    verificationCode: enr.certificateVerificationCode,
+                    studentId: enr.studentId,
+                    studentName: enr.studentName,
+                    courseId: enr.courseId,
+                    courseTitle: enr.courseTitle,
+                    cohortId: enr.cohortId,
+                    cohortBatchName: enr.cohortBatchName,
+                    issuedDate: enr.enrolledAt ? enr.enrolledAt.split('T')[0] : new Date().toISOString().split('T')[0],
+                    grade: 'Distinction',
+                    scorePercentage: enr.quizScorePercentage || 95,
+                    instructorName: 'Acharya Niraj Kumar',
+                    verificationUrl: `https://viar.in/verify/${enr.certificateVerificationCode}`,
+                  }));
+                if (dbCerts.length > 0) {
+                  setCerts(dbCerts);
+                }
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleCopyLink = (code: string) => {

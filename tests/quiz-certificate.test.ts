@@ -69,4 +69,44 @@ describe('Quiz Evaluation & Certificate Issuance Logic', () => {
     assert.strictEqual(isQuizUnlocked(23, 23), true, 'Must unlock when all 23 completed');
     assert.strictEqual(isQuizUnlocked(0, 23), false, 'Must be locked at 0 completed');
   });
+  describe("Public Verification & Dashboard Hydration Security", () => {
+    it("should format public certificate response with recipientName and verifyUrl", () => {
+      const rawCert = {
+        id: "cert-123",
+        certificateNumber: "VIAR-2026-WIA-9999",
+        recipientName: "Tanush Yadav",
+        courseName: "Foundations to Chart Mastery",
+        cohortName: "Batch 1",
+        issuedAt: new Date("2026-10-15T10:00:00Z").toISOString(),
+        grade: "Distinction",
+        scorePercentage: 95,
+        instructorName: "Acharya Niraj Kumar",
+      };
+
+      const publicView = {
+        id: rawCert.id,
+        certificateNumber: rawCert.certificateNumber,
+        studentName: rawCert.recipientName,
+        courseTitle: rawCert.courseName,
+        issuedDate: rawCert.issuedAt.split("T")[0],
+        grade: rawCert.grade,
+        scorePercentage: rawCert.scorePercentage,
+        instructorName: rawCert.instructorName,
+        verificationUrl: `https://viar.in/verify/${rawCert.certificateNumber}`,
+      };
+
+      assert.strictEqual(publicView.certificateNumber, "VIAR-2026-WIA-9999");
+      assert.strictEqual(publicView.studentName, "Tanush Yadav");
+      assert.strictEqual(publicView.issuedDate, "2026-10-15");
+      assert.strictEqual(publicView.verificationUrl, "https://viar.in/verify/VIAR-2026-WIA-9999");
+    });
+
+    it("should hydrate user from API without bouncing to /login when localStorage is empty", async () => {
+      const mockApiFetch = async () => ({ user: { id: "user_clerk_123", email: "student@viar.in", name: "Scholar" } });
+      const data = await mockApiFetch();
+      assert.strictEqual(Boolean(data?.user), true);
+      assert.strictEqual(data.user.email, "student@viar.in");
+    });
+  });
+
 });

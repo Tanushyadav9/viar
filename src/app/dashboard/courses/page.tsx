@@ -47,7 +47,17 @@ export default function MyCoursesPage() {
 
   const loadStudentCourses = useCallback(async () => {
     setIsLoading(true);
-    const user = ViarStore.getCurrentUser();
+    let user = ViarStore.getCurrentUser();
+    if (!user) {
+      try {
+        const syncRes = await fetch('/api/users/sync');
+        const syncData = await syncRes.json();
+        if (syncData?.user) {
+          user = syncData.user;
+          ViarStore.setCurrentUser(syncData.user);
+        }
+      } catch {}
+    }
     if (!user) {
       router.push('/login?returnUrl=/dashboard/courses');
       return;

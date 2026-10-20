@@ -27,6 +27,39 @@ export default function StudentPaymentsPage() {
       crsMap[c.id] = c;
     });
     setCourses(crsMap);
+
+    fetch('/api/users/sync')
+      .then((r) => r.json())
+      .then((uData) => {
+        const uid = uData?.user?.id || uData?.user?.clerkId;
+        if (uid) {
+          fetch(`/api/enrollments?userId=${encodeURIComponent(uid)}`)
+            .then((r) => r.json())
+            .then((eData) => {
+              if (eData.success && Array.isArray(eData.enrollments) && eData.enrollments.length > 0) {
+                const liveEnrollments = eData.enrollments.map((enr) => ({
+                  id: enr.id,
+                  studentId: enr.studentId,
+                  studentName: enr.studentName,
+                  studentEmail: enr.studentEmail,
+                  studentPhone: enr.studentPhone,
+                  courseId: enr.courseId,
+                  cohortId: enr.cohortId,
+                  enrolledAt: enr.enrolledAt,
+                  amount: enr.amountPaid,
+                  currency: enr.currency,
+                  paymentStatus: enr.paymentStatus === 'ACTIVE' ? 'Paid' : enr.paymentStatus,
+                  paymentMethod: enr.paymentMethod || 'Manual UPI Payment',
+                  paymentId: enr.paymentReference || enr.id,
+                  accessExpiresAt: null,
+                }));
+                setEnrollments(liveEnrollments);
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
   }, []);
 
   return (

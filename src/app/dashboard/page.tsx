@@ -61,27 +61,50 @@ function StudentDashboardContent() {
   const [examResult, setExamResult] = useState<TestSubmission | null>(null);
   const [isSubmittingExam, setIsSubmittingExam] = useState(false);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     // Fail-Closed: If URL indicates an authorization failure, NEVER load protected data
     if (errorParam === 'unauthorized_role') {
       router.replace('/login?error=unauthorized_role');
       return;
     }
 
-    const user = ViarStore.getCurrentUser();
+    let user = ViarStore.getCurrentUser();
+    if (!user) {
+      try {
+        const syncRes = await fetch('/api/users/sync');
+        const syncData = await syncRes.json();
+        if (syncData?.user) {
+          user = syncData.user;
+          ViarStore.setCurrentUser(syncData.user);
+        }
+      } catch {}
+    }
+
     if (!user) {
       router.push('/login?returnUrl=/dashboard');
       return;
     }
     setCurrentUser(user);
 
+    // Fetch Course & Cohort details from live API
+    try {
+      const cRes = await fetch('/api/courses?slug=what-is-astrology');
+      const cData = await cRes.json();
+      if (cData?.course) {
+        setCourse(cData.course);
+        if (Array.isArray(cData.course.cohorts) && cData.course.cohorts.length > 0) {
+          setCohort(cData.course.cohorts[0]);
+        }
+      }
+    } catch {}
+
     const flagship = ViarStore.getCourseBySlug('what-is-astrology');
-    if (flagship) setCourse(flagship);
+    if (flagship) setCourse((prev) => prev || flagship);
 
     const cohorts = ViarStore.getCohorts('course-what-is-astrology');
     if (cohorts.length > 0) {
       const c = cohorts[0];
-      setCohort(c);
+      setCohort((prev) => prev || c);
       const cls = ViarStore.getClasses(c.id);
       setClasses(cls);
       setFinalTest(ViarStore.getFinalTest(c.id));
@@ -123,11 +146,47 @@ function StudentDashboardContent() {
     setExamAnswers((prev) => ({ ...prev, [questionId]: optionIndex }));
   };
 
-  const handleSubmitExam = () => {
+  const handleSubmitExam = async () => {
     if (!finalTest || !currentUser || !cohort) return;
     setIsSubmittingExam(true);
 
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/quiz/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cohortId: cohort.id,
+          studentId: currentUser.id,
+          studentName: currentUser.name,
+          studentEmail: currentUser.email,
+          answers: examAnswers,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setExamResult({
+          id: `sub-${Date.now()}`,
+          cohortId: cohort.id,
+          studentId: currentUser.id,
+          studentName: currentUser.name,
+          submittedAt: new Date().toISOString(),
+          score: data.score,
+          totalQuestions: data.totalQuestions,
+          scorePercentage: data.scorePercentage,
+          passed: data.passed,
+          grade: data.grade,
+        });
+        setExamSubmitted(true);
+        if (data.certificate) {
+          setCertificate(data.certificate);
+          confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+        }
+      } else {
+        throw new Error(data.error || 'Server evaluation error');
+      }
+    } catch {
+      // Local fallback
       const { submission, certificate: newCert } = ViarStore.submitFinalTest({
         cohortId: cohort.id,
         studentId: currentUser.id,
@@ -138,32 +197,13 @@ function StudentDashboardContent() {
 
       setExamResult(submission);
       setExamSubmitted(true);
-      setIsSubmittingExam(false);
-
       if (newCert) {
         setCertificate(newCert);
-        confetti({
-          particleCount: 120,
-          spread: 80,
-          origin: { y: 0.6 },
-        });
-
-        // Trigger certificate issuance transactional email
-        fetch('/api/certificates', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            studentName: newCert.studentName,
-            studentEmail: newCert.studentEmail,
-            courseTitle: newCert.courseTitle,
-            grade: newCert.grade,
-            scorePercentage: newCert.scorePercentage,
-            certificateCode: newCert.verificationCode,
-            cohortId: cohort.id,
-          }),
-        }).catch((err) => console.error('Certificate email dispatch error:', err));
+        confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
       }
-    }, 1000);
+    } finally {
+      setIsSubmittingExam(false);
+    }
   };
 
   // Fail-Closed Guard: If authorization failed, NEVER render protected dashboard content

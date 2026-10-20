@@ -20,6 +20,15 @@ export default function CertificateSearchPage() {
       return;
     }
 
+    try {
+      const res = await fetch(`/api/certificates/${encodeURIComponent(trimmed)}`);
+      const data = await res.json();
+      if (data.success && data.certificate) {
+        router.push(`/verify/${data.certificate.certificateNumber}`);
+        return;
+      }
+    } catch {}
+
     const cert = ViarStore.getCertificateByCode(trimmed);
     if (cert) {
       router.push(`/verify/${cert.verificationCode}`);

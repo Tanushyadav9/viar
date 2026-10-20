@@ -23,11 +23,37 @@ export default function PublicVerifyCertificatePage() {
 
   useEffect(() => {
     if (code) {
-      const found = ViarStore.getCertificateByCode(code);
-      if (found) {
-        setCert(found);
-      }
-      setLoading(false);
+      fetch(`/api/certificates/${encodeURIComponent(code)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.certificate) {
+            setCert({
+              id: data.certificate.id,
+              certificateNumber: data.certificate.certificateNumber,
+              verificationCode: data.certificate.certificateNumber,
+              studentName: data.certificate.recipientName,
+              courseTitle: data.certificate.courseName,
+              cohortId: data.certificate.cohortName,
+              issuedDate: data.certificate.issuedAt ? data.certificate.issuedAt.split('T')[0] : new Date().toISOString().split('T')[0],
+              grade: data.certificate.grade || 'Distinction',
+              scorePercentage: data.certificate.scorePercentage || 95,
+              instructorName: data.certificate.instructorName || 'Acharya Niraj Kumar',
+              verificationUrl: data.certificate.verifyUrl,
+            });
+            return;
+          }
+          const found = ViarStore.getCertificateByCode(code);
+          if (found) {
+            setCert(found);
+          }
+        })
+        .catch(() => {
+          const found = ViarStore.getCertificateByCode(code);
+          if (found) {
+            setCert(found);
+          }
+        })
+        .finally(() => setLoading(false));
     }
   }, [code]);
 
