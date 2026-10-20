@@ -5,6 +5,11 @@ import {
   ActionButton,
 } from '@/lib/ai/assistantEngine';
 import { GROUNDED_VIAR_SYSTEM_PROMPT, VIAR_ACADEMY_FACTS } from '@/lib/ai/knowledgeBase';
+import {
+  getLiveAcademyData,
+  retrieveRelevantKnowledgeContext,
+  logUnansweredQuestion,
+} from '@/lib/ai/knowledgeRetriever';
 
 export const runtime = 'nodejs';
 
@@ -79,6 +84,51 @@ export async function POST(req: NextRequest) {
 
     const locale = typeof body.locale === 'string' ? body.locale : undefined;
 
+    // Retrieve live academy data & context from PostgreSQL
+    const liveData = await getLiveAcademyData().catch(() => null);
+    const relevantContext = liveData
+      ? retrieveRelevantKnowledgeContext(rawMessage, liveData)
+      : null;
+
+    // Check if an Owner-published knowledge entry matches the user's inquiry
+    if (liveData?.customKnowledgeEntries && liveData.customKnowledgeEntries.length > 0) {
+      const normUser = rawMessage.toLowerCase().replace(/[^\w\s\u0900-\u097F]/gi, '').trim();
+      const customMatch = liveData.customKnowledgeEntries.find((entry) => {
+        const normEntryQ = entry.question.toLowerCase().replace(/[^\w\s\u0900-\u097F]/gi, '').trim();
+        return (
+          normEntryQ === normUser ||
+          (normEntryQ.length > 5 && normUser.includes(normEntryQ)) ||
+          (normUser.length > 5 && normEntryQ.includes(normUser))
+        );
+      });
+
+      if (customMatch) {
+        return NextResponse.json({
+          reply: customMatch.answer,
+          actionButtons: [
+            {
+              label: 'Chat on WhatsApp',
+              url: VIAR_ACADEMY_FACTS.contacts.whatsappUrl,
+              isExternal: true,
+              type: 'whatsapp',
+              variant: 'primary',
+            },
+            {
+              label: 'Enroll Now (₹5,100)',
+              url: '/checkout?course=what-is-astrology',
+              isExternal: false,
+              type: 'enroll',
+              variant: 'secondary',
+            },
+          ],
+          language: locale || 'en',
+          intent: 'custom_knowledge',
+          confidence: 'high',
+          source: 'knowledge_base',
+        });
+      }
+    }
+
     // 3. Check for Optional LLM Provider (Neon AI Gateway, OpenAI)
     const neonGatewayToken = process.env.NEON_AI_GATEWAY_TOKEN;
     const neonGatewayBaseUrl = process.env.NEON_AI_GATEWAY_BASE_URL;
@@ -93,9 +143,13 @@ export async function POST(req: NextRequest) {
           : 'https://api.openai.com/v1/chat/completions';
         const bearerToken = neonGatewayToken || openAiKey;
 
-        // Build messages array
+        // Build messages array with live context grounding
+        const systemPrompt = relevantContext?.contextText
+          ? `${GROUNDED_VIAR_SYSTEM_PROMPT}\n\n${relevantContext.contextText}`
+          : GROUNDED_VIAR_SYSTEM_PROMPT;
+
         const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-          { role: 'system', content: GROUNDED_VIAR_SYSTEM_PROMPT },
+          { role: 'system', content: systemPrompt },
         ];
 
         // Append recent history if provided
@@ -171,6 +225,11 @@ export async function POST(req: NextRequest) {
 
     // 5. Zero-Cost, Deterministic Grounded Engine Response
     const groundedResult = generateGroundedAssistantResponse(rawMessage, { locale });
+
+    // If response is fallback or out of scope, persist masked inquiry for Owner review in /admin/knowledge
+    if (groundedResult.confidence === 'fallback' || groundedResult.intent === 'fallback') {
+      await logUnansweredQuestion(rawMessage, groundedResult.language).catch(() => {});
+    }
 
     return NextResponse.json({
       reply: groundedResult.reply,

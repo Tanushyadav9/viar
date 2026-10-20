@@ -164,4 +164,36 @@ describe('Grounding, Knowledge Retrieval & System Prompt Rules Suite', () => {
       assert.ok(res.reply.includes('VIAR'));
     });
   });
+
+  describe('5. Database Knowledge Grounding & Unanswered Question Persistence', () => {
+    it('should correctly normalize and mask sensitive queries for admin unanswered queue', () => {
+      const sensitive = 'Can you help me at student@viar.in or +91 93112 15564 with fee waiver?';
+      const masked = maskSensitiveData(sensitive);
+      assert.ok(!masked.includes('student@viar.in'));
+      assert.ok(!masked.includes('93112 15564'));
+      assert.ok(masked.includes('[EMAIL_MASKED]'));
+      assert.ok(masked.includes('[PHONE_MASKED]'));
+    });
+
+    it('should match custom entries published by Owner', () => {
+      const dynamicData: LiveAcademyData = {
+        ...mockLiveData,
+        customKnowledgeEntries: [
+          {
+            id: 'custom-1',
+            question: 'Is there a physical campus in Delhi?',
+            answer: 'VIAR is headquartered in New Delhi, India. Classes are delivered 100% online in HD.',
+            language: 'en',
+            category: 'general',
+          },
+        ],
+      };
+      const { matchedCustomEntries, contextText } = retrieveRelevantKnowledgeContext(
+        'Is there a physical campus in Delhi?',
+        dynamicData
+      );
+      assert.ok(matchedCustomEntries.includes('custom-1'));
+      assert.ok(contextText.includes('headquartered in New Delhi'));
+    });
+  });
 });
