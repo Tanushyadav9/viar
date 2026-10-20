@@ -4,11 +4,14 @@ import { prisma } from '@/lib/prisma';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, courseSlug, name, phone } = body;
+    const email = body?.email?.trim();
+    const courseSlug = body?.courseSlug?.trim() || 'what-is-astrology';
+    const name = body?.name?.trim();
+    const phone = body?.phone?.trim();
 
-    if (!email || !courseSlug) {
+    if (!email) {
       return NextResponse.json(
-        { success: false, error: 'email and courseSlug are required' },
+        { success: false, error: 'email is required' },
         { status: 400 }
       );
     }

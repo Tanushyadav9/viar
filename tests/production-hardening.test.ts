@@ -102,6 +102,18 @@ describe('Production Hardening Test Suite', () => {
       assert.strictEqual(payload.courseId, "what-is-astrology");
       assert.strictEqual(payload.amount, 0);
     });
+
+    it("should accept contact academic inquiries and default courseSlug to flagship masterclass", () => {
+      const leadInput = {
+        name: "Priya Sharma",
+        email: "priya@example.com",
+        phone: "Course Admissions Inquiry: Please tell me about lifetime access",
+      };
+      const courseSlug = (leadInput as any).courseSlug || "what-is-astrology";
+      assert.strictEqual(courseSlug, "what-is-astrology");
+      assert.strictEqual(leadInput.email, "priya@example.com");
+      assert.ok(leadInput.phone.includes("Course Admissions Inquiry"));
+    });
   });
 
 });

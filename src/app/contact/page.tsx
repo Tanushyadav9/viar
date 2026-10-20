@@ -24,6 +24,7 @@ export default function ContactPage() {
   const [contactData, setContactData] = useState<any>(() => defaultContact); // eslint-disable-line @typescript-eslint/no-explicit-any
 
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('Course Admissions Inquiry');
@@ -48,9 +49,26 @@ export default function ContactPage() {
   const address = isHi && meta.addressHi ? meta.addressHi : meta.addressEn || 'New Delhi, India • Serving students worldwide';
   const hours = isHi && meta.hoursHi ? meta.hoursHi : meta.hoursEn || 'Monday – Saturday: 10:00 AM – 7:00 PM IST';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setIsSubmitting(true);
+    try {
+      await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          courseSlug: 'what-is-astrology',
+          phone: subject ? (subject + ': ' + message).slice(0, 100) : undefined,
+        }),
+      });
+    } catch {
+      // Graceful fallback for offline
+    } finally {
+      setIsSubmitting(false);
+      setSubmitted(true);
+    }
   };
 
   return (
@@ -328,9 +346,14 @@ export default function ContactPage() {
 
                   <button
                     type="submit"
-                    className="gold-button w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
+                    disabled={isSubmitting}
+                    className="gold-button w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-60"
                   >
-                    <span>{isHi ? 'पूछताछ जमा करें' : 'Submit Academic Inquiry'}</span>
+                    <span>
+                      {isSubmitting
+                        ? (isHi ? 'प्रस्तुत किया जा रहा है...' : 'Submitting...')
+                        : (isHi ? 'पूछताछ जमा करें' : 'Submit Academic Inquiry')}
+                    </span>
                     <Send className="w-4 h-4" />
                   </button>
 
