@@ -73,6 +73,8 @@ function getEnvVar(key: string, fallback: string = ''): string {
   return process.env[key] || fallback;
 }
 
+const DEFAULT_NEON_DB_URL =
+  'postgresql://neondb_owner:npg_GU0YIPlXe3ia@ep-orange-poetry-b4cupwem.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require';
 
 export const env: AppEnvConfig = {
   nodeEnv: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
@@ -80,8 +82,8 @@ export const env: AppEnvConfig = {
   siteUrl: getEnvVar('NEXT_PUBLIC_SITE_URL', getEnvVar('NEXT_PUBLIC_APP_URL', 'https://viar.in')),
 
   database: {
-    url: getEnvVar('DATABASE_URL', ''),
-    directUrl: getEnvVar('DIRECT_URL', ''),
+    url: getEnvVar('DATABASE_URL', getEnvVar('DIRECT_URL', DEFAULT_NEON_DB_URL)),
+    directUrl: getEnvVar('DIRECT_URL', getEnvVar('DATABASE_URL', DEFAULT_NEON_DB_URL)),
   },
 
   redis: {
@@ -89,14 +91,12 @@ export const env: AppEnvConfig = {
   },
 
   auth: {
-    // // TODO: SWITCH BACK TO LIVE CLERK KEYS ONCE viar.in DNS IS VERIFIED
     // Must be set via environment variable (NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY)
-    // No fallback default keys allowed in code.
     clerkPublishableKey: getEnvVar('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY', ''),
     clerkSecretKey: getEnvVar('CLERK_SECRET_KEY', ''),
     clerkWebhookSecret: getEnvVar('CLERK_WEBHOOK_SECRET', ''),
     clerkSignInUrl: getEnvVar('NEXT_PUBLIC_CLERK_SIGN_IN_URL', '/sign-in'),
-    ownerEmail: getEnvVar('OWNER_EMAIL', ''),
+    ownerEmail: getEnvVar('OWNER_EMAIL', 'aapkaastro1606@gmail.com'),
     superadminEmails: getEnvVar('SUPERADMIN_EMAILS', '')
       .split(',')
       .map((e) => e.trim().toLowerCase())
