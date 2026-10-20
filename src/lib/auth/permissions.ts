@@ -401,27 +401,31 @@ export function extractAuthFromRequest(req: {
 
   // 1. If a Clerk session token exists, extract verified identity from cryptographic claims
   const clerkClaims = parseClerkSessionClaims(sessionToken);
+  if (clerkClaims?.userId) {
+    userId = clerkClaims.userId;
+  }
   if (clerkClaims?.email) {
     userEmail = clerkClaims.email;
-    userId = clerkClaims.userId;
   }
 
   // 2. Local-only development simulation gate:
   // ONLY if running in local dev with explicit ENABLE_LOCAL_DEV_SIMULATOR=true
   // (or in automated test suites). Hardcoded to false in production builds.
-  if (!userEmail && isDevSimulationAllowed()) {
+  if ((!userEmail || !userId) && isDevSimulationAllowed()) {
     const rawEmail =
       req.cookies.get('viar_user_email')?.value ||
       req.headers.get('x-user-email') ||
       '';
-    if (rawEmail) {
+    if (!userEmail && rawEmail) {
       userEmail = decodeURIComponent(rawEmail).trim().toLowerCase();
     }
-    userId =
-      req.cookies.get('viar_user_id')?.value ||
-      sessionToken ||
-      req.headers.get('x-user-id') ||
-      undefined;
+    if (!userId) {
+      userId =
+        req.cookies.get('viar_user_id')?.value ||
+        sessionToken ||
+        req.headers.get('x-user-id') ||
+        undefined;
+    }
   }
 
   // Server NEVER trusts client-supplied role claims (x-user-role / viar_user_role).

@@ -77,8 +77,11 @@ export async function verifyUserCourseAccess(
     const targetCourseId = course?.id;
 
     // Build user match criteria
-    const userMatch: Array<{ userId?: string; user?: { email?: string } }> = [];
-    if (userId) userMatch.push({ userId });
+    const userMatch: Array<{ userId?: string; user?: { email?: string; clerkId?: string } }> = [];
+    if (userId) {
+      userMatch.push({ userId });
+      userMatch.push({ user: { clerkId: userId } });
+    }
     if (email) userMatch.push({ user: { email } });
 
     // Look for ACTIVE enrollment matching this course or its cohorts

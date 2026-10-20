@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
       where: {
         OR: [
           ...(auth.userEmail ? [{ email: auth.userEmail }] : []),
-          ...(auth.userId ? [{ clerkId: auth.userId }] : []),
+          ...(auth.userId ? [{ clerkId: auth.userId }, { id: auth.userId }] : []),
         ],
       },
     });

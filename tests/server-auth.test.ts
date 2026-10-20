@@ -1,3 +1,4 @@
+import { extractAuthFromRequest } from "../src/lib/auth/permissions.ts";
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { validateRedirectUrl } from '../src/lib/auth/urlValidation.ts';
@@ -552,5 +553,34 @@ describe('Server-Side Authentication, Redirect Validation & Canonical Host', () 
     });
   });
 
-});
+  describe("7. ExtractAuthFromRequest with Standard Clerk Session Claims", () => {
+    function createFakeClerkJwt(payload) {
+      const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+      const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+      return `${header}.${body}.fakesignature`;
+    }
 
+    it("should extract userId when Clerk JWT has sub but NO email claim", () => {
+      const jwt = createFakeClerkJwt({ sub: "user_live_clerk_12345", exp: Math.floor(Date.now() / 1000) + 3600 });
+      const req = {
+        cookies: { get: (name) => name === "__session" ? { value: jwt } : undefined },
+        headers: { get: () => null }
+      };
+      const auth = extractAuthFromRequest(req);
+      assert.strictEqual(auth.userId, "user_live_clerk_12345");
+      assert.strictEqual(auth.userEmail, undefined);
+    });
+
+    it("should extract both userId and userEmail when Clerk JWT has sub and email", () => {
+      const jwt = createFakeClerkJwt({ sub: "user_live_clerk_67890", email: "student@example.com", exp: Math.floor(Date.now() / 1000) + 3600 });
+      const req = {
+        cookies: { get: (name) => name === "__session" ? { value: jwt } : undefined },
+        headers: { get: () => null }
+      };
+      const auth = extractAuthFromRequest(req);
+      assert.strictEqual(auth.userId, "user_live_clerk_67890");
+      assert.strictEqual(auth.userEmail, "student@example.com");
+    });
+  });
+
+});
