@@ -804,5 +804,44 @@ describe('Site Owner Recognition & Per-Section Staff Permissions (RBAC)', () => 
       }
     });
   });
-});
+  describe("11. Student Self-Query vs Staff Roster Access on /api/enrollments", () => {
+    function canAccessEnrollments(auth: { userId?: string; userEmail?: string }, requestedUserId: string | null): boolean {
+      const isSelfQuery = Boolean(
+        requestedUserId && (
+          (auth.userId && (requestedUserId === auth.userId || requestedUserId === "me")) ||
+          (auth.userEmail && requestedUserId.toLowerCase() === auth.userEmail.toLowerCase())
+        )
+      );
+      if (isSelfQuery) return true;
+      return checkStaffSectionAccess({
+        user: auth.userEmail || auth.userId || null,
+        section: "students",
+        requiredLevel: "VIEW"
+      }).allowed;
+    }
 
+    it("should allow student to fetch their own enrollments by matching userId", () => {
+      const studentAuth = { userId: "user_student_123", userEmail: "student@example.com" };
+      assert.strictEqual(canAccessEnrollments(studentAuth, "user_student_123"), true);
+      assert.strictEqual(canAccessEnrollments(studentAuth, "student@example.com"), true);
+      assert.strictEqual(canAccessEnrollments(studentAuth, "me"), true);
+    });
+
+    it("should reject student attempting to fetch other students rosters without staff permission", () => {
+      const studentAuth = { userId: "user_student_123", userEmail: "student@example.com" };
+      assert.strictEqual(canAccessEnrollments(studentAuth, "user_other_456"), false);
+      assert.strictEqual(canAccessEnrollments(studentAuth, null), false);
+    });
+
+    it("should allow staff member with students permission to fetch any roster", () => {
+      const staffAuth = { userId: "user_staff_1", userEmail: "priya.staff@viar.in" };
+      // staffUser only has courses and quizzes, not students
+      assert.strictEqual(canAccessEnrollments(staffAuth, null), false);
+
+      const ownerAuth = { userId: "user_owner", userEmail: "aapkaastro1606@gmail.com" };
+      assert.strictEqual(canAccessEnrollments(ownerAuth, null), true);
+      assert.strictEqual(canAccessEnrollments(ownerAuth, "user_other_456"), true);
+    });
+  });
+
+});

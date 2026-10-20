@@ -7,35 +7,58 @@ import { env } from '@/config/env';
 export async function GET(req: NextRequest) {
   try {
     const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'students',
-      requiredLevel: 'VIEW',
-    });
-
-    if (!accessCheck.allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: accessCheck.reason || "Forbidden: VIEW permission on 'students' required.",
-        },
-        { status: 403 }
-      );
-    }
-
     const { searchParams } = new URL(req.url);
+    const requestedUserId = searchParams.get('userId');
     const courseId = searchParams.get('courseId');
     const cohortId = searchParams.get('cohortId');
     const searchQuery = searchParams.get('q') || '';
 
+    const isSelfQuery = Boolean(
+      requestedUserId && (
+        (auth.userId && (requestedUserId === auth.userId || requestedUserId === 'me')) ||
+        (auth.userEmail && requestedUserId.toLowerCase() === auth.userEmail.toLowerCase())
+      )
+    );
+
+    if (!isSelfQuery) {
+      const accessCheck = checkStaffSectionAccess({
+        user: auth.userEmail || auth.userId || null,
+        section: 'students',
+        requiredLevel: 'VIEW',
+      });
+
+      if (!accessCheck.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: accessCheck.reason || "Forbidden: VIEW permission on 'students' required.",
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     try {
       const whereClause: Record<string, unknown> = {};
+      if (requestedUserId) {
+        whereClause.OR = [
+          { userId: requestedUserId },
+          { user: { clerkId: requestedUserId } },
+          { user: { email: requestedUserId } },
+        ];
+      }
       if (cohortId && cohortId !== 'all') whereClause.cohortId = cohortId;
       if (courseId && courseId !== 'all') {
-        whereClause.OR = [
+        const courseMatches = [
           { courseId },
           { cohort: { courseId } },
+          { course: { slug: courseId } },
         ];
+        if (whereClause.OR) {
+          whereClause.AND = [{ OR: courseMatches }];
+        } else {
+          whereClause.OR = courseMatches;
+        }
       }
 
       if (searchQuery.trim()) {
