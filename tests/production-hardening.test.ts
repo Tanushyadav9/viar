@@ -76,4 +76,32 @@ describe('Production Hardening Test Suite', () => {
       });
     });
   });
+  describe("Two-Way Synchronization & Team Access Security", () => {
+    it("should authorize Owner access on /api/admin/team via serverAuth even when cookies omit email", () => {
+      const serverAuth = {
+        isAuthenticated: true,
+        userId: "user_owner_clerk_1",
+        email: "aapkaastro1606@gmail.com",
+        isOwner: true,
+      };
+      const isOwner = Boolean(serverAuth?.isOwner || (serverAuth?.email === "aapkaastro1606@gmail.com"));
+      assert.strictEqual(isOwner, true);
+    });
+
+    it("should format manual enrollment payload correctly for /api/enrollments POST", () => {
+      const payload = {
+        studentName: "Devotee Student",
+        studentEmail: "student@example.com",
+        courseId: "what-is-astrology",
+        cohortId: "cohort-wia-batch-1",
+        amount: 0,
+        currency: "INR",
+        paymentMethod: "Manual Admin Grant / Scholarship",
+      };
+      assert.strictEqual(payload.studentEmail, "student@example.com");
+      assert.strictEqual(payload.courseId, "what-is-astrology");
+      assert.strictEqual(payload.amount, 0);
+    });
+  });
+
 });

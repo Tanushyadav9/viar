@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { prisma } from '@/lib/prisma';
 import { isSiteOwner, VIAR_SECTIONS } from '@/lib/auth/permissions';
 import { isDevSimulationAllowed, parseClerkSessionClaims } from '@/lib/auth/devSimulation';
@@ -66,8 +67,10 @@ const serverStaffFallback: Partial<User>[] = DEMO_USERS.filter(
  */
 export async function GET(req: NextRequest) {
   try {
-    const callerEmail = getCallerEmail(req);
-    if (!isSiteOwner(callerEmail)) {
+    const serverAuth = await getServerAuthUser().catch(() => null);
+    const callerEmail = serverAuth?.email || getCallerEmail(req);
+    const isOwner = Boolean(serverAuth?.isOwner || isSiteOwner(callerEmail));
+    if (!isOwner) {
       return NextResponse.json(
         {
           success: false,
@@ -129,8 +132,10 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const callerEmail = getCallerEmail(req);
-    if (!isSiteOwner(callerEmail)) {
+    const serverAuth = await getServerAuthUser().catch(() => null);
+    const callerEmail = serverAuth?.email || getCallerEmail(req);
+    const isOwner = Boolean(serverAuth?.isOwner || isSiteOwner(callerEmail));
+    if (!isOwner) {
       return NextResponse.json(
         {
           success: false,
@@ -252,8 +257,10 @@ export async function POST(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   try {
-    const callerEmail = getCallerEmail(req);
-    if (!isSiteOwner(callerEmail)) {
+    const serverAuth = await getServerAuthUser().catch(() => null);
+    const callerEmail = serverAuth?.email || getCallerEmail(req);
+    const isOwner = Boolean(serverAuth?.isOwner || isSiteOwner(callerEmail));
+    if (!isOwner) {
       return NextResponse.json(
         {
           success: false,

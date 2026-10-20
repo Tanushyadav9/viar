@@ -472,13 +472,31 @@ export default function AdminPortalClient({
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
   };
 
-  const loadAdminData = React.useCallback(() => {
+  const loadAdminData = React.useCallback(async () => {
     setStats(ViarStore.getAdminStats());
     setCohorts(ViarStore.getCohorts());
     setCourses(ViarStore.getCourses());
     setClasses(ViarStore.getClasses(selectedCohortId));
     setEnrollments(ViarStore.getEnrollments());
     setCertificates(ViarStore.getCertificates());
+
+    // Fetch live courses catalog from PostgreSQL
+    try {
+      const crsRes = await fetch('/api/courses');
+      const crsData = await crsRes.json();
+      if (crsData.success && Array.isArray(crsData.courses) && crsData.courses.length > 0) {
+        setCourses(crsData.courses);
+      }
+    } catch {}
+
+    // Fetch live student enrollments from PostgreSQL
+    try {
+      const enrRes = await fetch('/api/enrollments');
+      const enrData = await enrRes.json();
+      if (enrData.success && Array.isArray(enrData.enrollments) && enrData.enrollments.length > 0) {
+        setEnrollments(enrData.enrollments);
+      }
+    } catch {}
     
     if (!serverAuth) {
       let user = ViarStore.getCurrentUser();
@@ -583,13 +601,48 @@ export default function AdminPortalClient({
     }
 
     ViarStore.updateClass(editingClass.id, updates);
+    try {
+      await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cohortId: editingClass.cohortId || selectedCohortId,
+          sessionId: editingClass.id,
+          title: updates.title,
+          description: updates.description,
+          scheduledAt: updates.scheduledAt,
+          status: updates.status,
+          joinUrl: updates.joinUrl,
+          recordingUrl: updates.recording?.videoUrl,
+          notes: updates.recording?.notesMarkdown,
+        }),
+      });
+    } catch {}
     setEditingClass(null);
     loadAdminData();
   };
 
-  const handleManualEnroll = (e: React.FormEvent) => {
+  const handleManualEnroll = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualName || !manualEmail) return;
+
+    try {
+      await fetch('/api/enrollments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentName: manualName.trim(),
+          studentEmail: manualEmail.trim().toLowerCase(),
+          courseId: 'what-is-astrology',
+          cohortId: selectedCohortId,
+          amount: 0,
+          currency: 'INR',
+          paymentMethod: 'Manual Admin Grant / Scholarship',
+        }),
+      });
+    } catch (err) {
+      console.warn('Manual enrollment API sync error:', err);
+    }
 
     ViarStore.createEnrollment({
       studentName: manualName,
