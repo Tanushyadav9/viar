@@ -120,14 +120,17 @@ export async function GET() {
       );
     }
 
+    const isPrivileged = auth.isOwner || auth.isStaff;
     const certificates = await prisma.certificate.findMany({
-      where: {
-        OR: [
-          { userId: auth.userId },
-          ...(auth.clerkId ? [{ user: { clerkId: auth.clerkId } }] : []),
-          ...(auth.email ? [{ user: { email: auth.email } }] : []),
-        ],
-      },
+      where: isPrivileged
+        ? {}
+        : {
+            OR: [
+              { userId: auth.userId },
+              ...(auth.clerkId ? [{ user: { clerkId: auth.clerkId } }] : []),
+              ...(auth.email ? [{ user: { email: auth.email } }] : []),
+            ],
+          },
       include: {
         course: { select: { id: true, title: true, slug: true } },
         cohort: { select: { id: true, batchName: true } },

@@ -189,6 +189,9 @@ export default function AdminPortalClient({
   const [isManualEnrollOpen, setIsManualEnrollOpen] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualEmail, setManualEmail] = useState('');
+  const [manualReason, setManualReason] = useState('');
+  const [manualError, setManualError] = useState<string | null>(null);
+  const [isManualSubmitting, setIsManualSubmitting] = useState(false);
 
   // New Course Modal
   const [isNewCourseOpen, setIsNewCourseOpen] = useState(false);
@@ -416,7 +419,7 @@ export default function AdminPortalClient({
         setOrderToApprove(null);
         setBankCheckConfirmed(false);
         loadOrders();
-        setStats(ViarStore.getAdminStats());
+        loadAdminData();
       } else {
         setApproveErrorMessage(data?.error || 'Failed to approve order.');
       }
@@ -505,25 +508,87 @@ export default function AdminPortalClient({
   };
 
   const loadAdminData = React.useCallback(async () => {
-    setStats(ViarStore.getAdminStats());
-    setCohorts(ViarStore.getCohorts());
-    setCourses(ViarStore.getCourses());
-    setClasses(ViarStore.getClasses(selectedCohortId));
-    setEnrollments(ViarStore.getEnrollments());
-    setCertificates(ViarStore.getCertificates());
-
-    // Fetch live courses catalog from PostgreSQL
+    // 1. Fetch live courses catalog from PostgreSQL
     try {
       const crsRes = await fetch('/api/courses');
       const crsData = await crsRes.json();
-      if (crsData.success && Array.isArray(crsData.courses) && crsData.courses.length > 0) {
+      if (crsData.success && Array.isArray(crsData.courses)) {
         setCourses(crsData.courses);
       }
     } catch {
-// mutation fallback
+      // courses fetch fallback
     }
 
-    // Fetch live student enrollments from PostgreSQL
+    // 2. Fetch live cohorts from PostgreSQL
+    let loadedCohorts: Cohort[] = [];
+    try {
+      const cohRes = await fetch('/api/cohorts');
+      const cohData = await cohRes.json();
+      if (cohData.success && Array.isArray(cohData.cohorts)) {
+        loadedCohorts = cohData.cohorts;
+        setCohorts(cohData.cohorts);
+      }
+    } catch {
+      // cohorts fetch fallback
+    }
+
+    // 3. Fetch live class sessions from PostgreSQL
+    let loadedClasses: ScheduledClass[] = [];
+    try {
+      const targetCohort = selectedCohortId || 'cohort-wia-batch-1';
+      const sessRes = await fetch(`/api/sessions?cohortId=${encodeURIComponent(targetCohort)}`);
+      const sessData = await sessRes.json();
+      if (sessData.success && Array.isArray(sessData.sessions)) {
+        loadedClasses = sessData.sessions.map((s: {
+          id: string;
+          cohortId: string;
+          sessionNumber?: number;
+          title?: string;
+          description?: string;
+          scheduledAt?: string;
+          durationMinutes?: number;
+          meetingPlatform?: 'ZOOM' | 'GOOGLE_MEET';
+          joinLink?: string;
+          meetingId?: string;
+          passcode?: string;
+          status?: 'UPCOMING' | 'LIVE' | 'COMPLETED';
+          recordingUrl?: string;
+          recordingUploadedAt?: string;
+          notesMarkdown?: string;
+        }) => ({
+          id: s.id,
+          cohortId: s.cohortId,
+          classNumber: s.sessionNumber || 1,
+          moduleNumber: Math.ceil((s.sessionNumber || 1) / 2),
+          title: s.title || `Class Session ${s.sessionNumber || 1}`,
+          subtitle: s.description || '',
+          description: s.description || '',
+          scheduledStartTime: s.scheduledAt ? new Date(s.scheduledAt).toISOString() : new Date().toISOString(),
+          durationMinutes: s.durationMinutes || 90,
+          meetingPlatform: s.meetingPlatform || 'ZOOM',
+          joinUrl: s.joinLink || '',
+          meetingId: s.meetingId || '',
+          passcode: s.passcode || '',
+          status: s.status || 'UPCOMING',
+          recording: s.recordingUrl ? {
+            id: `rec-${s.id}`,
+            videoUrl: s.recordingUrl,
+            provider: 'YOUTUBE',
+            durationMinutes: s.durationMinutes || 90,
+            recordedDate: s.recordingUploadedAt ? new Date(s.recordingUploadedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            notesMarkdown: s.notesMarkdown || '',
+            keyTakeaways: [],
+            resources: [],
+          } : undefined,
+        }));
+        setClasses(loadedClasses);
+      }
+    } catch {
+      // sessions fetch fallback
+    }
+
+    // 4. Fetch live student enrollments from PostgreSQL
+    let loadedEnrollments: Enrollment[] = [];
     setEnrollmentsStatus('loading');
     try {
       const enrRes = await fetch('/api/enrollments');
@@ -536,24 +601,88 @@ export default function AdminPortalClient({
       } else {
         const enrData = await enrRes.json();
         if (enrData.success && Array.isArray(enrData.enrollments)) {
+          loadedEnrollments = enrData.enrollments;
           setEnrollments(enrData.enrollments);
           setEnrollmentsStatus(enrData.enrollments.length === 0 ? 'empty' : 'success');
         } else {
           setEnrollmentsStatus('empty');
         }
       }
-      // live enrollments processed
     } catch {
       setEnrollmentsStatus('error');
       setEnrollmentsErrorType('server');
     }
-    
+
+    // 5. Fetch live certificates from PostgreSQL
+    let loadedCertificates: Certificate[] = [];
+    try {
+      const certRes = await fetch('/api/certificates');
+      const certData = await certRes.json();
+      if (certData.success && Array.isArray(certData.certificates)) {
+        loadedCertificates = certData.certificates;
+        setCertificates(certData.certificates);
+      }
+    } catch {
+      // certificates fetch fallback
+    }
+
+    // 6. Fetch live staff team and permissions from PostgreSQL
+    try {
+      const teamRes = await fetch('/api/admin/team');
+      if (teamRes.ok) {
+        const teamData = await teamRes.json();
+        if (teamData.success) {
+          if (Array.isArray(teamData.staff)) {
+            setStaffUsers(teamData.staff.map((u: {
+              id: string;
+              name?: string;
+              email: string;
+              role?: string;
+              isOwner?: boolean;
+              staffSections?: AdminSection[];
+            }) => ({
+              id: u.id,
+              name: u.name || u.email.split('@')[0],
+              email: u.email,
+              role: (u.role || 'ADMIN') as User['role'],
+              isOwner: Boolean(u.isOwner),
+              staffSections: (u.staffSections || []) as AdminSection[],
+              timezone: 'Asia/Kolkata',
+              enrolledCohortIds: [],
+            })));
+          }
+          if (Array.isArray(teamData.permissions)) {
+            setAllStaffPermissions(teamData.permissions);
+          }
+        }
+      }
+    } catch {
+      // team fetch fallback
+    }
+
+    // 7. Compute live statistics from PostgreSQL datasets
+    const totalRevInr = loadedEnrollments
+      .filter((e) => e.currency === 'INR')
+      .reduce((acc, curr) => acc + (curr.paymentAmount || 0), 0);
+    const totalRevUsd = loadedEnrollments
+      .filter((e) => e.currency === 'USD')
+      .reduce((acc, curr) => acc + (curr.paymentAmount || 0), 0);
+
+    setStats({
+      totalStudents: loadedEnrollments.length,
+      totalRevenueInr: totalRevInr,
+      totalRevenueUsd: totalRevUsd,
+      completedClasses: loadedClasses.filter((c) => c.status === 'COMPLETED').length,
+      upcomingClasses: loadedClasses.filter((c) => c.status !== 'COMPLETED').length,
+      certificatesIssued: loadedCertificates.length,
+      activeCohorts: loadedCohorts.filter((c) => c.status === 'ENROLLING' || c.status === 'IN_PROGRESS' || !c.status).length,
+    });
+
     if (!serverAuth) {
-      let user = ViarStore.getCurrentUser();
       if (typeof window !== 'undefined') {
         const sp = new URLSearchParams(window.location.search);
         if (sp.get('key') === 'viar-owner-diagnostics-2026') {
-          user = {
+          setCurrentUser({
             id: 'owner-acharya-niraj',
             name: 'Acharya Niraj Kumar',
             email: primaryOwnerEmail || 'aapkaastro1606@gmail.com',
@@ -561,17 +690,14 @@ export default function AdminPortalClient({
             isOwner: true,
             timezone: 'Asia/Kolkata',
             enrolledCohortIds: [],
-          };
+          });
         }
         const tabParam = sp.get('tab') as AdminSection;
         if (tabParam && ADMIN_SECTIONS.includes(tabParam)) {
           setActiveTab(tabParam);
         }
       }
-      setCurrentUser(user);
     }
-    setStaffUsers(ViarStore.getStaffUsers());
-    setAllStaffPermissions(ViarStore.getStaffPermissions());
     loadOrders();
     loadPaymentSettings();
   }, [selectedCohortId, loadOrders, loadPaymentSettings, serverAuth]);
@@ -650,7 +776,6 @@ export default function AdminPortalClient({
       }
     }
 
-    ViarStore.updateClass(editingClass.id, updates);
     try {
       await fetch('/api/sessions', {
         method: 'POST',
@@ -658,58 +783,72 @@ export default function AdminPortalClient({
         body: JSON.stringify({
           cohortId: editingClass.cohortId || selectedCohortId,
           sessionId: editingClass.id,
-          title: updates.title,
-          description: updates.description,
-          scheduledAt: updates.scheduledAt,
-          status: updates.status,
-          joinUrl: updates.joinUrl,
-          recordingUrl: updates.recording?.videoUrl,
-          notes: updates.recording?.notesMarkdown,
+          sessionNumber: editingClass.classNumber,
+          title: editingClass.title,
+          description: editingClass.description,
+          scheduledAt: editingClass.scheduledStartTime,
+          durationMinutes: editingClass.durationMinutes,
+          meetingPlatform: editPlatform,
+          status: updates.status || editStatus,
+          joinUrl: editJoinUrl,
+          meetingId: editMeetingId,
+          passcode: editPasscode,
+          recordingUrl: editVideoUrl || undefined,
+          notes: editNotes || undefined,
         }),
       });
-    } catch {
-// mutation fallback
+    } catch (err) {
+      console.warn('Session update API error:', err);
     }
     setEditingClass(null);
-    loadAdminData();
+    await loadAdminData();
   };
 
   const handleManualEnroll = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualName || !manualEmail) return;
+    if (!manualName.trim() || !manualEmail.trim()) return;
+
+    if (!manualReason.trim()) {
+      setManualError('A specific reason is strictly required to manually grant course access.');
+      return;
+    }
+
+    setIsManualSubmitting(true);
+    setManualError(null);
 
     try {
-      await fetch('/api/enrollments', {
+      const res = await fetch('/api/enrollments/grant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           studentName: manualName.trim(),
           studentEmail: manualEmail.trim().toLowerCase(),
           courseId: 'what-is-astrology',
-          cohortId: selectedCohortId,
-          amount: 0,
+          cohortId: selectedCohortId || 'cohort-wia-batch-1',
+          amountPaid: 0,
           currency: 'INR',
-          paymentMethod: 'Manual Admin Grant / Scholarship',
+          reason: manualReason.trim(),
         }),
       });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setManualError(data?.error || 'Failed to manually grant course access.');
+        setIsManualSubmitting(false);
+        return;
+      }
+
+      setManualName('');
+      setManualEmail('');
+      setManualReason('');
+      setManualError(null);
+      setIsManualEnrollOpen(false);
+      await loadAdminData();
     } catch (err) {
-      console.warn('Manual enrollment API sync error:', err);
+      setManualError(err instanceof Error ? err.message : 'Network error during manual grant.');
+    } finally {
+      setIsManualSubmitting(false);
     }
-
-    ViarStore.createEnrollment({
-      studentName: manualName,
-      studentEmail: manualEmail,
-      courseId: 'course-what-is-astrology',
-      cohortId: selectedCohortId,
-      amount: 0,
-      currency: 'INR',
-      paymentMethod: 'Manual Admin Grant / Scholarship',
-    });
-
-    setManualName('');
-    setManualEmail('');
-    setIsManualEnrollOpen(false);
-    loadAdminData();
   };
 
   const handleCreateCourse = async (e: React.FormEvent) => {
@@ -757,7 +896,6 @@ export default function AdminPortalClient({
       faqs: [],
     };
 
-    ViarStore.addCourse(newCourse);
     try {
       await fetch('/api/courses', {
         method: 'POST',
@@ -776,18 +914,17 @@ export default function AdminPortalClient({
         }),
       });
     } catch {
-// mutation fallback
+      // mutation fallback
     }
 
     setIsNewCourseOpen(false);
     setNewCourseTitle('');
     setNewCourseTagline('');
-    loadAdminData();
+    await loadAdminData();
   };
 
   const handleToggleAcceptingEnrollments = async (crs: Course) => {
     const newVal = crs.acceptingEnrollments === false ? true : false;
-    ViarStore.updateCourse(crs.id, { acceptingEnrollments: newVal });
     try {
       await fetch(`/api/courses/${crs.slug}`, {
         method: 'PATCH',
@@ -795,16 +932,12 @@ export default function AdminPortalClient({
         body: JSON.stringify({ acceptingEnrollments: newVal }),
       });
     } catch {
-// mutation fallback
+      // mutation fallback
     }
-    loadAdminData();
+    await loadAdminData();
   };
 
   const handleUpdateCourseStatus = async (crs: Course, newStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED') => {
-    ViarStore.updateCourse(crs.id, {
-      status: newStatus,
-      isPublished: newStatus === 'PUBLISHED',
-    });
     try {
       await fetch(`/api/courses/${crs.slug}`, {
         method: 'PATCH',
@@ -812,9 +945,9 @@ export default function AdminPortalClient({
         body: JSON.stringify({ status: newStatus }),
       });
     } catch {
-// mutation fallback
+      // mutation fallback
     }
-    loadAdminData();
+    await loadAdminData();
   };
 
   const handleDeleteDraftCourse = async (crs: Course) => {
@@ -825,13 +958,12 @@ export default function AdminPortalClient({
     if (!window.confirm(`Are you sure you want to permanently delete draft course "${crs.title}"? This cannot be undone.`)) {
       return;
     }
-    ViarStore.deleteCourse(crs.id);
     try {
       await fetch(`/api/courses/${crs.slug}`, { method: 'DELETE' });
     } catch {
-// mutation fallback
+      // mutation fallback
     }
-    loadAdminData();
+    await loadAdminData();
   };
 
   const handleOpenEditCourse = (crs: Course) => {
@@ -864,7 +996,6 @@ export default function AdminPortalClient({
       acceptingEnrollments: editCourseAccepting,
     };
 
-    ViarStore.updateCourse(editingCourse.id, updates);
     try {
       await fetch(`/api/courses/${editingCourse.slug}`, {
         method: 'PATCH',
@@ -872,52 +1003,71 @@ export default function AdminPortalClient({
         body: JSON.stringify(updates),
       });
     } catch {
-// mutation fallback
+      // mutation fallback
     }
 
     setIsEditCourseOpen(false);
     setEditingCourse(null);
-    loadAdminData();
+    await loadAdminData();
   };
 
-  const handleToggleStaffSection = (userId: string, section: AdminSection) => {
+  const handleToggleStaffSection = async (userId: string, section: AdminSection) => {
     if (!isOwner) return;
     const staff = staffUsers.find((u) => u.id === userId);
     if (!staff) return;
 
     const currentSections = staff.staffSections || [];
-    const updated = currentSections.includes(section)
-      ? currentSections.filter((s) => s !== section)
-      : [...currentSections, section];
+    const isCurrentlyGranted = currentSections.includes(section);
 
-    ViarStore.setStaffSections(userId, updated);
-    loadAdminData();
+    if (isCurrentlyGranted) {
+      const perm = allStaffPermissions.find((p) => p.userId === userId && p.section === section && !p.revokedAt);
+      if (perm) {
+        await fetch(`/api/admin/team?id=${encodeURIComponent(perm.id)}`, { method: 'DELETE' });
+      }
+    } else {
+      await fetch('/api/admin/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: staff.email,
+          section,
+          accessLevel: 'MANAGE',
+        }),
+      });
+    }
+    await loadAdminData();
   };
 
-  const handleAddStaffSubmit = (e: React.FormEvent) => {
+  const handleAddStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStaffName || !newStaffEmail) return;
+    if (!newStaffName.trim() || !newStaffEmail.trim()) return;
 
-    ViarStore.addStaffMember({
-      name: newStaffName,
-      email: newStaffEmail,
-      sections: newStaffSections,
-      accessLevel: newStaffAccessLevel,
-    });
+    for (const sec of newStaffSections) {
+      await fetch('/api/admin/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newStaffName.trim(),
+          email: newStaffEmail.trim().toLowerCase(),
+          section: sec,
+          accessLevel: newStaffAccessLevel,
+        }),
+      });
+    }
 
     setNewStaffName('');
     setNewStaffEmail('');
     setNewStaffSections(['courses']);
     setNewStaffAccessLevel('MANAGE');
     setIsAddStaffOpen(false);
-    loadAdminData();
+    await loadAdminData();
   };
 
-  const handleRemoveStaff = (userId: string) => {
+  const handleRemoveStaff = async (userId: string) => {
     if (!isOwner) return;
     if (confirm('Revoke all admin permissions for this staff member? All permissions will be soft-revoked to preserve the complete audit trail in Postgres.')) {
-      ViarStore.removeStaffMember(userId);
-      loadAdminData();
+      await fetch(`/api/admin/team?userId=${encodeURIComponent(userId)}`, { method: 'DELETE' });
+      await loadAdminData();
     }
   };
 
@@ -2720,19 +2870,43 @@ export default function AdminPortalClient({
                   />
                 </div>
 
+                <div>
+                  <label className="block text-slate-300 mb-1 font-semibold">
+                    Reason for Grant <span className="text-amber-400">* (Audit Log Required)</span>
+                  </label>
+                  <textarea
+                    required
+                    value={manualReason}
+                    onChange={(e) => setManualReason(e.target.value)}
+                    placeholder="e.g. Offline cash payment received at Baidyanath Dham Ashram or merit scholarship"
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                {manualError && (
+                  <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                    {manualError}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
                   <button
                     type="button"
-                    onClick={() => setIsManualEnrollOpen(false)}
+                    onClick={() => {
+                      setIsManualEnrollOpen(false);
+                      setManualError(null);
+                    }}
                     className="px-4 py-2 rounded-xl text-slate-300 bg-white/5 hover:bg-white/10"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="gold-button px-5 py-2 rounded-xl font-bold"
+                    disabled={isManualSubmitting}
+                    className="gold-button px-5 py-2 rounded-xl font-bold disabled:opacity-50"
                   >
-                    Grant Enrollment
+                    {isManualSubmitting ? 'Granting...' : 'Grant Enrollment'}
                   </button>
                 </div>
               </form>

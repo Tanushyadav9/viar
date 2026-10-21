@@ -148,6 +148,48 @@ export default function CohortClassByClassPage() {
               setClasses(mappedClasses);
               const target = targetLessonId ? mappedClasses.find((c) => c.id === targetLessonId) : null;
               setActiveClass(target || mappedClasses[0]);
+
+              // Overlay live session edits from database ClassSession so students see changes live
+              fetch(`/api/sessions?cohortId=${encodeURIComponent(cohortId)}`)
+                .then((res) => (res.ok ? res.json() : null))
+                .then((sessData) => {
+                  if (sessData?.success && Array.isArray(sessData.sessions)) {
+                    const sessionMap = new Map();
+                    for (const s of sessData.sessions) {
+                      sessionMap.set(s.sessionNumber, s);
+                      sessionMap.set(s.id, s);
+                    }
+                    const mergedClasses = mappedClasses.map((cls) => {
+                      const match = sessionMap.get(cls.classNumber) || sessionMap.get(cls.id);
+                      if (!match) return cls;
+                      return {
+                        ...cls,
+                        joinUrl: match.joinLink || cls.joinUrl,
+                        meetingId: match.meetingId || cls.meetingId,
+                        passcode: match.passcode || cls.passcode,
+                        meetingPlatform: match.meetingPlatform || cls.meetingPlatform,
+                        status: match.status || cls.status,
+                        description: match.description || cls.description,
+                        scheduledStartTime: match.scheduledAt ? new Date(match.scheduledAt).toISOString() : cls.scheduledStartTime,
+                        recording: match.recordingUrl ? {
+                          id: `rec-${match.id}`,
+                          videoUrl: match.recordingUrl,
+                          provider: 'YOUTUBE' as const,
+                          durationMinutes: match.durationMinutes || cls.durationMinutes,
+                          recordedDate: match.recordingUploadedAt ? new Date(match.recordingUploadedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                          notesMarkdown: match.notesMarkdown || cls.recording?.notesMarkdown || '',
+                          keyTakeaways: cls.recording?.keyTakeaways || [],
+                          resources: cls.recording?.resources || [],
+                        } : cls.recording,
+                      };
+                    });
+                    setClasses(mergedClasses);
+                    const updatedTarget = targetLessonId ? mergedClasses.find((c) => c.id === targetLessonId) : null;
+                    if (updatedTarget) setActiveClass(updatedTarget);
+                  }
+                })
+                .catch(() => {});
+
               return;
             }
           }

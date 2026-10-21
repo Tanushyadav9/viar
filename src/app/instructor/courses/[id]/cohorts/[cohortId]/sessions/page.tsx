@@ -11,7 +11,6 @@ import {
   Play
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
-import { ViarStore } from '@/lib/store';
 import { ScheduledClass, Cohort } from '@/lib/types';
 import { formatInTimezone } from '@/lib/timezones';
 
@@ -33,13 +32,78 @@ export default function InstructorSessionsPage() {
   const [classStatus, setClassStatus] = useState<'UPCOMING' | 'LIVE' | 'COMPLETED'>('UPCOMING');
   const [successMsg, setSuccessMsg] = useState('');
 
-  useEffect(() => {
-    const coh = ViarStore.getCohortById(cohortId) || ViarStore.getCohorts()[0];
-    if (coh) setCohort(coh);
+  const loadSessionsData = React.useCallback(async () => {
+    try {
+      const cohRes = await fetch('/api/cohorts');
+      if (cohRes.ok) {
+        const cohData = await cohRes.json();
+        if (cohData.success && Array.isArray(cohData.cohorts)) {
+          const found = cohData.cohorts.find((c: Cohort) => c.id === cohortId) || cohData.cohorts[0];
+          if (found) setCohort(found);
+        }
+      }
+    } catch {
+      // cohort load fallback
+    }
 
-    const list = ViarStore.getClasses(cohortId);
-    setClasses(list);
+    try {
+      const sessRes = await fetch(`/api/sessions?cohortId=${encodeURIComponent(cohortId)}`);
+      if (sessRes.ok) {
+        const sessData = await sessRes.json();
+        if (sessData.success && Array.isArray(sessData.sessions)) {
+          const mapped: ScheduledClass[] = sessData.sessions.map((s: {
+            id: string;
+            cohortId: string;
+            sessionNumber?: number;
+            title?: string;
+            description?: string;
+            scheduledAt?: string;
+            durationMinutes?: number;
+            meetingPlatform?: 'ZOOM' | 'GOOGLE_MEET';
+            joinLink?: string;
+            meetingId?: string;
+            passcode?: string;
+            status?: 'UPCOMING' | 'LIVE' | 'COMPLETED';
+            recordingUrl?: string;
+            recordingUploadedAt?: string;
+            notesMarkdown?: string;
+          }) => ({
+            id: s.id,
+            cohortId: s.cohortId,
+            classNumber: s.sessionNumber || 1,
+            moduleNumber: Math.ceil((s.sessionNumber || 1) / 2),
+            title: s.title || `Class Session ${s.sessionNumber || 1}`,
+            subtitle: s.description || '',
+            description: s.description || '',
+            scheduledStartTime: s.scheduledAt ? new Date(s.scheduledAt).toISOString() : new Date().toISOString(),
+            durationMinutes: s.durationMinutes || 75,
+            meetingPlatform: s.meetingPlatform || 'ZOOM',
+            joinUrl: s.joinLink || '',
+            meetingId: s.meetingId || '',
+            passcode: s.passcode || '',
+            status: s.status || 'UPCOMING',
+            recording: s.recordingUrl ? {
+              id: `rec-${s.id}`,
+              videoUrl: s.recordingUrl,
+              provider: s.recordingUrl.includes('vimeo') ? 'VIMEO' : 'YOUTUBE',
+              durationMinutes: s.durationMinutes || 75,
+              recordedDate: s.recordingUploadedAt ? new Date(s.recordingUploadedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+              notesMarkdown: s.notesMarkdown || '',
+              keyTakeaways: ['Key takeaways summarized by instructor'],
+              resources: [],
+            } : undefined,
+          }));
+          setClasses(mapped);
+        }
+      }
+    } catch {
+      // sessions load fallback
+    }
   }, [cohortId]);
+
+  useEffect(() => {
+    loadSessionsData();
+  }, [loadSessionsData]);
 
   const handleOpenEdit = (cls: ScheduledClass) => {
     setEditingClass(cls);
@@ -51,7 +115,7 @@ export default function InstructorSessionsPage() {
     setClassStatus(cls.status);
   };
 
-  const handleSaveSession = (e: React.FormEvent) => {
+  const handleSaveSession = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingClass) return;
 
@@ -76,20 +140,29 @@ export default function InstructorSessionsPage() {
       updates.status = 'COMPLETED';
     }
 
-    ViarStore.updateClass(editingClass.id, updates);
-    fetch('/api/sessions', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: editingClass.id,
-        joinLink: joinUrl,
-        recordingUrl: recordingUrl || undefined,
-        status: updates.status,
-        notesMarkdown,
-      }),
-    }).catch((err) => console.warn('Sessions API sync failed:', err));
+    try {
+      await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: editingClass.id,
+          cohortId,
+          sessionNumber: editingClass.classNumber,
+          title: editingClass.title,
+          description: editingClass.description,
+          joinUrl,
+          meetingId,
+          passcode,
+          status: updates.status,
+          recordingUrl: recordingUrl || undefined,
+          notesMarkdown,
+        }),
+      });
+    } catch (err) {
+      console.warn('Sessions API sync failed:', err);
+    }
 
-    setClasses(ViarStore.getClasses(cohortId));
+    await loadSessionsData();
     setEditingClass(null);
     setSuccessMsg(`Class ${editingClass.classNumber} updated successfully!`);
     setTimeout(() => setSuccessMsg(''), 3000);

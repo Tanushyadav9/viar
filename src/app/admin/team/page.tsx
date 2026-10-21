@@ -17,7 +17,6 @@ import {
   Eye,
   Settings,
 } from 'lucide-react';
-import { ViarStore } from '@/lib/store';
 import {
   User,
   StaffAccessLevel,
@@ -59,8 +58,17 @@ export default function TeamManagementPage() {
     setLoading(true);
     setPageStatus('loading');
     setErrorMessage('');
-    const user = ViarStore.getCurrentUser();
-    setCurrentUser(user);
+    try {
+      const syncRes = await fetch('/api/users/sync');
+      if (syncRes.ok) {
+        const syncData = await syncRes.json();
+        if (syncData.success && syncData.user) {
+          setCurrentUser(syncData.user);
+        }
+      }
+    } catch {
+      // sync error handled gracefully
+    }
 
     try {
       const res = await fetch('/api/admin/team');
@@ -99,24 +107,13 @@ export default function TeamManagementPage() {
       }));
       const perms: StaffPermission[] = data.permissions || [];
 
-      const finalUsers = users.length > 0 ? users : ViarStore.getStaffUsers();
-      const finalPerms = perms.length > 0 ? perms : ViarStore.getStaffPermissions();
-
-      setStaffUsers(finalUsers);
-      setPermissions(finalPerms);
-      setPageStatus(finalUsers.length === 0 ? 'empty' : 'success');
+      setStaffUsers(users);
+      setPermissions(perms);
+      setPageStatus(users.length === 0 ? 'empty' : 'success');
     } catch (err) {
-      if (isSiteOwner(user)) {
-        const localUsers = ViarStore.getStaffUsers();
-        const localPerms = ViarStore.getStaffPermissions();
-        setStaffUsers(localUsers);
-        setPermissions(localPerms);
-        setPageStatus(localUsers.length === 0 ? 'empty' : 'success');
-      } else {
-        setPageStatus('error');
-        setErrorType('server');
-        setErrorMessage(err instanceof Error ? err.message : 'Could not load team permissions');
-      }
+      setPageStatus('error');
+      setErrorType('server');
+      setErrorMessage(err instanceof Error ? err.message : 'Could not load team permissions');
     } finally {
       setLoading(false);
     }
@@ -151,7 +148,6 @@ export default function TeamManagementPage() {
 
     setLoading(true);
     try {
-      // 1. Try server API route
       const res = await fetch('/api/admin/team', {
         method: 'POST',
         headers: {
@@ -172,32 +168,11 @@ export default function TeamManagementPage() {
           `Granted ${inviteAccessLevel} access on '${inviteSection}' to ${inviteEmail}.`
         );
       } else {
-        // Fallback to client-side store
-        ViarStore.addStaffMember({
-          email: inviteEmail.trim().toLowerCase(),
-          name: inviteName.trim() || inviteEmail.split('@')[0],
-          sections: [inviteSection],
-          accessLevel: inviteAccessLevel,
-          grantedByUserId: currentUser?.email || '',
-        });
-        showNotice(
-          'success',
-          `Granted ${inviteAccessLevel} access on '${inviteSection}' to ${inviteEmail} (runtime store updated).`
-        );
+        const errData = await res.json().catch(() => null);
+        showNotice('error', errData?.error || 'Failed to grant staff permission.');
       }
-    } catch {
-      // Fallback on network/fetch error
-      ViarStore.addStaffMember({
-        email: inviteEmail.trim().toLowerCase(),
-        name: inviteName.trim() || inviteEmail.split('@')[0],
-        sections: [inviteSection],
-        accessLevel: inviteAccessLevel,
-        grantedByUserId: currentUser?.email || '',
-      });
-      showNotice(
-        'success',
-        `Granted ${inviteAccessLevel} access on '${inviteSection}' to ${inviteEmail}.`
-      );
+    } catch (err) {
+      showNotice('error', err instanceof Error ? err.message : 'Failed to grant staff permission.');
     } finally {
       setLoading(false);
       setIsInviteOpen(false);
@@ -224,30 +199,46 @@ export default function TeamManagementPage() {
       if (res.ok) {
         showNotice('success', 'Permission soft-revoked. Audit trail updated.');
       } else {
-        ViarStore.softRevokeStaffPermission(permissionId);
-        showNotice('success', 'Permission soft-revoked in runtime store.');
+        const errData = await res.json().catch(() => null);
+        showNotice('error', errData?.error || 'Failed to revoke permission.');
       }
-    } catch {
-      ViarStore.softRevokeStaffPermission(permissionId);
-      showNotice('success', 'Permission soft-revoked.');
+    } catch (err) {
+      showNotice('error', err instanceof Error ? err.message : 'Failed to revoke permission.');
     } finally {
       setLoading(false);
       loadData();
     }
   };
 
-  const handleToggleSection = (userId: string, section: AdminSection) => {
+  const handleToggleSection = async (userId: string, section: AdminSection) => {
     const staff = staffUsers.find((u) => u.id === userId);
     if (!staff) return;
 
     const currentSections = staff.staffSections || [];
-    const updated = currentSections.includes(section)
-      ? currentSections.filter((s) => s !== section)
-      : [...currentSections, section];
+    const isCurrentlyGranted = currentSections.includes(section);
 
-    ViarStore.setStaffSections(userId, updated, 'MANAGE', currentUser?.email || '');
+    try {
+      if (isCurrentlyGranted) {
+        const perm = permissions.find((p) => p.userId === userId && p.section === section && !p.revokedAt);
+        if (perm) {
+          await fetch(`/api/admin/team?id=${encodeURIComponent(perm.id)}`, { method: 'DELETE' });
+        }
+      } else {
+        await fetch('/api/admin/team', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: staff.email,
+            section,
+            accessLevel: 'MANAGE',
+          }),
+        });
+      }
+      showNotice('success', `Updated sections for ${staff.email}.`);
+    } catch {
+      showNotice('error', `Failed to update sections for ${staff.email}.`);
+    }
     loadData();
-    showNotice('success', `Updated sections for ${staff.email}.`);
   };
 
   if (pageStatus === 'error' && errorType === 'auth') {

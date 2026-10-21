@@ -2,34 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuthUser, canAccessArea } from '@/lib/auth/serverAuth';
 import { prisma } from '@/lib/prisma';
 import { VIAR_SECTIONS } from '@/lib/auth/permissions';
-import { DEMO_USERS } from '@/lib/data';
+import { env } from '@/config/env';
 import type { StaffAccessLevel, StaffPermission, User, AdminSection } from '@/lib/types';
 
 // In-memory server fallback cache when DB is unprovisioned during local testing
-const serverPermissionsFallback: StaffPermission[] = [
-  {
-    id: 'perm-1',
-    userId: 'user-staff-content',
-    section: 'courses',
-    accessLevel: 'MANAGE',
-    grantedByUserId: 'aapkaastro1606@gmail.com',
-    grantedAt: '2026-09-20T10:00:00.000Z',
-    revokedAt: null,
-  },
-  {
-    id: 'perm-2',
-    userId: 'user-staff-content',
-    section: 'quizzes',
-    accessLevel: 'MANAGE',
-    grantedByUserId: 'aapkaastro1606@gmail.com',
-    grantedAt: '2026-09-20T10:00:00.000Z',
-    revokedAt: null,
-  },
-];
-
-const serverStaffFallback: Partial<User>[] = DEMO_USERS.filter(
-  (u) => u.isOwner || (u.staffSections && u.staffSections.length > 0)
-);
+const serverPermissionsFallback: StaffPermission[] = [];
+const serverStaffFallback: Partial<User>[] = [];
 
 /**
  * GET /api/admin/team
@@ -58,7 +36,10 @@ export async function GET() {
 
       const dbUsers = await prisma.user.findMany({
         where: {
-          role: { in: ['INSTRUCTOR', 'ADMIN'] },
+          OR: [
+            { role: { in: ['INSTRUCTOR', 'ADMIN', 'OWNER'] } },
+            { email: { in: env.ownerEmails } },
+          ],
         },
         select: {
           id: true,
@@ -68,14 +49,25 @@ export async function GET() {
         },
       });
 
-      if (dbPermissions && dbPermissions.length > 0) {
-        return NextResponse.json({
-          success: true,
-          source: 'database',
-          staff: dbUsers,
-          permissions: dbPermissions,
-        });
-      }
+      const staffWithSections = dbUsers.map((u) => {
+        const userPerms = (dbPermissions || []).filter((p) => p.userId === u.id && !p.revokedAt);
+        const isOwner = env.ownerEmails.map((e) => e.toLowerCase()).includes(u.email.toLowerCase());
+        return {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: isOwner ? 'OWNER' : u.role,
+          isOwner,
+          staffSections: isOwner ? [...VIAR_SECTIONS] : userPerms.map((p) => p.section),
+        };
+      });
+
+      return NextResponse.json({
+        success: true,
+        source: 'database',
+        staff: staffWithSections,
+        permissions: dbPermissions || [],
+      });
     } catch (dbError) {
       console.warn('Database query for staff permissions skipped:', (dbError as Error).message);
     }
@@ -294,7 +286,30 @@ export async function DELETE(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('userId');
     let permissionId = searchParams.get('id');
+
+    const now = new Date();
+
+    if (userId) {
+      try {
+        await prisma.staffPermission.updateMany({
+          where: { userId, revokedAt: null },
+          data: { revokedAt: now },
+        });
+        await prisma.user.updateMany({
+          where: { id: userId, role: { in: ['ADMIN', 'INSTRUCTOR'] } },
+          data: { role: 'STUDENT' },
+        });
+        return NextResponse.json({
+          success: true,
+          source: 'database',
+          message: `All staff permissions for user ${userId} soft-revoked. Audit trail preserved.`,
+        });
+      } catch (dbError) {
+        console.warn('Database soft-revoke by userId skipped:', (dbError as Error).message);
+      }
+    }
 
     if (!permissionId) {
       try {
@@ -311,8 +326,6 @@ export async function DELETE(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    const now = new Date();
 
     // 1. Try Prisma soft-revoke
     try {

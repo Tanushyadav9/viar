@@ -24,7 +24,6 @@ import {
   Globe,
   UserCheck,
 } from 'lucide-react';
-import { ViarStore } from '@/lib/store';
 import { isSiteOwner } from '@/lib/auth/permissions';
 import { User } from '@/lib/types';
 import { useUser } from '@clerk/nextjs';
@@ -165,8 +164,8 @@ export default function AdminDiagnosticsPage() {
   }, []);
 
   useEffect(() => {
-    let user = ViarStore.getCurrentUser();
-    if (!user && clerkUser) {
+    let user: User | null = null;
+    if (clerkUser) {
       const email =
         clerkUser.primaryEmailAddress?.emailAddress ||
         clerkUser.emailAddresses?.[0]?.emailAddress ||

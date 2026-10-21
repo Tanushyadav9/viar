@@ -1,6 +1,6 @@
 'use client';
 
-import {
+import type {
   Course,
   Cohort,
   ScheduledClass,
@@ -20,9 +20,6 @@ import {
   INITIAL_COHORTS,
   SCHEDULED_CLASSES_FLAGSHIP,
   INITIAL_FINAL_TEST,
-  DEMO_USERS,
-  DEMO_CERTIFICATES,
-  DEMO_ENROLLMENTS,
 } from './data';
 import { getUserLocalTimezone } from './timezones';
 import { isSiteOwner, ADMIN_SECTIONS } from './auth/permissions';
@@ -272,7 +269,7 @@ export const ViarStore = {
   },
 
   getCertificates(): Certificate[] {
-    return getStorageItem<Certificate[]>(STORAGE_KEYS.CERTIFICATES, DEMO_CERTIFICATES);
+    return getStorageItem<Certificate[]>(STORAGE_KEYS.CERTIFICATES, []);
   },
 
   getCertificateByCode(code: string): Certificate | undefined {
@@ -287,7 +284,7 @@ export const ViarStore = {
 
   // Enrollments
   getEnrollments(): Enrollment[] {
-    return getStorageItem<Enrollment[]>(STORAGE_KEYS.ENROLLMENTS, DEMO_ENROLLMENTS);
+    return getStorageItem<Enrollment[]>(STORAGE_KEYS.ENROLLMENTS, []);
   },
 
   createEnrollment(params: {
@@ -389,27 +386,7 @@ export const ViarStore = {
   // Staff Roles & Section Permissions (Zero-Cost RBAC via Postgres/Store)
   // --------------------------------------------------------------------------
   getStaffPermissions(userId?: string): StaffPermission[] {
-    const defaultPerms: StaffPermission[] = [
-      {
-        id: 'perm-1',
-        userId: 'user-staff-content',
-        section: 'courses',
-        accessLevel: 'MANAGE',
-        grantedByUserId: 'aapkaastro1606@gmail.com',
-        grantedAt: '2026-09-20T10:00:00.000Z',
-        revokedAt: null,
-      },
-      {
-        id: 'perm-2',
-        userId: 'user-staff-content',
-        section: 'quizzes',
-        accessLevel: 'MANAGE',
-        grantedByUserId: 'aapkaastro1606@gmail.com',
-        grantedAt: '2026-09-20T10:00:00.000Z',
-        revokedAt: null,
-      },
-    ];
-    const all = getStorageItem<StaffPermission[]>(STORAGE_KEYS.STAFF_PERMISSIONS, defaultPerms);
+    const all = getStorageItem<StaffPermission[]>(STORAGE_KEYS.STAFF_PERMISSIONS, []);
     if (!userId) return all;
     return all.filter((p) => p.userId === userId);
   },
@@ -420,8 +397,7 @@ export const ViarStore = {
   },
 
   getStaffUsers(): User[] {
-    const defaultStaff = DEMO_USERS.filter((u) => u.isOwner || (u.staffSections && u.staffSections.length > 0));
-    return getStorageItem<User[]>(STORAGE_KEYS.STAFF_USERS, defaultStaff);
+    return getStorageItem<User[]>(STORAGE_KEYS.STAFF_USERS, []);
   },
 
   setStaffSections(
