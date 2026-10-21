@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractAuthFromRequest, isSiteOwner } from '@/lib/auth/permissions';
+import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { approveOrder, rejectOrder, refundOrder } from '@/lib/payments/orders';
 
 interface RouteContext {
@@ -10,11 +10,10 @@ interface RouteContext {
 
 export async function POST(req: NextRequest, { params }: RouteContext) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const userEmail = auth.userEmail || '';
+    const auth = await getServerAuthUser();
 
     // Only Owner is authorized to verify, approve, reject, or refund tuition orders
-    if (!isSiteOwner(userEmail)) {
+    if (!auth.isAuthenticated || !auth.isOwner) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Only the Site Owner is authorized to manage orders.' },
         { status: 403 }
@@ -28,6 +27,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
 
     const body = await req.json().catch(() => ({}));
     const { action, bankConfirmed, rejectionReason, refundReason } = body;
+    const userEmail = auth.email || 'aapkaastro1606@gmail.com';
 
     if (action === 'APPROVE') {
       const result = await approveOrder({

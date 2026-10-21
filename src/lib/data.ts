@@ -1,4 +1,4 @@
-import { Course, CourseModule, Cohort, ScheduledClass, FinalTest, User, Certificate, Enrollment, Testimonial } from './types';
+import type { Course, CourseModule, Cohort, ScheduledClass, FinalTest, User, Certificate, Enrollment, Testimonial } from './types';
 
 /**
  * ==============================================================================

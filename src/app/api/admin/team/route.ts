@@ -1,38 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { prisma } from '@/lib/prisma';
-import { isSiteOwner, VIAR_SECTIONS } from '@/lib/auth/permissions';
-import { isDevSimulationAllowed, parseClerkSessionClaims } from '@/lib/auth/devSimulation';
+import { VIAR_SECTIONS } from '@/lib/auth/permissions';
 import { DEMO_USERS } from '@/lib/data';
-import { StaffAccessLevel, StaffPermission, User, AdminSection } from '@/lib/types';
-
-function getCallerEmail(req: NextRequest): string {
-  const sessionToken =
-    req.cookies.get('viar_session')?.value ||
-    req.cookies.get('__session')?.value ||
-    req.cookies.get('viar_auth_token')?.value;
-
-  if (!sessionToken) {
-    return '';
-  }
-
-  // 1. If real Clerk session JWT exists, extract verified email
-  const clerkPayload = parseClerkSessionClaims(sessionToken);
-  if (clerkPayload?.email) {
-    return clerkPayload.email;
-  }
-
-  // 2. Only allow unverified header/cookie in local dev simulation mode or test
-  if (isDevSimulationAllowed()) {
-    const rawEmail =
-      req.cookies.get('viar_user_email')?.value ||
-      req.headers.get('x-user-email') ||
-      '';
-    return rawEmail ? decodeURIComponent(rawEmail).trim().toLowerCase() : '';
-  }
-
-  return '';
-}
+import type { StaffAccessLevel, StaffPermission, User, AdminSection } from '@/lib/types';
 
 // In-memory server fallback cache when DB is unprovisioned during local testing
 const serverPermissionsFallback: StaffPermission[] = [
@@ -65,12 +36,10 @@ const serverStaffFallback: Partial<User>[] = DEMO_USERS.filter(
  * Returns all staff members and the complete StaffPermission audit trail.
  * Strictly Site Owner-only. Rejects anyone else with 403.
  */
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const serverAuth = await getServerAuthUser().catch(() => null);
-    const callerEmail = serverAuth?.email || getCallerEmail(req);
-    const isOwner = Boolean(serverAuth?.isOwner || isSiteOwner(callerEmail));
-    if (!isOwner) {
+    const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated || !auth.isOwner) {
       return NextResponse.json(
         {
           success: false,
@@ -132,114 +101,168 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const serverAuth = await getServerAuthUser().catch(() => null);
-    const callerEmail = serverAuth?.email || getCallerEmail(req);
-    const isOwner = Boolean(serverAuth?.isOwner || isSiteOwner(callerEmail));
-    if (!isOwner) {
+    const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated || !auth.isOwner) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Forbidden: Only the Site Owner can grant staff permissions.',
+          error: 'Forbidden: Only the Site Owner can assign or modify staff permissions.',
         },
         { status: 403 }
       );
     }
 
     const body = await req.json();
-    const { email, name, section, accessLevel = 'MANAGE' } = body;
+    const { email, section, accessLevel = 'VIEW', name, notes } = body;
 
-    if (!email || !email.includes('@')) {
+    if (!email || !section) {
       return NextResponse.json(
-        { success: false, error: 'A valid email address is required.' },
+        { success: false, error: 'email and section are required fields.' },
         { status: 400 }
       );
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-    const normalizedSection = (section || '').trim().toLowerCase();
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanSection = String(section).trim().toLowerCase() as AdminSection;
+    const cleanLevel = (accessLevel === 'MANAGE' ? 'MANAGE' : 'VIEW') as StaffAccessLevel;
 
-    // Verify section name belongs to Viar sections
-    const isViarSection = (sec: string): sec is (typeof VIAR_SECTIONS)[number] =>
-      (VIAR_SECTIONS as readonly string[]).includes(sec);
-
-    if (!isViarSection(normalizedSection)) {
+    // Invariant: The 'staff' section cannot be delegated under any circumstances
+    if (cleanSection === 'staff') {
       return NextResponse.json(
-        {
-          success: false,
-          error: `Invalid section '${section}'. Allowed sections for Viar: ${VIAR_SECTIONS.join(', ')}`,
-        },
+        { success: false, error: "The 'staff' section cannot be delegated. It is permanently reserved for the Site Owner." },
         { status: 400 }
       );
     }
 
-    const validLevel: StaffAccessLevel = accessLevel === 'VIEW' ? 'VIEW' : 'MANAGE';
-    const grantedBy = callerEmail || process.env.OWNER_EMAIL || 'aapkaastro1606@gmail.com';
+    if (!(VIAR_SECTIONS as readonly string[]).includes(cleanSection)) {
+      return NextResponse.json(
+        { success: false, error: `Invalid section '${cleanSection}'. Allowed sections: ${VIAR_SECTIONS.join(', ')}` },
+        { status: 400 }
+      );
+    }
 
-    // 1. Attempt Prisma creation
+    const now = new Date();
+
+    // 1. Try persisting to PostgreSQL
     try {
-      let user = await prisma.user.findUnique({
-        where: { email: normalizedEmail },
+      // Find or create the user in the database
+      let user = await prisma.user.findFirst({
+        where: { email: cleanEmail },
       });
 
       if (!user) {
         user = await prisma.user.create({
           data: {
-            email: normalizedEmail,
-            name: name || normalizedEmail.split('@')[0],
-            role: 'INSTRUCTOR',
+            email: cleanEmail,
+            name: name ? String(name).trim() : cleanEmail.split('@')[0],
+            role: 'ADMIN',
           },
+        });
+      } else if (user.role === 'STUDENT') {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { role: 'ADMIN' },
         });
       }
 
-      const createdPermission = await prisma.staffPermission.create({
-        data: {
+      // Check for an active permission for this section
+      const existing = await prisma.staffPermission.findFirst({
+        where: {
           userId: user.id,
-          section: normalizedSection,
-          accessLevel: validLevel,
-          grantedByUserId: grantedBy,
+          section: cleanSection,
           revokedAt: null,
         },
       });
 
+      let permission;
+      if (existing) {
+        permission = await prisma.staffPermission.update({
+          where: { id: existing.id },
+          data: {
+            accessLevel: cleanLevel,
+            notes: notes ? String(notes).trim() : existing.notes,
+          },
+        });
+      } else {
+        permission = await prisma.staffPermission.create({
+          data: {
+            userId: user.id,
+            section: cleanSection,
+            accessLevel: cleanLevel,
+            grantedByUserId: auth.userId || auth.email || 'site_owner',
+            notes: notes ? String(notes).trim() : null,
+          },
+        });
+      }
+
+      // Audit log the grant action
+      await prisma.activityLog.create({
+        data: {
+          action: 'STAFF_PERMISSION_GRANTED',
+          entityType: 'STAFF_PERMISSION',
+          entityId: permission.id,
+          userEmail: auth.email || 'owner',
+          userName: auth.dbUser?.name || 'Site Owner',
+          details: {
+            targetEmail: cleanEmail,
+            targetUserId: user.id,
+            section: cleanSection,
+            accessLevel: cleanLevel,
+            grantedAt: now.toISOString(),
+          },
+        },
+      }).catch(() => {});
+
       return NextResponse.json({
         success: true,
         source: 'database',
-        permission: createdPermission,
-        message: `Successfully granted ${validLevel} permission on '${normalizedSection}' to ${normalizedEmail}.`,
+        permission,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+        message: `Successfully granted ${cleanLevel} access on '${cleanSection}' to ${cleanEmail}.`,
       });
     } catch (dbError) {
-      console.warn('Database write for staff permission skipped:', (dbError as Error).message);
+      console.warn('Database write for staff permission failed, falling back to server memory:', (dbError as Error).message);
     }
 
     // 2. Server memory fallback
-    const newPerm: StaffPermission = {
-      id: `perm-${Date.now()}-${normalizedSection}`,
-      userId: normalizedEmail,
-      section: normalizedSection,
-      accessLevel: validLevel,
-      grantedByUserId: grantedBy,
-      grantedAt: new Date().toISOString(),
+    const fallbackPermId = `perm-dyn-${Date.now()}`;
+    const newFallbackPerm: StaffPermission = {
+      id: fallbackPermId,
+      userId: cleanEmail,
+      section: cleanSection,
+      accessLevel: cleanLevel,
+      grantedByUserId: auth.email || 'site_owner',
+      grantedAt: now.toISOString(),
       revokedAt: null,
     };
-    serverPermissionsFallback.push(newPerm);
 
-    const existingStaff = serverStaffFallback.find((u) => u.email === normalizedEmail);
-    if (!existingStaff) {
-      serverStaffFallback.push({
-        id: `user-staff-${Date.now()}`,
-        name: name || normalizedEmail.split('@')[0],
-        email: normalizedEmail,
-        role: 'INSTRUCTOR',
-        isOwner: false,
-        staffSections: [normalizedSection as AdminSection],
-      });
+    serverPermissionsFallback.unshift(newFallbackPerm);
+
+    let fallbackUser = serverStaffFallback.find((u) => u.email?.toLowerCase() === cleanEmail);
+    if (!fallbackUser) {
+      fallbackUser = {
+        id: `user-sim-${cleanEmail.replace(/[^a-z0-9]/g, '-')}`,
+        email: cleanEmail,
+        name: name ? String(name).trim() : cleanEmail.split('@')[0],
+        role: 'ADMIN',
+        staffSections: [cleanSection],
+      };
+      serverStaffFallback.push(fallbackUser);
+    } else if (!fallbackUser.staffSections?.includes(cleanSection)) {
+      fallbackUser.staffSections = [...(fallbackUser.staffSections || []), cleanSection];
     }
 
     return NextResponse.json({
       success: true,
       source: 'server_fallback',
-      permission: newPerm,
-      message: `Granted ${validLevel} permission on '${normalizedSection}' to ${normalizedEmail}.`,
+      permission: newFallbackPerm,
+      user: fallbackUser,
+      message: `Successfully granted ${cleanLevel} access on '${cleanSection}' to ${cleanEmail} (server memory fallback).`,
     });
   } catch (error) {
     return NextResponse.json(
@@ -251,16 +274,13 @@ export async function POST(req: NextRequest) {
 
 /**
  * DELETE /api/admin/team
- * Soft-revokes an existing staff permission record by setting revokedAt = now().
- * Preserves the historical audit trail without hard-deleting the row.
- * Strictly Site Owner-only.
+ * Soft-revokes a staff member's section permission.
+ * Strictly Site Owner-only. Preserves full audit trail.
  */
 export async function DELETE(req: NextRequest) {
   try {
-    const serverAuth = await getServerAuthUser().catch(() => null);
-    const callerEmail = serverAuth?.email || getCallerEmail(req);
-    const isOwner = Boolean(serverAuth?.isOwner || isSiteOwner(callerEmail));
-    if (!isOwner) {
+    const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated || !auth.isOwner) {
       return NextResponse.json(
         {
           success: false,

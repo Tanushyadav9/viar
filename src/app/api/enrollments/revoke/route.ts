@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import { getServerAuthUser } from '@/lib/auth/serverAuth';
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'students',
-      requiredLevel: 'MANAGE',
-    });
-
+    const auth = await getServerAuthUser();
     // Rule: "The Owner can grant or revoke access manually (for example for an offline payment or a refund), with a required reason recorded in an audit log."
-    if (!accessCheck.isOwner) {
+    if (!auth.isAuthenticated || !auth.isOwner) {
       return NextResponse.json(
         {
           success: false,

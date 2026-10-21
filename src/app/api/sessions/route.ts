@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { SCHEDULED_CLASSES_FLAGSHIP } from '@/lib/data';
-import { ScheduledClass } from '@/lib/types';
-import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import type { ScheduledClass } from '@/lib/types';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 import { emailService } from '@/lib/email';
 import { env } from '@/config/env';
 
@@ -52,18 +52,12 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     // Enforce Section-Level Permission: Updating class links/recordings requires MANAGE on 'cohorts'
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'cohorts',
-      requiredLevel: 'MANAGE',
-    });
-
-    if (!accessCheck.allowed) {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'cohorts', 'MANAGE')) {
       return NextResponse.json(
         {
           success: false,
-          error: accessCheck.reason || "Forbidden: MANAGE permission on 'cohorts' required.",
+          error: "Forbidden: MANAGE permission on 'cohorts' required.",
         },
         { status: 403 }
       );

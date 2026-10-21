@@ -12,7 +12,7 @@ export default function CertificateSearchPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const router = useRouter();
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = code.trim();
     if (!trimmed) {

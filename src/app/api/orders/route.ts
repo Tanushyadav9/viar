@@ -1,51 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractAuthFromRequest } from '@/lib/auth/permissions';
+import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { prisma } from '@/lib/prisma';
 import { createOrGetActiveOrder } from '@/lib/payments/orders';
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    
-    // Resolve user: must be logged in to create an order
-    let resolvedUserId: string | undefined = auth.userId;
-    let resolvedEmail: string | undefined = auth.userEmail;
-    let resolvedName: string | undefined = undefined;
-
-    if (!resolvedUserId && resolvedEmail) {
-      const user = await prisma.user.findUnique({
-        where: { email: resolvedEmail },
-      });
-      if (user) {
-        resolvedUserId = user.id;
-        resolvedName = user.name ?? undefined;
-      }
-    }
-
-    const body = await req.json().catch(() => ({}));
-    const { courseId, cohortId, studentName, studentEmail, studentPhone, notes } = body;
-
-    // If client provided studentEmail and we have no userId, try resolving or creating user
-    if (!resolvedUserId && studentEmail) {
-      const user = await prisma.user.upsert({
-        where: { email: studentEmail.trim().toLowerCase() },
-        update: {
-          phone: studentPhone ? studentPhone.trim() : undefined,
-          name: studentName ? studentName.trim() : undefined,
-        },
-        create: {
-          email: studentEmail.trim().toLowerCase(),
-          name: studentName ? studentName.trim() : 'Student',
-          phone: studentPhone ? studentPhone.trim() : null,
-          role: 'STUDENT',
-        },
-      });
-      resolvedUserId = user.id;
-      resolvedEmail = user.email ?? undefined;
-      resolvedName = user.name ?? undefined;
-    }
-
-    if (!resolvedUserId) {
+    const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated || !auth.userId) {
       return NextResponse.json(
         {
           success: false,
@@ -54,6 +15,9 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+
+    const body = await req.json().catch(() => ({}));
+    const { courseId, cohortId, studentName, studentEmail, studentPhone, notes } = body;
 
     if (!courseId) {
       return NextResponse.json(
@@ -69,12 +33,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Always link order directly to the verified database user ID
     const result = await createOrGetActiveOrder({
-      userId: resolvedUserId,
+      userId: auth.userId,
       courseId: courseId.trim(),
       cohortId: cohortId?.trim() || undefined,
-      studentName: (studentName || resolvedName || '').trim(),
-      studentEmail: (studentEmail || resolvedEmail || '').trim(),
+      studentName: (studentName || auth.dbUser?.name || '').trim(),
+      studentEmail: (studentEmail || auth.email || '').trim(),
       studentPhone: studentPhone.trim(),
       notes: notes?.trim(),
     });
@@ -94,10 +59,11 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
+    const auth = await getServerAuthUser();
     const { searchParams } = new URL(req.url);
     const orderRef = searchParams.get('ref');
 
+    // Public lookup by order reference for checkout verification
     if (orderRef) {
       const order = await prisma.order.findUnique({
         where: { orderReference: orderRef.trim() },
@@ -114,23 +80,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, order });
     }
 
-    // Otherwise list user's orders
-    if (!auth.userId && !auth.userEmail) {
+    // Otherwise list user's orders (must be authenticated)
+    if (!auth.isAuthenticated || !auth.userId) {
       return NextResponse.json({ success: false, error: 'Unauthorized.' }, { status: 401 });
     }
 
-    let userId = auth.userId;
-    if (!userId && auth.userEmail) {
-      const user = await prisma.user.findUnique({ where: { email: auth.userEmail } });
-      if (user) userId = user.id;
-    }
-
-    if (!userId) {
-      return NextResponse.json({ success: true, orders: [] });
-    }
-
     const orders = await prisma.order.findMany({
-      where: { userId },
+      where: {
+        OR: [
+          { userId: auth.userId },
+          ...(auth.clerkId ? [{ user: { clerkId: auth.clerkId } }] : []),
+          ...(auth.email ? [{ user: { email: auth.email } }] : []),
+        ],
+      },
       include: {
         course: { select: { id: true, title: true, slug: true } },
         cohort: { select: { id: true, batchName: true } },

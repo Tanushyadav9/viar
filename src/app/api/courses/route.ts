@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { INITIAL_COURSES } from '@/lib/data';
-import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 
 function formatCourseResponse(course: Record<string, unknown> | null) {
   if (!course) return null;
@@ -20,12 +20,8 @@ export async function GET(req: NextRequest) {
     const statusParam = searchParams.get('status');
 
     // Check staff access to determine if draft/archived courses may be viewed
-    const auth = extractAuthFromRequest(req);
-    const isStaffOrOwner = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'courses',
-      requiredLevel: 'VIEW',
-    }).allowed;
+    const auth = await getServerAuthUser();
+    const isStaffOrOwner = isAuthorizedForSection(auth, 'courses', 'VIEW');
 
     // Database lookup
     try {
@@ -128,18 +124,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'courses',
-      requiredLevel: 'MANAGE',
-    });
-
-    if (!accessCheck.allowed) {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'courses', 'MANAGE')) {
       return NextResponse.json(
         {
           success: false,
-          error: accessCheck.reason || "Forbidden: MANAGE permission on 'courses' required.",
+          error: "Forbidden: MANAGE permission on 'courses' required.",
         },
         { status: 403 }
       );
@@ -177,7 +167,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Only Owner can publish directly upon creation or set custom prices
-    const initialStatus = accessCheck.isOwner ? (status || 'DRAFT') : 'DRAFT';
+    const initialStatus = auth.isOwner ? (status || 'DRAFT') : 'DRAFT';
 
     const finalSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 

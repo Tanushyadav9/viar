@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { extractAuthFromRequest, isSiteOwner, checkStaffSectionAccess } from './permissions';
+import { getServerAuthUser, isAuthorizedForSection } from './serverAuth';
+export { generateSignedPlaybackToken, generateSignedDocumentToken } from './token-crypto';
 
 export interface UserCourseAccessResult {
   isEnrolled: boolean;
@@ -20,43 +21,37 @@ export interface UserCourseAccessResult {
  * 3. All other requests -> Public Visitor (Restricted Access).
  */
 export async function verifyUserCourseAccess(
-  req: NextRequest,
+  _req: NextRequest,
   courseSlugOrId: string
 ): Promise<UserCourseAccessResult> {
-  const auth = extractAuthFromRequest(req);
-  const email = auth.userEmail?.toLowerCase().trim();
+  const auth = await getServerAuthUser();
+  const email = auth.email?.toLowerCase().trim();
   const userId = auth.userId;
 
   // 1. Site Owner check
-  if (email && isSiteOwner(email)) {
+  if (auth.isOwner) {
     return {
       isEnrolled: true,
       isStaffOrOwner: true,
-      userEmail: email,
-      userId,
+      userEmail: email || undefined,
+      userId: userId || undefined,
       reason: 'Site Owner Access',
     };
   }
 
   // 2. Staff Permission check (Granular RBAC)
-  const staffCheck = checkStaffSectionAccess({
-    user: email || userId || null,
-    section: 'courses',
-    requiredLevel: 'VIEW',
-  });
-
-  if (staffCheck.allowed) {
+  if (isAuthorizedForSection(auth, 'courses', 'VIEW')) {
     return {
       isEnrolled: true,
       isStaffOrOwner: true,
-      userEmail: email,
-      userId,
+      userEmail: email || undefined,
+      userId: userId || undefined,
       reason: 'Staff Section Access',
     };
   }
 
   // If unauthenticated, cannot be enrolled
-  if (!email && !userId) {
+  if (!auth.isAuthenticated || (!email && !userId)) {
     return {
       isEnrolled: false,
       isStaffOrOwner: false,
@@ -76,11 +71,11 @@ export async function verifyUserCourseAccess(
 
     const targetCourseId = course?.id;
 
-    // Build user match criteria
+    // Build user match criteria using verified database userId and Clerk ID
     const userMatch: Array<{ userId?: string; user?: { email?: string; clerkId?: string } }> = [];
     if (userId) {
       userMatch.push({ userId });
-      userMatch.push({ user: { clerkId: userId } });
+      userMatch.push({ user: { clerkId: auth.clerkId || userId } });
     }
     if (email) userMatch.push({ user: { email } });
 
@@ -101,8 +96,10 @@ export async function verifyUserCourseAccess(
           },
         ],
       },
-      include: {
-        user: { select: { id: true, email: true, name: true } },
+      select: {
+        id: true,
+        userId: true,
+        user: { select: { name: true, email: true } },
       },
     });
 
@@ -110,30 +107,25 @@ export async function verifyUserCourseAccess(
       return {
         isEnrolled: true,
         isStaffOrOwner: false,
-        userId: enrollment.userId,
-        userEmail: enrollment.user.email || undefined,
-        userName: enrollment.user.name || undefined,
         enrollmentId: enrollment.id,
+        userId: enrollment.userId,
+        userName: enrollment.user.name,
+        userEmail: enrollment.user.email || undefined,
         reason: 'Active Student Enrollment',
       };
     }
+
+    return {
+      isEnrolled: false,
+      isStaffOrOwner: false,
+      reason: 'No Active Enrollment Found',
+    };
   } catch (err) {
-    console.warn('Database enrollment verification error:', (err as Error).message);
+    console.warn('[verifyUserCourseAccess] Database check error:', err);
+    return {
+      isEnrolled: false,
+      isStaffOrOwner: false,
+      reason: 'Database Error During Access Verification',
+    };
   }
-
-  return {
-    isEnrolled: false,
-    isStaffOrOwner: false,
-    userEmail: email,
-    userId,
-    reason: 'No Active Enrollment Found',
-  };
 }
-
-export {
-  generateSignedPlaybackToken,
-  verifySignedPlaybackToken,
-  generateSignedDocumentToken,
-  verifySignedDocumentToken,
-} from './token-crypto';
-

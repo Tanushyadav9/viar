@@ -1,24 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { slug: string } }
 ) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'courses',
-      requiredLevel: 'MANAGE',
-    });
-
-    if (!accessCheck.allowed) {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'courses', 'MANAGE')) {
       return NextResponse.json(
         {
           success: false,
-          error: accessCheck.reason || "Forbidden: MANAGE permission on 'courses' required.",
+          error: "Forbidden: MANAGE permission on 'courses' required.",
         },
         { status: 403 }
       );

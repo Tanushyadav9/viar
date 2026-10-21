@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { INITIAL_COHORTS } from '@/lib/data';
-import { Cohort } from '@/lib/types';
-import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import type { Cohort } from '@/lib/types';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 
 export async function GET(req: NextRequest) {
   try {
@@ -44,18 +44,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     // Enforce Section-Level Permission: Creating cohorts requires MANAGE on 'cohorts'
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'cohorts',
-      requiredLevel: 'MANAGE',
-    });
-
-    if (!accessCheck.allowed) {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'cohorts', 'MANAGE')) {
       return NextResponse.json(
         {
           success: false,
-          error: accessCheck.reason || "Forbidden: MANAGE permission on 'cohorts' required.",
+          error: "Forbidden: MANAGE permission on 'cohorts' required.",
         },
         { status: 403 }
       );

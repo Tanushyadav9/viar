@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractAuthFromRequest, isSiteOwner } from '@/lib/auth/permissions';
+import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { getPaymentSettings, updatePaymentSettings } from '@/lib/payments/settings';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const auth = extractAuthFromRequest(req);
-    const userEmail = auth.userEmail || '';
+    const auth = await getServerAuthUser();
 
     // Only Owner is allowed to inspect or manage critical payment routing settings
-    if (!isSiteOwner(userEmail)) {
+    if (!auth.isAuthenticated || !auth.isOwner) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Only the Site Owner can access payment settings.' },
         { status: 403 }
@@ -27,10 +26,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const userEmail = auth.userEmail || '';
+    const auth = await getServerAuthUser();
 
-    if (!isSiteOwner(userEmail)) {
+    if (!auth.isAuthenticated || !auth.isOwner) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Only the Site Owner can modify payment routing settings.' },
         { status: 403 }
@@ -46,7 +44,7 @@ export async function POST(req: NextRequest) {
       qrImageUrl: qrImageUrl ? String(qrImageUrl) : null,
       whatsappNumber: String(whatsappNumber || ''),
       orderExpiryDays: Number(orderExpiryDays) || 3,
-      updatedByEmail: userEmail,
+      updatedByEmail: auth.email || 'aapkaastro1606@gmail.com',
     });
 
     return NextResponse.json({

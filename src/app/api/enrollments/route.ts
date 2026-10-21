@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 import { emailService } from '@/lib/email';
 import { env } from '@/config/env';
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
+    const auth = await getServerAuthUser();
     const { searchParams } = new URL(req.url);
     const requestedUserId = searchParams.get('userId');
     const courseId = searchParams.get('courseId');
@@ -14,24 +14,21 @@ export async function GET(req: NextRequest) {
     const searchQuery = searchParams.get('q') || '';
 
     const isSelfQuery = Boolean(
-      requestedUserId && (
-        (auth.userId && (requestedUserId === auth.userId || requestedUserId === 'me')) ||
-        (auth.userEmail && requestedUserId.toLowerCase() === auth.userEmail.toLowerCase())
-      )
+      auth.isAuthenticated &&
+      requestedUserId &&
+      (requestedUserId === auth.userId ||
+       requestedUserId === auth.clerkId ||
+       requestedUserId === 'me' ||
+       requestedUserId === 'self' ||
+       (auth.email && requestedUserId.toLowerCase() === auth.email.toLowerCase()))
     );
 
     if (!isSelfQuery) {
-      const accessCheck = checkStaffSectionAccess({
-        user: auth.userEmail || auth.userId || null,
-        section: 'students',
-        requiredLevel: 'VIEW',
-      });
-
-      if (!accessCheck.allowed) {
+      if (!isAuthorizedForSection(auth, 'students', 'VIEW')) {
         return NextResponse.json(
           {
             success: false,
-            error: accessCheck.reason || "Forbidden: VIEW permission on 'students' required.",
+            error: "Forbidden: VIEW permission on 'students' required.",
           },
           { status: 403 }
         );
@@ -172,7 +169,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'students', 'MANAGE')) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden: MANAGE permission on 'students' required." },
+        { status: 403 }
+      );
+    }
     const body = await req.json();
     const {
       studentName,

@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'students',
-      requiredLevel: 'VIEW',
-    });
-
-    if (!accessCheck.allowed) {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'students', 'VIEW')) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Staff access required to export student roster.' },
         { status: 403 }

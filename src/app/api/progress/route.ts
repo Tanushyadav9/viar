@@ -1,25 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { extractAuthFromRequest } from '@/lib/auth/permissions';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const auth = extractAuthFromRequest(req);
-    const userId = searchParams.get('userId') || auth.userId;
-    const courseId = searchParams.get('courseId');
-
-    if (!userId) {
+    const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated || !auth.userId) {
       return NextResponse.json(
-        { success: false, error: 'userId parameter is required' },
-        { status: 400 }
+        { success: false, error: 'Authentication required. Please sign in.' },
+        { status: 401 }
       );
     }
 
+    const { searchParams } = new URL(req.url);
+    const requestedUserId = searchParams.get('userId');
+    const courseId = searchParams.get('courseId');
+
+    // A student can only view their own progress.
+    // Staff with 'students' permission or Owner can view progress for any student.
+    const isStaffOrOwner = isAuthorizedForSection(auth, 'students', 'VIEW');
+    const targetUserId = (isStaffOrOwner && requestedUserId) ? requestedUserId : auth.userId;
+
     try {
-      // 1. Fetch relational LessonProgress
+      // 1. Fetch relational LessonProgress using database userId foreign key
       const lessonProgress = await prisma.lessonProgress.findMany({
-        where: { userId },
+        where: {
+          OR: [
+            { userId: targetUserId },
+            { user: { clerkId: targetUserId } },
+          ],
+        },
         include: {
           lesson: {
             include: {
@@ -32,7 +42,12 @@ export async function GET(req: NextRequest) {
 
       // 2. Fetch legacy sessionProgress for backward compatibility
       const sessionProgress = await prisma.sessionProgress.findMany({
-        where: { userId },
+        where: {
+          OR: [
+            { userId: targetUserId },
+            { user: { clerkId: targetUserId } },
+          ],
+        },
         include: { classSession: true },
       });
 
@@ -89,17 +104,18 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const auth = extractAuthFromRequest(req);
-    const userId = body.userId || auth.userId;
-    const { lessonId, classSessionId, watched, completed, watchedSeconds, totalDurationSeconds } = body;
-
-    if (!userId) {
+    const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated || !auth.userId) {
       return NextResponse.json(
-        { success: false, error: 'userId is required' },
-        { status: 400 }
+        { success: false, error: 'Authentication required. Please sign in.' },
+        { status: 401 }
       );
     }
+
+    const body = await req.json().catch(() => ({}));
+    // Database user ID is the authoritative foreign key
+    const userId = auth.userId;
+    const { lessonId, classSessionId, watched, completed, watchedSeconds, totalDurationSeconds } = body;
 
     // Determine completion:
     // 1. Explicit boolean flag if passed

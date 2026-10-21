@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 
 export async function GET(
   req: NextRequest,
@@ -57,18 +57,12 @@ export async function POST(
   { params }: { params: { slug: string } }
 ) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'courses',
-      requiredLevel: 'MANAGE',
-    });
-
-    if (!accessCheck.allowed) {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'courses', 'MANAGE')) {
       return NextResponse.json(
         {
           success: false,
-          error: accessCheck.reason || "Forbidden: MANAGE permission on 'courses' required.",
+          error: "Forbidden: MANAGE permission on 'courses' required.",
         },
         { status: 403 }
       );
@@ -105,7 +99,7 @@ export async function POST(
       await prisma.activityLog.create({
         data: {
           userId: auth.userId || null,
-          userEmail: auth.userEmail || null,
+          userEmail: auth.email || null,
           action: 'MODULE_CREATED',
           entityType: 'MODULE',
           entityId: newModule.id,
@@ -147,7 +141,7 @@ export async function POST(
       await prisma.activityLog.create({
         data: {
           userId: auth.userId || null,
-          userEmail: auth.userEmail || null,
+          userEmail: auth.email || null,
           action: 'LESSON_CREATED',
           entityType: 'LESSON',
           entityId: newLesson.id,
@@ -173,18 +167,12 @@ export async function PATCH(
   req: NextRequest
 ) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'courses',
-      requiredLevel: 'MANAGE',
-    });
-
-    if (!accessCheck.allowed) {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'courses', 'MANAGE')) {
       return NextResponse.json(
         {
           success: false,
-          error: accessCheck.reason || "Forbidden: MANAGE permission on 'courses' required.",
+          error: "Forbidden: MANAGE permission on 'courses' required.",
         },
         { status: 403 }
       );
@@ -252,18 +240,12 @@ export async function DELETE(
   { params }: { params: { slug: string } }
 ) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'courses',
-      requiredLevel: 'MANAGE',
-    });
-
-    if (!accessCheck.allowed) {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'courses', 'MANAGE')) {
       return NextResponse.json(
         {
           success: false,
-          error: accessCheck.reason || "Forbidden: MANAGE permission on 'courses' required.",
+          error: "Forbidden: MANAGE permission on 'courses' required.",
         },
         { status: 403 }
       );

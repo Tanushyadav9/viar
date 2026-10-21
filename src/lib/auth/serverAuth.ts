@@ -1,24 +1,33 @@
-import { auth, currentUser } from '@clerk/nextjs/server';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
+import type { auth as ClerkAuthFn, currentUser as ClerkCurrentUserFn } from '@clerk/nextjs/server';
+import { createRequire } from 'node:module';
+import { redirect } from 'next/navigation.js';
+import { prisma } from '../prisma.ts';
 
-import { validateRedirectUrl } from './urlValidation';
-import { syncDatabaseUser } from './userSync';
+const req = createRequire(import.meta.url);
+const clerkServer = req('@clerk/nextjs/server') as {
+  auth: typeof ClerkAuthFn;
+  currentUser: typeof ClerkCurrentUserFn;
+};
+const { auth, currentUser } = clerkServer;
+
+import { validateRedirectUrl } from './urlValidation.ts';
+import { syncDatabaseUser } from './userSync.ts';
 
 export { validateRedirectUrl };
 
 export interface ServerAuthResult {
   isAuthenticated: boolean;
-  userId: string | null;
-  email: string | null;
+  userId: string | null;       // Database user ID (primary key for foreign-key relations)
+  clerkId: string | null;      // Clerk user ID (user_...)
+  email: string | null;        // Verified primary email
   isEmailVerified: boolean;
   isOwner: boolean;
   isStaff: boolean;
-  staffSections: string[];
+  staffSections: string[];     // Granted admin sections (lowercase)
   role: 'STUDENT' | 'INSTRUCTOR' | 'ADMIN' | 'OWNER';
   dbUser: {
     id: string;
+    clerkId: string | null;
     email: string | null;
     name: string;
     role: string;
@@ -26,24 +35,35 @@ export interface ServerAuthResult {
   } | null;
 }
 
+// Test harness override for automated unit tests only (strictly inert in production)
+let _testAuthOverride: ServerAuthResult | null | undefined = undefined;
+
+export function setTestAuthUser(user: ServerAuthResult | null | undefined) {
+  if (process.env.NODE_ENV === 'production') return;
+  _testAuthOverride = user;
+}
+
 /**
  * Resolves the authenticated user on the server with Just-In-Time (JIT) Neon database sync.
  * 
  * CORE SECURITY & RELIABILITY GUARANTEES:
- * 1. Just-In-Time (JIT) Sync: Creates/links the database User row on the first authenticated
+ * 1. Verification: Uses Clerk's official cryptographic verification.
+ *    Never decodes unverified session cookies or tokens.
+ *    Never reads email or roles from raw cookies.
+ * 2. Identity Source of Truth: Database user id is returned as `userId` for all foreign-key relations.
+ * 3. Just-In-Time (JIT) Sync: Creates/links the database User row on the first authenticated
  *    server request, ensuring a valid row exists even if the Clerk webhook is delayed or missing.
- * 2. Idempotent Linking: If a user row with the same email already exists (e.g. from an order),
- *    it links the clerkId rather than throwing a duplicate constraint or creating duplicate rows.
- * 3. Authoritative Role Computation:
+ * 4. Authoritative Role Computation:
  *    - An account is recognized as OWNER IF AND ONLY IF its verified primary email
  *      strictly equals OWNER_EMAIL (case-insensitively).
  *    - A database OWNER for ANY other email is treated as STUDENT and logged.
- *    - Staff access stays through /admin/team and StaffPermission.
+ *    - Staff access stays through /admin/team and StaffPermission table.
  */
 export async function getServerAuthUser(): Promise<ServerAuthResult> {
   const fallbackResult: ServerAuthResult = {
     isAuthenticated: false,
     userId: null,
+    clerkId: null,
     email: null,
     isEmailVerified: false,
     isOwner: false,
@@ -53,67 +73,14 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
     dbUser: null,
   };
 
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      try {
-        const cookieStore = cookies();
-        const diagKey = cookieStore.get('viar_owner_key')?.value;
-        if (diagKey === 'viar-owner-diagnostics-2026') {
-          const ownerEmail = (process.env.OWNER_EMAIL || 'aapkaastro1606@gmail.com').trim().toLowerCase();
-          return {
-            isAuthenticated: true,
-            userId: 'user_live_owner_niraj',
-            email: ownerEmail,
-            isEmailVerified: true,
-            isOwner: true,
-            isStaff: true,
-            staffSections: [
-              'content',
-              'media',
-              'courses',
-              'cohorts',
-              'students',
-              'quizzes',
-              'analytics',
-              'payments',
-              'staff',
-            ],
-            role: 'OWNER',
-            dbUser: {
-              id: 'owner-acharya-niraj',
-              email: ownerEmail,
-              name: 'Acharya Niraj Kumar',
-              role: 'OWNER',
-              isOwner: true,
-            },
-          };
-        }
+  // Test-mode hook: only active in test environments, never in production
+  if ((process.env.NODE_ENV === 'test' || Boolean(process.env.NODE_TEST_CONTEXT)) && _testAuthOverride !== undefined) {
+    return _testAuthOverride || fallbackResult;
+  }
 
-        const staffVal = cookieStore.get('viar_staff_sim')?.value;
-        if (staffVal) {
-          const staffSimSections = staffVal.split(',').map((s) => s.trim().toLowerCase());
-          return {
-            isAuthenticated: true,
-            userId: 'user_staff_sim_member',
-            email: 'staff@viar.in',
-            isEmailVerified: true,
-            isOwner: false,
-            isStaff: true,
-            staffSections: staffSimSections,
-            role: 'ADMIN',
-            dbUser: {
-              id: 'staff-sim-user',
-              email: 'staff@viar.in',
-              name: 'Staff Member',
-              role: 'ADMIN',
-              isOwner: false,
-            },
-          };
-        }
-      } catch {
-        // cookies() not accessible in current context
-      }
+  try {
+    const { userId: clerkUserId } = await auth();
+    if (!clerkUserId) {
       return fallbackResult;
     }
 
@@ -148,7 +115,7 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
     let dbUser: ServerAuthResult['dbUser'] = null;
     try {
       const syncResult = await syncDatabaseUser({
-        clerkId: userId,
+        clerkId: clerkUserId,
         email: verifiedEmail || (clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase() ?? null),
         name: clerkUser ? `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() : null,
         phone: clerkUser?.phoneNumbers?.[0]?.phoneNumber || null,
@@ -163,12 +130,13 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
         dbUser = await prisma.user.findFirst({
           where: {
             OR: [
-              { clerkId: userId },
+              { clerkId: clerkUserId },
               ...(verifiedEmail ? [{ email: verifiedEmail }] : []),
             ],
           },
           select: {
             id: true,
+            clerkId: true,
             email: true,
             name: true,
             role: true,
@@ -188,7 +156,7 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
     if (isOwner) {
       role = 'OWNER';
       isStaff = true;
-      staffSections = ['courses', 'cohorts', 'students', 'quizzes', 'analytics', 'payments', 'staff'];
+      staffSections = ['content', 'media', 'courses', 'cohorts', 'students', 'quizzes', 'analytics', 'payments', 'staff'];
     } else {
       // Query active StaffPermission records from Neon PostgreSQL
       if (dbUser) {
@@ -229,8 +197,9 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
 
     return {
       isAuthenticated: true,
-      userId,
-      email: verifiedEmail,
+      userId: dbUser?.id || clerkUserId,
+      clerkId: clerkUserId,
+      email: verifiedEmail || dbUser?.email || null,
       isEmailVerified,
       isOwner,
       isStaff,
@@ -242,6 +211,21 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
     console.warn('[getServerAuthUser] Error resolving server session:', error);
     return fallbackResult;
   }
+}
+
+/**
+ * Checks whether the authenticated user is authorized for a specific section.
+ */
+export function isAuthorizedForSection(
+  authResult: ServerAuthResult,
+  section: string,
+  requiredLevel?: string
+): boolean {
+  void requiredLevel;
+  if (!authResult.isAuthenticated) return false;
+  if (authResult.isOwner) return true;
+  if (section.toLowerCase() === 'staff') return false; // Staff section is strictly Owner-only!
+  return authResult.staffSections.map((s) => s.toLowerCase()).includes(section.toLowerCase());
 }
 
 /**
@@ -258,10 +242,6 @@ export async function requireAuth(targetPath: string = '/dashboard'): Promise<Se
 
 /**
  * Server Layout Guard: Requires Site Owner OR authorized Staff member.
- * - Site Owner: Reaches admin areas directly with no redirect and no loop.
- * - Staff member: Allowed into admin area if granted permissions exist.
- * - Students: Redirected away to /dashboard?error=admin_restricted (no loop).
- * - Unauthenticated: Redirected to /login with validated redirect_url.
  */
 export async function requireAdminOrStaff(targetPath: string = '/admin'): Promise<ServerAuthResult> {
   const result = await getServerAuthUser();
@@ -277,10 +257,6 @@ export async function requireAdminOrStaff(targetPath: string = '/admin'): Promis
 
 /**
  * Server Layout Guard: Requires Site Owner strictly.
- * - Site Owner: Passes directly with no redirect.
- * - Staff member: Redirected to /admin?error=owner_only (retained in admin area, notified of restriction).
- * - Students: Redirected away to /dashboard?error=admin_restricted.
- * - Unauthenticated: Redirected to /login with validated redirect_url.
  */
 export async function requireOwner(targetPath: string = '/admin'): Promise<ServerAuthResult> {
   const result = await getServerAuthUser();
@@ -300,9 +276,6 @@ export async function requireOwner(targetPath: string = '/admin'): Promise<Serve
 
 /**
  * Server Layout Guard: Requires Instructor or Admin or Owner or authorized Staff.
- * - Site Owner & Staff: Passes directly with no redirect.
- * - Students: Redirected away to /dashboard?error=instructor_restricted.
- * - Unauthenticated: Redirected to /login with validated redirect_url.
  */
 export async function requireInstructor(targetPath: string = '/instructor'): Promise<ServerAuthResult> {
   const result = await getServerAuthUser();

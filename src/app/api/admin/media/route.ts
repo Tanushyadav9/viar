@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractAuthFromRequest, verifyRouteAccess } from '@/lib/auth/permissions';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 import {
   listMediaAssets,
   createMediaAsset,
@@ -15,15 +15,13 @@ import {
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    if (!auth.sessionToken && !auth.userEmail) {
+    const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Session required.' }, { status: 401 });
     }
 
-    const access = verifyRouteAccess(req, 'media', 'VIEW');
-    const contentAccess = verifyRouteAccess(req, 'content', 'VIEW');
-
-    if (!access.allowed && !contentAccess.allowed && !access.isOwner) {
+    const hasAccess = isAuthorizedForSection(auth, 'media', 'VIEW') || isAuthorizedForSection(auth, 'content', 'VIEW');
+    if (!hasAccess) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: You do not have permission to view media assets.' },
         { status: 403 }
@@ -51,65 +49,79 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/admin/media
- * Registers an uploaded image asset into the media library.
+ * Uploads a new media asset, writes it to Neon Object Storage (or local media directory),
+ * records metadata in PostgreSQL, and enforces the 5MB file size limit.
  */
 export async function POST(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    if (!auth.sessionToken && !auth.userEmail) {
+    const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Session required.' }, { status: 401 });
     }
 
-    const access = verifyRouteAccess(req, 'media', 'MANAGE');
-    const contentAccess = verifyRouteAccess(req, 'content', 'MANAGE');
-
-    if (!access.allowed && !contentAccess.allowed && !access.isOwner) {
+    const hasManageAccess = isAuthorizedForSection(auth, 'media', 'MANAGE') || isAuthorizedForSection(auth, 'content', 'MANAGE');
+    if (!hasManageAccess) {
       return NextResponse.json(
-        { success: false, error: 'Forbidden: MANAGE access required to register media assets.' },
+        { success: false, error: 'Forbidden: MANAGE access required to upload media.' },
         { status: 403 }
       );
     }
 
-    const body = await req.json().catch(() => ({}));
-    const { filename, url, altTextEn, altTextHi, mimeType, sizeBytes, width, height } = body;
+    const formData = await req.formData();
+    const file = formData.get('file') as File | null;
+    const label = (formData.get('label') as string) || undefined;
+    const altTextEn = (formData.get('altTextEn') as string) || undefined;
+    const altTextHi = (formData.get('altTextHi') as string) || undefined;
+    const folder = (formData.get('folder') as string) || 'general';
 
-    if (!filename || !url || !altTextEn) {
+    if (!file) {
       return NextResponse.json(
-        { success: false, error: 'Filename, URL, and altTextEn are mandatory fields.' },
+        { success: false, error: 'No file was provided in the upload request.' },
         { status: 400 }
       );
     }
 
-    if (sizeBytes && sizeBytes > MAX_IMAGE_SIZE_BYTES) {
+    // 1. Enforce 5MB upload ceiling
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
       return NextResponse.json(
-        { success: false, error: 'File size exceeds 5 MB limit.' },
+        {
+          success: false,
+          error: `File exceeds maximum allowed upload limit of 5MB (${(file.size / (1024 * 1024)).toFixed(1)}MB provided).`,
+        },
         { status: 400 }
       );
     }
 
-    if (mimeType && !ALLOWED_MIME_TYPES.has(mimeType)) {
+    // 2. Validate MIME type
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { success: false, error: 'Only JPG, PNG, and WebP images are allowed.' },
+        {
+          success: false,
+          error: `Unsupported image format (${file.type}). Allowed formats: WebP, AVIF, PNG, JPEG, SVG.`,
+        },
         { status: 400 }
       );
     }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
     const asset = await createMediaAsset({
-      filename: String(filename),
-      url: String(url),
-      altTextEn: String(altTextEn),
-      altTextHi: altTextHi ? String(altTextHi) : undefined,
-      mimeType: String(mimeType || 'image/jpeg'),
-      sizeBytes: Number(sizeBytes || 0),
-      width: width ? Number(width) : undefined,
-      height: height ? Number(height) : undefined,
-      userId: auth.userId || auth.userEmail || 'system',
+      buffer,
+      fileName: file.name,
+      mimeType: file.type,
+      fileSize: file.size,
+      label,
+      altTextEn,
+      altTextHi,
+      folder,
+      uploadedByEmail: auth.email || 'site_owner',
     });
 
     return NextResponse.json({
       success: true,
       asset,
-      message: 'Media asset registered successfully.',
+      message: `Asset '${file.name}' uploaded and registered successfully.`,
     });
   } catch (error) {
     return NextResponse.json(
@@ -121,19 +133,19 @@ export async function POST(req: NextRequest) {
 
 /**
  * DELETE /api/admin/media
- * Removes a media asset if not currently referenced anywhere on the site.
+ * Deletes an uploaded media asset if not in active use on published pages.
  */
 export async function DELETE(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    if (!auth.sessionToken && !auth.userEmail) {
+    const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Session required.' }, { status: 401 });
     }
 
-    const access = verifyRouteAccess(req, 'media', 'MANAGE');
-    if (!access.allowed && !access.isOwner) {
+    const hasManageAccess = isAuthorizedForSection(auth, 'media', 'MANAGE') || isAuthorizedForSection(auth, 'content', 'MANAGE');
+    if (!hasManageAccess) {
       return NextResponse.json(
-        { success: false, error: 'Forbidden: MANAGE access required to delete media assets.' },
+        { success: false, error: 'Forbidden: MANAGE access required to delete media.' },
         { status: 403 }
       );
     }
@@ -148,14 +160,17 @@ export async function DELETE(req: NextRequest) {
 
     if (!id) {
       return NextResponse.json(
-        { success: false, error: 'Asset ID is required for deletion.' },
+        { success: false, error: 'Media asset ID is required.' },
         { status: 400 }
       );
     }
 
-    const result = await deleteMediaAsset(id, auth.userId || auth.userEmail || 'owner');
+    const deleted = await deleteMediaAsset(id);
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      success: true,
+      message: `Media asset '${deleted.fileName}' deleted successfully.`,
+    });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: (error as Error).message },

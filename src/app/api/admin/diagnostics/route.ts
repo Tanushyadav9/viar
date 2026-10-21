@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth as getClerkAuth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/config/env';
-import { extractAuthFromRequest, isSiteOwner, isDevSimulationAllowed } from '@/lib/auth/permissions';
+import { isSiteOwner } from '@/lib/auth/permissions';
 import { getServerAuthUser } from '@/lib/auth/serverAuth';
 
 export const dynamic = 'force-dynamic';
@@ -30,7 +30,6 @@ function maskEmail(email: string | null | undefined): string {
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
     const authHeader = req.headers.get('authorization');
     const secretKey = process.env.CLERK_SECRET_KEY;
     const keyParam = req.nextUrl.searchParams.get('key');
@@ -48,7 +47,7 @@ export async function GET(req: NextRequest) {
     let clerkUserId: string | null = serverAuth?.userId || null;
     let clerkSessionIdPrefix: string | null = null;
     let dbUserIsOwner = Boolean(serverAuth?.isOwner || serverAuth?.dbUser?.isOwner);
-    let resolvedEmail: string | null = serverAuth?.email || auth.userEmail || null;
+    let resolvedEmail: string | null = serverAuth?.email || null;
 
     if (!clerkUserId) {
       try {
@@ -107,8 +106,7 @@ export async function GET(req: NextRequest) {
       isSecretAuthorized ||
       Boolean(serverAuth?.isOwner) ||
       dbUserIsOwner ||
-      isOwnerByEmail ||
-      (isDevSimulationAllowed() && (auth.userRole === 'OWNER' || auth.userRole === 'ADMIN'));
+      isOwnerByEmail;
 
     if (!isAuthorized) {
       return NextResponse.json(

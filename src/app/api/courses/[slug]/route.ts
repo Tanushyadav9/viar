@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { INITIAL_COURSES } from '@/lib/data';
-import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 import {
   verifyUserCourseAccess,
   generateSignedPlaybackToken,
@@ -209,18 +209,12 @@ export async function PATCH(
   { params }: { params: { slug: string } }
 ) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'courses',
-      requiredLevel: 'MANAGE',
-    });
-
-    if (!accessCheck.allowed) {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'courses', 'MANAGE')) {
       return NextResponse.json(
         {
           success: false,
-          error: accessCheck.reason || "Forbidden: MANAGE permission on 'courses' required.",
+          error: "Forbidden: MANAGE permission on 'courses' required.",
         },
         { status: 403 }
       );
@@ -242,7 +236,7 @@ export async function PATCH(
 
     // 2. Rule: Publish and unpublish are OWNER-ONLY
     if (body.status !== undefined && body.status !== existing.status) {
-      if (!accessCheck.isOwner) {
+      if (!auth.isOwner) {
         return NextResponse.json(
           {
             success: false,
@@ -260,7 +254,7 @@ export async function PATCH(
       (body.originalPriceInr !== undefined && Number(body.originalPriceInr) !== existing.originalPriceInr) ||
       (body.originalPriceUsd !== undefined && Number(body.originalPriceUsd) !== existing.originalPriceUsd);
 
-    if (isPriceAltered && !accessCheck.isOwner) {
+    if (isPriceAltered && !auth.isOwner) {
       return NextResponse.json(
         {
           success: false,
@@ -348,15 +342,9 @@ export async function DELETE(
   { params }: { params: { slug: string } }
 ) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'courses',
-      requiredLevel: 'MANAGE',
-    });
-
+    const auth = await getServerAuthUser();
     // Rule: Delete is Owner-only
-    if (!accessCheck.isOwner) {
+    if (!auth.isAuthenticated || !auth.isOwner) {
       return NextResponse.json(
         {
           success: false,

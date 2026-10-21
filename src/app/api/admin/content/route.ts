@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractAuthFromRequest, verifyRouteAccess } from '@/lib/auth/permissions';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 import {
   getContentItem,
   getCollectionItems,
@@ -7,7 +7,7 @@ import {
   updateContentStatus,
 } from '@/lib/content/contentService';
 import { prisma } from '@/lib/prisma';
-import { ContentStatus } from '@/lib/types';
+import type { ContentStatus } from '@/lib/types';
 
 const OWNER_ONLY_COLLECTIONS = new Set(['legal', 'pricing', 'payment_settings', 'payment']);
 
@@ -17,13 +17,12 @@ const OWNER_ONLY_COLLECTIONS = new Set(['legal', 'pricing', 'payment_settings', 
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    if (!auth.sessionToken && !auth.userEmail) {
+    const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Session required.' }, { status: 401 });
     }
 
-    const access = verifyRouteAccess(req, 'content', 'VIEW');
-    if (!access.allowed && !access.isOwner) {
+    if (!isAuthorizedForSection(auth, 'content', 'VIEW')) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: You do not have permission to view content.' },
         { status: 403 }
@@ -63,13 +62,12 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    if (!auth.sessionToken && !auth.userEmail) {
+    const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Session required.' }, { status: 401 });
     }
 
-    const access = verifyRouteAccess(req, 'content', 'MANAGE');
-    if (!access.allowed && !access.isOwner) {
+    if (!isAuthorizedForSection(auth, 'content', 'MANAGE')) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: MANAGE access required to edit content.' },
         { status: 403 }
@@ -102,7 +100,7 @@ export async function POST(req: NextRequest) {
     const normalizedCollection = String(collection).trim().toLowerCase();
 
     // Strict Role Boundary: Legal pages and pricing settings are strictly Owner-Only
-    if (OWNER_ONLY_COLLECTIONS.has(normalizedCollection) && !access.isOwner) {
+    if (OWNER_ONLY_COLLECTIONS.has(normalizedCollection) && !auth.isOwner) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Legal policies and pricing settings can only be edited by the Site Owner.' },
         { status: 403 }
@@ -138,39 +136,40 @@ export async function POST(req: NextRequest) {
     }
 
     // Quick status toggle action
-    if (action === 'status' && id && status) {
+    if (action === 'hide' || action === 'publish') {
+      const newStatus: ContentStatus = action === 'hide' ? 'HIDDEN' : 'PUBLISHED';
       const updated = await updateContentStatus(
-        id,
-        status as ContentStatus,
-        auth.userId || auth.userEmail || 'admin'
+        collection,
+        key,
+        newStatus,
+        auth.email || 'system',
+        changeSummary || `Status set to ${newStatus}`
       );
       return NextResponse.json({
         success: true,
         item: updated,
-        message: `Content status updated to ${status}.`,
+        message: `Content item status updated to ${newStatus}.`,
       });
     }
 
-    const saved = await saveContentItem(
-      {
-        collection: normalizedCollection,
-        key: String(key).trim().toLowerCase(),
-        titleEn: titleEn ? String(titleEn) : '',
-        titleHi: titleHi ? String(titleHi) : '',
-        contentEn: contentEn ? String(contentEn) : '',
-        contentHi: contentHi ? String(contentHi) : '',
-        metadata: typeof metadata === 'object' ? metadata : {},
-        status: (status as ContentStatus) || 'PUBLISHED',
-        sortOrder: typeof sortOrder === 'number' ? sortOrder : 0,
-        changeSummary: changeSummary ? String(changeSummary) : undefined,
-      },
-      auth.userId || auth.userEmail || 'admin'
-    );
+    const saved = await saveContentItem({
+      collection: normalizedCollection,
+      key: String(key).trim(),
+      titleEn: titleEn ? String(titleEn) : undefined,
+      titleHi: titleHi ? String(titleHi) : undefined,
+      contentEn: contentEn !== undefined ? String(contentEn) : undefined,
+      contentHi: contentHi !== undefined ? String(contentHi) : undefined,
+      metadata: typeof metadata === 'object' && metadata !== null ? metadata : undefined,
+      status: (status as ContentStatus) || 'PUBLISHED',
+      sortOrder: typeof sortOrder === 'number' ? sortOrder : 0,
+      authorEmail: auth.email || 'site_owner',
+      changeSummary: changeSummary ? String(changeSummary) : (id ? 'Updated via Admin Studio' : 'Created via Admin Studio'),
+    });
 
     return NextResponse.json({
       success: true,
       item: saved,
-      message: 'Content published successfully. Changes are live on the website.',
+      message: `Content item '${key}' saved successfully.`,
     });
   } catch (error) {
     return NextResponse.json(
@@ -182,17 +181,16 @@ export async function POST(req: NextRequest) {
 
 /**
  * DELETE /api/admin/content
- * Permanent delete of a content item after confirmation modal.
+ * Deletes a content item permanently (only permitted if not a protected site_settings item).
  */
 export async function DELETE(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    if (!auth.sessionToken && !auth.userEmail) {
+    const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Session required.' }, { status: 401 });
     }
 
-    const access = verifyRouteAccess(req, 'content', 'MANAGE');
-    if (!access.allowed && !access.isOwner) {
+    if (!isAuthorizedForSection(auth, 'content', 'MANAGE')) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: MANAGE access required to delete content.' },
         { status: 403 }
@@ -222,7 +220,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Content item not found.' }, { status: 404 });
     }
 
-    if (OWNER_ONLY_COLLECTIONS.has(item.collection) && !access.isOwner) {
+    if (OWNER_ONLY_COLLECTIONS.has(item.collection) && !auth.isOwner) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Legal pages and pricing settings can only be deleted by the Site Owner.' },
         { status: 403 }

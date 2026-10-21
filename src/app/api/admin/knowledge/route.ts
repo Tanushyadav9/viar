@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerAuthUser } from '@/lib/auth/serverAuth';
-import { extractAuthFromRequest, isSiteOwner } from '@/lib/auth/permissions';
 
 export const dynamic = 'force-dynamic';
 
-async function checkOwnerAccess(req: NextRequest): Promise<boolean> {
+async function checkOwnerAccess(): Promise<boolean> {
   const serverAuth = await getServerAuthUser();
-  if (serverAuth.isAuthenticated && serverAuth.isOwner) return true;
-
-  const headerAuth = extractAuthFromRequest(req);
-  if (isSiteOwner(headerAuth.userEmail)) return true;
-
-  return false;
+  return Boolean(serverAuth.isAuthenticated && serverAuth.isOwner);
 }
 
 /**

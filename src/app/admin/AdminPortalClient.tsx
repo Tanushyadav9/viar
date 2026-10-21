@@ -569,7 +569,7 @@ export default function AdminPortalClient({
     setEditNotes(cls.recording?.notesMarkdown || '');
   };
 
-  const handleSaveClass = (e: React.FormEvent) => {
+  const handleSaveClass = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingClass) return;
 

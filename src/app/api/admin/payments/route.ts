@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 import { generateWhatsAppActivationUrl } from '@/lib/payments/upi';
 import { logger } from '@/lib/logger';
 
@@ -11,16 +11,10 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'payments',
-      requiredLevel: 'VIEW',
-    });
-
-    if (!accessCheck.allowed) {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'payments', 'VIEW')) {
       return NextResponse.json(
-        { success: false, error: accessCheck.reason || 'Forbidden: VIEW permission on payments required' },
+        { success: false, error: 'Forbidden: VIEW permission on payments required' },
         { status: 403 }
       );
     }
@@ -92,16 +86,10 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'payments',
-      requiredLevel: 'MANAGE',
-    });
-
-    if (!accessCheck.allowed) {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'payments', 'MANAGE')) {
       return NextResponse.json(
-        { success: false, error: accessCheck.reason || 'Forbidden: MANAGE permission on payments required' },
+        { success: false, error: 'Forbidden: MANAGE permission on payments required' },
         { status: 403 }
       );
     }
@@ -132,7 +120,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const operatorIdentifier = auth.userEmail || auth.userId || 'site_owner';
+    const operatorIdentifier = auth.email || auth.userId || 'site_owner';
 
     if (action === 'VERIFY') {
       const result = await prisma.$transaction(async (tx) => {

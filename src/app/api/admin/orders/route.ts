@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractAuthFromRequest, isSiteOwner, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 import { prisma } from '@/lib/prisma';
 import type { OrderStatus } from '@prisma/client';
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const user = auth.userEmail || auth.userId || null;
-
-    // Check permissions: Owner or staff with payments:VIEW
-    const isOwnerUser = isSiteOwner(auth.userEmail || '');
-    const staffAccess = checkStaffSectionAccess({
-      user,
-      section: 'payments',
-      requiredLevel: 'VIEW',
-    });
-
-    if (!isOwnerUser && !staffAccess.allowed) {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'payments', 'VIEW')) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Access to order verification queue is restricted.' },
         { status: 403 }

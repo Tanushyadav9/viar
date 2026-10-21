@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { INITIAL_FINAL_TEST } from '@/lib/data';
-import { extractAuthFromRequest, checkStaffSectionAccess } from '@/lib/auth/permissions';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 import { verifyUserCourseAccess } from '@/lib/auth/course-access';
 
 export async function GET(req: NextRequest) {
@@ -11,12 +11,8 @@ export async function GET(req: NextRequest) {
     const cohortId = searchParams.get('cohortId');
     const quizId = searchParams.get('quizId');
 
-    const auth = extractAuthFromRequest(req);
-    const isStaff = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'quizzes',
-      requiredLevel: 'VIEW',
-    }).allowed;
+    const auth = await getServerAuthUser();
+    const isStaff = isAuthorizedForSection(auth, 'quizzes', 'VIEW');
 
     let dbQuiz = null;
     try {
@@ -120,18 +116,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = extractAuthFromRequest(req);
-    const accessCheck = checkStaffSectionAccess({
-      user: auth.userEmail || auth.userId || null,
-      section: 'quizzes',
-      requiredLevel: 'MANAGE',
-    });
-
-    if (!accessCheck.allowed) {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'quizzes', 'MANAGE')) {
       return NextResponse.json(
         {
           success: false,
-          error: accessCheck.reason || "Forbidden: MANAGE permission on 'quizzes' required.",
+          error: "Forbidden: MANAGE permission on 'quizzes' required.",
         },
         { status: 403 }
       );
