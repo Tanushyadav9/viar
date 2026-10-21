@@ -11,12 +11,16 @@ import {
   Lock,
   Award,
   ArrowRight,
-  RefreshCw,
   ExternalLink,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { User, Course } from '@/lib/types';
 import { isSiteOwner } from '@/lib/auth/permissions';
+import {
+  AsyncStateView,
+  type AsyncStateStatus,
+  type ErrorType,
+} from '@/components/common/AsyncStateView';
 
 interface EnrolledCourseItem {
   id: string;
@@ -43,20 +47,38 @@ export default function MyCoursesPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourseItem[]>([]);
   const [catalogCourses, setCatalogCourses] = useState<Course[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [pageStatus, setPageStatus] = useState<AsyncStateStatus>('loading');
+  const [errorType, setErrorType] = useState<ErrorType>('server');
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const loadStudentCourses = useCallback(async () => {
-    setIsLoading(true);
+    setPageStatus('loading');
+    setErrorMessage('');
     let user = ViarStore.getCurrentUser();
     if (!user) {
       try {
         const syncRes = await fetch('/api/users/sync');
+        if (syncRes.status === 401 || syncRes.status === 403) {
+          setPageStatus('error');
+          setErrorType('auth');
+          return;
+        }
+        if (!syncRes.ok) {
+          setPageStatus('error');
+          setErrorType('server');
+          return;
+        }
         const syncData = await syncRes.json();
         if (syncData?.user) {
           user = syncData.user;
           ViarStore.setCurrentUser(syncData.user);
         }
-      } catch {}
+      } catch (err) {
+        setPageStatus('error');
+        setErrorType('server');
+        setErrorMessage(err instanceof Error ? err.message : 'Connection failed');
+        return;
+      }
     }
     if (!user) {
       router.push('/login?returnUrl=/dashboard/courses');
@@ -69,6 +91,16 @@ export default function MyCoursesPage() {
     try {
       // 1. Fetch live courses catalog
       const coursesRes = await fetch('/api/courses');
+      if (coursesRes.status === 401 || coursesRes.status === 403) {
+        setPageStatus('error');
+        setErrorType('auth');
+        return;
+      }
+      if (!coursesRes.ok) {
+        setPageStatus('error');
+        setErrorType('server');
+        return;
+      }
       const coursesData = await coursesRes.json();
       const allCourses: Course[] = coursesData.success && Array.isArray(coursesData.courses)
         ? coursesData.courses
@@ -77,6 +109,16 @@ export default function MyCoursesPage() {
 
       // 2. Fetch live enrollments from PostgreSQL
       const enrollRes = await fetch(`/api/enrollments?userId=${user.id}`);
+      if (enrollRes.status === 401 || enrollRes.status === 403) {
+        setPageStatus('error');
+        setErrorType('auth');
+        return;
+      }
+      if (!enrollRes.ok) {
+        setPageStatus('error');
+        setErrorType('server');
+        return;
+      }
       const enrollData = await enrollRes.json();
       const rawEnrollments = enrollData.success && Array.isArray(enrollData.enrollments)
         ? enrollData.enrollments
@@ -84,6 +126,16 @@ export default function MyCoursesPage() {
 
       // 3. Fetch user progress
       const progRes = await fetch(`/api/progress?userId=${user.id}`);
+      if (progRes.status === 401 || progRes.status === 403) {
+        setPageStatus('error');
+        setErrorType('auth');
+        return;
+      }
+      if (!progRes.ok) {
+        setPageStatus('error');
+        setErrorType('server');
+        return;
+      }
       const progData = await progRes.json();
       const completedLessonIds = new Set<string>(
         Array.isArray(progData.completedLessonIds) ? progData.completedLessonIds : []
@@ -154,10 +206,12 @@ export default function MyCoursesPage() {
       }
 
       setEnrolledCourses(items);
+      setPageStatus(items.length === 0 ? 'empty' : 'success');
     } catch (err) {
       console.warn('Failed to load enrolled courses:', err);
-    } finally {
-      setIsLoading(false);
+      setPageStatus('error');
+      setErrorType('server');
+      setErrorMessage(err instanceof Error ? err.message : 'Could not load courses');
     }
   }, [router]);
 
@@ -202,99 +256,102 @@ export default function MyCoursesPage() {
           </div>
         </div>
 
-        {/* Content Area */}
-        {isLoading ? (
-          <div className="py-20 text-center">
-            <RefreshCw className="w-8 h-8 text-amber-400 animate-spin mx-auto mb-3" />
-            <p className="text-xs text-slate-400">Loading your enrolled masterclasses...</p>
-          </div>
-        ) : enrolledCourses.length === 0 ? (
-          /* Locked State for Non-Enrolled Visitors */
-          <div className="py-12 space-y-10">
-            <div className="cosmic-card p-8 sm:p-12 rounded-3xl border border-amber-500/40 text-center max-w-2xl mx-auto space-y-5 bg-gradient-to-b from-[#111827] to-[#0a0f1a]">
-              <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/10">
-                <Lock className="w-8 h-8" />
+        {/* Content Area with strict separation of Loading, Error (401/403 vs 500), Empty, and Success */}
+        <AsyncStateView
+          status={pageStatus}
+          errorType={errorType}
+          errorMessage={errorMessage}
+          onRetry={loadStudentCourses}
+          signInUrl="/login?returnUrl=/dashboard/courses"
+          loadingMessage="Loading your enrolled masterclasses..."
+          emptyComponent={
+            /* Locked State for Non-Enrolled Visitors */
+            <div className="py-12 space-y-10">
+              <div className="cosmic-card p-8 sm:p-12 rounded-3xl border border-amber-500/40 text-center max-w-2xl mx-auto space-y-5 bg-gradient-to-b from-[#111827] to-[#0a0f1a]">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/10">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <div>
+                  <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/30 inline-block mb-2">
+                    No Active Enrollments
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-black text-white">
+                    Unlock Acharya Niraj Kumar&apos;s Vedic Astrology Masterclasses
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed max-w-md mx-auto">
+                    You do not currently have an active enrollment. Explore the curriculum catalog below to begin your journey from celestial mechanics to predictive chart mastery.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left pt-2">
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs">
+                    <CheckCircle2 className="w-4 h-4 text-amber-400 mb-1" />
+                    <strong className="text-white block">23 HD Video Modules</strong>
+                    <span className="text-[11px] text-slate-400">On-demand streaming</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs">
+                    <CheckCircle2 className="w-4 h-4 text-amber-400 mb-1" />
+                    <strong className="text-white block">Official Study Guides</strong>
+                    <span className="text-[11px] text-slate-400">Downloadable PDFs</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs">
+                    <CheckCircle2 className="w-4 h-4 text-amber-400 mb-1" />
+                    <strong className="text-white block">Accredited Certificate</strong>
+                    <span className="text-[11px] text-slate-400">Verifiable credential slug</span>
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <Link
+                    href="/courses"
+                    className="gold-button px-8 py-3.5 rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-xl shadow-amber-500/20 uppercase tracking-wider"
+                  >
+                    <span>Browse Available Courses</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
               </div>
+
+              {/* Catalog Preview */}
               <div>
-                <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/30 inline-block mb-2">
-                  No Active Enrollments
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-black text-white">
-                  Unlock Acharya Niraj Kumar&apos;s Vedic Astrology Masterclasses
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed max-w-md mx-auto">
-                  You do not currently have an active enrollment. Explore the curriculum catalog below to begin your journey from celestial mechanics to predictive chart mastery.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left pt-2">
-                <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs">
-                  <CheckCircle2 className="w-4 h-4 text-amber-400 mb-1" />
-                  <strong className="text-white block">23 HD Video Modules</strong>
-                  <span className="text-[11px] text-slate-400">On-demand streaming</span>
-                </div>
-                <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs">
-                  <CheckCircle2 className="w-4 h-4 text-amber-400 mb-1" />
-                  <strong className="text-white block">Official Study Guides</strong>
-                  <span className="text-[11px] text-slate-400">Downloadable PDFs</span>
-                </div>
-                <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs">
-                  <CheckCircle2 className="w-4 h-4 text-amber-400 mb-1" />
-                  <strong className="text-white block">Accredited Certificate</strong>
-                  <span className="text-[11px] text-slate-400">Verifiable credential slug</span>
-                </div>
-              </div>
-
-              <div className="pt-4">
-                <Link
-                  href="/courses"
-                  className="gold-button px-8 py-3.5 rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-xl shadow-amber-500/20 uppercase tracking-wider"
-                >
-                  <span>Browse Available Courses</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-
-            {/* Catalog Preview */}
-            <div>
-              <h3 className="text-lg font-bold text-white mb-4">Available Courses for Admission</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {catalogCourses.slice(0, 3).map((c) => (
-                  <div key={c.id} className="cosmic-card rounded-2xl border border-white/10 overflow-hidden flex flex-col justify-between">
-                    <div>
-                      <div className="relative h-40 w-full bg-slate-900">
-                        <Image
-                          src={c.thumbnailUrl || '/images/Acharya_Niraj_Kumar_Headshot.jpg'}
-                          alt={c.title}
-                          fill
-                          className="object-cover"
-                        />
-                        <div className="absolute top-3 left-3 px-2 py-0.5 rounded text-[10px] font-bold bg-black/70 text-amber-300 border border-amber-500/30">
-                          {c.level}
+                <h3 className="text-lg font-bold text-white mb-4">Available Courses for Admission</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {catalogCourses.slice(0, 3).map((c) => (
+                    <div key={c.id} className="cosmic-card rounded-2xl border border-white/10 overflow-hidden flex flex-col justify-between">
+                      <div>
+                        <div className="relative h-40 w-full bg-slate-900">
+                          <Image
+                            src={c.thumbnailUrl || '/images/Acharya_Niraj_Kumar_Headshot.jpg'}
+                            alt={c.title}
+                            fill
+                            className="object-cover"
+                          />
+                          <div className="absolute top-3 left-3 px-2 py-0.5 rounded text-[10px] font-bold bg-black/70 text-amber-300 border border-amber-500/30">
+                            {c.level}
+                          </div>
+                        </div>
+                        <div className="p-5 space-y-2">
+                          <h4 className="text-sm font-bold text-white line-clamp-1">{c.title}</h4>
+                          <p className="text-xs text-slate-400 line-clamp-2">{c.description}</p>
                         </div>
                       </div>
-                      <div className="p-5 space-y-2">
-                        <h4 className="text-sm font-bold text-white line-clamp-1">{c.title}</h4>
-                        <p className="text-xs text-slate-400 line-clamp-2">{c.description}</p>
+                      <div className="p-5 pt-0 border-t border-white/5 flex items-center justify-between">
+                        <span className="text-sm font-black text-amber-300">₹{c.priceInr}</span>
+                        <Link
+                          href={`/courses/${c.slug}`}
+                          className="gold-button px-3.5 py-1.5 rounded-lg text-xs font-bold"
+                        >
+                          Enroll Now
+                        </Link>
                       </div>
                     </div>
-                    <div className="p-5 pt-0 border-t border-white/5 flex items-center justify-between">
-                      <span className="text-sm font-black text-amber-300">₹{c.priceInr}</span>
-                      <Link
-                        href={`/courses/${c.slug}`}
-                        className="gold-button px-3.5 py-1.5 rounded-lg text-xs font-bold"
-                      >
-                        Enroll Now
-                      </Link>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          /* Enrolled Courses Grid */
+          }
+        >
+          {/* Enrolled Courses Grid */}
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {enrolledCourses.map((enr) => (
@@ -398,7 +455,7 @@ export default function MyCoursesPage() {
               ))}
             </div>
           </div>
-        )}
+        </AsyncStateView>
 
       </div>
     </div>

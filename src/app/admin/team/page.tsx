@@ -7,7 +7,6 @@ import {
   Plus,
   Trash2,
   Sparkles,
-  Lock,
   ArrowLeft,
   CheckCircle2,
   AlertCircle,
@@ -31,12 +30,20 @@ import {
   ADMIN_SECTIONS_META,
   getPrimaryOwnerEmail,
 } from '@/lib/auth/permissions';
+import {
+  AsyncStateView,
+  type AsyncStateStatus,
+  type ErrorType,
+} from '@/components/common/AsyncStateView';
 
 export default function TeamManagementPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [staffUsers, setStaffUsers] = useState<User[]>([]);
   const [permissions, setPermissions] = useState<StaffPermission[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pageStatus, setPageStatus] = useState<AsyncStateStatus>('loading');
+  const [errorType, setErrorType] = useState<ErrorType>('server');
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Invite / Grant Modal state
@@ -48,11 +55,71 @@ export default function TeamManagementPage() {
 
   const primaryOwnerEmail = getPrimaryOwnerEmail();
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setPageStatus('loading');
+    setErrorMessage('');
     const user = ViarStore.getCurrentUser();
     setCurrentUser(user);
-    setStaffUsers(ViarStore.getStaffUsers());
-    setPermissions(ViarStore.getStaffPermissions());
+
+    try {
+      const res = await fetch('/api/admin/team');
+      if (res.status === 401 || res.status === 403) {
+        setPageStatus('error');
+        setErrorType('auth');
+        setLoading(false);
+        return;
+      }
+      if (!res.ok) {
+        setPageStatus('error');
+        setErrorType('server');
+        setLoading(false);
+        return;
+      }
+      const data = await res.json();
+      const users: User[] = (data.staff || []).map((s: {
+        id: string;
+        name?: string;
+        email: string;
+        role?: string;
+        isOwner?: boolean;
+        staffSections?: AdminSection[];
+        staffAccessLevel?: StaffAccessLevel;
+        timezone?: string;
+      }) => ({
+        id: s.id,
+        name: s.name || s.email.split('@')[0],
+        email: s.email,
+        role: s.role || 'STAFF',
+        isOwner: Boolean(s.isOwner),
+        staffSections: s.staffSections || [],
+        staffAccessLevel: s.staffAccessLevel || 'MANAGE',
+        timezone: s.timezone || 'Asia/Kolkata',
+        enrolledCohortIds: [],
+      }));
+      const perms: StaffPermission[] = data.permissions || [];
+
+      const finalUsers = users.length > 0 ? users : ViarStore.getStaffUsers();
+      const finalPerms = perms.length > 0 ? perms : ViarStore.getStaffPermissions();
+
+      setStaffUsers(finalUsers);
+      setPermissions(finalPerms);
+      setPageStatus(finalUsers.length === 0 ? 'empty' : 'success');
+    } catch (err) {
+      if (isSiteOwner(user)) {
+        const localUsers = ViarStore.getStaffUsers();
+        const localPerms = ViarStore.getStaffPermissions();
+        setStaffUsers(localUsers);
+        setPermissions(localPerms);
+        setPageStatus(localUsers.length === 0 ? 'empty' : 'success');
+      } else {
+        setPageStatus('error');
+        setErrorType('server');
+        setErrorMessage(err instanceof Error ? err.message : 'Could not load team permissions');
+      }
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -183,39 +250,42 @@ export default function TeamManagementPage() {
     showNotice('success', `Updated sections for ${staff.email}.`);
   };
 
+  if (pageStatus === 'error' && errorType === 'auth') {
+    return (
+      <div className="cosmic-bg min-h-screen py-16 flex items-center justify-center px-4">
+        <AsyncStateView
+          status="error"
+          errorType="auth"
+          errorMessage={errorMessage}
+          signInUrl="/login?returnUrl=/admin/team"
+        />
+      </div>
+    );
+  }
+
+  if (pageStatus === 'error' && errorType === 'server') {
+    return (
+      <div className="cosmic-bg min-h-screen py-16 flex items-center justify-center px-4">
+        <AsyncStateView
+          status="error"
+          errorType="server"
+          errorMessage={errorMessage}
+          onRetry={loadData}
+        />
+      </div>
+    );
+  }
+
   // If user is not the owner: display access restricted screen
   if (!isOwner) {
     return (
       <div className="cosmic-bg min-h-screen py-16 flex items-center justify-center px-4">
-        <div className="cosmic-card p-8 sm:p-10 rounded-3xl border border-red-500/40 bg-red-950/20 max-w-lg w-full text-center shadow-2xl">
-          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-5">
-            <Lock className="w-8 h-8 text-red-400" />
-          </div>
-          <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/30 mb-3 inline-block">
-            Owner-Only Screen
-          </span>
-          <h1 className="text-2xl font-black text-white mb-2">Access Denied: /admin/team</h1>
-          <p className="text-sm text-slate-300 mb-6 leading-relaxed">
-            The Team Access Management screen is strictly reserved for the Site Owner (
-            <span className="text-amber-300 font-mono">{primaryOwnerEmail}</span>).
-            Staff members with MANAGE access to other sections cannot view or modify team permissions.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link
-              href="/admin"
-              className="gold-button w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Admin Portal</span>
-            </Link>
-            <Link
-              href="/dashboard"
-              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 w-full sm:w-auto text-center"
-            >
-              Dashboard
-            </Link>
-          </div>
-        </div>
+        <AsyncStateView
+          status="error"
+          errorType="auth"
+          errorMessage={`The Team Access Management screen is strictly reserved for the Site Owner (${primaryOwnerEmail}).`}
+          signInUrl="/login?returnUrl=/admin/team"
+        />
       </div>
     );
   }

@@ -28,6 +28,11 @@ import { ViarStore } from '@/lib/store';
 import { isSiteOwner } from '@/lib/auth/permissions';
 import { User } from '@/lib/types';
 import { useUser } from '@clerk/nextjs';
+import {
+  AsyncStateView,
+  type AsyncStateStatus,
+  type ErrorType,
+} from '@/components/common/AsyncStateView';
 
 interface DiagnosticsData {
   success: boolean;
@@ -121,28 +126,38 @@ export default function AdminDiagnosticsPage() {
   const [data, setData] = useState<DiagnosticsData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [pageStatus, setPageStatus] = useState<AsyncStateStatus>('loading');
+  const [errorType, setErrorType] = useState<ErrorType>('server');
   const [healthPingStatus, setHealthPingStatus] = useState<string | null>(null);
   const [healthPingLoading, setHealthPingLoading] = useState<boolean>(false);
 
   const fetchDiagnostics = useCallback(async () => {
     setLoading(true);
+    setPageStatus('loading');
     setErrorMsg('');
     try {
       const search = typeof window !== 'undefined' ? window.location.search : '';
       const res = await fetch(`/api/admin/diagnostics${search}`, {
         cache: 'no-store',
       });
-      if (res.status === 403) {
+      if (res.status === 401 || res.status === 403) {
+        setPageStatus('error');
+        setErrorType('auth');
         setErrorMsg('Access Restricted: This diagnostics dashboard is strictly reserved for the Site Owner.');
         setLoading(false);
         return;
       }
       if (!res.ok) {
+        setPageStatus('error');
+        setErrorType('server');
         throw new Error(`Diagnostics API responded with status ${res.status}`);
       }
       const json: DiagnosticsData = await res.json();
       setData(json);
+      setPageStatus('success');
     } catch (err: unknown) {
+      setPageStatus('error');
+      setErrorType('server');
       setErrorMsg(err instanceof Error ? err.message : 'Failed to load telemetry.');
     } finally {
       setLoading(false);
@@ -200,6 +215,8 @@ export default function AdminDiagnosticsPage() {
         setHealthPingStatus(`${res.status} Error — Database Unreachable (${elapsed}ms)`);
       }
     } catch (err: unknown) {
+      setPageStatus('error');
+      setErrorType('server');
       setHealthPingStatus(`Fetch Failed: ${err instanceof Error ? err.message : 'Network Error'}`);
     } finally {
       setHealthPingLoading(false);
@@ -217,6 +234,32 @@ export default function AdminDiagnosticsPage() {
     (clerkEmail && (isSiteOwner(clerkEmail) || clerkEmail.trim().toLowerCase() === 'aapkaastro1606@gmail.com')) ||
     data?.currentUserInDb?.user?.isOwner
   );
+
+  if (pageStatus === 'error' && errorType === 'auth') {
+    return (
+      <div className="cosmic-bg min-h-screen py-24 px-4 flex items-center justify-center">
+        <AsyncStateView
+          status="error"
+          errorType="auth"
+          errorMessage={errorMsg}
+          signInUrl="/login?returnUrl=/admin/diagnostics"
+        />
+      </div>
+    );
+  }
+
+  if (pageStatus === 'error' && errorType === 'server') {
+    return (
+      <div className="cosmic-bg min-h-screen py-24 px-4 flex items-center justify-center">
+        <AsyncStateView
+          status="error"
+          errorType="server"
+          errorMessage={errorMsg}
+          onRetry={fetchDiagnostics}
+        />
+      </div>
+    );
+  }
 
   if (!loading && !isOwner && errorMsg) {
     return (

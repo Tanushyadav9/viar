@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -16,53 +16,109 @@ import {
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Certificate } from '@/lib/types';
+import {
+  AsyncStateView,
+  type AsyncStateStatus,
+  type ErrorType,
+} from '@/components/common/AsyncStateView';
 
 export default function StudentCertificatesPage() {
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [pageStatus, setPageStatus] = useState<AsyncStateStatus>('loading');
+  const [errorType, setErrorType] = useState<ErrorType>('server');
+  const [errorMessage, setErrorMessage] = useState<string>('');
+
+  const loadCertificates = useCallback(async () => {
+    setPageStatus('loading');
+    setErrorMessage('');
+    try {
+      const syncRes = await fetch('/api/users/sync');
+      if (syncRes.status === 401 || syncRes.status === 403) {
+        setPageStatus('error');
+        setErrorType('auth');
+        return;
+      }
+      if (!syncRes.ok) {
+        setPageStatus('error');
+        setErrorType('server');
+        return;
+      }
+      const uData = await syncRes.json();
+      const uid = uData?.user?.id || uData?.user?.clerkId;
+      if (!uid) {
+        setPageStatus('error');
+        setErrorType('auth');
+        return;
+      }
+
+      const enrRes = await fetch(`/api/enrollments?userId=${encodeURIComponent(uid)}`);
+      if (enrRes.status === 401 || enrRes.status === 403) {
+        setPageStatus('error');
+        setErrorType('auth');
+        return;
+      }
+      if (!enrRes.ok) {
+        setPageStatus('error');
+        setErrorType('server');
+        return;
+      }
+      const eData = await enrRes.json();
+      let foundCerts: Certificate[] = [];
+      if (eData.success && Array.isArray(eData.enrollments)) {
+        foundCerts = eData.enrollments
+          .filter((enr: { certificateVerificationCode?: string }) => enr.certificateVerificationCode)
+          .map((enr: {
+            id: string;
+            certificateId?: string;
+            certificateVerificationCode: string;
+            studentId?: string;
+            studentName?: string;
+            courseId?: string;
+            courseTitle?: string;
+            cohortId?: string;
+            cohortBatchName?: string;
+            enrolledAt?: string;
+            quizScorePercentage?: number;
+          }) => ({
+            id: enr.certificateId || `cert-${enr.id}`,
+            certificateNumber: enr.certificateVerificationCode,
+            verificationCode: enr.certificateVerificationCode,
+            studentId: enr.studentId,
+            studentName: enr.studentName,
+            courseId: enr.courseId,
+            courseTitle: enr.courseTitle,
+            cohortId: enr.cohortId,
+            cohortBatchName: enr.cohortBatchName,
+            issuedDate: enr.enrolledAt ? enr.enrolledAt.split('T')[0] : new Date().toISOString().split('T')[0],
+            issueDate: enr.enrolledAt ? enr.enrolledAt.split('T')[0] : new Date().toISOString().split('T')[0],
+            grade: 'Distinction',
+            scorePercentage: enr.quizScorePercentage || 95,
+            instructorName: 'Acharya Niraj Kumar',
+            instructorTitle: 'Founder, Acharya Niraj Kumar',
+            verificationUrl: `https://viar.in/verify/${enr.certificateVerificationCode}`,
+          }));
+      }
+
+      if (foundCerts.length === 0) {
+        const localCerts = ViarStore.getCertificates();
+        if (localCerts.length > 0) {
+          foundCerts = localCerts;
+        }
+      }
+
+      setCerts(foundCerts);
+      setPageStatus(foundCerts.length === 0 ? 'empty' : 'success');
+    } catch (err) {
+      setPageStatus('error');
+      setErrorType('server');
+      setErrorMessage(err instanceof Error ? err.message : 'Could not load certificates');
+    }
+  }, []);
 
   useEffect(() => {
-    const allCerts = ViarStore.getCertificates();
-    setCerts(allCerts);
-
-    // Fetch live user session and enrollments/certificates
-    fetch('/api/users/sync')
-      .then((r) => r.json())
-      .then((uData) => {
-        const uid = uData?.user?.id || uData?.user?.clerkId;
-        if (uid) {
-          fetch(`/api/enrollments?userId=${encodeURIComponent(uid)}`)
-            .then((r) => r.json())
-            .then((eData) => {
-              if (eData.success && Array.isArray(eData.enrollments)) {
-                const dbCerts = eData.enrollments
-                  .filter((enr) => enr.certificateVerificationCode)
-                  .map((enr) => ({
-                    id: enr.certificateId || `cert-${enr.id}`,
-                    certificateNumber: enr.certificateVerificationCode,
-                    verificationCode: enr.certificateVerificationCode,
-                    studentId: enr.studentId,
-                    studentName: enr.studentName,
-                    courseId: enr.courseId,
-                    courseTitle: enr.courseTitle,
-                    cohortId: enr.cohortId,
-                    cohortBatchName: enr.cohortBatchName,
-                    issuedDate: enr.enrolledAt ? enr.enrolledAt.split('T')[0] : new Date().toISOString().split('T')[0],
-                    grade: 'Distinction',
-                    scorePercentage: enr.quizScorePercentage || 95,
-                    instructorName: 'Acharya Niraj Kumar',
-                    verificationUrl: `https://viar.in/verify/${enr.certificateVerificationCode}`,
-                  }));
-                if (dbCerts.length > 0) {
-                  setCerts(dbCerts);
-                }
-              }
-            })
-            .catch(() => {});
-        }
-      })
-      .catch(() => {});
-  }, []);
+    loadCertificates();
+  }, [loadCertificates]);
 
   const handleCopyLink = (code: string) => {
     const url = `${window.location.origin}/verify/${code}`;
@@ -118,22 +174,25 @@ export default function StudentCertificatesPage() {
           </Link>
         </div>
 
-        {/* Certificates List */}
-        {certs.length === 0 ? (
-          <div className="cosmic-card p-12 rounded-3xl border border-white/10 text-center max-w-lg mx-auto space-y-4">
-            <Award className="w-12 h-12 text-slate-500 mx-auto" />
-            <h3 className="text-xl font-bold text-white">No Certificates Issued Yet</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Complete your 23 self-paced video modules and pass the 20-question final quiz with 70%+ to receive your authentic credential from Vihangam Institute of Astrology and Research.
-            </p>
+        {/* Certificates List with strict separation of Loading, Error (401/403 vs 500), Empty, and Success */}
+        <AsyncStateView
+          status={pageStatus}
+          errorType={errorType}
+          errorMessage={errorMessage}
+          onRetry={loadCertificates}
+          signInUrl="/login?returnUrl=/dashboard/certificates"
+          loadingMessage="Loading your academic certificates..."
+          emptyTitle="No Certificates Issued Yet"
+          emptyMessage="Complete your 23 self-paced video modules and pass the 20-question final quiz with 70%+ to receive your authentic credential from Vihangam Institute of Astrology and Research."
+          emptyAction={
             <Link
               href="/dashboard/courses/cohort-wia-batch-1"
               className="gold-button px-6 py-2.5 rounded-xl text-xs font-bold inline-block"
             >
               Continue Flagship Course
             </Link>
-          </div>
-        ) : (
+          }
+        >
           <div className="space-y-12">
             {certs.map((cert) => (
               <div
@@ -267,7 +326,7 @@ export default function StudentCertificatesPage() {
               </div>
             ))}
           </div>
-        )}
+        </AsyncStateView>
 
         {/* Course Completion Cross-Sell: 1:1 Consultation on Aapka Astro (Requirement: Beat Astrotalk) */}
         <div className="mt-12 p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-amber-500/10 via-amber-950/20 to-purple-950/20 border border-amber-500/30 text-white relative overflow-hidden shadow-2xl">

@@ -33,6 +33,11 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import AdminHomeHub, { RecentActivityItem } from '@/components/admin/AdminHomeHub';
+import {
+  AsyncStateView,
+  type AsyncStateStatus,
+  type ErrorType,
+} from '@/components/common/AsyncStateView';
 import ContentStudio from '@/components/admin/ContentStudio';
 import MediaLibrary from '@/components/admin/MediaLibrary';
 import { ViarStore } from '@/lib/store';
@@ -236,6 +241,10 @@ export default function AdminPortalClient({
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [orderActionError, setOrderActionError] = useState<string | null>(null);
+  const [ordersStatus, setOrdersStatus] = useState<AsyncStateStatus>('loading');
+  const [ordersErrorType, setOrdersErrorType] = useState<ErrorType>('server');
+  const [enrollmentsStatus, setEnrollmentsStatus] = useState<AsyncStateStatus>('loading');
+  const [enrollmentsErrorType, setEnrollmentsErrorType] = useState<ErrorType>('server');
 
   // Approval Modal State (Mandatory bank checklist + duplicate UTR protection)
   const [orderToApprove, setOrderToApprove] = useState<AdminOrder | null>(null);
@@ -269,6 +278,7 @@ export default function AdminPortalClient({
 
   const loadOrders = React.useCallback(async (statusOverride?: string, queryOverride?: string) => {
     setIsLoadingOrders(true);
+    setOrdersStatus('loading');
     setOrderActionError(null);
     try {
       const statusToUse = statusOverride !== undefined ? statusOverride : selectedOrderStatus;
@@ -281,9 +291,25 @@ export default function AdminPortalClient({
         params.set('q', queryToUse.trim());
       }
       const res = await fetch(`/api/admin/orders?${params.toString()}`);
+      if (res.status === 401 || res.status === 403) {
+        setOrdersStatus('error');
+        setOrdersErrorType('auth');
+        setOrderActionError("Your session expired or you don't have access. Sign in again.");
+        setIsLoadingOrders(false);
+        return;
+      }
+      if (!res.ok) {
+        setOrdersStatus('error');
+        setOrdersErrorType('server');
+        setOrderActionError("Could not load. Retry.");
+        setIsLoadingOrders(false);
+        return;
+      }
       const data = await res.json();
       if (data?.success) {
-        setOrders(data.orders || []);
+        const loadedOrders = data.orders || [];
+        setOrders(loadedOrders);
+        setOrdersStatus(loadedOrders.length === 0 ? 'empty' : 'success');
         if (data.countsByStatus) {
           setOrderCounts(data.countsByStatus);
         }
@@ -299,9 +325,13 @@ export default function AdminPortalClient({
           setRecentActivities(acts);
         }
       } else {
+        setOrdersStatus('error');
+        setOrdersErrorType('server');
         setOrderActionError(data?.error || 'Failed to fetch orders queue');
       }
     } catch (e: unknown) {
+      setOrdersStatus('error');
+      setOrdersErrorType('server');
       setOrderActionError(e instanceof Error ? e.message : 'Error fetching orders queue');
     } finally {
       setIsLoadingOrders(false);
@@ -322,7 +352,9 @@ export default function AdminPortalClient({
           isDefaultFallback: data.settings.isDefaultFallback,
         });
       }
-    } catch {}
+    } catch {
+      // ignored
+    }
   }, []);
 
   const handleSavePaymentSettings = async (e: React.FormEvent) => {
@@ -487,16 +519,34 @@ export default function AdminPortalClient({
       if (crsData.success && Array.isArray(crsData.courses) && crsData.courses.length > 0) {
         setCourses(crsData.courses);
       }
-    } catch {}
+    } catch {
+// mutation fallback
+    }
 
     // Fetch live student enrollments from PostgreSQL
+    setEnrollmentsStatus('loading');
     try {
       const enrRes = await fetch('/api/enrollments');
-      const enrData = await enrRes.json();
-      if (enrData.success && Array.isArray(enrData.enrollments) && enrData.enrollments.length > 0) {
-        setEnrollments(enrData.enrollments);
+      if (enrRes.status === 401 || enrRes.status === 403) {
+        setEnrollmentsStatus('error');
+        setEnrollmentsErrorType('auth');
+      } else if (!enrRes.ok) {
+        setEnrollmentsStatus('error');
+        setEnrollmentsErrorType('server');
+      } else {
+        const enrData = await enrRes.json();
+        if (enrData.success && Array.isArray(enrData.enrollments)) {
+          setEnrollments(enrData.enrollments);
+          setEnrollmentsStatus(enrData.enrollments.length === 0 ? 'empty' : 'success');
+        } else {
+          setEnrollmentsStatus('empty');
+        }
       }
-    } catch {}
+      // live enrollments processed
+    } catch {
+      setEnrollmentsStatus('error');
+      setEnrollmentsErrorType('server');
+    }
     
     if (!serverAuth) {
       let user = ViarStore.getCurrentUser();
@@ -617,7 +667,9 @@ export default function AdminPortalClient({
           notes: updates.recording?.notesMarkdown,
         }),
       });
-    } catch {}
+    } catch {
+// mutation fallback
+    }
     setEditingClass(null);
     loadAdminData();
   };
@@ -723,7 +775,9 @@ export default function AdminPortalClient({
           level: newCourse.level,
         }),
       });
-    } catch {}
+    } catch {
+// mutation fallback
+    }
 
     setIsNewCourseOpen(false);
     setNewCourseTitle('');
@@ -740,7 +794,9 @@ export default function AdminPortalClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ acceptingEnrollments: newVal }),
       });
-    } catch {}
+    } catch {
+// mutation fallback
+    }
     loadAdminData();
   };
 
@@ -755,7 +811,9 @@ export default function AdminPortalClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
-    } catch {}
+    } catch {
+// mutation fallback
+    }
     loadAdminData();
   };
 
@@ -770,7 +828,9 @@ export default function AdminPortalClient({
     ViarStore.deleteCourse(crs.id);
     try {
       await fetch(`/api/courses/${crs.slug}`, { method: 'DELETE' });
-    } catch {}
+    } catch {
+// mutation fallback
+    }
     loadAdminData();
   };
 
@@ -811,7 +871,9 @@ export default function AdminPortalClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });
-    } catch {}
+    } catch {
+// mutation fallback
+    }
 
     setIsEditCourseOpen(false);
     setEditingCourse(null);
@@ -1494,7 +1556,22 @@ export default function AdminPortalClient({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {filteredEnrollments.map((enr) => (
+                    {enrollmentsStatus !== 'success' || filteredEnrollments.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-10 text-center">
+                          <AsyncStateView
+                            status={enrollmentsStatus}
+                            errorType={enrollmentsErrorType}
+                            onRetry={loadAdminData}
+                            signInUrl="/login?returnUrl=/admin"
+                            loadingMessage="Loading student roster from database..."
+                            emptyTitle="No Students Enrolled"
+                            emptyMessage="No student enrollments found matching the current criteria."
+                          />
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredEnrollments.map((enr) => (
                       <tr key={enr.id} className="hover:bg-white/[0.02] transition">
                         <td className="px-6 py-4">
                           <p className="font-bold text-white">{enr.studentName}</p>
@@ -1522,7 +1599,8 @@ export default function AdminPortalClient({
                           </span>
                         </td>
                       </tr>
-                    ))}
+                    ))
+                  )}
                   </tbody>
                 </table>
               </div>
@@ -1766,9 +1844,24 @@ export default function AdminPortalClient({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {orders.length === 0 ? (
+                    {ordersStatus !== 'success' || orders.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-5 py-10 text-center text-slate-400 italic">
+                        <td colSpan={7} className="px-5 py-8 text-center">
+                          <AsyncStateView
+                            status={ordersStatus}
+                            errorType={ordersErrorType}
+                            errorMessage={orderActionError || undefined}
+                            onRetry={() => loadOrders()}
+                            signInUrl="/login?returnUrl=/admin"
+                            loadingMessage="Loading orders queue from PostgreSQL..."
+                            emptyTitle={`No orders found in "${selectedOrderStatus}" queue.`}
+                            emptyMessage="When students generate checkout orders or submit claims, they will appear here."
+                          />
+                        </td>
+                      </tr>
+                    ) : false ? (
+                      <tr>
+                        <td colSpan={7} className="hidden">
                           {isLoadingOrders ? (
                             <span className="flex items-center justify-center gap-2">
                               <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />

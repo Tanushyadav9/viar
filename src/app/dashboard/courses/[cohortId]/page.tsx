@@ -20,6 +20,11 @@ import { ViarStore } from '@/lib/store';
 import { Course, Cohort, ScheduledClass, ClassDiscussionComment } from '@/lib/types';
 import { getUserLocalTimezone } from '@/lib/timezones';
 import { isSiteOwner } from '@/lib/auth/permissions';
+import {
+  AsyncStateView,
+  type AsyncStateStatus,
+  type ErrorType,
+} from '@/components/common/AsyncStateView';
 
 export default function CohortClassByClassPage() {
   const params = useParams();
@@ -34,6 +39,8 @@ export default function CohortClassByClassPage() {
   const [comments, setComments] = useState<ClassDiscussionComment[]>([]);
   const [commentText, setCommentText] = useState('');
   const [isEnrolled, setIsEnrolled] = useState<boolean>(true);
+  const [pageStatus, setPageStatus] = useState<AsyncStateStatus>('loading');
+  const [errorType, setErrorType] = useState<ErrorType>('server');
 
   useEffect(() => {
     if (activeClass) {
@@ -68,8 +75,22 @@ export default function CohortClassByClassPage() {
 
     // 1. Fetch live Course Data from server API (with server-side gating)
     fetch(`/api/courses/${cohortId}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (res.status === 401 || res.status === 403) {
+          setPageStatus('error');
+          setErrorType('auth');
+          return null;
+        }
+        if (!res.ok) {
+          setPageStatus('error');
+          setErrorType('server');
+          return null;
+        }
+        return res.json();
+      })
       .then((data) => {
+        if (!data) return;
+        setPageStatus('success');
         if (data.success && data.course) {
           const crs = data.course;
           setCourse(crs);
@@ -203,6 +224,19 @@ export default function CohortClassByClassPage() {
   };
 
   const progress = ViarStore.getCourseProgress(cohortId);
+
+  if (pageStatus === 'error') {
+    return (
+      <div className="min-h-screen cosmic-bg flex items-center justify-center p-4">
+        <AsyncStateView
+          status="error"
+          errorType={errorType}
+          signInUrl={`/login?returnUrl=/dashboard/courses/${cohortId}`}
+          onRetry={() => window.location.reload()}
+        />
+      </div>
+    );
+  }
 
   if (!cohort || !course) {
     return (

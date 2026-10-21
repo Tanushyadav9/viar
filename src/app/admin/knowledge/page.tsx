@@ -9,7 +9,6 @@ import {
   Search,
   Sparkles,
   HelpCircle,
-  CheckCircle2,
   Trash2,
   Edit3,
   Save,
@@ -19,6 +18,11 @@ import {
   ArrowRight,
   ShieldAlert,
 } from 'lucide-react';
+import {
+  AsyncStateView,
+  type AsyncStateStatus,
+  type ErrorType,
+} from '@/components/common/AsyncStateView';
 
 interface KnowledgeEntry {
   id: string;
@@ -64,18 +68,37 @@ export default function AdminKnowledgePage() {
   const [formConvertingQuestionId, setFormConvertingQuestionId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [pageStatus, setPageStatus] = useState<AsyncStateStatus>('loading');
+  const [errorType, setErrorType] = useState<ErrorType>('server');
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const fetchKnowledgeData = useCallback(async () => {
     setIsLoading(true);
+    setPageStatus('loading');
+    setErrorMessage('');
     try {
       const res = await fetch('/api/admin/knowledge');
-      if (res.ok) {
-        const data = await res.json();
-        setEntries(data.entries || []);
-        setUnanswered(data.unanswered || []);
+      if (res.status === 401 || res.status === 403) {
+        setPageStatus('error');
+        setErrorType('auth');
+        return;
       }
+      if (!res.ok) {
+        setPageStatus('error');
+        setErrorType('server');
+        return;
+      }
+      const data = await res.json();
+      const loadedEntries = data.entries || [];
+      const loadedUnanswered = data.unanswered || [];
+      setEntries(loadedEntries);
+      setUnanswered(loadedUnanswered);
+      setPageStatus(loadedEntries.length === 0 ? 'empty' : 'success');
     } catch (err) {
       console.error('Failed to load knowledge data:', err);
+      setPageStatus('error');
+      setErrorType('server');
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to communicate with knowledge service');
     } finally {
       setIsLoading(false);
     }
@@ -368,86 +391,95 @@ export default function AdminKnowledgePage() {
               </div>
             </div>
 
-            {/* Entries Grid */}
-            {isLoading ? (
-              <div className="py-16 text-center text-slate-500 text-xs">
-                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-amber-400" />
-                <span>Loading knowledge base entries...</span>
-              </div>
-            ) : filteredEntries.length === 0 ? (
-              <div className="py-16 text-center cosmic-card rounded-2xl border border-white/10 p-8 space-y-3">
-                <BookOpen className="w-10 h-10 text-slate-600 mx-auto" />
-                <h3 className="text-sm font-bold text-white">No custom knowledge entries found</h3>
-                <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  The AI assistant is currently answering from structured curriculum files and live database prices. Click &ldquo;Add Knowledge Entry&rdquo; to teach it new questions and answers.
-                </p>
-                <button
-                  onClick={() => handleOpenNewEntry()}
-                  className="mt-2 px-4 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold inline-flex items-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Create First Custom Entry</span>
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredEntries.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="p-5 rounded-2xl cosmic-card border border-white/10 space-y-3 hover:border-amber-400/40 transition flex flex-col justify-between"
+            {/* Entries Grid with distinct Loading, Error (401/403 vs 500), Empty, and Success */}
+            <AsyncStateView
+              status={pageStatus}
+              errorType={errorType}
+              errorMessage={errorMessage}
+              onRetry={fetchKnowledgeData}
+              signInUrl="/login?returnUrl=/admin/knowledge"
+              loadingMessage="Loading knowledge base entries..."
+              emptyComponent={
+                <div className="py-16 text-center cosmic-card rounded-2xl border border-white/10 p-8 space-y-3">
+                  <BookOpen className="w-10 h-10 text-slate-600 mx-auto" />
+                  <h3 className="text-sm font-bold text-white">No custom knowledge entries found</h3>
+                  <p className="text-xs text-slate-400 max-w-md mx-auto">
+                    The AI assistant is currently answering from structured curriculum files and live database prices. Click &ldquo;Add Knowledge Entry&rdquo; to teach it new questions and answers.
+                  </p>
+                  <button
+                    onClick={() => handleOpenNewEntry()}
+                    className="mt-2 px-4 py-2 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold inline-flex items-center gap-1.5"
                   >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                            {entry.category}
-                          </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/5 text-slate-400">
-                            {entry.language.toUpperCase()}
+                    <Plus className="w-4 h-4" />
+                    <span>Create First Custom Entry</span>
+                  </button>
+                </div>
+              }
+            >
+              {filteredEntries.length === 0 ? (
+                <div className="py-12 text-center cosmic-card rounded-2xl border border-white/10 p-6 space-y-2">
+                  <p className="text-sm text-slate-300">No entries match your search filter.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredEntries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="p-5 rounded-2xl cosmic-card border border-white/10 space-y-3 hover:border-amber-400/40 transition flex flex-col justify-between"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                              {entry.category}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/5 text-slate-400">
+                              {entry.language.toUpperCase()}
+                            </span>
+                          </div>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                              entry.published
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : 'bg-slate-800 text-slate-400 border border-white/10'
+                            }`}
+                          >
+                            {entry.published ? 'Live on AI' : 'Draft'}
                           </span>
                         </div>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                            entry.published
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-slate-800 text-slate-400 border border-white/10'
-                          }`}
-                        >
-                          {entry.published ? 'Live on AI' : 'Draft'}
-                        </span>
+
+                        <h4 className="text-sm font-bold text-white leading-snug">
+                          Q: {entry.question}
+                        </h4>
+                        <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line line-clamp-4">
+                          {entry.answer}
+                        </p>
                       </div>
 
-                      <h4 className="text-sm font-bold text-white leading-snug">
-                        Q: {entry.question}
-                      </h4>
-                      <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line line-clamp-4">
-                        {entry.answer}
-                      </p>
-                    </div>
-
-                    <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500">
-                      <span>Updated {new Date(entry.updatedAt).toLocaleDateString()}</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleOpenEditEntry(entry)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-white/5 transition"
-                          title="Edit Entry"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteEntry(entry.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
-                          title="Delete Entry"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500">
+                        <span>Updated {new Date(entry.updatedAt).toLocaleDateString()}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleOpenEditEntry(entry)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-white/5 transition"
+                            title="Edit Entry"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteEntry(entry.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                            title="Delete Entry"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </AsyncStateView>
           </div>
         )}
 
@@ -464,15 +496,16 @@ export default function AdminKnowledgePage() {
               </div>
             </div>
 
-            {unanswered.length === 0 ? (
-              <div className="py-16 text-center cosmic-card rounded-2xl border border-white/10 p-8 space-y-2">
-                <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
-                <h3 className="text-sm font-bold text-white">No unanswered questions</h3>
-                <p className="text-xs text-slate-400">
-                  The AI assistant has been able to answer all visitor questions or direct them to WhatsApp!
-                </p>
-              </div>
-            ) : (
+            <AsyncStateView
+              status={pageStatus}
+              errorType={errorType}
+              errorMessage={errorMessage}
+              onRetry={fetchKnowledgeData}
+              signInUrl="/login?returnUrl=/admin/knowledge"
+              loadingMessage="Loading unanswered visitor inquiries..."
+              emptyTitle="No unanswered questions"
+              emptyMessage="The AI assistant has been able to answer all visitor questions or direct them to WhatsApp!"
+            >
               <div className="space-y-3">
                 {unanswered.map((u) => {
                   const isPending = u.status === 'PENDING';
@@ -542,7 +575,7 @@ export default function AdminKnowledgePage() {
                   );
                 })}
               </div>
-            )}
+            </AsyncStateView>
           </div>
         )}
 
