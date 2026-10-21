@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { emailService } from '@/lib/email';
 import { env } from '@/config/env';
 import { RateLimiters } from '@/lib/rate-limit';
@@ -109,8 +111,60 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  return NextResponse.json({
-    status: 'Certificate issuance service operational',
-    verificationEndpoint: '/verify/[code]',
-  });
+  try {
+    const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated || !auth.userId) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized', certificates: [] },
+        { status: 401 }
+      );
+    }
+
+    const certificates = await prisma.certificate.findMany({
+      where: {
+        OR: [
+          { userId: auth.userId },
+          ...(auth.clerkId ? [{ user: { clerkId: auth.clerkId } }] : []),
+          ...(auth.email ? [{ user: { email: auth.email } }] : []),
+        ],
+      },
+      include: {
+        course: { select: { id: true, title: true, slug: true } },
+        cohort: { select: { id: true, batchName: true } },
+        user: { select: { name: true, email: true } },
+      },
+      orderBy: { issuedAt: 'desc' },
+    });
+
+    const formatted = certificates.map((cert) => ({
+      id: cert.id,
+      certificateNumber: cert.certificateNumber,
+      verificationCode: cert.certificateNumber,
+      studentId: cert.userId,
+      studentName: cert.user?.name || auth.dbUser?.name || 'Scholar',
+      courseTitle: cert.course?.title || 'The Ultimate Astrology Course: Foundations to Chart Mastery',
+      cohortBatchName: cert.cohort?.batchName || 'Self-Paced Masterclass — Vihangam Institute of Astrology and Research',
+      issuedDate: cert.issuedAt.toISOString().split('T')[0],
+      issueDate: cert.issuedAt.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      grade: cert.grade || 'Pass',
+      scorePercentage: cert.scorePercentage || 70,
+      instructorName: cert.instructorName || 'Acharya Niraj Kumar',
+      instructorTitle: 'Jyotish Acharya (Bharatiya Vidya Bhavan) | Founder, VIAR & Aapka Astro',
+      verificationUrl: `${env.appUrl}/verify/${cert.certificateNumber}`,
+    }));
+
+    return NextResponse.json({
+      success: true,
+      certificates: formatted,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: (error as Error).message },
+      { status: 500 }
+    );
+  }
 }

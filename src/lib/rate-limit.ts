@@ -116,4 +116,7 @@ export const RateLimiters = {
 
   /** 5 quiz submissions per hour per student/IP to prevent brute-forcing */
   quiz: (identifier: string) => checkRateLimit(`quiz:${identifier}`, 5, 3600),
+
+  /** 60 attempts per 10 minutes per IP for public certificate verification */
+  certificateLookup: (ip: string) => checkRateLimit(`cert-lookup:${ip}`, 60, 600),
 };

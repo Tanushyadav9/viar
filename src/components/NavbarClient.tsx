@@ -54,6 +54,16 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
     const savedTz = ViarStore.getTimezone() || getUserLocalTimezone();
     setSelectedTz(savedTz);
 
+    // Sync authoritative user from server session on mount
+    fetch('/api/users/sync')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user) {
+          setCurrentUser(data.user);
+        }
+      })
+      .catch(() => {});
+
     const handleUserChange = () => {
       setCurrentUser(ViarStore.getCurrentUser());
     };

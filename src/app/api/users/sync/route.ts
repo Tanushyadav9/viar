@@ -75,21 +75,42 @@ export async function GET() {
   try {
     const auth = await getServerAuthUser();
     if (!auth.isAuthenticated || !auth.userId) {
-      return NextResponse.json({ success: false, user: null }, { status: 200 });
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized', user: null },
+        { status: 401 }
+      );
     }
 
-    const user = auth.dbUser || await prisma.user.findFirst({
-      where: {
-        OR: [
-          { id: auth.userId },
-          ...(auth.clerkId ? [{ clerkId: auth.clerkId }] : []),
-          ...(auth.email ? [{ email: auth.email }] : []),
-        ],
-      },
-    });
+    let user = auth.dbUser;
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: auth.userId },
+            ...(auth.clerkId ? [{ clerkId: auth.clerkId }] : []),
+            ...(auth.email ? [{ email: auth.email }] : []),
+          ],
+        },
+      });
+    }
+
+    if (!user && auth.clerkId) {
+      try {
+        const synced = await syncDatabaseUser({
+          clerkId: auth.clerkId,
+          email: auth.email,
+        });
+        user = synced.user;
+      } catch {
+        // Non-fatal sync fallback
+      }
+    }
 
     if (!user) {
-      return NextResponse.json({ success: false, user: null }, { status: 200 });
+      return NextResponse.json(
+        { success: false, error: 'User record not found in database', user: null },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({
@@ -106,6 +127,9 @@ export async function GET() {
       },
     });
   } catch {
-    return NextResponse.json({ success: false, error: 'Database session lookup failed' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: 'Database session lookup failed' },
+      { status: 500 }
+    );
   }
 }

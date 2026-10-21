@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
+import { syncDatabaseUser } from '@/lib/auth/userSync';
 
 export async function GET(req: NextRequest) {
   try {
@@ -113,8 +114,37 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    // Database user ID is the authoritative foreign key
-    const userId = auth.userId;
+
+    // Authoritative database user ID resolution (ensures foreign key references User.id)
+    let dbUserId = auth.dbUser?.id;
+    if (!dbUserId || dbUserId.startsWith('user_')) {
+      const dbUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            ...(auth.clerkId ? [{ clerkId: auth.clerkId }] : []),
+            ...(auth.email ? [{ email: auth.email }] : []),
+            { id: auth.userId },
+          ],
+        },
+        select: { id: true },
+      });
+      if (dbUser) {
+        dbUserId = dbUser.id;
+      } else if (auth.clerkId || auth.email) {
+        try {
+          const synced = await syncDatabaseUser({
+            clerkId: auth.clerkId || auth.userId,
+            email: auth.email,
+            name: auth.dbUser?.name || 'Scholar',
+          });
+          dbUserId = synced.user.id;
+        } catch {
+          dbUserId = auth.userId;
+        }
+      }
+    }
+
+    const userId = dbUserId || auth.userId;
     const { lessonId, classSessionId, watched, completed, watchedSeconds, totalDurationSeconds } = body;
 
     // Determine completion:

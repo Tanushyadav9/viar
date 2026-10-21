@@ -6,6 +6,7 @@ import { logger } from '@/lib/logger';
 import { emailService } from '@/lib/email';
 import { env } from '@/config/env';
 import { isSiteOwner, isDevSimulationAllowed } from '@/lib/auth/permissions';
+import { getServerAuthUser } from '@/lib/auth/serverAuth';
 
 /**
  * Quiz Submission API
@@ -15,10 +16,15 @@ export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || '127.0.0.1';
 
   try {
-    const body = await req.json();
+    const auth = await getServerAuthUser();
+    const body = await req.json().catch(() => ({}));
     const { cohortId, courseId, studentId, studentEmail, studentName, answers } = body;
 
-    const rateKey = studentId ? `${studentId}:${ip}` : (studentEmail ? `${studentEmail}:${ip}` : ip);
+    const effectiveEmail = auth.email || (studentEmail ? String(studentEmail).trim().toLowerCase() : undefined);
+    const effectiveName = auth.dbUser?.name || studentName || 'Scholar';
+    const effectiveStudentId = auth.dbUser?.id || auth.userId || studentId;
+
+    const rateKey = effectiveStudentId ? `${effectiveStudentId}:${ip}` : (effectiveEmail ? `${effectiveEmail}:${ip}` : ip);
     const rateLimitResult = await RateLimiters.quiz(rateKey);
 
     if (!rateLimitResult.success) {
@@ -51,8 +57,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Server-side Enrollment Check: Only active students or staff may submit certification exams
-    const normalizedEmail = studentEmail ? String(studentEmail).trim().toLowerCase() : undefined;
-    const isStaffOrOwner = normalizedEmail && isSiteOwner(normalizedEmail);
+    const isStaffOrOwner = auth.isOwner || (effectiveEmail && isSiteOwner(effectiveEmail));
 
     let hasActiveEnrollment = Boolean(isStaffOrOwner);
     if (!hasActiveEnrollment) {
@@ -61,8 +66,9 @@ export async function POST(req: NextRequest) {
           where: {
             status: 'ACTIVE',
             OR: [
-              ...(studentId ? [{ userId: studentId }] : []),
-              ...(normalizedEmail ? [{ user: { email: normalizedEmail } }] : []),
+              ...(effectiveStudentId ? [{ userId: effectiveStudentId }] : []),
+              ...(effectiveEmail ? [{ user: { email: effectiveEmail } }] : []),
+              ...(auth.clerkId ? [{ user: { clerkId: auth.clerkId } }] : []),
             ],
             AND: [
               {
@@ -189,16 +195,22 @@ interface CertificateResult {
 
     const passingPercentage = masterQuiz?.passingPercentage || INITIAL_FINAL_TEST.passingPercentage || 70;
 
-    // 2. Server-side Grading
+    // 2. Server-side Grading & Explanations Extraction
     let correctCount = 0;
     let totalQuestions = 0;
+    const explanations: Record<string, { correctOptionIndex: number; explanation: string }> = {};
 
     if (masterQuiz?.questions && masterQuiz.questions.length > 0) {
       totalQuestions = masterQuiz.questions.length;
       masterQuiz.questions.forEach((q) => {
         const studentSelected = answers[q.id];
+        const correctIdx = q.options.findIndex((opt) => opt.isCorrect);
+        explanations[q.id] = {
+          correctOptionIndex: correctIdx >= 0 ? correctIdx : 0,
+          explanation: q.explanation || 'Vedic Astrology Principles Reference.',
+        };
+
         if (studentSelected !== undefined) {
-          // Can be option index or option id
           const correctOption = q.options.find((opt) => opt.isCorrect);
           const isMatchByIndex = typeof studentSelected === 'number' && q.options[studentSelected]?.isCorrect;
           const isMatchById = correctOption && String(studentSelected) === String(correctOption.id);
@@ -214,6 +226,11 @@ interface CertificateResult {
 
       totalQuestions = quizQuestions.length;
       quizQuestions.forEach((q: QuizQuestionItem) => {
+        explanations[q.id] = {
+          correctOptionIndex: q.correctOptionIndex,
+          explanation: q.explanation || 'Vedic Astrology Principles Reference.',
+        };
+
         const studentSelected = answers[q.id];
         if (studentSelected !== undefined && Number(studentSelected) === Number(q.correctOptionIndex)) {
           correctCount++;
@@ -224,24 +241,95 @@ interface CertificateResult {
     const scorePercentage = Math.round((correctCount / Math.max(1, totalQuestions)) * 100);
     const isPassed = scorePercentage >= passingPercentage;
 
-    let certificate: CertificateResult | null = null;
+    let grade: 'Distinction' | 'Merit' | 'Pass' | 'Fail' = 'Fail';
+    if (scorePercentage >= 90) grade = 'Distinction';
+    else if (scorePercentage >= 80) grade = 'Merit';
+    else if (scorePercentage >= 70) grade = 'Pass';
 
-    // 3. If passed, generate certificate
+    // 3. Resolve Database User (authoritative foreign key)
+    let dbUser = auth.dbUser;
+    if (!dbUser && (effectiveEmail || effectiveStudentId)) {
+      try {
+        dbUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              ...(effectiveEmail ? [{ email: effectiveEmail }] : []),
+              ...(effectiveStudentId ? [{ id: effectiveStudentId }] : []),
+              ...(auth.clerkId ? [{ clerkId: auth.clerkId }] : []),
+            ],
+          },
+        });
+
+        if (!dbUser && effectiveEmail) {
+          dbUser = await prisma.user.create({
+            data: {
+              name: effectiveName,
+              email: effectiveEmail,
+              clerkId: auth.clerkId || null,
+              role: 'STUDENT',
+            },
+          });
+        }
+      } catch (dbUserErr) {
+        console.warn('Could not resolve or create DB user in quiz submit:', (dbUserErr as Error).message);
+      }
+    }
+
+    // Resolve optional cohort and course IDs safely
+    let validCohortId: string | null = null;
+    if (cohortId) {
+      try {
+        const cohortExists = await prisma.cohort.findUnique({ where: { id: cohortId } });
+        if (cohortExists) validCohortId = cohortExists.id;
+      } catch {}
+    }
+
+    let validCourseId: string | null = null;
+    if (courseId) {
+      try {
+        const courseExists = await prisma.course.findFirst({
+          where: { OR: [{ id: courseId }, { slug: courseId }] },
+        });
+        if (courseExists) validCourseId = courseExists.id;
+      } catch {}
+    }
+
+    // 4. Save Quiz Attempt in Database (Recorded for both passed and failed attempts)
+    let attemptId = `sub-${Date.now()}`;
+    if (dbUser) {
+      try {
+        const attempt = await prisma.quizAttempt.create({
+          data: {
+            userId: dbUser.id,
+            cohortId: validCohortId,
+            quizId: masterQuiz?.id || null,
+            score: correctCount,
+            totalQuestions,
+            scorePercentage,
+            passed: isPassed,
+            answersJson: answers,
+          },
+        });
+        attemptId = attempt.id;
+      } catch (persistErr) {
+        console.warn('Quiz attempt DB persistence warning:', (persistErr as Error).message);
+      }
+    }
+
+    // 5. If passed, generate & save Certificate in Database
+    let certificate: CertificateResult | null = null;
     if (isPassed) {
       const codeRandom = Math.floor(1000 + Math.random() * 9000);
       const verificationCode = `VIAR-2026-WIA-${codeRandom}`;
       const verifySlug = `verify-${verificationCode.toLowerCase()}`;
-      let grade: 'Distinction' | 'Merit' | 'Pass' = 'Pass';
-      if (scorePercentage >= 90) grade = 'Distinction';
-      else if (scorePercentage >= 80) grade = 'Merit';
 
       certificate = {
         id: `cert-${Date.now()}`,
         verificationCode,
         verifySlug,
-        studentId: studentId || `user-${Date.now()}`,
-        studentName: studentName || 'Scholar',
-        studentEmail: studentEmail || 'student@example.com',
+        studentId: dbUser?.id || effectiveStudentId || `user-${Date.now()}`,
+        studentName: effectiveName,
+        studentEmail: effectiveEmail || 'student@example.com',
         courseTitle: 'The Ultimate Astrology Course: Foundations to Chart Mastery',
         cohortBatchName: 'Self-Paced Masterclass — Vihangam Institute of Astrology and Research',
         scorePercentage,
@@ -252,59 +340,31 @@ interface CertificateResult {
         verificationUrl: `${env.appUrl}/verify/${verificationCode}`,
       };
 
-      // Try database persistence for user, attempt, and certificate
-      try {
-        let dbUser = null;
-        if (studentEmail) {
-          dbUser = await prisma.user.findFirst({ where: { email: studentEmail } });
-          if (!dbUser) {
-            dbUser = await prisma.user.create({
-              data: {
-                name: studentName || 'Scholar',
-                email: studentEmail,
-                role: 'STUDENT',
-              },
-            });
-          }
+      if (dbUser) {
+        try {
+          const dbCert = await prisma.certificate.create({
+            data: {
+              userId: dbUser.id,
+              courseId: validCourseId,
+              cohortId: validCohortId,
+              certificateNumber: verificationCode,
+              verifySlug,
+              grade,
+              scorePercentage,
+              instructorName: 'Acharya Niraj Kumar',
+            },
+          });
+          certificate.id = dbCert.id;
+        } catch (persistErr) {
+          console.warn('Certificate DB persistence warning:', (persistErr as Error).message);
         }
-
-        if (dbUser && cohortId) {
-          const cohortExists = await prisma.cohort.findUnique({ where: { id: cohortId } });
-          if (cohortExists) {
-            await prisma.quizAttempt.create({
-              data: {
-                userId: dbUser.id,
-                cohortId,
-                score: correctCount,
-                totalQuestions,
-                scorePercentage,
-                passed: isPassed,
-                answersJson: answers,
-              },
-            });
-
-            await prisma.certificate.create({
-              data: {
-                userId: dbUser.id,
-                cohortId,
-                certificateNumber: verificationCode,
-                verifySlug,
-                grade,
-                scorePercentage,
-                instructorName: 'Acharya Niraj Kumar',
-              },
-            });
-          }
-        }
-      } catch (persistErr) {
-        console.warn('Certificate DB persistence non-fatal error:', (persistErr as Error).message);
       }
 
       // Dispatch Certificate Email notification
-      if (studentEmail) {
+      if (effectiveEmail) {
         await emailService.sendCertificateIssued({
-          studentName: studentName || 'Scholar',
-          studentEmail,
+          studentName: effectiveName,
+          studentEmail: effectiveEmail,
           courseTitle: 'The Ultimate Astrology Course: Foundations to Chart Mastery',
           certificateCode: verificationCode,
           certificateUrl: `${env.appUrl}/verify/${verificationCode}`,
@@ -318,20 +378,25 @@ interface CertificateResult {
     logger.info('Quiz attempt graded successfully on server', {
       service: 'quiz',
       cohortId,
-      studentEmail,
+      studentEmail: effectiveEmail,
       score: correctCount,
       totalQuestions,
       scorePercentage,
       isPassed,
+      grade,
+      attemptId,
     });
 
     return NextResponse.json({
       success: true,
+      attemptId,
       score: correctCount,
       totalQuestions,
       scorePercentage,
       isPassed,
+      grade,
       certificate,
+      explanations,
       remainingAttempts: rateLimitResult.remaining,
     });
   } catch (err) {

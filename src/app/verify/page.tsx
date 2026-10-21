@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Award, Search, CheckCircle2, Sparkles, AlertCircle } from 'lucide-react';
-import { ViarStore } from '@/lib/store';
 import { useLanguage } from '@/components/LanguageContext';
 
 export default function CertificateSearchPage() {
@@ -27,16 +26,16 @@ export default function CertificateSearchPage() {
         router.push(`/verify/${data.certificate.certificateNumber}`);
         return;
       }
-    } catch {}
-
-    const cert = ViarStore.getCertificateByCode(trimmed);
-    if (cert) {
-      router.push(`/verify/${cert.verificationCode}`);
-    } else {
       setErrorMsg(
         isHi
           ? `कोड "${trimmed}" से मेल खाता कोई प्रमाणपत्र नहीं मिला। कृपया प्रमाणपत्र आईडी पुनः जांचें।`
           : `No certificate found matching code "${trimmed}". Please double check the certificate ID.`
+      );
+    } catch {
+      setErrorMsg(
+        isHi
+          ? 'सत्यापन सेवा से संपर्क करने में असमर्थ। कृपया पुनः प्रयास करें।'
+          : 'Could not reach verification service. Please retry.'
       );
     }
   };

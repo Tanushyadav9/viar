@@ -14,7 +14,6 @@ import {
   Copy,
   Check
 } from 'lucide-react';
-import { ViarStore } from '@/lib/store';
 import { Certificate } from '@/lib/types';
 import {
   AsyncStateView,
@@ -33,82 +32,24 @@ export default function StudentCertificatesPage() {
     setPageStatus('loading');
     setErrorMessage('');
     try {
-      const syncRes = await fetch('/api/users/sync');
-      if (syncRes.status === 401 || syncRes.status === 403) {
+      const res = await fetch('/api/certificates');
+      if (res.status === 401 || res.status === 403) {
         setPageStatus('error');
         setErrorType('auth');
         return;
       }
-      if (!syncRes.ok) {
+      if (!res.ok) {
         setPageStatus('error');
         setErrorType('server');
         return;
       }
-      const uData = await syncRes.json();
-      const uid = uData?.user?.id || uData?.user?.clerkId;
-      if (!uid) {
-        setPageStatus('error');
-        setErrorType('auth');
-        return;
-      }
+      const data = await res.json();
+      const list: Certificate[] = data.success && Array.isArray(data.certificates)
+        ? data.certificates
+        : [];
 
-      const enrRes = await fetch(`/api/enrollments?userId=${encodeURIComponent(uid)}`);
-      if (enrRes.status === 401 || enrRes.status === 403) {
-        setPageStatus('error');
-        setErrorType('auth');
-        return;
-      }
-      if (!enrRes.ok) {
-        setPageStatus('error');
-        setErrorType('server');
-        return;
-      }
-      const eData = await enrRes.json();
-      let foundCerts: Certificate[] = [];
-      if (eData.success && Array.isArray(eData.enrollments)) {
-        foundCerts = eData.enrollments
-          .filter((enr: { certificateVerificationCode?: string }) => enr.certificateVerificationCode)
-          .map((enr: {
-            id: string;
-            certificateId?: string;
-            certificateVerificationCode: string;
-            studentId?: string;
-            studentName?: string;
-            courseId?: string;
-            courseTitle?: string;
-            cohortId?: string;
-            cohortBatchName?: string;
-            enrolledAt?: string;
-            quizScorePercentage?: number;
-          }) => ({
-            id: enr.certificateId || `cert-${enr.id}`,
-            certificateNumber: enr.certificateVerificationCode,
-            verificationCode: enr.certificateVerificationCode,
-            studentId: enr.studentId,
-            studentName: enr.studentName,
-            courseId: enr.courseId,
-            courseTitle: enr.courseTitle,
-            cohortId: enr.cohortId,
-            cohortBatchName: enr.cohortBatchName,
-            issuedDate: enr.enrolledAt ? enr.enrolledAt.split('T')[0] : new Date().toISOString().split('T')[0],
-            issueDate: enr.enrolledAt ? enr.enrolledAt.split('T')[0] : new Date().toISOString().split('T')[0],
-            grade: 'Distinction',
-            scorePercentage: enr.quizScorePercentage || 95,
-            instructorName: 'Acharya Niraj Kumar',
-            instructorTitle: 'Founder, Acharya Niraj Kumar',
-            verificationUrl: `https://viar.in/verify/${enr.certificateVerificationCode}`,
-          }));
-      }
-
-      if (foundCerts.length === 0) {
-        const localCerts = ViarStore.getCertificates();
-        if (localCerts.length > 0) {
-          foundCerts = localCerts;
-        }
-      }
-
-      setCerts(foundCerts);
-      setPageStatus(foundCerts.length === 0 ? 'empty' : 'success');
+      setCerts(list);
+      setPageStatus(list.length === 0 ? 'empty' : 'success');
     } catch (err) {
       setPageStatus('error');
       setErrorType('server');

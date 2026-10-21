@@ -12,7 +12,6 @@ import {
   Download,
   ArrowLeft
 } from 'lucide-react';
-import { ViarStore } from '@/lib/store';
 import { Certificate } from '@/lib/types';
 
 export default function PublicVerifyCertificatePage() {
@@ -23,10 +22,11 @@ export default function PublicVerifyCertificatePage() {
 
   useEffect(() => {
     if (code) {
+      setLoading(true);
       fetch(`/api/certificates/${encodeURIComponent(code)}`)
-        .then((res) => res.json())
+        .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (data.success && data.certificate) {
+          if (data && data.success && data.certificate) {
             setCert({
               id: data.certificate.id,
               certificateNumber: data.certificate.certificateNumber,
@@ -35,23 +35,17 @@ export default function PublicVerifyCertificatePage() {
               courseTitle: data.certificate.courseName,
               cohortId: data.certificate.cohortName,
               issuedDate: data.certificate.issuedAt ? data.certificate.issuedAt.split('T')[0] : new Date().toISOString().split('T')[0],
-              grade: data.certificate.grade || 'Distinction',
-              scorePercentage: data.certificate.scorePercentage || 95,
+              grade: data.certificate.grade || 'Pass',
+              scorePercentage: data.certificate.scorePercentage || 70,
               instructorName: data.certificate.instructorName || 'Acharya Niraj Kumar',
               verificationUrl: data.certificate.verifyUrl,
             });
-            return;
-          }
-          const found = ViarStore.getCertificateByCode(code);
-          if (found) {
-            setCert(found);
+          } else {
+            setCert(null);
           }
         })
         .catch(() => {
-          const found = ViarStore.getCertificateByCode(code);
-          if (found) {
-            setCert(found);
-          }
+          setCert(null);
         })
         .finally(() => setLoading(false));
     }

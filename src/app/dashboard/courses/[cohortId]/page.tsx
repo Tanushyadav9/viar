@@ -171,22 +171,18 @@ export default function CohortClassByClassPage() {
       });
 
     // 2. Fetch live progress from PostgreSQL API
-    if (currentUser?.id) {
-      fetch(`/api/progress?userId=${currentUser.id}`)
-        .then((res) => res.json())
-        .then((pData) => {
-          if (pData.success && Array.isArray(pData.completedLessonIds)) {
-            setWatchedSet(new Set(pData.completedLessonIds));
-          } else {
-            setWatchedSet(new Set(ViarStore.getWatchedClassIds()));
-          }
-        })
-        .catch(() => {
+    fetch('/api/progress')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((pData) => {
+        if (pData?.success && Array.isArray(pData.completedLessonIds)) {
+          setWatchedSet(new Set(pData.completedLessonIds));
+        } else {
           setWatchedSet(new Set(ViarStore.getWatchedClassIds()));
-        });
-    } else {
-      setWatchedSet(new Set(ViarStore.getWatchedClassIds()));
-    }
+        }
+      })
+      .catch(() => {
+        setWatchedSet(new Set(ViarStore.getWatchedClassIds()));
+      });
   }, [cohortId, targetLessonId]);
 
   const [, setCurrentTime] = useState(Date.now());
@@ -207,20 +203,17 @@ export default function CohortClassByClassPage() {
     setWatchedSet(updated);
     ViarStore.toggleClassWatched(classId);
 
-    const currentUser = ViarStore.getCurrentUser();
-    if (currentUser) {
-      fetch('/api/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: currentUser.id,
-          lessonId: classId,
-          classSessionId: classId,
-          completed: willBeWatched,
-          watched: willBeWatched,
-        }),
-      }).catch((err) => console.warn('Progress API sync failed:', err));
-    }
+    // Save progress directly to PostgreSQL using server session
+    fetch('/api/progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lessonId: classId,
+        classSessionId: classId,
+        completed: willBeWatched,
+        watched: willBeWatched,
+      }),
+    }).catch((err) => console.warn('Progress API sync failed:', err));
   };
 
   const progress = ViarStore.getCourseProgress(cohortId);

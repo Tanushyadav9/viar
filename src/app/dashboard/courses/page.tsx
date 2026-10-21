@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import {
   BookOpen,
   Play,
@@ -43,7 +42,6 @@ interface EnrolledCourseItem {
 }
 
 export default function MyCoursesPage() {
-  const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourseItem[]>([]);
   const [catalogCourses, setCatalogCourses] = useState<Course[]>([]);
@@ -54,34 +52,33 @@ export default function MyCoursesPage() {
   const loadStudentCourses = useCallback(async () => {
     setPageStatus('loading');
     setErrorMessage('');
-    let user = ViarStore.getCurrentUser();
-    if (!user) {
-      try {
-        const syncRes = await fetch('/api/users/sync');
-        if (syncRes.status === 401 || syncRes.status === 403) {
-          setPageStatus('error');
-          setErrorType('auth');
-          return;
-        }
-        if (!syncRes.ok) {
-          setPageStatus('error');
-          setErrorType('server');
-          return;
-        }
-        const syncData = await syncRes.json();
-        if (syncData?.user) {
-          user = syncData.user;
-          ViarStore.setCurrentUser(syncData.user);
-        }
-      } catch (err) {
+    let user: User | null = null;
+    try {
+      const syncRes = await fetch('/api/users/sync');
+      if (syncRes.status === 401 || syncRes.status === 403) {
         setPageStatus('error');
-        setErrorType('server');
-        setErrorMessage(err instanceof Error ? err.message : 'Connection failed');
+        setErrorType('auth');
         return;
       }
+      if (!syncRes.ok) {
+        setPageStatus('error');
+        setErrorType('server');
+        return;
+      }
+      const syncData = await syncRes.json();
+      if (syncData?.user) {
+        user = syncData.user;
+      }
+    } catch (err) {
+      setPageStatus('error');
+      setErrorType('server');
+      setErrorMessage(err instanceof Error ? err.message : 'Connection failed');
+      return;
     }
+
     if (!user) {
-      router.push('/login?returnUrl=/dashboard/courses');
+      setPageStatus('error');
+      setErrorType('auth');
       return;
     }
     setCurrentUser(user);
@@ -213,7 +210,7 @@ export default function MyCoursesPage() {
       setErrorType('server');
       setErrorMessage(err instanceof Error ? err.message : 'Could not load courses');
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     loadStudentCourses();

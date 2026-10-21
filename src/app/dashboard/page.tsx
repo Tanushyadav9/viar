@@ -37,6 +37,11 @@ import {
   getUserLocalTimezone,
   generateGoogleCalendarUrl,
 } from '@/lib/timezones';
+import {
+  AsyncStateView,
+  type AsyncStateStatus,
+  type ErrorType,
+} from '@/components/common/AsyncStateView';
 
 function StudentDashboardContent() {
   const router = useRouter();
@@ -55,11 +60,18 @@ function StudentDashboardContent() {
   const [selectedClassForNotes, setSelectedClassForNotes] = useState<ScheduledClass | null>(null);
   const [userTz, setUserTz] = useState<string>('Asia/Kolkata');
 
+  // Async page state
+  const [pageStatus, setPageStatus] = useState<AsyncStateStatus>('loading');
+  const [errorType, setErrorType] = useState<ErrorType>('server');
+  const [errorMessage, setErrorMessage] = useState<string>('');
+
   // Exam States
   const [examAnswers, setExamAnswers] = useState<Record<string, number>>({});
   const [examSubmitted, setExamSubmitted] = useState(false);
   const [examResult, setExamResult] = useState<TestSubmission | null>(null);
   const [isSubmittingExam, setIsSubmittingExam] = useState(false);
+  const [examFeedback, setExamFeedback] = useState<Record<string, { correctOptionIndex: number; explanation: string }>>({});
+  const [examError, setExamError] = useState<string>('');
 
   const loadData = useCallback(async () => {
     // Fail-Closed: If URL indicates an authorization failure, NEVER load protected data
@@ -68,20 +80,36 @@ function StudentDashboardContent() {
       return;
     }
 
-    let user = ViarStore.getCurrentUser();
-    if (!user) {
-      try {
-        const syncRes = await fetch('/api/users/sync');
-        const syncData = await syncRes.json();
-        if (syncData?.user) {
-          user = syncData.user;
-          ViarStore.setCurrentUser(syncData.user);
-        }
-      } catch {}
+    setPageStatus('loading');
+    setErrorMessage('');
+
+    let user: User | null = null;
+    try {
+      const syncRes = await fetch('/api/users/sync');
+      if (syncRes.status === 401 || syncRes.status === 403) {
+        setPageStatus('error');
+        setErrorType('auth');
+        return;
+      }
+      if (!syncRes.ok) {
+        setPageStatus('error');
+        setErrorType('server');
+        return;
+      }
+      const syncData = await syncRes.json();
+      if (syncData?.user) {
+        user = syncData.user;
+      }
+    } catch (err) {
+      setPageStatus('error');
+      setErrorType('server');
+      setErrorMessage(err instanceof Error ? err.message : 'Connection failed');
+      return;
     }
 
     if (!user) {
-      router.push('/login?returnUrl=/dashboard');
+      setPageStatus('error');
+      setErrorType('auth');
       return;
     }
     setCurrentUser(user);
@@ -107,13 +135,41 @@ function StudentDashboardContent() {
       setCohort((prev) => prev || c);
       const cls = ViarStore.getClasses(c.id);
       setClasses(cls);
-      setFinalTest(ViarStore.getFinalTest(c.id));
-
-      const cert = ViarStore.getStudentCertificate(user.id, c.id);
-      if (cert) setCertificate(cert);
     }
 
+    // Load sanitized exam questions from PostgreSQL API (server answer key protected)
+    try {
+      const qRes = await fetch('/api/quizzes?cohortId=cohort-wia-batch-1');
+      if (qRes.ok) {
+        const qData = await qRes.json();
+        if (qData.success && qData.quiz) {
+          setFinalTest({
+            id: qData.quiz.id,
+            courseId: qData.quiz.courseId,
+            cohortId: 'cohort-wia-batch-1',
+            title: qData.quiz.title,
+            passingPercentage: qData.quiz.passingPercentage || 70,
+            durationMinutes: qData.quiz.durationMinutes || 45,
+            totalQuestions: qData.quiz.totalQuestions || qData.quiz.questions?.length || 20,
+            questions: qData.quiz.questions || [],
+          });
+        }
+      }
+    } catch {}
+
+    // Load student certificate directly from PostgreSQL database API
+    try {
+      const certRes = await fetch('/api/certificates');
+      if (certRes.ok) {
+        const certData = await certRes.json();
+        if (certData.success && Array.isArray(certData.certificates) && certData.certificates.length > 0) {
+          setCertificate(certData.certificates[0]);
+        }
+      }
+    } catch {}
+
     setUserTz(ViarStore.getTimezone() || getUserLocalTimezone());
+    setPageStatus('success');
   }, [router, errorParam]);
 
   useEffect(() => {
@@ -149,6 +205,7 @@ function StudentDashboardContent() {
   const handleSubmitExam = async () => {
     if (!finalTest || !currentUser || !cohort) return;
     setIsSubmittingExam(true);
+    setExamError('');
 
     try {
       const res = await fetch('/api/quiz/submit', {
@@ -156,6 +213,7 @@ function StudentDashboardContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cohortId: cohort.id,
+          courseId: course?.id || 'course-what-is-astrology',
           studentId: currentUser.id,
           studentName: currentUser.name,
           studentEmail: currentUser.email,
@@ -166,7 +224,7 @@ function StudentDashboardContent() {
       const data = await res.json();
       if (data.success) {
         setExamResult({
-          id: `sub-${Date.now()}`,
+          id: data.attemptId || `sub-${Date.now()}`,
           cohortId: cohort.id,
           studentId: currentUser.id,
           studentName: currentUser.name,
@@ -174,9 +232,12 @@ function StudentDashboardContent() {
           score: data.score,
           totalQuestions: data.totalQuestions,
           scorePercentage: data.scorePercentage,
-          passed: data.passed,
+          passed: data.isPassed,
           grade: data.grade,
         });
+        if (data.explanations) {
+          setExamFeedback(data.explanations);
+        }
         setExamSubmitted(true);
         if (data.certificate) {
           setCertificate(data.certificate);
@@ -185,22 +246,8 @@ function StudentDashboardContent() {
       } else {
         throw new Error(data.error || 'Server evaluation error');
       }
-    } catch {
-      // Local fallback
-      const { submission, certificate: newCert } = ViarStore.submitFinalTest({
-        cohortId: cohort.id,
-        studentId: currentUser.id,
-        studentName: currentUser.name,
-        studentEmail: currentUser.email,
-        answers: examAnswers,
-      });
-
-      setExamResult(submission);
-      setExamSubmitted(true);
-      if (newCert) {
-        setCertificate(newCert);
-        confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
-      }
+    } catch (err) {
+      setExamError(err instanceof Error ? err.message : 'Failed to submit exam to server. Please retry.');
     } finally {
       setIsSubmittingExam(false);
     }
@@ -240,7 +287,14 @@ function StudentDashboardContent() {
   return (
     <div className="cosmic-bg min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+        <AsyncStateView
+          status={pageStatus}
+          errorType={errorType}
+          errorMessage={errorMessage}
+          onRetry={loadData}
+          signInUrl="/login?returnUrl=/dashboard"
+          loadingMessage="Loading student dashboard & academy portal..."
+        >
         {/* Admin/Instructor Restricted Redirect Banners */}
         {errorParam === 'admin_restricted' && (
           <div className="mb-8 p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-3 shadow-lg">
@@ -830,7 +884,12 @@ function StudentDashboardContent() {
               <div className="space-y-6">
                 {finalTest.questions.map((q) => {
                   const selectedOption = examAnswers[q.id];
-                  const isCorrect = selectedOption === q.correctOptionIndex;
+                  const feedback = examFeedback[q.id];
+                  const correctOptionIdx = feedback?.correctOptionIndex !== undefined
+                    ? feedback.correctOptionIndex
+                    : (q.correctOptionIndex !== undefined ? q.correctOptionIndex : -1);
+                  const isCorrect = selectedOption === correctOptionIdx;
+                  const explanationText = feedback?.explanation || q.explanation;
 
                   return (
                     <div
@@ -867,7 +926,7 @@ function StudentDashboardContent() {
                       <div className="space-y-2">
                         {q.options.map((opt, optIndex) => {
                           const isSelected = selectedOption === optIndex;
-                          const isTheCorrectOption = optIndex === q.correctOptionIndex;
+                          const isTheCorrectOption = optIndex === correctOptionIdx;
 
                           let optionStyle = 'border-white/10 bg-white/[0.02] text-slate-300 hover:bg-white/5';
                           if (examSubmitted) {
@@ -902,10 +961,10 @@ function StudentDashboardContent() {
                       </div>
 
                       {/* Explanation if submitted */}
-                      {examSubmitted && (
+                      {examSubmitted && explanationText && (
                         <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-slate-300">
                           <p className="font-bold text-amber-300 mb-1">Astronomical / Vedic Explanation:</p>
-                          <p className="leading-relaxed">{q.explanation}</p>
+                          <p className="leading-relaxed">{explanationText}</p>
                         </div>
                       )}
                     </div>
@@ -915,6 +974,11 @@ function StudentDashboardContent() {
                 {/* Submit Examination Button */}
                 {!examSubmitted ? (
                   <div className="p-6 rounded-2xl cosmic-card border border-amber-500/30 text-center space-y-4">
+                    {examError && (
+                      <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs">
+                        {examError}
+                      </div>
+                    )}
                     <p className="text-xs text-slate-400">
                       You have selected answers for{' '}
                       <strong className="text-white">{Object.keys(examAnswers).length}</strong> of 20 questions.
@@ -1082,6 +1146,7 @@ function StudentDashboardContent() {
           </div>
         )}
 
+        </AsyncStateView>
       </div>
     </div>
   );
