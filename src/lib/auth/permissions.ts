@@ -28,6 +28,7 @@ import type {
 import { isDevSimulationAllowed, parseClerkSessionClaims } from './devSimulation.ts';
 
 export { isDevSimulationAllowed, parseClerkSessionClaims };
+export * from "./policy.ts";
 
 export interface AdminSectionMeta {
   key: AdminSection;

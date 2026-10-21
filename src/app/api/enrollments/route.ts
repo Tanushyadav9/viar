@@ -1,48 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
+import { getServerAuthUser, canAccessArea } from '@/lib/auth/serverAuth';
 import { emailService } from '@/lib/email';
 import { env } from '@/config/env';
 
 export async function GET(req: NextRequest) {
   try {
     const auth = await getServerAuthUser();
+    if (!auth.isAuthenticated || !auth.userId) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Session required.' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const requestedUserId = searchParams.get('userId');
     const courseId = searchParams.get('courseId');
     const cohortId = searchParams.get('cohortId');
     const searchQuery = searchParams.get('q') || '';
 
-    const isSelfQuery = Boolean(
-      auth.isAuthenticated &&
-      requestedUserId &&
-      (requestedUserId === auth.userId ||
-       requestedUserId === auth.clerkId ||
-       requestedUserId === 'me' ||
-       requestedUserId === 'self' ||
-       (auth.email && requestedUserId.toLowerCase() === auth.email.toLowerCase()))
-    );
+    const hasRosterPermission = canAccessArea(auth, 'student_roster');
+    let targetUserIdForQuery: string | null = null;
 
-    if (!isSelfQuery) {
-      if (!isAuthorizedForSection(auth, 'students', 'VIEW')) {
+    if (requestedUserId) {
+      const isSelf = canAccessArea(auth, 'own_data', { targetUserId: requestedUserId });
+      if (!isSelf && !hasRosterPermission) {
         return NextResponse.json(
           {
             success: false,
-            error: "Forbidden: VIEW permission on 'students' required.",
+            error: "Forbidden: Students may only view their own enrollments. Roster access requires 'students' permission.",
           },
           { status: 403 }
         );
+      }
+      targetUserIdForQuery = requestedUserId;
+    } else {
+      // If no userId is specified:
+      // - If caller has roster permission (Owner or Staff with 'students'), query the general roster
+      // - If caller is a regular student, automatically default to their OWN enrollments (never 403!)
+      if (!hasRosterPermission) {
+        targetUserIdForQuery = auth.userId;
       }
     }
 
     try {
       const whereClause: Record<string, unknown> = {};
-      if (requestedUserId) {
-        whereClause.OR = [
-          { userId: requestedUserId },
-          { user: { clerkId: requestedUserId } },
-          { user: { email: requestedUserId } },
-        ];
+      if (targetUserIdForQuery) {
+        const isSelfMatch =
+          targetUserIdForQuery === auth.userId ||
+          targetUserIdForQuery === auth.clerkId ||
+          targetUserIdForQuery === 'self' ||
+          targetUserIdForQuery === 'me' ||
+          (auth.email && targetUserIdForQuery.toLowerCase() === auth.email.toLowerCase());
+
+        if (isSelfMatch) {
+          whereClause.OR = [
+            { userId: auth.userId },
+            ...(auth.clerkId ? [{ user: { clerkId: auth.clerkId } }] : []),
+            ...(auth.email ? [{ user: { email: auth.email } }] : []),
+          ];
+        } else {
+          whereClause.OR = [
+            { userId: targetUserIdForQuery },
+            { user: { clerkId: targetUserIdForQuery } },
+            { user: { email: targetUserIdForQuery } },
+          ];
+        }
       }
       if (cohortId && cohortId !== 'all') whereClause.cohortId = cohortId;
       if (courseId && courseId !== 'all') {
@@ -170,9 +194,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const auth = await getServerAuthUser();
-    if (!isAuthorizedForSection(auth, 'students', 'MANAGE')) {
+    // Unified Policy: Granting or revoking enrolment is strictly Owner-only
+    if (!canAccessArea(auth, 'enrollment_mutation')) {
       return NextResponse.json(
-        { success: false, error: "Forbidden: MANAGE permission on 'students' required." },
+        { success: false, error: 'Forbidden: Manually granting course access is restricted to the Site Owner only.' },
         { status: 403 }
       );
     }

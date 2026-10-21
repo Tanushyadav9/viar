@@ -12,8 +12,24 @@ const { auth, currentUser } = clerkServer;
 
 import { validateRedirectUrl } from './urlValidation.ts';
 import { syncDatabaseUser } from './userSync.ts';
+import {
+  canAccessArea,
+  canAccessSection,
+  getAllowedAdminSections,
+  isOwnerOnlyArea,
+  type PermissionArea,
+  type PolicySubject,
+  type PermissionCheckContext,
+} from './policy.ts';
 
-export { validateRedirectUrl };
+export {
+  validateRedirectUrl,
+  canAccessArea,
+  canAccessSection,
+  getAllowedAdminSections,
+  isOwnerOnlyArea,
+};
+export type { PermissionArea, PolicySubject, PermissionCheckContext };
 
 export interface ServerAuthResult {
   isAuthenticated: boolean;
@@ -215,17 +231,14 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
 
 /**
  * Checks whether the authenticated user is authorized for a specific section.
+ * Derives strictly from the unified permission policy in policy.ts.
  */
 export function isAuthorizedForSection(
   authResult: ServerAuthResult,
   section: string,
   requiredLevel?: string
 ): boolean {
-  void requiredLevel;
-  if (!authResult.isAuthenticated) return false;
-  if (authResult.isOwner) return true;
-  if (section.toLowerCase() === 'staff') return false; // Staff section is strictly Owner-only!
-  return authResult.staffSections.map((s) => s.toLowerCase()).includes(section.toLowerCase());
+  return canAccessSection(authResult, section, (requiredLevel as 'VIEW' | 'MANAGE') || 'VIEW');
 }
 
 /**

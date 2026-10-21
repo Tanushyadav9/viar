@@ -5,6 +5,10 @@ import {
   getServerAuthUser,
   setTestAuthUser,
   isAuthorizedForSection,
+  canAccessArea,
+  canAccessSection,
+  getAllowedAdminSections,
+  isOwnerOnlyArea,
 } from '../src/lib/auth/serverAuth.ts';
 import type { ServerAuthResult } from '../src/lib/auth/serverAuth.ts';
 
@@ -80,6 +84,26 @@ const STAFF_COURSES_PERSONA: ServerAuthResult = {
     clerkId: 'user_clerk_staff_202',
     email: 'staff.courses@viar.in',
     name: 'Curriculum Staff',
+    role: 'ADMIN',
+    isOwner: false,
+  },
+};
+
+const STAFF_PAYMENTS_PERSONA: ServerAuthResult = {
+  isAuthenticated: true,
+  userId: 'db-staff-payments-303',
+  clerkId: 'user_clerk_staff_303',
+  email: 'staff.payments@viar.in',
+  isEmailVerified: true,
+  isOwner: false,
+  isStaff: true,
+  staffSections: ['payments'],
+  role: 'ADMIN',
+  dbUser: {
+    id: 'db-staff-payments-303',
+    clerkId: 'user_clerk_staff_303',
+    email: 'staff.payments@viar.in',
+    name: 'Payments Staff',
     role: 'ADMIN',
     isOwner: false,
   },
@@ -304,14 +328,25 @@ describe('Identity & Authorization — One Way Only Security Suite', () => {
       assert.notStrictEqual(res.status, 403, 'Student must not be rejected with 403');
     });
 
-    it('should allow student to self-query enrollments via userId=self or userId=me', async () => {
-      const res = await getEnrollments(createMockRequest('http://localhost:3000/api/enrollments?userId=self'));
-      assert.strictEqual(res.status, 200);
+    it('should allow student to query own enrollments with or without userId (defaults to own courses, never 403)', async () => {
+      // 1. Without userId parameter (e.g. from student dashboard)
+      const resWithoutParam = await getEnrollments(createMockRequest('http://localhost:3000/api/enrollments'));
+      assert.strictEqual(resWithoutParam.status, 200, 'Student querying /api/enrollments must receive 200 with own courses, never 403');
+      const dataWithout = await resWithoutParam.json();
+      assert.strictEqual(dataWithout.success, true);
+
+      // 2. With self parameter
+      const resSelf = await getEnrollments(createMockRequest('http://localhost:3000/api/enrollments?userId=self'));
+      assert.strictEqual(resSelf.status, 200);
+
+      // 3. With explicit own userId
+      const resOwnId = await getEnrollments(createMockRequest('http://localhost:3000/api/enrollments?userId=db-student-cuid-101'));
+      assert.strictEqual(resOwnId.status, 200);
     });
 
-    it('should REJECT student trying to view general student roster without self query (403)', async () => {
-      const res = await getEnrollments(createMockRequest('http://localhost:3000/api/enrollments'));
-      assert.strictEqual(res.status, 403);
+    it('should REJECT student trying to view another student enrollments (403)', async () => {
+      const res = await getEnrollments(createMockRequest('http://localhost:3000/api/enrollments?userId=db-victim-student-999'));
+      assert.strictEqual(res.status, 403, 'Student querying another student id must receive 403 Forbidden');
     });
 
     it('should REJECT student attempting admin operations (team, settings, courses, cohorts, quizzes)', async () => {
@@ -471,6 +506,182 @@ describe('Identity & Authorization — One Way Only Security Suite', () => {
       const auth = await getServerAuthUser();
       assert.strictEqual(auth.userId, 'db-owner-cuid-001');
       assert.strictEqual(auth.clerkId, 'user_clerk_owner_001');
+    });
+  });
+
+  // =========================================================================
+  // 7. UNIFIED PERMISSION POLICY MATRIX (policy.ts)
+  // =========================================================================
+  describe('7. Unified Permission Policy Matrix Verification', () => {
+    // 1. Payment approvals, payment settings, grant or revoke enrolment, team, diagnostics, legal text
+    it('Owner-Only Areas: Owner: Yes | Staff: No | Student: No', () => {
+      const ownerOnlyAreas = [
+        'payment_approvals',
+        'payment_settings',
+        'enrollment_mutation',
+        'team',
+        'diagnostics',
+        'legal_text',
+      ] as const;
+
+      for (const area of ownerOnlyAreas) {
+        // Owner: Yes
+        assert.strictEqual(canAccessArea(OWNER_PERSONA, area), true, `Owner must have access to ${area}`);
+        // Staff (even with payments or courses): No
+        assert.strictEqual(canAccessArea(STAFF_PAYMENTS_PERSONA, area), false, `Staff must NOT have access to ${area}`);
+        assert.strictEqual(canAccessArea(STAFF_COURSES_PERSONA, area), false, `Staff must NOT have access to ${area}`);
+        // Student: No
+        assert.strictEqual(canAccessArea(STUDENT_PERSONA, area), false, `Student must NOT have access to ${area}`);
+        // Unauthenticated: No
+        assert.strictEqual(canAccessArea(LOGGED_OUT_PERSONA, area), false, `Logged out visitor must NOT have access to ${area}`);
+      }
+    });
+
+    // 2. Courses, lessons, quizzes, site content
+    it('Courses, Lessons, Quizzes, Site Content: Owner: Yes | Staff (granted): Yes | Student: No', () => {
+      // Courses
+      assert.strictEqual(canAccessArea(OWNER_PERSONA, 'courses'), true);
+      assert.strictEqual(canAccessArea(STAFF_COURSES_PERSONA, 'courses'), true);
+      assert.strictEqual(canAccessArea(STAFF_PAYMENTS_PERSONA, 'courses'), false);
+      assert.strictEqual(canAccessArea(STUDENT_PERSONA, 'courses'), false);
+
+      // Quizzes
+      assert.strictEqual(canAccessArea(OWNER_PERSONA, 'quizzes'), true);
+      assert.strictEqual(canAccessArea(STAFF_COURSES_PERSONA, 'quizzes'), false); // Only has 'courses'
+      assert.strictEqual(canAccessArea(STUDENT_PERSONA, 'quizzes'), false);
+
+      // Site Content (general)
+      assert.strictEqual(canAccessArea(OWNER_PERSONA, 'site_content', { collection: 'faqs' }), true);
+      assert.strictEqual(canAccessArea(STAFF_COURSES_PERSONA, 'site_content', { collection: 'faqs' }), false);
+      assert.strictEqual(canAccessArea(STUDENT_PERSONA, 'site_content', { collection: 'faqs' }), false);
+
+      // Site Content with legal or pricing collection is strictly Owner-only
+      assert.strictEqual(canAccessArea(OWNER_PERSONA, 'site_content', { collection: 'legal' }), true);
+      assert.strictEqual(canAccessArea(STAFF_COURSES_PERSONA, 'site_content', { collection: 'legal' }), false);
+    });
+
+    // 3. Student roster (read only: Owner: Yes | Staff with students: Yes | Student: No)
+    it('Student Roster: Owner: Yes | Staff (students section): Yes | Student: No', () => {
+      const staffWithStudents: ServerAuthResult = {
+        ...STAFF_COURSES_PERSONA,
+        staffSections: ['students'],
+      };
+
+      assert.strictEqual(canAccessArea(OWNER_PERSONA, 'student_roster'), true);
+      assert.strictEqual(canAccessArea(staffWithStudents, 'student_roster'), true);
+      assert.strictEqual(canAccessArea(STAFF_COURSES_PERSONA, 'student_roster'), false);
+      assert.strictEqual(canAccessArea(STUDENT_PERSONA, 'student_roster'), false);
+    });
+
+    // 4. Own enrolments, progress, orders, receipts, certificates
+    it('Own Data: Owner: Yes | Staff: Yes | Student: Own data only', () => {
+      // Student querying own data
+      assert.strictEqual(
+        canAccessArea(STUDENT_PERSONA, 'own_data', { targetUserId: 'db-student-cuid-101' }),
+        true,
+        'Student must access own data by DB user id'
+      );
+      assert.strictEqual(
+        canAccessArea(STUDENT_PERSONA, 'own_data', { targetUserId: 'self' }),
+        true,
+        'Student must access own data by "self"'
+      );
+      assert.strictEqual(
+        canAccessArea(STUDENT_PERSONA, 'own_data', { targetUserId: 'me' }),
+        true,
+        'Student must access own data by "me"'
+      );
+      assert.strictEqual(
+        canAccessArea(STUDENT_PERSONA, 'own_data'),
+        true,
+        'Student must access own data when targetUserId is omitted'
+      );
+
+      // Student querying someone else's data -> REJECTED
+      assert.strictEqual(
+        canAccessArea(STUDENT_PERSONA, 'own_data', { targetUserId: 'db-other-student-999' }),
+        false,
+        'Student must NOT access other students data'
+      );
+
+      // Staff without students section querying other students -> REJECTED
+      assert.strictEqual(
+        canAccessArea(STAFF_COURSES_PERSONA, 'own_data', { targetUserId: 'db-other-student-999' }),
+        false
+      );
+
+      // Staff WITH students section querying other students -> ALLOWED
+      const staffWithStudents: ServerAuthResult = {
+        ...STAFF_COURSES_PERSONA,
+        staffSections: ['students'],
+      };
+      assert.strictEqual(
+        canAccessArea(staffWithStudents, 'own_data', { targetUserId: 'db-other-student-999' }),
+        true
+      );
+
+      // Owner querying other students -> ALLOWED
+      assert.strictEqual(
+        canAccessArea(OWNER_PERSONA, 'own_data', { targetUserId: 'db-other-student-999' }),
+        true
+      );
+    });
+  });
+
+  // =========================================================================
+  // 8. PAYMENT APPROVALS & ENROLLMENT MUTATION ROLE BOUNDARIES
+  // =========================================================================
+  describe('8. Payment Approvals & Enrollment Mutation Route Enforcement', () => {
+    it('should REJECT staff with payments section on payment approvals (POST /api/admin/payments)', async () => {
+      setTestAuthUser(STAFF_PAYMENTS_PERSONA);
+      const res = await postAdminPayment(createMockRequest('http://localhost:3000/api/admin/payments', {
+        method: 'POST',
+        body: { paymentId: 'pay-test-1', action: 'VERIFY' },
+      }));
+      assert.strictEqual(res.status, 403);
+      const data = await res.json();
+      assert.ok(data.error.includes('Site Owner only'));
+    });
+
+    it('should REJECT staff with payments section on order approvals (POST /api/admin/orders/[id])', async () => {
+      setTestAuthUser(STAFF_PAYMENTS_PERSONA);
+      const res = await postAdminOrderAction(createMockRequest('http://localhost:3000/api/admin/orders/ord-test-1', {
+        method: 'POST',
+        body: { action: 'APPROVE', bankConfirmed: true },
+      }), { params: { id: 'ord-test-1' } });
+      assert.strictEqual(res.status, 403);
+      const data = await res.json();
+      assert.ok(data.error.includes('Site Owner'));
+    });
+
+    it('should REJECT staff with students section on manual enrollment granting (/api/enrollments/grant)', async () => {
+      const staffWithStudents: ServerAuthResult = {
+        ...STAFF_COURSES_PERSONA,
+        staffSections: ['students'],
+      };
+      setTestAuthUser(staffWithStudents);
+      const res = await grantEnrollment(createMockRequest('http://localhost:3000/api/enrollments/grant', {
+        method: 'POST',
+        body: { studentName: 'Test Student', studentEmail: 'test@example.com', reason: 'Manual scholarship grant' },
+      }));
+      assert.strictEqual(res.status, 403);
+      const data = await res.json();
+      assert.ok(data.error.includes('Site Owner only'));
+    });
+
+    it('should REJECT staff with students section on enrollment revocation (/api/enrollments/revoke)', async () => {
+      const staffWithStudents: ServerAuthResult = {
+        ...STAFF_COURSES_PERSONA,
+        staffSections: ['students'],
+      };
+      setTestAuthUser(staffWithStudents);
+      const res = await revokeEnrollment(createMockRequest('http://localhost:3000/api/enrollments/revoke', {
+        method: 'POST',
+        body: { enrollmentId: 'enr-test-1', reason: 'Student refund requested' },
+      }));
+      assert.strictEqual(res.status, 403);
+      const data = await res.json();
+      assert.ok(data.error.includes('Site Owner only'));
     });
   });
 });

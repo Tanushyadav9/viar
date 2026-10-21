@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerAuthUser } from '@/lib/auth/serverAuth';
+import { getServerAuthUser, canAccessArea } from '@/lib/auth/serverAuth';
 import { prisma } from '@/lib/prisma';
 import { VIAR_SECTIONS } from '@/lib/auth/permissions';
 import { DEMO_USERS } from '@/lib/data';
@@ -39,7 +39,8 @@ const serverStaffFallback: Partial<User>[] = DEMO_USERS.filter(
 export async function GET() {
   try {
     const auth = await getServerAuthUser();
-    if (!auth.isAuthenticated || !auth.isOwner) {
+    // Unified Policy: Team & Staff permissions management is strictly Owner-only (Staff: No, Student: No)
+    if (!canAccessArea(auth, 'team')) {
       return NextResponse.json(
         {
           success: false,
@@ -102,7 +103,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const auth = await getServerAuthUser();
-    if (!auth.isAuthenticated || !auth.isOwner) {
+    // Unified Policy: Team & Staff permissions management is strictly Owner-only (Staff: No, Student: No)
+    if (!canAccessArea(auth, 'team')) {
       return NextResponse.json(
         {
           success: false,
@@ -280,7 +282,8 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const auth = await getServerAuthUser();
-    if (!auth.isAuthenticated || !auth.isOwner) {
+    // Unified Policy: Team & Staff permissions management is strictly Owner-only (Staff: No, Student: No)
+    if (!canAccessArea(auth, 'team')) {
       return NextResponse.json(
         {
           success: false,

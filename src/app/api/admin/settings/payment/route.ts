@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerAuthUser } from '@/lib/auth/serverAuth';
+import { getServerAuthUser, canAccessArea } from '@/lib/auth/serverAuth';
 import { getPaymentSettings, updatePaymentSettings } from '@/lib/payments/settings';
 
 export async function GET() {
   try {
     const auth = await getServerAuthUser();
 
-    // Only Owner is allowed to inspect or manage critical payment routing settings
-    if (!auth.isAuthenticated || !auth.isOwner) {
+    // Unified Policy: Payment settings are strictly Owner-only (Staff: No, Student: No)
+    if (!canAccessArea(auth, 'payment_settings')) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Only the Site Owner can access payment settings.' },
         { status: 403 }
@@ -28,7 +28,8 @@ export async function POST(req: NextRequest) {
   try {
     const auth = await getServerAuthUser();
 
-    if (!auth.isAuthenticated || !auth.isOwner) {
+    // Unified Policy: Payment settings mutation is strictly Owner-only (Staff: No, Student: No)
+    if (!canAccessArea(auth, 'payment_settings')) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Only the Site Owner can modify payment routing settings.' },
         { status: 403 }

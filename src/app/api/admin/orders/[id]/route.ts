@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerAuthUser } from '@/lib/auth/serverAuth';
+import { getServerAuthUser, canAccessArea } from '@/lib/auth/serverAuth';
 import { approveOrder, rejectOrder, refundOrder } from '@/lib/payments/orders';
 
 interface RouteContext {
@@ -12,10 +12,10 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   try {
     const auth = await getServerAuthUser();
 
-    // Only Owner is authorized to verify, approve, reject, or refund tuition orders
-    if (!auth.isAuthenticated || !auth.isOwner) {
+    // Unified Policy: Payment and order approvals are strictly Owner-only (Staff: No, Student: No)
+    if (!canAccessArea(auth, 'payment_approvals')) {
       return NextResponse.json(
-        { success: false, error: 'Forbidden: Only the Site Owner is authorized to manage orders.' },
+        { success: false, error: 'Forbidden: Only the Site Owner is authorized to manage and approve orders.' },
         { status: 403 }
       );
     }

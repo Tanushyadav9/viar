@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
+import { getServerAuthUser, isAuthorizedForSection, canAccessArea } from '@/lib/auth/serverAuth';
 import { generateWhatsAppActivationUrl } from '@/lib/payments/upi';
 import { logger } from '@/lib/logger';
 
@@ -87,9 +87,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const auth = await getServerAuthUser();
-    if (!isAuthorizedForSection(auth, 'payments', 'MANAGE')) {
+    // Unified Policy: Payment approvals are strictly Owner-only (Staff: No, Student: No)
+    if (!canAccessArea(auth, 'payment_approvals')) {
       return NextResponse.json(
-        { success: false, error: 'Forbidden: MANAGE permission on payments required' },
+        { success: false, error: 'Forbidden: Payment verification and approvals are restricted to the Site Owner only.' },
         { status: 403 }
       );
     }

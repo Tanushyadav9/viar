@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerAuthUser } from '@/lib/auth/serverAuth';
+import { getServerAuthUser, canAccessArea } from '@/lib/auth/serverAuth';
 
 export async function POST(req: NextRequest) {
   try {
     const auth = await getServerAuthUser();
-    // Rule: "The Owner can grant or revoke access manually (for example for an offline payment or a refund), with a required reason recorded in an audit log."
-    if (!auth.isAuthenticated || !auth.isOwner) {
+    // Unified Policy: Revoking course enrolment is strictly Owner-only (Staff: No, Student: No)
+    if (!canAccessArea(auth, 'enrollment_mutation')) {
       return NextResponse.json(
         {
           success: false,
