@@ -25,10 +25,13 @@ export default function ContactPage() {
 
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('Course Admissions Inquiry');
   const [message, setMessage] = useState('');
+  const [consent, setConsent] = useState(true);
+  const [website, setWebsite] = useState(''); // Honeypot field for spam prevention
 
   useEffect(() => {
     fetch('/api/content?collection=site_settings&key=contact_information')
@@ -51,23 +54,55 @@ export default function ContactPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!consent) {
+      setErrorMessage(
+        isHi
+          ? 'कृपया आगे बढ़ने के लिए संपर्क सहमति को स्वीकार करें।'
+          : 'Please agree to be contacted by VIAR to submit your inquiry.'
+      );
+      return;
+    }
+
     setIsSubmitting(true);
+    setErrorMessage(null);
+
     try {
-      await fetch('/api/leads', {
+      const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim(),
-          courseSlug: 'what-is-astrology',
-          phone: subject ? (subject + ': ' + message).slice(0, 100) : undefined,
+          subject,
+          message: message.trim(),
+          consent: true,
+          website: website.trim(), // Honeypot field
         }),
       });
+
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success) {
+        setSubmitted(true);
+        setErrorMessage(null);
+      } else {
+        setSubmitted(false);
+        setErrorMessage(
+          data?.error ||
+            (isHi
+              ? 'पूछताछ भेजने में त्रुटि हुई। कृपया पुनः प्रयास करें अथवा व्हाट्सएप पर संपर्क करें।'
+              : 'Could not submit your inquiry. Please try again or contact us directly on WhatsApp.')
+        );
+      }
     } catch {
-      // Graceful fallback for offline
+      setSubmitted(false);
+      setErrorMessage(
+        isHi
+          ? 'नेटवर्क त्रुटि हुई। कृपया अपना इंटरनेट जांचें और पुनः प्रयास करें।'
+          : 'A network error occurred. Please check your connection and retry.'
+      );
     } finally {
       setIsSubmitting(false);
-      setSubmitted(true);
     }
   };
 
@@ -262,6 +297,7 @@ export default function ContactPage() {
                   <button
                     onClick={() => {
                       setSubmitted(false);
+                      setErrorMessage(null);
                       setMessage('');
                     }}
                     className="gold-button px-6 py-2.5 rounded-xl text-xs font-bold mt-4"
@@ -274,6 +310,29 @@ export default function ContactPage() {
                   <h2 className="text-xl font-bold text-white mb-2">
                     {isHi ? 'शैक्षणिक पूछताछ भेजें' : 'Send an Academic Inquiry'}
                   </h2>
+
+                  {/* Error State Banner */}
+                  {errorMessage && (
+                    <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-200 text-xs sm:text-sm space-y-1">
+                      <p className="font-bold flex items-center gap-1.5 text-red-300">
+                        <span>⚠️</span>
+                        <span>{isHi ? 'पूछताछ भेजने में त्रुटि' : 'Could Not Submit Inquiry'}</span>
+                      </p>
+                      <p className="leading-relaxed text-slate-300">{errorMessage}</p>
+                    </div>
+                  )}
+
+                  {/* Honeypot Spam Prevention Field (hidden from genuine users) */}
+                  <input
+                    type="text"
+                    name="website"
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    style={{ display: 'none' }}
+                  />
                   
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
@@ -342,6 +401,23 @@ export default function ContactPage() {
                       placeholder={isHi ? 'कृपया अपना प्रश्न अथवा देश/टाइमज़ोन लिखें...' : 'Please let us know your query or country timezone...'}
                       className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400 transition"
                     ></textarea>
+                  </div>
+
+                  {/* Short Consent Note */}
+                  <div className="pt-1">
+                    <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-300 select-none">
+                      <input
+                        type="checkbox"
+                        checked={consent}
+                        onChange={(e) => setConsent(e.target.checked)}
+                        className="mt-0.5 rounded border-white/20 bg-white/5 text-amber-500 focus:ring-amber-400"
+                      />
+                      <span className="leading-relaxed">
+                        {isHi
+                          ? 'मैं सहमत हूँ कि VIAR मेरी शैक्षणिक पूछताछ के संबंध में ईमेल अथवा फोन पर मुझसे संपर्क कर सकता है। (विवरण सुरक्षित एवं गोपनीय रखा जाता है)'
+                          : 'I agree to be contacted by VIAR regarding my academic inquiry. (Details remain confidential)'}
+                      </span>
+                    </label>
                   </div>
 
                   <button

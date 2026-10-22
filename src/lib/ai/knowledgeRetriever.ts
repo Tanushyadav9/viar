@@ -13,6 +13,69 @@ export interface LiveAcademyData {
   customKnowledgeEntries: Array<{ id: string; question: string; answer: string; language: string; category: string }>;
 }
 
+// ------------------------------------------------------------------------------
+// In-Memory Cache for Published KnowledgeEntry Rows with 60s TTL
+// Guarantees Owner updates appear within about a minute without constant DB hits.
+// ------------------------------------------------------------------------------
+interface KnowledgeCache {
+  entries: Array<{ id: string; question: string; answer: string; language: string; category: string }>;
+  timestamp: number;
+}
+
+let knowledgeCache: KnowledgeCache | null = null;
+const KNOWLEDGE_CACHE_TTL_MS = 60 * 1000; // 60 seconds ("appear within about a minute")
+
+export function invalidateKnowledgeCache(): void {
+  knowledgeCache = null;
+}
+
+export function setCachedKnowledgeEntries(
+  entries: Array<{ id: string; question: string; answer: string; language: string; category: string }>
+): void {
+  knowledgeCache = {
+    entries,
+    timestamp: Date.now(),
+  };
+}
+
+export async function getPublishedKnowledgeEntries(): Promise<
+  Array<{ id: string; question: string; answer: string; language: string; category: string }>
+> {
+  const now = Date.now();
+  if (knowledgeCache && now - knowledgeCache.timestamp < KNOWLEDGE_CACHE_TTL_MS) {
+    return knowledgeCache.entries;
+  }
+
+  try {
+    const publishedRows = await prisma.knowledgeEntry.findMany({
+      where: { published: true },
+      select: {
+        id: true,
+        question: true,
+        answer: true,
+        language: true,
+        category: true,
+      },
+      orderBy: { orderIndex: 'asc' },
+    });
+
+    const entries = publishedRows || [];
+    knowledgeCache = {
+      entries,
+      timestamp: now,
+    };
+    return entries;
+  } catch (err) {
+    console.warn('[KnowledgeRetriever] Failed to query published KnowledgeEntry rows:', err);
+    const fallbackEntries = knowledgeCache?.entries || [];
+    knowledgeCache = {
+      entries: fallbackEntries,
+      timestamp: now,
+    };
+    return fallbackEntries;
+  }
+}
+
 /**
  * 1. LIVE DATA FETCH AT REQUEST TIME
  * Reads prices, payment settings, cohorts, and Owner-managed knowledge entries
@@ -22,45 +85,64 @@ export interface LiveAcademyData {
 export async function getLiveAcademyData(): Promise<LiveAcademyData> {
   try {
     // 1. Fetch Flagship Course for live pricing
-    const course = await prisma.course.findFirst({
-      where: {
-        OR: [{ slug: 'what-is-astrology' }, { status: 'PUBLISHED' }],
-      },
-      select: {
-        title: true,
-        priceInr: true,
-        priceUsd: true,
-      },
-    });
+    let course: { title?: string; priceInr?: number; priceUsd?: number } | null = null;
+    try {
+      course = await prisma.course.findFirst({
+        where: {
+          OR: [{ slug: 'what-is-astrology' }, { status: 'PUBLISHED' }],
+        },
+        select: {
+          title: true,
+          priceInr: true,
+          priceUsd: true,
+        },
+      });
+    } catch {}
 
     // 2. Fetch Payment Settings
-    const paymentSettings = await prisma.paymentSettings.findFirst({
-      select: {
-        upiId: true,
-        payeeName: true,
-      },
-    });
+    let paymentSettings: { upiId?: string; payeeName?: string } | null = null;
+    try {
+      paymentSettings = await prisma.paymentSettings.findFirst({
+        select: {
+          upiId: true,
+          payeeName: true,
+        },
+      });
+    } catch {}
 
     // 3. Fetch Active / Upcoming Cohorts
-    const cohorts = await prisma.cohort.findMany({
-      where: { status: 'UPCOMING' },
-      select: {
-        batchName: true,
-        startDate: true,
-        capacity: true,
-      },
-      take: 2,
-    });
+    let cohorts: Array<{ batchName: string; startDate: Date | string | null; capacity?: number | null }> = [];
+    try {
+      cohorts = await prisma.cohort.findMany({
+        where: { status: 'UPCOMING' },
+        select: {
+          batchName: true,
+          startDate: true,
+          capacity: true,
+        },
+        take: 2,
+      });
+    } catch {}
 
-    // 4. Fetch Owner-Editable FAQs from Content Studio
+    // 4. Fetch Published Owner KnowledgeEntry Rows (Authoritative Knowledge Base)
+    // Always prioritizes published KnowledgeEntry rows and caches for 60s (appear within about a minute)
+    // Unpublished entries (published: false) are strictly excluded
     let customEntries: Array<{ id: string; question: string; answer: string; language: string; category: string }> = [];
+    try {
+      const publishedEntries = await getPublishedKnowledgeEntries();
+      if (publishedEntries && publishedEntries.length > 0) {
+        customEntries = [...publishedEntries];
+      }
+    } catch {}
+
+    // Supplementary ContentItem FAQs if available and not conflicting
     try {
       const contentFaqs = await prisma.contentItem.findMany({
         where: { collection: 'faqs', status: 'PUBLISHED' },
         orderBy: { sortOrder: 'asc' },
       });
       if (contentFaqs && contentFaqs.length > 0) {
-        customEntries = contentFaqs.flatMap((item) => {
+        const extraFaqs = contentFaqs.flatMap((item) => {
           const cat = ((item.metadata as Record<string, unknown>)?.category as string) || 'General';
           const arr: Array<{ id: string; question: string; answer: string; language: string; category: string }> = [];
           if (item.titleEn && item.contentEn) {
@@ -83,29 +165,14 @@ export async function getLiveAcademyData(): Promise<LiveAcademyData> {
           }
           return arr;
         });
+
+        for (const extra of extraFaqs) {
+          if (!customEntries.some((e) => e.question.toLowerCase() === extra.question.toLowerCase())) {
+            customEntries.push(extra);
+          }
+        }
       }
     } catch {}
-
-    // Fall back to legacy KnowledgeEntry if contentItem is empty
-    if (customEntries.length === 0) {
-      try {
-        const legacyEntries = await prisma.knowledgeEntry.findMany({
-          where: { published: true },
-          select: {
-            id: true,
-            question: true,
-            answer: true,
-            language: true,
-            category: true,
-          },
-          orderBy: { orderIndex: 'asc' },
-          take: 20,
-        });
-        if (legacyEntries && legacyEntries.length > 0) {
-          customEntries = legacyEntries;
-        }
-      } catch {}
-    }
 
     // Deterministic fallback to built-in FAQs if tables are empty
     if (customEntries.length === 0) {
@@ -159,6 +226,9 @@ export async function getLiveAcademyData(): Promise<LiveAcademyData> {
       },
     ]);
 
+    const cachedOrFallback =
+      knowledgeCache && knowledgeCache.entries.length > 0 ? knowledgeCache.entries : fallbackFaqs;
+
     return {
       courseTitle: 'Vedic Astrology Masterclass: What is Astrology',
       priceInr: 5100,
@@ -166,7 +236,7 @@ export async function getLiveAcademyData(): Promise<LiveAcademyData> {
       upiVpa: 'aapkaastro@okaxis',
       payeeName: 'Vihangam Institute of Astrology and Research',
       activeCohorts: [{ batchName: 'Cohort Admissions Active', startDate: 'Self-Paced Instant Access', capacity: 50 }],
-      customKnowledgeEntries: fallbackFaqs,
+      customKnowledgeEntries: cachedOrFallback,
     };
   }
 }
@@ -298,7 +368,7 @@ Certificate: Verifiable digital certificate with unique registry code (format: V
 - Security: NEVER send passwords over WhatsApp. The course is activated on the student's registered account.`);
   }
 
-  // Match Owner-Editable Custom Knowledge Entries
+  // Match Owner-Editable Custom Knowledge Entries (Overrides static content)
   if (liveData.customKnowledgeEntries.length > 0) {
     const relevantCustom = liveData.customKnowledgeEntries.filter((entry) => {
       const qWords = q.split(/\s+/).filter((w) => w.length > 3);
@@ -308,10 +378,11 @@ Certificate: Verifiable digital certificate with unique registry code (format: V
 
     if (relevantCustom.length > 0) {
       hasSpecificMatch = true;
-      contextParts.push(`=== OWNER CUSTOM KNOWLEDGE BASE ===
+      // Authoritative overrides placed at top of context
+      contextParts.unshift(`=== OWNER CUSTOM KNOWLEDGE BASE ===
 ${relevantCustom
-  .slice(0, 3)
-  .map((e) => `Q: ${e.question}\nA: ${e.answer}`)
+  .slice(0, 5)
+  .map((e) => `[Language: ${e.language}]\nQ: ${e.question}\nA: ${e.answer}`)
   .join('\n\n')}`);
       relevantCustom.forEach((e) => matchedCustomEntries.push(e.id));
     }
@@ -334,36 +405,42 @@ ${relevantCustom
 
 /**
  * 3. PRIVACY MASKING FOR LOGGING
- * Replaces phone numbers, email addresses, and account numbers before logging.
+ * Replaces phone numbers, email addresses, UTR account numbers, and payment references before logging.
  * Truncates text to max 150 characters.
  */
 export function maskSensitiveData(rawText: string): string {
   if (!rawText) return '';
 
-  let sanitized = rawText.slice(0, 150);
+  let sanitized = rawText;
 
-  // 1. Mask 12-16 digit bank / UTR account strings first
+  // 1. Mask 12-16 digit bank / UTR account strings first (preserving [ACCOUNT_MASKED])
   sanitized = sanitized.replace(/\b\d{12,16}\b/g, '[ACCOUNT_MASKED]');
 
-  // 2. Mask email addresses
+  // 2. Mask payment references (Razorpay IDs, Order references, UPI transaction IDs)
+  sanitized = sanitized.replace(/\bpay_[a-zA-Z0-9]{8,24}\b/gi, '[PAYMENT_REF_MASKED]');
+  sanitized = sanitized.replace(/\b(?:ORD|VIAR|order)[-_][a-zA-Z0-9]{4,32}\b/gi, '[PAYMENT_REF_MASKED]');
+  sanitized = sanitized.replace(/\b(?:upi|utr|txn|ref)[:\s#_-]*[a-zA-Z0-9]{8,24}\b/gi, '[PAYMENT_REF_MASKED]');
+
+  // 3. Mask email addresses
   sanitized = sanitized.replace(
     /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi,
     '[EMAIL_MASKED]'
   );
 
-  // 3. Mask phone numbers (10 digits starting with 6-9, with or without spaces, or +91...)
+  // 4. Mask phone numbers (10 digits starting with 6-9, with or without spaces, or +91...)
   sanitized = sanitized.replace(
     /(?:\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}\b|(?:\+91[\s-]?)?[6-9]\d{9}\b|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/g,
     '[PHONE_MASKED]'
   );
 
-  return sanitized.trim();
+  return sanitized.slice(0, 150).trim();
 }
 
 /**
  * 4. LOG UNANSWERED OR LOW-CONFIDENCE QUESTIONS
  * Stores masked, truncated question in UnansweredQuestion table for Owner review.
  * Aggregates frequency count if identical question was asked in the last 30 days.
+ * Automatically keeps questions for 30 days by pruning older entries.
  */
 export async function logUnansweredQuestion(
   rawQuestion: string,
@@ -382,7 +459,14 @@ export async function logUnansweredQuestion(
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    // Look for existing recent entry
+    // Auto-prune entries older than 30 days to strictly enforce "keep it 30 days"
+    await prisma.unansweredQuestion.deleteMany({
+      where: {
+        lastAskedAt: { lt: thirtyDaysAgo },
+      },
+    }).catch(() => {});
+
+    // Look for existing recent entry within 30 days
     const existing = await prisma.unansweredQuestion.findFirst({
       where: {
         normalizedQuestion: normalized,

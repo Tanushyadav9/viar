@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   generateGroundedAssistantResponse,
   identifyIntent,
-  ActionButton,
+  detectLanguage,
+  type ActionButton,
 } from '@/lib/ai/assistantEngine';
 import { GROUNDED_VIAR_SYSTEM_PROMPT, VIAR_ACADEMY_FACTS } from '@/lib/ai/knowledgeBase';
 import {
@@ -90,16 +91,34 @@ export async function POST(req: NextRequest) {
       ? retrieveRelevantKnowledgeContext(rawMessage, liveData)
       : null;
 
-    // Check if an Owner-published knowledge entry matches the user's inquiry
+    // 2.5 Language-Aware Check: Published KnowledgeEntry Rows (Owner-published authoritative override)
+    // Overrides static text and appears within about a minute. Unpublished entries are never used.
     if (liveData?.customKnowledgeEntries && liveData.customKnowledgeEntries.length > 0) {
+      const userLang = locale || detectLanguage(rawMessage);
       const normUser = rawMessage.toLowerCase().replace(/[^\w\s\u0900-\u097F]/gi, '').trim();
-      const customMatch = liveData.customKnowledgeEntries.find((entry) => {
+      const userWords = normUser.split(/\s+/).filter((w) => w.length > 2);
+
+      // Sort with language priority: matches visitor language first, then hinglish/hi, then any
+      const sortedEntries = [...liveData.customKnowledgeEntries].sort((a, b) => {
+        const aLangMatch = a.language === userLang || (userLang === 'hinglish' && a.language === 'hi');
+        const bLangMatch = b.language === userLang || (userLang === 'hinglish' && b.language === 'hi');
+        if (aLangMatch && !bLangMatch) return -1;
+        if (!aLangMatch && bLangMatch) return 1;
+        return 0;
+      });
+
+      const customMatch = sortedEntries.find((entry) => {
         const normEntryQ = entry.question.toLowerCase().replace(/[^\w\s\u0900-\u097F]/gi, '').trim();
-        return (
-          normEntryQ === normUser ||
-          (normEntryQ.length > 5 && normUser.includes(normEntryQ)) ||
-          (normUser.length > 5 && normEntryQ.includes(normUser))
-        );
+        if (normEntryQ === normUser) return true;
+        if (normEntryQ.length > 5 && normUser.includes(normEntryQ)) return true;
+        if (normUser.length > 5 && normEntryQ.includes(normUser)) return true;
+
+        const entryWords = normEntryQ.split(/\s+/).filter((w) => w.length > 2);
+        const matchCount = userWords.filter((w) => entryWords.includes(w)).length;
+        if (entryWords.length >= 2 && matchCount >= Math.min(entryWords.length, 2)) {
+          return true;
+        }
+        return false;
       });
 
       if (customMatch) {
@@ -121,10 +140,10 @@ export async function POST(req: NextRequest) {
               variant: 'secondary',
             },
           ],
-          language: locale || 'en',
+          language: customMatch.language || userLang || 'en',
           intent: 'custom_knowledge',
           confidence: 'high',
-          source: 'knowledge_base',
+          source: 'knowledge_entry',
         });
       }
     }
