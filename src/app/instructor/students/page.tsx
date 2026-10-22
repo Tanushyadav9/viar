@@ -100,12 +100,27 @@ export default function InstructorStudentsRosterPage() {
       setCourses(ViarStore.getCourses());
     }
 
-    setCohorts(ViarStore.getCohorts());
+    try {
+      const cohRes = await fetch('/api/cohorts');
+      const cohData = await cohRes.json();
+      if (cohData.success && Array.isArray(cohData.cohorts)) {
+        setCohorts(cohData.cohorts);
+      } else {
+        setCohorts(ViarStore.getCohorts());
+      }
+    } catch {
+      setCohorts(ViarStore.getCohorts());
+    }
   }, [selectedCourseId]);
 
   useEffect(() => {
     loadData();
-    setCurrentUser(ViarStore.getCurrentUser());
+    fetch('/api/users/sync')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user) setCurrentUser(data.user);
+      })
+      .catch(() => {});
   }, [loadData]);
 
   const handleManualGrant = async (e: React.FormEvent) => {

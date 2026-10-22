@@ -75,12 +75,17 @@ export default function InstructorCoursesPage() {
 
   useEffect(() => {
     fetchCourses();
-    setCurrentUser(ViarStore.getCurrentUser());
+    fetch('/api/users/sync')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user) setCurrentUser(data.user);
+      })
+      .catch(() => {});
   }, []);
 
   const permissions = ViarStore.getStaffPermissions();
-  const isOwner = isSiteOwner(currentUser);
-  const canManage = isOwner || checkStaffSectionAccess({ user: currentUser, section: 'courses', requiredLevel: 'MANAGE', permissions }).allowed;
+  const isOwner = Boolean(currentUser?.isOwner || isSiteOwner(currentUser));
+  const canManage = isOwner || currentUser?.role === 'ADMIN' || (Array.isArray(currentUser?.staffSections) && currentUser.staffSections.includes('courses')) || checkStaffSectionAccess({ user: currentUser, section: 'courses', requiredLevel: 'MANAGE', permissions }).allowed;
 
   // Filter courses by search and status
   const filteredCourses = courses.filter((c) => {

@@ -19,7 +19,6 @@ import {
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort, ScheduledClass, ClassDiscussionComment } from '@/lib/types';
 import { getUserLocalTimezone } from '@/lib/timezones';
-import { isSiteOwner } from '@/lib/auth/permissions';
 import {
   AsyncStateView,
   type AsyncStateStatus,
@@ -39,6 +38,7 @@ export default function CohortClassByClassPage() {
   const [comments, setComments] = useState<ClassDiscussionComment[]>([]);
   const [commentText, setCommentText] = useState('');
   const [isEnrolled, setIsEnrolled] = useState<boolean>(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [pageStatus, setPageStatus] = useState<AsyncStateStatus>('loading');
   const [errorType, setErrorType] = useState<ErrorType>('server');
 
@@ -51,13 +51,12 @@ export default function CohortClassByClassPage() {
   const handlePostComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim() || !activeClass) return;
-    const user = ViarStore.getCurrentUser();
-    const authorName = user?.name || 'Viar Scholar';
+    const authorName = currentUser?.name || 'Viar Scholar';
     const newC = ViarStore.addDiscussionComment({
       sessionId: activeClass.id,
       authorName,
       comment: commentText.trim(),
-      authorRole: user?.role === 'ADMIN' || user?.role === 'OWNER' ? 'ADMIN' : 'STUDENT',
+      authorRole: currentUser?.role === 'ADMIN' || currentUser?.role === 'OWNER' ? 'ADMIN' : 'STUDENT',
     });
     setComments((prev) => [...prev, newC]);
     setCommentText('');
@@ -70,8 +69,13 @@ export default function CohortClassByClassPage() {
     const tz = ViarStore.getTimezone() || getUserLocalTimezone();
     setUserTz(tz);
 
-    const currentUser = ViarStore.getCurrentUser();
-    const isStaff = currentUser?.role === 'ADMIN' || currentUser?.role === 'OWNER' || currentUser?.role === 'INSTRUCTOR' || isSiteOwner(currentUser);
+    // Fetch live authenticated user session
+    fetch('/api/users/sync')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user) setCurrentUser(data.user);
+      })
+      .catch(() => {});
 
     // 1. Fetch live Course Data from server API (with server-side gating)
     fetch(`/api/courses/${cohortId}`)
@@ -219,11 +223,11 @@ export default function CohortClassByClassPage() {
         if (pData?.success && Array.isArray(pData.completedLessonIds)) {
           setWatchedSet(new Set(pData.completedLessonIds));
         } else {
-          setWatchedSet(new Set(ViarStore.getWatchedClassIds()));
+          setWatchedSet(new Set());
         }
       })
       .catch(() => {
-        setWatchedSet(new Set(ViarStore.getWatchedClassIds()));
+        setWatchedSet(new Set());
       });
   }, [cohortId, targetLessonId]);
 
@@ -243,7 +247,6 @@ export default function CohortClassByClassPage() {
       updated.delete(classId);
     }
     setWatchedSet(updated);
-    ViarStore.toggleClassWatched(classId);
 
     // Save progress directly to PostgreSQL using server session
     fetch('/api/progress', {
@@ -258,7 +261,17 @@ export default function CohortClassByClassPage() {
     }).catch((err) => console.warn('Progress API sync failed:', err));
   };
 
-  const progress = ViarStore.getCourseProgress(cohortId);
+  const totalClasses = classes.length;
+  const completedClasses = classes.filter((c) => watchedSet.has(c.id)).length;
+  const progressPercentage = totalClasses > 0 ? Math.round((completedClasses / totalClasses) * 100) : 0;
+  const canTakeQuiz = isEnrolled && (totalClasses === 0 || completedClasses >= totalClasses);
+  const progress = {
+    totalClasses,
+    completedClasses,
+    completedCount: completedClasses,
+    percentage: progressPercentage,
+    canTakeQuiz,
+  };
 
   if (pageStatus === 'error') {
     return (
@@ -711,8 +724,7 @@ export default function CohortClassByClassPage() {
             {/* Bottom Quiz Callout (Requirement 6.2) */}
             <div className="pt-4 border-t border-white/10 text-center">
               {(() => {
-                const quizUnlock = ViarStore.isQuizUnlocked(cohort.id);
-                if (quizUnlock.isUnlocked) {
+                if (progress.canTakeQuiz) {
                   return (
                     <Link
                       href={`/dashboard/courses/${cohort.id}/quiz`}
@@ -729,7 +741,7 @@ export default function CohortClassByClassPage() {
                       <span>Certification Assessment Locked</span>
                     </div>
                     <p className="text-[11px] text-slate-400 max-w-xs mx-auto leading-relaxed">
-                      {quizUnlock.reason}
+                      Complete all {progress.totalClasses} video modules to unlock the final certification exam ({progress.completedClasses}/{progress.totalClasses} completed).
                     </p>
                   </div>
                 );

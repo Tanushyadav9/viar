@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
 import { INITIAL_COURSES } from '@/lib/data';
-import { ViarStore } from '@/lib/store';
 import { buildStudentWhatsAppClaimUrl } from '@/lib/payments/upi';
 
 interface CheckoutCourse {
@@ -93,20 +92,9 @@ function CheckoutContent() {
 
   // 1. Initial Load: Auth check and Course lookup
   useEffect(() => {
-    // Check local store
-    const localUser = typeof window !== 'undefined' ? ViarStore.getCurrentUser() : null;
-    if (localUser) {
-      setIsLoggedIn(true);
-      setCurrentUser(localUser);
-      if (localUser.name) setFullName(localUser.name);
-      if (localUser.email) setEmail(localUser.email);
-      if (localUser.phone) setPhone(localUser.phone);
-      setIsAuthLoading(false);
-    }
-
     // Check authentication via /api/users/sync
     fetch('/api/users/sync')
-      .then((res) => res.json())
+      .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.user) {
           setIsLoggedIn(true);
@@ -114,12 +102,12 @@ function CheckoutContent() {
           if (data.user.name) setFullName(data.user.name);
           if (data.user.email) setEmail(data.user.email);
           if (data.user.phone) setPhone(data.user.phone);
-        } else if (!localUser) {
+        } else {
           setIsLoggedIn(false);
         }
       })
       .catch(() => {
-        if (!localUser) setIsLoggedIn(false);
+        setIsLoggedIn(false);
       })
       .finally(() => {
         setIsAuthLoading(false);

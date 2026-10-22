@@ -30,42 +30,71 @@ export default function CourseCohortsPage() {
   const [maxSeats, setMaxSeats] = useState('50');
   const [successMsg, setSuccessMsg] = useState('');
 
+  const [errorMsg, setErrorMsg] = useState('');
+
   useEffect(() => {
+    fetch(`/api/courses/${courseId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && data.course) {
+          setCourse(data.course);
+          if (Array.isArray(data.course.cohorts) && data.course.cohorts.length > 0) {
+            setCohorts(data.course.cohorts);
+          }
+        }
+      })
+      .catch(() => {});
+
+    fetch(`/api/cohorts?courseId=${courseId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && Array.isArray(data.cohorts) && data.cohorts.length > 0) {
+          setCohorts(data.cohorts);
+        }
+      })
+      .catch(() => {});
+
     const crs = ViarStore.getCourseById(courseId) || ViarStore.getCourses()[0];
-    if (crs) setCourse(crs);
+    if (crs) setCourse((prev) => prev || crs);
 
     const list = ViarStore.getCohorts(courseId);
-    setCohorts(list);
+    setCohorts((prev) => (prev.length > 0 ? prev : list));
   }, [courseId]);
 
-  const handleCreateCohort = (e: React.FormEvent) => {
+  const handleCreateCohort = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!course) return;
 
-    const newCohort: Cohort = {
-      id: `cohort-${Date.now()}`,
-      courseId: course.id,
-      batchNumber: cohorts.length + 1,
-      batchName,
-      startDate: new Date(startDate).toISOString(),
-      endDate: new Date(new Date(startDate).getTime() + 63 * 24 * 3600 * 1000).toISOString(),
-      scheduleDescription: scheduleDesc,
-      scheduleTimeUtc: {
-        dayOfWeek: [6, 0],
-        hoursUtc: 14,
-        minutesUtc: 30,
-      },
-      maxSeats: parseInt(maxSeats) || 50,
-      enrolledCount: 0,
-      status: 'ENROLLING',
-      enrollmentDeadline: new Date(startDate).toISOString(),
-    };
+    setErrorMsg('');
+    const calculatedEndDate = new Date(new Date(startDate).getTime() + 63 * 24 * 3600 * 1000).toISOString();
 
-    const updated = [...cohorts, newCohort];
-    setCohorts(updated);
-    setIsCreating(false);
-    setSuccessMsg(`New cohort "${batchName}" created successfully!`);
-    setTimeout(() => setSuccessMsg(''), 3000);
+    try {
+      const res = await fetch('/api/cohorts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseId: course.id,
+          batchName,
+          startDate: new Date(startDate).toISOString(),
+          endDate: calculatedEndDate,
+          capacity: parseInt(maxSeats) || 50,
+          scheduleDescription: scheduleDesc,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success && data?.cohort) {
+        setCohorts((prev) => [...prev, data.cohort]);
+        setIsCreating(false);
+        setSuccessMsg(`New cohort "${batchName}" created successfully!`);
+        setTimeout(() => setSuccessMsg(''), 3000);
+      } else {
+        setErrorMsg(data?.error || 'Failed to create cohort on server.');
+      }
+    } catch {
+      setErrorMsg('Network error while creating cohort.');
+    }
   };
 
   return (
@@ -105,6 +134,12 @@ export default function CourseCohortsPage() {
             <span>Create New Cohort Batch</span>
           </button>
         </div>
+
+        {errorMsg && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
+            <span>{errorMsg}</span>
+          </div>
+        )}
 
         {successMsg && (
           <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">

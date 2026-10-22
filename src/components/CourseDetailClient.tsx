@@ -90,24 +90,35 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
       .catch(() => {});
   }, [slug]);
 
-  const handleNotifySubmit = (e: React.FormEvent) => {
+  const [notifyError, setNotifyError] = useState<string | null>(null);
+
+  const handleNotifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!notifyEmail || !course) return;
-    ViarStore.saveNotifyMeLead({
-      courseId: course.id,
-      courseTitle: course.title,
-      email: notifyEmail,
-    });
-    fetch('/api/leads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: notifyEmail,
-        courseSlug: course.slug,
-      }),
-    }).catch((err) => console.warn('Leads API sync failed:', err));
-    setNotifySuccess(true);
-    setNotifyEmail('');
+
+    setNotifyError(null);
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: notifyEmail.trim(),
+          courseSlug: course.slug,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success) {
+        setNotifySuccess(true);
+        setNotifyEmail('');
+        setNotifyError(null);
+      } else {
+        setNotifyError(data?.error || 'Could not register notification. Please try again.');
+      }
+    } catch {
+      setNotifyError('Network error. Please try again.');
+    }
   };
 
   if (notFound) {
@@ -320,6 +331,12 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                         : 'Enrollment for this syllabus opens shortly. Enter your email for priority admission.'}
                     </p>
                   </div>
+
+                  {notifyError && (
+                    <div className="p-3 mb-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs text-center">
+                      {notifyError}
+                    </div>
+                  )}
 
                   {notifySuccess ? (
                     <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-1">

@@ -12,7 +12,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
-import { ViarStore } from '@/lib/store';
+import { INITIAL_FINAL_TEST } from '@/lib/data';
 import { Course } from '@/lib/types';
 
 interface QuizQuestion {
@@ -69,11 +69,10 @@ export default function InstructorQuizEditorPage() {
       });
 
     function loadFallback() {
-      const t = ViarStore.getFinalTest();
-      setTitle(t.title);
-      setPassingPercentage(t.passingPercentage);
-      setDurationMinutes(t.durationMinutes);
-      setQuestions(t.questions as QuizQuestion[]);
+      setTitle(INITIAL_FINAL_TEST.title);
+      setPassingPercentage(INITIAL_FINAL_TEST.passingPercentage);
+      setDurationMinutes(INITIAL_FINAL_TEST.durationMinutes);
+      setQuestions(INITIAL_FINAL_TEST.questions as QuizQuestion[]);
     }
   }, [courseId]);
 
@@ -148,17 +147,6 @@ export default function InstructorQuizEditorPage() {
       const data = await res.json();
       if (!res.ok && !data.success) {
         throw new Error(data.error || 'Failed to save quiz to database');
-      }
-
-      // Also sync to ViarStore
-      const currentTest = ViarStore.getFinalTest();
-      currentTest.title = title;
-      currentTest.passingPercentage = Number(passingPercentage);
-      currentTest.durationMinutes = Number(durationMinutes);
-      currentTest.totalQuestions = questions.length;
-      currentTest.questions = questions as unknown as typeof currentTest.questions;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('viar_final_test', JSON.stringify(currentTest));
       }
 
       setSuccessMsg('Quiz and all questions saved successfully to the PostgreSQL database!');

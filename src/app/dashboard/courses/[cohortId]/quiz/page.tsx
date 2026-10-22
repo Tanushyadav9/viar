@@ -13,9 +13,12 @@ import {
   Lock,
   ArrowRight
 } from 'lucide-react';
-import { ViarStore } from '@/lib/store';
 import { FinalTest, Certificate, User, Cohort } from '@/lib/types';
-import { isSiteOwner } from '@/lib/auth/permissions';
+import {
+  AsyncStateView,
+  type AsyncStateStatus,
+  type ErrorType,
+} from '@/components/common/AsyncStateView';
 
 export default function FinalQuizPage() {
   const params = useParams();
@@ -32,44 +35,143 @@ export default function FinalQuizPage() {
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+  const [serverExplanations, setServerExplanations] = useState<Record<string, { correctOptionIndex: number; explanation: string }>>({});
 
   const [isEnrolled, setIsEnrolled] = useState<boolean>(true);
+  const [pageStatus, setPageStatus] = useState<AsyncStateStatus>('loading');
+  const [errorType, setErrorType] = useState<ErrorType>('server');
 
   useEffect(() => {
-    const u = ViarStore.getCurrentUser();
-    setCurrentUser(u);
+    let isCancelled = false;
 
-    const isStaff = u?.role === 'ADMIN' || u?.role === 'OWNER' || u?.role === 'INSTRUCTOR' || isSiteOwner(u);
-    const enrollments = ViarStore.getEnrollments();
-    const userEnrolled = Boolean(
-      isStaff ||
-      (u && (
-        u.enrolledCohortIds?.includes(cohortId) ||
-        enrollments.some((e) => e.cohortId === cohortId && (e.studentEmail === u.email || e.studentId === u.id))
-      ))
-    );
-    setIsEnrolled(userEnrolled);
-
-    // Fetch Quiz from Server API (Answer key stripped on server for students)
-    fetch(`/api/quizzes?cohortId=${cohortId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.quiz) {
-          setTest(data.quiz);
+    async function initializeQuiz() {
+      setPageStatus('loading');
+      try {
+        // 1. Fetch authenticated user from server session
+        const syncRes = await fetch('/api/users/sync');
+        if (syncRes.status === 401 || syncRes.status === 403) {
+          if (!isCancelled) {
+            setPageStatus('error');
+            setErrorType('auth');
+          }
           return;
         }
-        setTest(ViarStore.getFinalTest(cohortId));
-      })
-      .catch(() => {
-        setTest(ViarStore.getFinalTest(cohortId));
-      });
+        if (!syncRes.ok) {
+          if (!isCancelled) {
+            setPageStatus('error');
+            setErrorType('server');
+          }
+          return;
+        }
+        const syncData = await syncRes.json();
+        const user = syncData?.user;
+        if (!user) {
+          if (!isCancelled) {
+            setPageStatus('error');
+            setErrorType('auth');
+          }
+          return;
+        }
+        if (!isCancelled) setCurrentUser(user);
 
-    const c = ViarStore.getCohortById(cohortId) || ViarStore.getCohorts()[0];
-    if (c) {
-      setCohort(c);
+        // 2. Fetch course / cohort details
+        const courseRes = await fetch(`/api/courses/${cohortId}`);
+        if (courseRes.ok) {
+          const courseData = await courseRes.json();
+          if (courseData.success && courseData.course) {
+            const crs = courseData.course;
+            if (crs.cohorts && crs.cohorts.length > 0) {
+              if (!isCancelled) setCohort(crs.cohorts[0]);
+            } else {
+              if (!isCancelled) {
+                setCohort({
+                  id: cohortId,
+                  courseId: crs.id || 'course-what-is-astrology',
+                  name: 'Batch 01 (Foundational Vedic Astrology)',
+                  startDate: '2026-04-05T00:00:00Z',
+                  endDate: '2026-06-07T00:00:00Z',
+                  totalSeats: 50,
+                  enrolledCount: 38,
+                  status: 'UPCOMING',
+                  meetingScheduleText: 'Every Sunday 10:00 AM - 1:00 PM IST',
+                });
+              }
+            }
+          }
+        } else {
+          if (!isCancelled) {
+            setCohort({
+              id: cohortId,
+              courseId: 'course-what-is-astrology',
+              name: 'Batch 01 (Foundational Vedic Astrology)',
+              startDate: '2026-04-05T00:00:00Z',
+              endDate: '2026-06-07T00:00:00Z',
+              totalSeats: 50,
+              enrolledCount: 38,
+              status: 'UPCOMING',
+              meetingScheduleText: 'Every Sunday 10:00 AM - 1:00 PM IST',
+            });
+          }
+        }
+
+        // 3. Fetch Quiz from server API (answer keys stripped for students on server)
+        const quizRes = await fetch(`/api/quizzes?cohortId=${cohortId}`);
+        if (quizRes.status === 403) {
+          const quizErr = await quizRes.json().catch(() => ({}));
+          if (quizErr.code === 'ENROLLMENT_REQUIRED' || quizErr.isLocked) {
+            if (!isCancelled) {
+              setIsEnrolled(false);
+              setPageStatus('success');
+            }
+            return;
+          }
+          if (!isCancelled) {
+            setPageStatus('error');
+            setErrorType('auth');
+          }
+          return;
+        }
+        if (quizRes.status === 401) {
+          if (!isCancelled) {
+            setPageStatus('error');
+            setErrorType('auth');
+          }
+          return;
+        }
+        if (!quizRes.ok) {
+          if (!isCancelled) {
+            setPageStatus('error');
+            setErrorType('server');
+          }
+          return;
+        }
+
+        const quizData = await quizRes.json();
+        if (quizData.success && quizData.quiz) {
+          if (!isCancelled) {
+            setTest(quizData.quiz);
+            setIsEnrolled(true);
+            setPageStatus('success');
+          }
+        } else {
+          if (!isCancelled) {
+            setPageStatus('error');
+            setErrorType('server');
+          }
+        }
+      } catch {
+        if (!isCancelled) {
+          setPageStatus('error');
+          setErrorType('server');
+        }
+      }
     }
 
-    setAnswers({});
+    initializeQuiz();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [cohortId]);
 
   const handleSelectOption = (questionId: string, optionIndex: number) => {
@@ -101,60 +203,72 @@ export default function FinalQuizPage() {
       });
 
       if (res.status === 429) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         setRateLimitError(data.error || 'Too many quiz attempts. Please wait an hour before trying again.');
         setSubmitting(false);
         return;
       }
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          setScore(data.score);
-          setPercentage(data.scorePercentage);
-          setIsPassed(data.isPassed);
-          if (data.certificate) {
-            setCertificate(data.certificate);
-            const certs = ViarStore.getCertificates();
-            certs.unshift(data.certificate);
-            if (typeof window !== 'undefined') localStorage.setItem('viar_certificates', JSON.stringify(certs));
-          }
-          setIsSubmitted(true);
-          setSubmitting(false);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          return;
+      if (res.status === 401 || res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        setRateLimitError(data.error || 'Your session expired or enrollment is required. Please refresh.');
+        setSubmitting(false);
+        return;
+      }
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setRateLimitError(data.error || 'Could not submit examination. Please try again.');
+        setSubmitting(false);
+        return;
+      }
+
+      const data = await res.json();
+      if (data.success) {
+        setScore(data.score);
+        setPercentage(data.scorePercentage);
+        setIsPassed(data.isPassed);
+        if (data.certificate) {
+          setCertificate(data.certificate);
         }
+        if (data.explanations) {
+          setServerExplanations(data.explanations);
+        }
+        setIsSubmitted(true);
+        setSubmitting(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      } else {
+        setRateLimitError(data.error || 'Could not evaluate examination.');
+        setSubmitting(false);
       }
     } catch {
-      // Fallback to local scoring if server endpoint unreachable
+      setRateLimitError('Network error while submitting examination. Please check your connection and retry.');
+      setSubmitting(false);
     }
-
-    const result = ViarStore.submitFinalTest({
-      cohortId,
-      studentId: currentUser.id,
-      studentName: currentUser.name,
-      studentEmail: currentUser.email,
-      answers,
-    });
-
-    setScore(result.submission.score);
-    setPercentage(result.submission.scorePercentage);
-    setIsPassed(result.submission.isPassed);
-    if (result.certificate) {
-      setCertificate(result.certificate);
-    }
-    setIsSubmitted(true);
-    setSubmitting(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleRetake = () => {
     setIsSubmitted(false);
     setCertificate(null);
     setRateLimitError(null);
+    setAnswers({});
   };
 
-  if (!test || !cohort) {
+  if (pageStatus === 'error') {
+    return (
+      <div className="min-h-screen cosmic-bg flex items-center justify-center p-4">
+        <AsyncStateView
+          status="error"
+          errorType={errorType}
+          signInUrl={`/login?returnUrl=/dashboard/courses/${cohortId}/quiz`}
+          onRetry={() => window.location.reload()}
+        />
+      </div>
+    );
+  }
+
+  if (pageStatus === 'loading' || !test || !cohort) {
     return (
       <div className="min-h-screen cosmic-bg flex items-center justify-center p-4">
         <Sparkles className="w-8 h-8 text-amber-400 animate-spin" />
@@ -187,39 +301,6 @@ export default function FinalQuizPage() {
             >
               <span>Enroll Now to Access Course</span>
               <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const quizUnlock = ViarStore.isQuizUnlocked(cohort.id);
-
-  if (!isSubmitted && !quizUnlock.isUnlocked) {
-    return (
-      <div className="cosmic-bg min-h-screen py-16 px-4">
-        <div className="max-w-lg mx-auto text-center cosmic-card p-8 rounded-3xl border border-amber-500/30 shadow-2xl space-y-5">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
-            <Lock className="w-8 h-8" />
-          </div>
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-              Prerequisite Required
-            </span>
-            <h2 className="text-2xl font-black text-white mt-1">
-              Final Exam is Locked
-            </h2>
-            <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-              {quizUnlock.reason}
-            </p>
-          </div>
-          <div className="pt-2 flex flex-col gap-2.5">
-            <Link
-              href={`/dashboard/courses/${cohort.id}`}
-              className="gold-button w-full py-3 rounded-xl text-xs font-bold text-center block"
-            >
-              Return to Classes & Complete Syllabus &rarr;
             </Link>
           </div>
         </div>
@@ -357,7 +438,10 @@ export default function FinalQuizPage() {
         <form onSubmit={handleSubmitQuiz} className="space-y-6">
           {test.questions.map((q, qIndex) => {
             const selectedOpt = answers[q.id];
-            const isCorrect = selectedOpt === q.correctOptionIndex;
+            const feedback = serverExplanations[q.id];
+            const correctOptIdx = feedback?.correctOptionIndex;
+            const explanation = feedback?.explanation || q.explanation;
+            const isCorrect = isSubmitted && correctOptIdx !== undefined && selectedOpt === correctOptIdx;
 
             return (
               <div
@@ -388,8 +472,8 @@ export default function FinalQuizPage() {
                     if (isChecked) {
                       optStyle = 'bg-amber-500/15 border-amber-500/60 text-white';
                     }
-                    if (isSubmitted) {
-                      if (optIdx === q.correctOptionIndex) {
+                    if (isSubmitted && correctOptIdx !== undefined) {
+                      if (optIdx === correctOptIdx) {
                         optStyle = 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-semibold';
                       } else if (isChecked && !isCorrect) {
                         optStyle = 'bg-red-500/20 border-red-500 text-red-300';
@@ -410,7 +494,7 @@ export default function FinalQuizPage() {
                           className="w-4 h-4 text-amber-500 accent-amber-500 cursor-pointer"
                         />
                         <span className="flex-1">{opt}</span>
-                        {isSubmitted && optIdx === q.correctOptionIndex && (
+                        {isSubmitted && correctOptIdx !== undefined && optIdx === correctOptIdx && (
                           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                         )}
                       </label>
@@ -418,17 +502,17 @@ export default function FinalQuizPage() {
                   })}
                 </div>
 
-                {isSubmitted && q.explanation && (
+                {isSubmitted && explanation && (
                   <div className="mt-4 ml-10 p-3.5 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-slate-400">
                     <strong className="text-amber-300">Explanation: </strong>
-                    {q.explanation}
+                    {explanation}
                   </div>
                 )}
               </div>
             );
           })}
 
-          {/* Rate Limit Error Alert */}
+          {/* Rate Limit / Submission Error Alert */}
           {rateLimitError && (
             <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/50 text-red-200 text-xs text-center flex items-center justify-center gap-2">
               <XCircle className="w-4 h-4 text-red-400 shrink-0" />

@@ -27,7 +27,6 @@ import {
   MoveDown,
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
-import { ViarStore } from '@/lib/store';
 import { Course, User } from '@/lib/types';
 import { isSiteOwner } from '@/lib/auth/permissions';
 
@@ -277,10 +276,15 @@ export default function ComprehensiveCourseEditorPage() {
 
   useEffect(() => {
     fetchCourseData();
-    setCurrentUser(ViarStore.getCurrentUser());
+    fetch('/api/users/sync')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user) setCurrentUser(data.user);
+      })
+      .catch(() => {});
   }, [fetchCourseData]);
 
-  const isOwner = isSiteOwner(currentUser);
+  const isOwner = Boolean(currentUser?.isOwner || isSiteOwner(currentUser));
 
   // Direct Browser Video Upload Handler (Cloudflare Stream)
   const handleDirectVideoUpload = async (file: File, moduleIdx: number, lessonIdx: number) => {

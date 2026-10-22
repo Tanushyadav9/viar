@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 
 export async function POST(req: NextRequest) {
+  const auth = await getServerAuthUser();
+  if (!auth.isOwner && !isAuthorizedForSection(auth, 'courses', 'MANAGE')) {
+    return NextResponse.json(
+      { success: false, error: 'Forbidden: Staff access required for direct media upload.' },
+      { status: 403 }
+    );
+  }
+
   const { searchParams } = new URL(req.url);
   const type = searchParams.get('type') || 'file';
   const uid = searchParams.get('uid') || searchParams.get('key') || `file_${Date.now()}`;
@@ -17,6 +26,14 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const auth = await getServerAuthUser();
+  if (!auth.isOwner && !isAuthorizedForSection(auth, 'courses', 'MANAGE')) {
+    return NextResponse.json(
+      { success: false, error: 'Forbidden: Staff access required for direct file stream.' },
+      { status: 403 }
+    );
+  }
+
   const { searchParams } = new URL(req.url);
   const key = searchParams.get('key') || `doc_${Date.now()}`;
 

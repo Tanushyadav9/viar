@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendClassReminder, ClassReminderPayload } from '@/lib/notifications';
+import { sendClassReminder, type ClassReminderPayload } from '@/lib/notifications';
 import { prisma } from '@/lib/prisma';
+import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await getServerAuthUser();
+    if (!auth.isOwner && !isAuthorizedForSection(auth, 'courses', 'MANAGE')) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: Staff access required to send notifications.' },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const {
       studentEmail,

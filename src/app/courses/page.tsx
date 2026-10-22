@@ -83,31 +83,39 @@ export default function CoursesPage() {
       });
   }, []);
 
-  const handleNotifySubmit = (e: React.FormEvent) => {
+  const [notifyError, setNotifyError] = useState<string | null>(null);
+
+  const handleNotifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!notifyCourse || !notifyEmail) return;
 
-    ViarStore.saveNotifyMeLead({
-      courseId: notifyCourse.id,
-      courseTitle: notifyCourse.title,
-      email: notifyEmail,
-    });
+    setNotifyError(null);
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: notifyEmail.trim(),
+          courseSlug: notifyCourse.slug,
+        }),
+      });
 
-    fetch('/api/leads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: notifyEmail,
-        courseSlug: notifyCourse.slug,
-      }),
-    }).catch((err) => console.warn('Leads API sync failed:', err));
+      const data = await res.json().catch(() => null);
 
-    setNotifySuccess(true);
-    setTimeout(() => {
-      setNotifySuccess(false);
-      setNotifyCourse(null);
-      setNotifyEmail('');
-    }, 3000);
+      if (res.ok && data?.success) {
+        setNotifySuccess(true);
+        setTimeout(() => {
+          setNotifySuccess(false);
+          setNotifyCourse(null);
+          setNotifyEmail('');
+          setNotifyError(null);
+        }, 3000);
+      } else {
+        setNotifyError(data?.error || 'Could not save notification request. Please try again.');
+      }
+    } catch {
+      setNotifyError('Network error. Please try again.');
+    }
   };
 
   const filteredCourses = selectedLevel === 'All'
@@ -318,6 +326,12 @@ export default function CoursesPage() {
                 ? 'बैच 01 का पंजीकरण शुरू होते ही प्राथमिकता सूचना और विशेष अर्ली-बर्ड छूट प्राप्त करने के लिए अपना ईमेल दर्ज करें।'
                 : 'Enter your email to receive priority notification and early-bird registration access the moment Batch 01 opens.'}
             </p>
+
+            {notifyError && (
+              <div className="p-3 mb-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs">
+                {notifyError}
+              </div>
+            )}
 
             {notifySuccess ? (
               <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
