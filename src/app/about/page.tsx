@@ -173,7 +173,8 @@ export default function AboutPage() {
                     alt="Acharya Niraj Kumar"
                     fill
                     sizes="(max-width: 640px) 256px, 320px"
-                    className="object-cover object-top transition duration-500 group-hover:scale-105"
+                    className="object-cover transition duration-500 group-hover:scale-105"
+                    style={{ objectPosition: 'center 46%' }}
                     priority
                   />
                 </div>

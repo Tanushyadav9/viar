@@ -525,7 +525,8 @@ export default function HomePage() {
                     alt="Acharya Niraj Kumar"
                     fill
                     sizes="(max-width: 640px) 224px, 256px"
-                    className="object-cover object-top transition duration-500 group-hover:scale-105"
+                    className="object-cover transition duration-500 group-hover:scale-105"
+                    style={{ objectPosition: 'center 46%' }}
                   />
                 </div>
                 <div className="absolute -bottom-4 -right-2 bg-[#0f172a] border border-amber-400/40 px-3.5 py-1.5 rounded-xl shadow-xl">
