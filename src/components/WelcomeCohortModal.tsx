@@ -420,12 +420,13 @@ export default function WelcomeCohortModal({
           {/* 6. Confirmed Offer Price Box */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-[#F5EADB] border border-[#E8A33D]/50 mb-3.5 text-center">
             <div className="flex items-baseline justify-center gap-2.5 flex-wrap">
-              <span className="text-3xl sm:text-4xl font-black text-[#7B2D26] font-heading tracking-tight">
-                {priceFormatted}
-              </span>
               <span className="text-base sm:text-lg font-semibold text-[#3B2A1E]/50 line-through font-body">
                 {originalPriceFormatted}
               </span>
+              <span className="text-3xl sm:text-4xl font-black text-[#7B2D26] font-heading tracking-tight">
+                {priceFormatted}
+              </span>
+              
               <span className="px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-[#6B8E5A]/20 text-[#355326] border border-[#6B8E5A]/40 font-body">
                 54% OFF Launch
               </span>

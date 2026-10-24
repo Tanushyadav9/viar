@@ -205,8 +205,9 @@ export default function CoursesPage() {
                         : (isHi ? 'शिक्षण शुल्क (एकमुश्त)' : 'Tuition (One-Time)')}
                     </span>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-black text-white">₹{course.priceInr.toLocaleString()}</span>
                       <span className="text-xs text-slate-500 line-through">₹{course.originalPriceInr.toLocaleString()}</span>
+                      <span className="text-2xl font-black text-white">₹{course.priceInr.toLocaleString()}</span>
+                      
                     </div>
                   </div>
 

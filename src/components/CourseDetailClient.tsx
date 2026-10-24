@@ -266,8 +266,8 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                   {isHi ? 'एकमुश्त शिक्षण शुल्क • आजीवन पहुंच' : 'One-Time Tuition Fee • Lifetime Access'}
                 </span>
                 <div className="flex items-baseline gap-3">
+                  <span className="text-lg text-slate-400 line-through">{originalPrice}</span>
                   <span className="text-4xl font-black text-white">{price}</span>
-                  <span className="text-base text-slate-500 line-through">{originalPrice}</span>
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                     {isHi ? `${discountPercent}% प्रारंभिक छूट` : `${discountPercent}% Off Launch`}
                   </span>
