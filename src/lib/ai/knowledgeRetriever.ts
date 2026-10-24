@@ -9,7 +9,7 @@ export interface LiveAcademyData {
   priceUsd: number;
   upiVpa: string;
   payeeName: string;
-  activeCohorts: Array<{ batchName: string; startDate: string; capacity?: number }>;
+  activeCohorts: Array<{ batchName: string; startDate: string; capacity?: number | null; seatLimit?: number }>;
   customKnowledgeEntries: Array<{ id: string; question: string; answer: string; language: string; category: string }>;
 }
 
@@ -85,7 +85,7 @@ export async function getPublishedKnowledgeEntries(): Promise<
 export async function getLiveAcademyData(): Promise<LiveAcademyData> {
   try {
     // 1. Fetch Flagship Course for live pricing
-    let course: { title?: string; priceInr?: number; priceUsd?: number } | null = null;
+    let course: { title?: string; priceInr?: number; priceUsd?: number | null } | null = null;
     try {
       course = await prisma.course.findFirst({
         where: {
@@ -203,7 +203,7 @@ export async function getLiveAcademyData(): Promise<LiveAcademyData> {
       activeCohorts: cohorts.map((c) => ({
         batchName: c.batchName,
         startDate: c.startDate ? new Date(c.startDate).toLocaleDateString('en-IN') : 'Ongoing Admissions',
-        capacity: c.capacity,
+        capacity: c.capacity ?? undefined,
       })),
       customKnowledgeEntries: customEntries,
     };

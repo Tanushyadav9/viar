@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuthUser, canAccessArea } from '@/lib/auth/serverAuth';
 import { getPaymentSettings, updatePaymentSettings } from '@/lib/payments/settings';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  void req;
   try {
     const auth = await getServerAuthUser();
 

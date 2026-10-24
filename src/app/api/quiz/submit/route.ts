@@ -124,6 +124,7 @@ interface QuizRecord {
     id: string;
     order: number;
     question: string;
+    explanation?: string | null;
     options: Array<{ id: string; order: number; text: string; isCorrect: boolean }>;
   }>;
 }
@@ -370,7 +371,7 @@ interface CertificateResult {
           certificateUrl: `${env.appUrl}/verify/${verificationCode}`,
           verifyUrl: `${env.appUrl}/verify/${verificationCode}`,
           scorePercentage,
-          grade,
+          grade: (grade === 'Fail' ? 'Pass' : grade) as 'Distinction' | 'Merit' | 'Pass',
         }).catch((err) => console.error('[Quiz Submit] Certificate email dispatch failed:', err));
       }
     }

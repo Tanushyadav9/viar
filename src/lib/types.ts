@@ -93,7 +93,7 @@ export interface CourseModule {
   moduleNumber: number;
   number?: number;
   title: string;
-  description: string;
+  description?: string;
   classCount: number;
   classNumbers: number[];
   weeks?: string;
@@ -183,21 +183,24 @@ export type CohortStatus = 'UPCOMING' | 'ENROLLING' | 'IN_PROGRESS' | 'COMPLETED
 export interface Cohort {
   id: string;
   courseId: string;
-  batchNumber: number;
+  batchNumber?: number;
   batchName: string;
+  name?: string;
   startDate: string; // ISO string
   endDate: string;   // ISO string
-  scheduleDescription: string; // e.g. "Every Saturday & Sunday at 8:00 PM IST"
-  scheduleTimeUtc: {
+  scheduleDescription?: string; // e.g. "Every Saturday & Sunday at 8:00 PM IST"
+  meetingScheduleText?: string;
+  scheduleTimeUtc?: {
     dayOfWeek: number[]; // 0=Sun, 6=Sat
     hoursUtc: number;
     minutesUtc: number;
   };
   maxSeats: number;
+  totalSeats?: number;
   capacity?: number;
   enrolledCount: number;
   status: CohortStatus;
-  enrollmentDeadline: string;
+  enrollmentDeadline?: string;
 }
 
 export type MeetingPlatform = 'ZOOM' | 'GOOGLE_MEET';
@@ -265,34 +268,39 @@ export interface FinalTest {
 
 export interface TestSubmission {
   id: string;
-  testId: string;
+  testId?: string;
   cohortId: string;
   studentId: string;
   studentName: string;
-  studentEmail: string;
-  answers: Record<string, number>; // questionId -> selectedOptionIndex
+  studentEmail?: string;
+  answers?: Record<string, number>; // questionId -> selectedOptionIndex
   score: number;
   totalQuestions: number;
   scorePercentage: number;
-  isPassed: boolean;
+  isPassed?: boolean;
+  passed?: boolean;
+  grade?: string;
   submittedAt: string;
   certificateId?: string;
 }
 
 export interface Certificate {
   id: string;
-  verificationCode: string; // e.g. "VIAR-2026-WIA-9842"
-  studentId: string;
+  verificationCode: string;
+  certificateNumber?: string;
+  issuedDate?: string;
+  studentId?: string;
   studentName: string;
-  studentEmail: string;
-  courseId: string;
+  studentEmail?: string;
+  courseId?: string;
   courseTitle: string;
-  cohortBatchName: string;
-  issueDate: string; // formatted date
+  cohortBatchName?: string;
+  issueDate?: string; // formatted date
   scorePercentage: number;
-  grade: 'Distinction' | 'Merit' | 'Pass';
+  grade?: 'Distinction' | 'Merit' | 'Pass' | string;
+  cohortId?: string;
   instructorName: string;
-  instructorTitle: string;
+  instructorTitle?: string;
   signatureUrl?: string;
   verificationUrl: string;
 }

@@ -84,7 +84,7 @@ test('i18n Bilingual Translation Quality & Completeness Suite', async (t) => {
     const violations: Array<{ key: string; parenthetical: string; full: string }> = [];
 
     for (const [key, val] of Object.entries(hiFlat)) {
-      const matches = [...val.matchAll(parentheticalRegex)];
+      const matches = Array.from(val.matchAll(parentheticalRegex));
       for (const match of matches) {
         const inside = match[1].trim();
         const hasDevanagari = /[\u0900-\u097F]/.test(inside);
@@ -92,7 +92,7 @@ test('i18n Bilingual Translation Quality & Completeness Suite', async (t) => {
         // If it doesn't contain Devanagari, it must be in the approved acronym/token whitelist
         if (!hasDevanagari) {
           const words = inside.split(/[\s,]+/);
-          const allAllowed = words.every((w) => ALLOWED_ACRONYMS.has(w) || /^\d+%?$/.test(w));
+          const allAllowed = words.every((w: string) => ALLOWED_ACRONYMS.has(w) || /^\d+%?$/.test(w));
           if (!allAllowed) {
             violations.push({
               key,

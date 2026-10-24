@@ -9,7 +9,8 @@ import {
   setCachedKnowledgeEntries,
 } from '../src/lib/ai/knowledgeRetriever.ts';
 import { POST as assistantPost } from '../src/app/api/assistant/route.ts';
-import { POST as contactPost, resetContactRateLimit } from '../src/app/api/contact/route.ts';
+import { POST as contactPost } from '../src/app/api/contact/route.ts';
+import { resetContactRateLimit } from '../src/lib/contact-rate-limit.ts';
 import { prisma } from '../src/lib/prisma.ts';
 import { MockEmailService } from '../src/lib/email/mock.ts';
 

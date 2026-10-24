@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
     if (liveData?.customKnowledgeEntries && liveData.customKnowledgeEntries.length > 0) {
       const userLang = locale || detectLanguage(rawMessage);
       const normUser = rawMessage.toLowerCase().replace(/[^\w\s\u0900-\u097F]/gi, '').trim();
-      const userWords = normUser.split(/\s+/).filter((w) => w.length > 2);
+      const userWords = normUser.split(/\s+/).filter((w: string) => w.length > 2);
 
       // Sort with language priority: matches visitor language first, then hinglish/hi, then any
       const sortedEntries = [...liveData.customKnowledgeEntries].sort((a, b) => {
@@ -113,8 +113,8 @@ export async function POST(req: NextRequest) {
         if (normEntryQ.length > 5 && normUser.includes(normEntryQ)) return true;
         if (normUser.length > 5 && normEntryQ.includes(normUser)) return true;
 
-        const entryWords = normEntryQ.split(/\s+/).filter((w) => w.length > 2);
-        const matchCount = userWords.filter((w) => entryWords.includes(w)).length;
+        const entryWords = normEntryQ.split(/\s+/).filter((w: string) => w.length > 2);
+        const matchCount = userWords.filter((w: string) => entryWords.includes(w)).length;
         if (entryWords.length >= 2 && matchCount >= Math.min(entryWords.length, 2)) {
           return true;
         }

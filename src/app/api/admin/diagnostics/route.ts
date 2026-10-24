@@ -246,10 +246,9 @@ export async function GET(req: NextRequest) {
             select: { id: true, email: true, role: true, isOwner: true },
           });
         }
-        if (!userRow && (resolvedEmail || auth.userEmail)) {
-          const emailToLook = resolvedEmail || auth.userEmail;
+        if (!userRow && resolvedEmail) {
           userRow = await prisma.user.findFirst({
-            where: { email: emailToLook! },
+            where: { email: resolvedEmail },
             select: { id: true, email: true, role: true, isOwner: true },
           });
         }

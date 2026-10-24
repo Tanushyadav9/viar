@@ -1,7 +1,12 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerAuthUser, isAuthorizedForSection } from './serverAuth';
-export { generateSignedPlaybackToken, generateSignedDocumentToken } from './token-crypto';
+export {
+  generateSignedPlaybackToken,
+  generateSignedDocumentToken,
+  verifySignedPlaybackToken,
+  verifySignedDocumentToken,
+} from './token-crypto';
 
 export interface UserCourseAccessResult {
   isEnrolled: boolean;

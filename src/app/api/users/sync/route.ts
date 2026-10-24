@@ -120,7 +120,7 @@ export async function GET() {
         clerkId: user.clerkId,
         email: user.email,
         name: user.name,
-        phone: user.phone,
+        phone: (user as { phone?: string | null }).phone || null,
         role: auth.role,
         isOwner: auth.isOwner,
         staffSections: auth.staffSections,

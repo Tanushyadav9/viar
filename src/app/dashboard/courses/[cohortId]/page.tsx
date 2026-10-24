@@ -17,7 +17,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
-import { Course, Cohort, ScheduledClass, ClassDiscussionComment } from '@/lib/types';
+import { Course, Cohort, ScheduledClass, ClassDiscussionComment, User } from '@/lib/types';
 import { getUserLocalTimezone } from '@/lib/timezones';
 import {
   AsyncStateView,
@@ -98,7 +98,7 @@ export default function CohortClassByClassPage() {
         if (data.success && data.course) {
           const crs = data.course;
           setCourse(crs);
-          setIsEnrolled(Boolean(data.isUserEnrolled || isStaff));
+          setIsEnrolled(Boolean(data.isUserEnrolled));
 
           if (crs.cohorts && crs.cohorts.length > 0) {
             setCohort(crs.cohorts[0]);

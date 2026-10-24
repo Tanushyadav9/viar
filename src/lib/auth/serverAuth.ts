@@ -36,6 +36,7 @@ export interface ServerAuthResult {
   userId: string | null;       // Database user ID (primary key for foreign-key relations)
   clerkId: string | null;      // Clerk user ID (user_...)
   email: string | null;        // Verified primary email
+  userEmail?: string | null;   // Convenience alias for email
   isEmailVerified: boolean;
   isOwner: boolean;
   isStaff: boolean;
@@ -46,6 +47,7 @@ export interface ServerAuthResult {
     clerkId: string | null;
     email: string | null;
     name: string;
+    phone?: string | null;
     role: string;
     isOwner: boolean;
   } | null;
@@ -81,6 +83,7 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
     userId: null,
     clerkId: null,
     email: null,
+    userEmail: null,
     isEmailVerified: false,
     isOwner: false,
     isStaff: false,
@@ -211,11 +214,13 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
       }
     }
 
+    const resolvedEmail = verifiedEmail || dbUser?.email || null;
     return {
       isAuthenticated: true,
       userId: dbUser?.id || clerkUserId,
       clerkId: clerkUserId,
-      email: verifiedEmail || dbUser?.email || null,
+      email: resolvedEmail,
+      userEmail: resolvedEmail,
       isEmailVerified,
       isOwner,
       isStaff,

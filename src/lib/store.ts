@@ -257,7 +257,7 @@ export const ViarStore = {
 
   getStudentCertificate(studentId: string, cohortId?: string): Certificate | undefined {
     const certs = this.getCertificates();
-    return certs.find((c) => c.studentId === studentId && (!cohortId || c.cohortBatchName.length > 0));
+    return certs.find((c) => c.studentId === studentId && (!cohortId || (c.cohortBatchName || '').length > 0));
   },
 
   // Enrollments

@@ -29,7 +29,7 @@ describe('Chatbot Architecture & Cost Control Suite', () => {
       const originalEnv = process.env.NODE_ENV;
       const originalKey = process.env.CHATBOT_API_KEY;
 
-      process.env.NODE_ENV = 'production';
+      (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
       delete process.env.CHATBOT_API_KEY;
 
       let warningLogged = false;
@@ -46,7 +46,7 @@ describe('Chatbot Architecture & Cost Control Suite', () => {
         assert.strictEqual(warningLogged, true, 'Clear warning must be logged in production');
       } finally {
         console.warn = originalWarn;
-        process.env.NODE_ENV = originalEnv;
+        (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
         if (originalKey) process.env.CHATBOT_API_KEY = originalKey;
       }
     });

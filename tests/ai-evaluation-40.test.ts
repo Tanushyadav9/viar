@@ -548,7 +548,7 @@ describe('Non-Model Automated Tests (Security, Rate Limiting, Sanitization, Mask
       const check = checkChatRateLimit(floodHash);
       assert.strictEqual(check.allowed, false);
       assert.strictEqual(check.reason, 'ten_minute');
-      assert.ok(check.message.includes('WhatsApp'));
+      assert.ok(check.message?.includes('WhatsApp'));
     });
   });
 
@@ -605,11 +605,11 @@ describe('Non-Model Automated Tests (Security, Rate Limiting, Sanitization, Mask
       const originalKey = process.env.CHATBOT_API_KEY;
 
       try {
-        process.env.NODE_ENV = 'production';
+        (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
         process.env.CHATBOT_API_KEY = '';
         assert.strictEqual(isChatbotConfigured(), false);
       } finally {
-        process.env.NODE_ENV = originalEnv;
+        (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
         process.env.CHATBOT_API_KEY = originalKey;
       }
     });

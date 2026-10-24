@@ -150,6 +150,7 @@ function StudentDashboardContent() {
             title: qData.quiz.title,
             passingPercentage: qData.quiz.passingPercentage || 70,
             durationMinutes: qData.quiz.durationMinutes || 45,
+            description: qData.quiz.description || '',
             totalQuestions: qData.quiz.totalQuestions || qData.quiz.questions?.length || 20,
             questions: qData.quiz.questions || [],
           });
@@ -232,6 +233,7 @@ function StudentDashboardContent() {
           score: data.score,
           totalQuestions: data.totalQuestions,
           scorePercentage: data.scorePercentage,
+          isPassed: data.isPassed,
           passed: data.isPassed,
           grade: data.grade,
         });

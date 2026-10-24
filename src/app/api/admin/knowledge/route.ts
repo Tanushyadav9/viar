@@ -14,8 +14,9 @@ async function checkOwnerAccess(): Promise<boolean> {
  * Owner-only endpoint to fetch all knowledge entries and unanswered questions.
  */
 export async function GET(req: NextRequest) {
+  void req;
   try {
-    const isOwner = await checkOwnerAccess(req);
+    const isOwner = await checkOwnerAccess();
     if (!isOwner) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Owner access required.' },
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const isOwner = await checkOwnerAccess(req);
+    const isOwner = await checkOwnerAccess();
     if (!isOwner) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Owner access required.' },

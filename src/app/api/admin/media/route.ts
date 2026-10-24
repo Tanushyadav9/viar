@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Validate MIME type
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
       return NextResponse.json(
         {
           success: false,
@@ -106,15 +106,20 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    const effectiveAltTextEn = altTextEn || label || file.name;
     const asset = await createMediaAsset({
       buffer,
       fileName: file.name,
+      filename: file.name,
       mimeType: file.type,
       fileSize: file.size,
+      sizeBytes: file.size,
       label,
-      altTextEn,
+      altTextEn: effectiveAltTextEn,
       altTextHi,
       folder,
+      url: `/uploads/${file.name}`,
+      userId: auth.userId || auth.email || 'site_owner',
       uploadedByEmail: auth.email || 'site_owner',
     });
 
@@ -169,7 +174,7 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Media asset '${deleted.fileName}' deleted successfully.`,
+      message: deleted.message,
     });
   } catch (error) {
     return NextResponse.json(

@@ -675,7 +675,7 @@ export default function AdminPortalClient({
       completedClasses: loadedClasses.filter((c) => c.status === 'COMPLETED').length,
       upcomingClasses: loadedClasses.filter((c) => c.status !== 'COMPLETED').length,
       certificatesIssued: loadedCertificates.length,
-      activeCohorts: loadedCohorts.filter((c) => c.status === 'ENROLLING' || c.status === 'IN_PROGRESS' || c.status === 'ACTIVE' || !c.status).length,
+      activeCohorts: loadedCohorts.filter((c) => c.status !== 'COMPLETED').length,
     });
 
     if (!serverAuth) {

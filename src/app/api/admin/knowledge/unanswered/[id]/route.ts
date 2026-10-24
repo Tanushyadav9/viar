@@ -17,8 +17,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  void req;
   try {
-    const isOwner = await checkOwnerAccess(req);
+    const isOwner = await checkOwnerAccess();
     if (!isOwner) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Owner access required.' },
@@ -60,7 +61,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const isOwner = await checkOwnerAccess(req);
+    const isOwner = await checkOwnerAccess();
     if (!isOwner) {
       return NextResponse.json(
         { success: false, error: 'Forbidden: Owner access required.' },

@@ -162,9 +162,8 @@ export async function POST(req: NextRequest) {
       metadata: typeof metadata === 'object' && metadata !== null ? metadata : undefined,
       status: (status as ContentStatus) || 'PUBLISHED',
       sortOrder: typeof sortOrder === 'number' ? sortOrder : 0,
-      authorEmail: auth.email || 'site_owner',
       changeSummary: changeSummary ? String(changeSummary) : (id ? 'Updated via Admin Studio' : 'Created via Admin Studio'),
-    });
+    }, auth.email || 'site_owner');
 
     return NextResponse.json({
       success: true,

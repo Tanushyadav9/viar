@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuthUser, canAccessArea } from '@/lib/auth/serverAuth';
 import { prisma } from '@/lib/prisma';
-import { VIAR_SECTIONS } from '@/lib/auth/permissions';
-import { env } from '@/config/env';
+import { VIAR_SECTIONS, getOwnerEmails } from '@/lib/auth/permissions';
 import type { StaffAccessLevel, StaffPermission, User, AdminSection } from '@/lib/types';
 
 // In-memory server fallback cache when DB is unprovisioned during local testing
@@ -14,7 +13,8 @@ const serverStaffFallback: Partial<User>[] = [];
  * Returns all staff members and the complete StaffPermission audit trail.
  * Strictly Site Owner-only. Rejects anyone else with 403.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  void req;
   try {
     const auth = await getServerAuthUser();
     // Unified Policy: Team & Staff permissions management is strictly Owner-only (Staff: No, Student: No)
@@ -34,11 +34,12 @@ export async function GET() {
         orderBy: { createdAt: 'desc' },
       });
 
+      const ownerEmails = getOwnerEmails();
       const dbUsers = await prisma.user.findMany({
         where: {
           OR: [
             { role: { in: ['INSTRUCTOR', 'ADMIN', 'OWNER'] } },
-            { email: { in: env.ownerEmails } },
+            { email: { in: ownerEmails } },
           ],
         },
         select: {
@@ -51,7 +52,8 @@ export async function GET() {
 
       const staffWithSections = dbUsers.map((u) => {
         const userPerms = (dbPermissions || []).filter((p) => p.userId === u.id && !p.revokedAt);
-        const isOwner = env.ownerEmails.map((e) => e.toLowerCase()).includes(u.email.toLowerCase());
+        const userEmailLower = (u.email || '').toLowerCase();
+        const isOwner = ownerEmails.some((e: string) => e.toLowerCase() === userEmailLower);
         return {
           id: u.id,
           name: u.name,
@@ -174,7 +176,6 @@ export async function POST(req: NextRequest) {
           where: { id: existing.id },
           data: {
             accessLevel: cleanLevel,
-            notes: notes ? String(notes).trim() : existing.notes,
           },
         });
       } else {
@@ -184,7 +185,6 @@ export async function POST(req: NextRequest) {
             section: cleanSection,
             accessLevel: cleanLevel,
             grantedByUserId: auth.userId || auth.email || 'site_owner',
-            notes: notes ? String(notes).trim() : null,
           },
         });
       }
@@ -202,6 +202,7 @@ export async function POST(req: NextRequest) {
             targetUserId: user.id,
             section: cleanSection,
             accessLevel: cleanLevel,
+            notes: notes ? String(notes).trim() : null,
             grantedAt: now.toISOString(),
           },
         },

@@ -231,24 +231,36 @@ export async function listMediaAssets(options: { search?: string } = {}): Promis
  * Registers an uploaded media asset into the database.
  */
 export async function createMediaAsset(data: {
-  filename: string;
-  url: string;
-  altTextEn: string;
+  filename?: string;
+  fileName?: string;
+  url?: string;
+  altTextEn?: string;
   altTextHi?: string;
   mimeType: string;
-  sizeBytes: number;
+  sizeBytes?: number;
+  fileSize?: number;
   width?: number;
   height?: number;
-  userId: string;
+  userId?: string;
+  uploadedByEmail?: string;
+  buffer?: Buffer;
+  label?: string;
+  folder?: string;
 }): Promise<MediaAssetItem> {
+  const filename = (data.filename || data.fileName || 'asset.jpg').trim();
+  const altTextEn = (data.altTextEn || data.label || filename).trim();
+  const sizeBytes = data.sizeBytes || data.fileSize || 0;
+  const userId = data.userId || data.uploadedByEmail || 'site_owner';
+  const url = (data.url || (data.fileName ? `/uploads/${data.fileName}` : '/images/placeholder.jpg')).trim();
+
   // 1. Mandatory Alt Text
-  if (!data.altTextEn || data.altTextEn.trim().length === 0) {
+  if (!altTextEn || altTextEn.length === 0) {
     throw new Error('Alt text is required for every image to guarantee accessibility and search optimization.');
   }
 
   // 2. File Size Enforcement (max 5 MB)
-  if (data.sizeBytes > MAX_IMAGE_SIZE_BYTES) {
-    throw new Error(`File size ${(data.sizeBytes / 1024 / 1024).toFixed(1)} MB exceeds the maximum allowed limit of 5 MB.`);
+  if (sizeBytes > MAX_IMAGE_SIZE_BYTES) {
+    throw new Error(`File size ${(sizeBytes / 1024 / 1024).toFixed(1)} MB exceeds the maximum allowed limit of 5 MB.`);
   }
 
   // 3. Supported MIME Types (JPG, PNG, WebP)
@@ -257,21 +269,21 @@ export async function createMediaAsset(data: {
   }
 
   // 4. Never store base64 in database
-  if (data.url.startsWith('data:')) {
+  if (url.startsWith('data:')) {
     throw new Error('Base64 data URLs cannot be saved to the database. Use Cloudflare R2 direct storage.');
   }
 
   const created = await prisma.mediaAsset.create({
     data: {
-      filename: data.filename.trim(),
-      url: data.url.trim(),
-      altTextEn: data.altTextEn.trim(),
+      filename,
+      url,
+      altTextEn,
       altTextHi: data.altTextHi?.trim() || null,
       mimeType: data.mimeType,
-      sizeBytes: data.sizeBytes,
+      sizeBytes,
       width: data.width || null,
       height: data.height || null,
-      createdById: data.userId,
+      createdById: userId,
     },
   });
 

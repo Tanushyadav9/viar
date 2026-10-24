@@ -356,25 +356,25 @@ describe('THE ADMIN CONSOLE ON THE DATABASE — Comprehensive Specification', ()
   describe('3. Team & Staff Management (API & Verified Helper)', () => {
     it('/api/admin/team GET rejects unauthenticated callers with 403', async () => {
       setTestAuthUser(LOGGED_OUT_PERSONA);
-      const res = await getTeam();
+      const res = await getTeam(createMockRequest('http://localhost:3000/api/admin/team'));
       assert.strictEqual(res.status, 403);
     });
 
     it('/api/admin/team GET rejects students with 403', async () => {
       setTestAuthUser(STUDENT_PERSONA);
-      const res = await getTeam();
+      const res = await getTeam(createMockRequest('http://localhost:3000/api/admin/team'));
       assert.strictEqual(res.status, 403);
     });
 
     it('/api/admin/team GET rejects non-owner staff with 403', async () => {
       setTestAuthUser(STAFF_COURSES_PERSONA);
-      const res = await getTeam();
+      const res = await getTeam(createMockRequest('http://localhost:3000/api/admin/team'));
       assert.strictEqual(res.status, 403);
     });
 
     it('/api/admin/team GET allows Owner with 200', async () => {
       setTestAuthUser(OWNER_PERSONA);
-      const res = await getTeam();
+      const res = await getTeam(createMockRequest('http://localhost:3000/api/admin/team'));
       assert.strictEqual(res.status, 200);
       const data = await res.json();
       assert.strictEqual(data.success, true);

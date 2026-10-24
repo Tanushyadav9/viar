@@ -157,7 +157,7 @@ function createMockRequest(url: string, options: { method?: string; body?: any; 
       reqHeaders.set('content-type', 'application/json');
     }
   }
-  return new NextRequest(new URL(url, 'http://localhost:3000'), init);
+  return new NextRequest(new URL(url, 'http://localhost:3000'), init as any);
 }
 
 describe('Identity & Authorization — One Way Only Security Suite', () => {

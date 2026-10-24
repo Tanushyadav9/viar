@@ -173,8 +173,10 @@ export async function saveContentItem(
     status?: ContentStatus;
     sortOrder?: number;
     changeSummary?: string;
+    authorEmail?: string;
+    updatedById?: string;
   },
-  userId: string
+  userId: string = 'system'
 ): Promise<FormattedContent> {
   const collection = data.collection.trim().toLowerCase();
   const key = data.key.trim().toLowerCase();
@@ -252,7 +254,8 @@ export async function saveContentItem(
  */
 export async function restoreContentRevision(
   revisionId: string,
-  userId: string
+  userId: string,
+  changeSummary?: string
 ): Promise<FormattedContent> {
   const revision = await prisma.contentRevision.findUnique({
     where: { id: revisionId },
@@ -287,7 +290,7 @@ export async function restoreContentRevision(
       collection: revision.collection,
       key: revision.key,
       snapshot: revision.snapshot as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-      changeSummary: `Restored to revision from ${new Date(revision.createdAt).toLocaleString()}`,
+      changeSummary: changeSummary || `Restored to revision from ${new Date(revision.createdAt).toLocaleString()}`,
       createdById: userId,
     },
   });
@@ -320,10 +323,72 @@ export async function updateContentStatus(
   contentId: string,
   status: ContentStatus,
   userId: string
+): Promise<FormattedContent>;
+export async function updateContentStatus(
+  collection: string,
+  key: string,
+  status: ContentStatus,
+  userId: string,
+  changeSummary?: string
+): Promise<FormattedContent>;
+export async function updateContentStatus(
+  collectionOrId: string,
+  keyOrStatus: string | ContentStatus,
+  statusOrUserId?: ContentStatus | string,
+  userId?: string,
+  changeSummary?: string
 ): Promise<FormattedContent> {
+  let contentItem;
+  let finalStatus: ContentStatus;
+  let finalUserId: string;
+  let summary: string;
+
+  if (
+    typeof statusOrUserId === 'string' &&
+    (statusOrUserId === 'PUBLISHED' || statusOrUserId === 'DRAFT' || statusOrUserId === 'HIDDEN')
+  ) {
+    const collection = collectionOrId;
+    const key = keyOrStatus as string;
+    finalStatus = statusOrUserId as ContentStatus;
+    finalUserId = userId || 'system';
+    summary = changeSummary || `Status changed to ${finalStatus}`;
+
+    contentItem = await prisma.contentItem.findUnique({
+      where: {
+        collection_key: {
+          collection,
+          key,
+        },
+      },
+    });
+
+    if (!contentItem) {
+      return saveContentItem({
+        collection,
+        key,
+        status: finalStatus,
+        updatedById: finalUserId,
+        changeSummary: summary,
+      });
+    }
+  } else {
+    const contentId = collectionOrId;
+    finalStatus = keyOrStatus as ContentStatus;
+    finalUserId = (statusOrUserId as string) || 'system';
+    summary = changeSummary || `Status changed to ${finalStatus}`;
+
+    contentItem = await prisma.contentItem.findUnique({
+      where: { id: contentId },
+    });
+
+    if (!contentItem) {
+      throw new Error('Content item not found.');
+    }
+  }
+
   const updatedItem = await prisma.contentItem.update({
-    where: { id: contentId },
-    data: { status, updatedById: userId },
+    where: { id: contentItem.id },
+    data: { status: finalStatus, updatedById: finalUserId },
   });
 
   const defaultItem = BUILTIN_CONTENT_DEFAULTS[updatedItem.collection]?.find((i) => i.key === updatedItem.key);
@@ -342,8 +407,8 @@ export async function updateContentStatus(
         status: updatedItem.status,
         sortOrder: updatedItem.sortOrder,
       } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-      changeSummary: `Status changed to ${status}`,
-      createdById: userId,
+      changeSummary: summary,
+      createdById: finalUserId,
     },
   });
 

@@ -557,7 +557,7 @@ export const SCHEDULED_CLASSES_FLAGSHIP: ScheduledClass[] = ULTIMATE_ASTROLOGY_M
     moduleNumber: num,
     title: mod.title,
     subtitle: `Module ${num} • Scheduled Class Session`,
-    description: mod.description,
+    description: mod.description || '',
     scheduledStartTime: '2026-11-01T10:00:00.000Z',
     scheduledAt: '2026-11-01T10:00:00.000Z',
     durationMinutes: mod.durationMinutes || 75,
