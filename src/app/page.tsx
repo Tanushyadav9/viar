@@ -16,7 +16,8 @@ import {
   BookOpen,
   ExternalLink,
   Flame,
-  Star
+  Star,
+  Download,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort, ContentItem } from '@/lib/types';
@@ -773,33 +774,43 @@ export default function HomePage() {
             )}
           </p>
 
-          <div className="relative rounded-2xl border border-dashed border-amber-500/30 bg-gradient-to-b from-[#111827]/80 to-[#0a0f1a]/80 p-8 sm:p-14 text-center max-w-2xl mx-auto shadow-xl">
-            <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-5">
-              <Video className="w-8 h-8" />
+          <div className="relative rounded-2xl border border-amber-500/30 bg-[#0f172a] overflow-hidden shadow-2xl max-w-3xl mx-auto">
+            <div className="aspect-video w-full relative">
+              <iframe
+                src="https://www.youtube-nocookie.com/embed/VymAmq2THHs?rel=0"
+                title={isHi ? 'आचार्य नीरज कुमार जी का नमूना व्याख्यान' : 'Sample Lecture - Acharya Niraj Kumar'}
+                className="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
             </div>
-            <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
-              {isHi ? 'नमूना वीडियो पाठ शीघ्र आ रहा है' : 'Sample Lecture Video Coming Soon'}
-            </h3>
-            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-lg mx-auto mb-6">
-              {isHi
-                ? '23-मॉड्यूल के सेल्फ-पेस्ड मास्टरक्लास से कुंडली विश्लेषण और शिक्षण पद्धति को प्रदर्शित करने वाले आधिकारिक अंश तैयार किए जा रहे हैं।'
-                : 'Official video excerpts demonstrating chart analysis and syllabus methodology are currently being curated from the 23-module self-paced masterclass.'}
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link
-                href="/courses/what-is-astrology"
-                className="gold-button px-6 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-2"
-              >
-                <span>{isHi ? 'संपूर्ण 23-मॉड्यूल पाठ्यक्रम देखें' : 'View Full 23-Module Curriculum'}</span>
-              </Link>
-              <a
-                href="/api/courses/what-is-astrology/syllabus/download?print=true"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-300 inline-flex items-center gap-2 transition"
-              >
-                <span>{isHi ? 'पाठ्यक्रम डाउनलोड करें (PDF)' : 'Download Syllabus (PDF)'}</span>
-              </a>
+            <div className="p-4 sm:p-6 bg-gradient-to-t from-[#0a0f1a] to-[#111827]/90 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10">
+              <div className="text-left">
+                <h3 className="text-sm sm:text-base font-bold text-white">
+                  {isHi ? 'वैदिक ज्योतिष शिक्षण पद्धति का प्रत्यक्ष नमूना' : 'Sample Lecture: Logic-Driven Vedic Astrology'}
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {isHi ? '23-मॉड्यूल संपूर्ण मास्टरक्लास से व्याख्यान' : 'Official excerpt from the 23-module self-paced masterclass'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2.5 shrink-0">
+                <Link
+                  href="/courses/what-is-astrology"
+                  className="gold-button px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
+                >
+                  <span>{isHi ? 'संपूर्ण पाठ्यक्रम' : 'View Curriculum'}</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+                <a
+                  href="/api/courses/what-is-astrology/syllabus/download?print=true"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-300 inline-flex items-center gap-1.5 transition"
+                >
+                  <Download className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{isHi ? 'पाठ्यक्रम PDF' : 'Syllabus PDF'}</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>
