@@ -1,4 +1,5 @@
 'use client';
+import AdminHelpBox from '@/components/admin/AdminHelpBox';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -231,6 +232,23 @@ export default function InstructorStudentsRosterPage() {
     <div className="cosmic-bg min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <InstructorNav />
+
+        <AdminHelpBox
+          titleEn="Students & Enrolled Scholars Roster"
+          titleHi="विद्यार्थी एवं नामांकित अध्येता सूची"
+          descriptionEn="Inspect all registered students, verify their learning progress across the 23 modules, check exam scores and certificate status, or click 'Admit Scholar Manually' to grant scholarship or offline enrollment access."
+          descriptionHi="सभी पंजीकृत विद्यार्थियों का निरीक्षण करें, 23 मॉड्यूल में उनकी अध्ययन प्रगति देखें, परीक्षा अंक और प्रमाणपत्र स्थिति जांचें, या छात्रवृत्ति/ऑफलाइन प्रवेश देने के लिए 'Admit Scholar Manually' पर क्लिक करें।"
+          tipsEn={[
+            'Search by student name or email to quickly find an enrollment record.',
+            'Click "Admit Scholar Manually" to grant immediate access with an audit reason.',
+            'Click "Export CSV" to download the complete student roster for your records.',
+          ]}
+          tipsHi={[
+            'नामांकन रिकॉर्ड खोजने के लिए विद्यार्थी के नाम या ईमेल से खोजें।',
+            'ऑडिट कारण के साथ तुरंत प्रवेश देने के लिए "Admit Scholar Manually" पर क्लिक करें।',
+            'अपने रिकॉर्ड के लिए पूरी छात्र सूची डाउनलोड करने हेतु "Export CSV" पर क्लिक करें।',
+          ]}
+        />
 
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -551,7 +569,7 @@ export default function InstructorStudentsRosterPage() {
                 {filteredStudents.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="text-center py-12 text-slate-500">
-                      No students yet. Once students enroll in the self-paced masterclass or are admitted manually, their progress and records will appear here.
+                      No students yet • अभी कोई विद्यार्थी नामांकित नहीं है. Once students enroll in the self-paced masterclass or are admitted manually, their progress and records will appear here. (जब विद्यार्थी पाठ्यक्रम में नामांकन लेंगे या मैन्युअल रूप से जोड़े जाएंगे, तो उनका विवरण यहाँ दिखाई देगा।)
                     </td>
                   </tr>
                 ) : (

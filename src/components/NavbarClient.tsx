@@ -118,8 +118,6 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
 
   // Server-decided security boundary:
   // The Admin navigation link appears strictly for the Site Owner and authorized staff
-  const isOwner = Boolean(serverAuth?.isOwner);
-  const isStaff = Boolean(serverAuth?.isStaff);
   const showAdminNav = Boolean(serverAuth?.showAdminNav);
   const isAuthenticated = Boolean(serverAuth?.isAuthenticated || isSignedIn || currentUser);
 
@@ -357,30 +355,15 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
           ) : (
             <div className="flex items-center gap-1.5 xl:gap-2 shrink-0">
               {/* Optional role badge - shown only on extra-wide screens so standard laptops stay clean */}
-              {isOwner ? (
-                <Link
-                  href="/admin"
-                  className="hidden 2xl:flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 whitespace-nowrap hover:bg-amber-500/30 transition"
-                  title="Site Owner Console"
-                >
-                  <ShieldCheck className="w-3 h-3 text-amber-400" />
-                  <span>Owner</span>
-                </Link>
-              ) : isStaff ? (
-                <span className="hidden 2xl:flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
-                  <ShieldCheck className="w-3 h-3 text-purple-400" />
-                  <span>Staff</span>
-                </span>
-              ) : null}
-
-              {/* Primary Portal Action */}
+              {/* Single Entry Point: Admin (Owner & Staff Only, Decided on Server) */}
               {showAdminNav ? (
                 <Link
                   href="/admin"
-                  className="whitespace-nowrap px-2.5 xl:px-3.5 py-1.5 rounded-lg xl:rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 shadow-md shadow-amber-900/30 transition flex items-center justify-center gap-1.5 h-8 xl:h-[34px]"
+                  className="whitespace-nowrap px-3.5 xl:px-4 py-1.5 rounded-lg xl:rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 shadow-md shadow-amber-900/30 transition flex items-center justify-center gap-1.5 h-8 xl:h-[34px]"
+                  title="Admin Home"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Admin Console</span>
+                  <span>Admin</span>
                 </Link>
               ) : (
                 <Link

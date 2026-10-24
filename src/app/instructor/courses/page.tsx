@@ -1,4 +1,5 @@
 'use client';
+import AdminHelpBox from '@/components/admin/AdminHelpBox';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -258,6 +259,21 @@ export default function InstructorCoursesPage() {
     <div className="cosmic-bg min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <InstructorNav />
+
+        <AdminHelpBox
+          titleEn="Course Catalog Manager"
+          titleHi="पाठ्यक्रम कैटलॉग प्रबंधक"
+          descriptionEn="Manage your academy's published and draft masterclasses. Only the Flagship Astrology course is currently published. You can add future draft courses here while keeping them hidden from the public catalog until ready."
+          descriptionHi="अपने संस्थान के प्रकाशित और ड्राफ्ट पाठ्यक्रमों का प्रबंधन करें। वर्तमान में केवल मुख्य ज्योतिष पाठ्यक्रम प्रकाशित है। आप यहाँ भविष्य के ड्राफ्ट पाठ्यक्रम जोड़ सकते हैं, जो तैयार होने तक सार्वजनिक कैटलॉग से छिपे रहेंगे।"
+          tipsEn={[
+            'Click "Edit Curriculum & Content" on any course to open the full lesson editor.',
+            'New courses stay in DRAFT status until you explicitly choose to publish them.',
+          ]}
+          tipsHi={[
+            'पाठ्यक्रम सामग्री संपादित करने के लिए किसी भी कोर्स पर "Edit Curriculum & Content" पर क्लिक करें।',
+            'नए जोड़े गए पाठ्यक्रम ड्राफ्ट स्थिति में रहते हैं जब तक आप उन्हें प्रकाशित नहीं करते।',
+          ]}
+        />
 
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">

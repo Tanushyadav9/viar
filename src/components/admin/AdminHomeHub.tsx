@@ -3,40 +3,23 @@
 import React from 'react';
 import Link from 'next/link';
 import {
-  Sparkles,
   ExternalLink,
-  Activity,
-  Phone,
+  BookOpen,
+  Users,
+  DollarSign,
   HelpCircle,
   FileText,
-  Image as ImageIcon,
-  DollarSign,
-  BookOpen,
+  Settings,
   Calendar,
-  Users,
-  Award,
-  ShieldCheck,
   Clock,
   CheckCircle2,
+  AlertCircle,
   ArrowRight,
   Eye,
+  ShieldCheck,
 } from 'lucide-react';
 import { AdminSection } from '@/lib/types';
-
-export interface AdminTile {
-  id: string;
-  section: AdminSection;
-  title: string;
-  helpText: string;
-  icon: React.ReactNode;
-  badge?: string;
-  ownerOnly?: boolean;
-  actionPayload?: {
-    tab: AdminSection;
-    subview?: string;
-    collection?: string;
-  };
-}
+import AdminHelpBox from './AdminHelpBox';
 
 export interface RecentActivityItem {
   id: string;
@@ -53,163 +36,100 @@ interface AdminHomeHubProps {
   allowedSections: AdminSection[];
   onSelectSection: (section: AdminSection, options?: { collection?: string }) => void;
   pendingOrdersCount?: number;
+  pendingStudentsCount?: number;
+  pendingQuestionsCount?: number;
+  liveClassesTodayCount?: number;
   recentActivities?: RecentActivityItem[];
 }
 
 export default function AdminHomeHub({
   isOwner,
   userEmail,
-  allowedSections,
   onSelectSection,
   pendingOrdersCount = 0,
+  pendingStudentsCount = 0,
+  pendingQuestionsCount = 0,
+  liveClassesTodayCount = 0,
   recentActivities = [],
 }: AdminHomeHubProps) {
-  // Plain-language tiles designed for non-technical site management (Section 7 Hub)
-  const ALL_TILES: AdminTile[] = [
+  // Flagship Course ID for direct course editor access
+  const flagshipCourseId = 'course-what-is-astrology';
+
+  // 6 Plain Tiles as explicitly specified
+  const PLAIN_TILES = [
     {
-      id: 'tile-courses',
-      section: 'courses',
-      title: 'Courses',
-      helpText: 'Add, edit, archive, or delete a draft course in the academy catalog.',
+      id: 'tile-course',
+      title: 'Course',
+      helpText: 'Edit modules, video lessons, notes, and enrolment status for the astrology course.',
       icon: <BookOpen className="w-6 h-6 text-purple-400" />,
-      actionPayload: { tab: 'courses' },
-    },
-    {
-      id: 'tile-lessons',
-      section: 'cohorts',
-      title: 'Lessons and files',
-      helpText: 'Manage video lessons, lecture recordings, and downloadable handouts.',
-      icon: <Calendar className="w-6 h-6 text-blue-400" />,
-      actionPayload: { tab: 'cohorts' },
-    },
-    {
-      id: 'tile-quizzes',
-      section: 'quizzes',
-      title: 'Quizzes',
-      helpText: 'Inspect final 20-question certification exams and pass thresholds.',
-      icon: <Award className="w-6 h-6 text-amber-300" />,
-      actionPayload: { tab: 'quizzes' },
+      action: () => {
+        window.location.href = `/instructor/courses/${flagshipCourseId}/builder`;
+      },
     },
     {
       id: 'tile-students',
-      section: 'students',
       title: 'Students',
-      helpText: 'Look up registered students, verify course access, or manually enroll a student.',
+      helpText: 'View enrolled scholars, course completion progress, or manually grant access.',
       icon: <Users className="w-6 h-6 text-amber-400" />,
-      actionPayload: { tab: 'students' },
+      action: () => onSelectSection('students'),
     },
     {
       id: 'tile-payments',
-      section: 'payments',
-      title: 'Payments waiting for approval',
-      helpText: 'Review student UPI receipts, check UTR numbers, and approve enrollments.',
-      icon: <DollarSign className="w-6 h-6 text-emerald-400" />,
+      title: 'Payments',
       badge: pendingOrdersCount > 0 ? `${pendingOrdersCount} Waiting` : undefined,
-      actionPayload: { tab: 'payments' },
+      helpText: 'Check student UPI transaction references (UTR) and approve access.',
+      icon: <DollarSign className="w-6 h-6 text-emerald-400" />,
+      action: () => onSelectSection('payments'),
     },
     {
-      id: 'tile-content-studio',
-      section: 'content',
+      id: 'tile-questions',
+      title: 'Questions',
+      badge: pendingQuestionsCount > 0 ? `${pendingQuestionsCount} Waiting` : undefined,
+      helpText: 'Review questions asked by visitors and train the AI assistant with verified answers.',
+      icon: <HelpCircle className="w-6 h-6 text-sky-400" />,
+      action: () => {
+        window.location.href = '/admin/knowledge';
+      },
+    },
+    {
+      id: 'tile-content',
       title: 'Site content',
-      helpText: 'Add, edit, hide, or translate any text, bio, or FAQ across the website.',
+      helpText: 'Change website headlines, promotional banners, instructor bio, and FAQs.',
       icon: <FileText className="w-6 h-6 text-indigo-400" />,
-      badge: 'Content Studio',
-      actionPayload: { tab: 'content' },
+      action: () => onSelectSection('content'),
     },
     {
-      id: 'tile-announcements',
-      section: 'content',
-      title: 'Blog or announcements',
-      helpText: 'Publish academy announcements, masterclass updates, and notice board.',
-      icon: <Sparkles className="w-6 h-6 text-amber-300" />,
-      actionPayload: { tab: 'content', collection: 'announcements' },
-    },
-    {
-      id: 'tile-staff',
-      section: 'staff',
-      title: 'Team access',
-      helpText: 'Assign specific section permissions to team members and assistants.',
-      icon: <ShieldCheck className="w-6 h-6 text-amber-400" />,
-      ownerOnly: true,
-      badge: 'Owner Only',
-      actionPayload: { tab: 'staff' },
-    },
-    {
-      id: 'tile-diagnostics',
-      section: 'analytics',
-      title: 'Diagnostics (Owner only)',
-      helpText: 'Run real-time checks on database, storage, payments, and system health.',
-      icon: <Activity className="w-6 h-6 text-rose-400" />,
-      ownerOnly: true,
-      badge: 'Owner Only',
-      actionPayload: { tab: 'analytics', subview: 'diagnostics' },
-    },
-    {
-      id: 'tile-contact',
-      section: 'content',
-      title: 'Change phone number and social links',
-      helpText: 'Update WhatsApp number, contact phone, public email, and office hours.',
-      icon: <Phone className="w-6 h-6 text-emerald-400" />,
-      actionPayload: { tab: 'content', collection: 'site_settings' },
-    },
-    {
-      id: 'tile-faq',
-      section: 'content',
-      title: 'Edit FAQ',
-      helpText: 'Update answers to frequently asked questions in English & Hindi.',
-      icon: <HelpCircle className="w-6 h-6 text-amber-400" />,
-      actionPayload: { tab: 'content', collection: 'faqs' },
-    },
-    {
-      id: 'tile-media',
-      section: 'media',
-      title: 'Media Library & Site Assets',
-      helpText: 'Upload, manage, and optimize images, student awards, and photos up to 5 MB.',
-      icon: <ImageIcon className="w-6 h-6 text-sky-400" />,
-      actionPayload: { tab: 'media' },
+      id: 'tile-settings',
+      title: 'Settings',
+      helpText: 'Manage receiving UPI IDs, admissions WhatsApp helpline, and team permissions.',
+      icon: <Settings className="w-6 h-6 text-slate-300" />,
+      action: () => onSelectSection('staff'),
     },
   ];
 
-  // Filter tiles strictly based on user permissions
-  const visibleTiles = ALL_TILES.filter((tile) => {
-    if (tile.ownerOnly && !isOwner) return false;
-    if (isOwner) return true;
-    return allowedSections.includes(tile.section);
-  });
-
   return (
-    <div className="space-y-10">
-      
-      {/* Top Banner & Quick Controls */}
+    <div className="space-y-8">
+      {/* 1. Header Banner */}
       <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10 relative overflow-hidden bg-gradient-to-r from-[#0d121f] via-[#111728] to-[#0d121f]">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              {isOwner ? (
-                <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  Site Owner & Master Astrologer Hub
-                </span>
-              ) : (
-                <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                  Delegated Staff Console
-                </span>
-              )}
+              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                {isOwner ? 'Platform Owner' : 'Academy Staff'}
+              </span>
               <span className="text-slate-500">•</span>
               <span className="text-xs font-mono text-slate-400">{userEmail}</span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
-              Control Centre &amp; Content Studio
+              Admin Home
             </h1>
             <p className="text-sm text-slate-300 mt-2 max-w-2xl leading-relaxed">
-              Welcome, Acharya Ji. Manage everything visitors see on VIAR.in directly from your browser.
-              Click any tile below to edit text, approve payments, or upload photos.
+              Welcome, Acharya Ji. Manage course curriculum, verify student payments, review visitor questions, and update site content from this central hub.
             </p>
           </div>
 
-          {/* Quick Action Links */}
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <Link
               href="/"
@@ -218,61 +138,167 @@ export default function AdminHomeHub({
               className="px-4 py-2.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 transition flex items-center gap-2"
             >
               <Eye className="w-4 h-4 text-amber-400" />
-              <span>View Live Site</span>
+              <span>View Live Website</span>
               <ExternalLink className="w-3 h-3 text-slate-400" />
             </Link>
-
-            {isOwner && (
-              <Link
-                href="/admin/diagnostics"
-                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition flex items-center gap-2"
-              >
-                <Activity className="w-4 h-4 text-amber-400" />
-                <span>Diagnostics</span>
-              </Link>
-            )}
-
-            {isOwner && (
-              <Link
-                href="/admin/knowledge"
-                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition flex items-center gap-2"
-              >
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>AI Knowledge</span>
-              </Link>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Main Grid of Large Plain-Language Tiles */}
+      {/* 2. Bilingual Help Box */}
+      <AdminHelpBox
+        titleEn="Welcome to Admin Home"
+        titleHi="एडमिन होम में आपका स्वागत है"
+        descriptionEn="This unified administration center allows you to operate your astrology academy without technical complexity. Below, the 'Needs your attention' panel alerts you to pending student actions, followed by six straightforward tiles to manage each section of the site."
+        descriptionHi="यह एकीकृत प्रशासन केंद्र आपको बिना किसी तकनीकी जटिलता के अपने ज्योतिष संस्थान का संचालन करने की सुविधा देता है। नीचे 'ध्यान देने योग्य कार्य' पैनल आपको लंबित कार्यों के प्रति सचेत करता है, जिसके बाद वेबसाइट के प्रत्येक भाग को प्रबंधित करने के लिए छह स्पष्ट टाइलें दी गई हैं।"
+        tipsEn={[
+          'Check "Payments" to verify student bank UTRs and approve course access.',
+          'Open "Course" to edit lesson videos, upload handouts, or toggle enrolments.',
+          'Visit "Questions" to see what visitors are asking the chatbot and add custom answers.',
+        ]}
+        tipsHi={[
+          'विद्यार्थियों के बैंक UTR को सत्यापित करने और कोर्स एक्सेस स्वीकृत करने के लिए "Payments" देखें।',
+          'पाठ वीडियो संपादित करने, नोट्स अपलोड करने या नामांकन चालू/बंद करने के लिए "Course" खोलें।',
+          'आगंतुक चैटबॉट से क्या पूछ रहे हैं यह देखने और नए उत्तर जोड़ने के लिए "Questions" पर जाएं।',
+        ]}
+      />
+
+      {/* 3. "Needs your attention" Panel */}
+      <div className="cosmic-card p-6 sm:p-7 rounded-3xl border border-amber-500/30 bg-[#0e1322]/90 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-white/10">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            <h2 className="text-base sm:text-lg font-bold text-white">
+              Needs your attention
+            </h2>
+          </div>
+          <span className="text-xs text-slate-400">
+            Live queue status
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          {/* Card 1: Payments waiting to be checked */}
+          <div
+            onClick={() => onSelectSection('payments')}
+            className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+              pendingOrdersCount > 0
+                ? 'bg-amber-500/10 border-amber-500/40 hover:bg-amber-500/15'
+                : 'bg-white/[0.03] border-white/10 hover:border-white/20'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-slate-400">Payments to check</span>
+                <DollarSign className={`w-4 h-4 ${pendingOrdersCount > 0 ? 'text-amber-400' : 'text-slate-500'}`} />
+              </div>
+              <div className="text-2xl font-black text-white">
+                {pendingOrdersCount}
+              </div>
+            </div>
+            <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
+              <span className={pendingOrdersCount > 0 ? 'text-amber-300 font-bold' : 'text-emerald-400'}>
+                {pendingOrdersCount > 0 ? 'Claims awaiting UTR check' : 'Queue is clear'}
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+            </div>
+          </div>
+
+          {/* Card 2: Students waiting for access */}
+          <div
+            onClick={() => onSelectSection('payments')}
+            className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+              (pendingStudentsCount || pendingOrdersCount) > 0
+                ? 'bg-amber-500/10 border-amber-500/40 hover:bg-amber-500/15'
+                : 'bg-white/[0.03] border-white/10 hover:border-white/20'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-slate-400">Students awaiting access</span>
+                <Users className={`w-4 h-4 ${(pendingStudentsCount || pendingOrdersCount) > 0 ? 'text-amber-400' : 'text-slate-500'}`} />
+              </div>
+              <div className="text-2xl font-black text-white">
+                {pendingStudentsCount || pendingOrdersCount}
+              </div>
+            </div>
+            <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
+              <span className={(pendingStudentsCount || pendingOrdersCount) > 0 ? 'text-amber-300 font-bold' : 'text-emerald-400'}>
+                {(pendingStudentsCount || pendingOrdersCount) > 0 ? 'Awaiting activation' : 'All scholars active'}
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+            </div>
+          </div>
+
+          {/* Card 3: Questions waiting for an answer */}
+          <div
+            onClick={() => {
+              window.location.href = '/admin/knowledge?tab=unanswered';
+            }}
+            className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+              pendingQuestionsCount > 0
+                ? 'bg-sky-500/10 border-sky-500/40 hover:bg-sky-500/15'
+                : 'bg-white/[0.03] border-white/10 hover:border-white/20'
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-slate-400">Unanswered questions</span>
+                <HelpCircle className={`w-4 h-4 ${pendingQuestionsCount > 0 ? 'text-sky-400' : 'text-slate-500'}`} />
+              </div>
+              <div className="text-2xl font-black text-white">
+                {pendingQuestionsCount}
+              </div>
+            </div>
+            <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
+              <span className={pendingQuestionsCount > 0 ? 'text-sky-300 font-bold' : 'text-emerald-400'}>
+                {pendingQuestionsCount > 0 ? 'Visitor queries to review' : 'Zero unhandled queries'}
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+            </div>
+          </div>
+
+          {/* Card 4: Live classes today or tomorrow */}
+          <div
+            className="p-4 rounded-2xl border border-white/10 bg-white/[0.03] flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-slate-400">Live classes (Today / Tomorrow)</span>
+                <Calendar className="w-4 h-4 text-purple-400" />
+              </div>
+              <div className="text-2xl font-black text-white">
+                {liveClassesTodayCount}
+              </div>
+            </div>
+            <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
+              <span className="text-slate-400">
+                100% Self-Paced (On-demand video)
+              </span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* 4. The 6 Plain Tiles (Each with one line of help) */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <span>What would you like to manage?</span>
+            <span>Manage Institute</span>
           </h2>
           <span className="text-xs text-slate-400">
-            {visibleTiles.length} sections available
+            6 straightforward sections
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {visibleTiles.map((tile) => (
+          {PLAIN_TILES.map((tile) => (
             <button
               key={tile.id}
-              onClick={() => {
-                if (tile.id === 'tile-diagnostics') {
-                  window.location.href = '/admin/diagnostics';
-                  return;
-                }
-                if (tile.actionPayload) {
-                  onSelectSection(tile.actionPayload.tab, {
-                    collection: tile.actionPayload.collection,
-                  });
-                } else {
-                  onSelectSection(tile.section);
-                }
-              }}
+              onClick={tile.action}
               className="cosmic-card p-6 rounded-2xl border border-white/10 hover:border-amber-500/40 hover:bg-white/[0.04] transition-all text-left flex flex-col justify-between group relative overflow-hidden"
             >
               <div>
@@ -296,7 +322,7 @@ export default function AdminHomeHub({
               </div>
 
               <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs font-semibold text-slate-400 group-hover:text-amber-300 transition">
-                <span>Open Section</span>
+                <span>Open {tile.title}</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
               </div>
             </button>
@@ -304,14 +330,14 @@ export default function AdminHomeHub({
         </div>
       </div>
 
-      {/* Recent Activity Section */}
+      {/* 5. Recent Activity Trail */}
       <div className="cosmic-card p-6 sm:p-8 rounded-2xl border border-white/10">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2.5">
             <Clock className="w-5 h-5 text-amber-400" />
             <h2 className="text-lg font-bold text-white">Recent Activity &amp; Audit Trail</h2>
           </div>
-          <span className="text-xs text-slate-400">Automatic tamper-proof log</span>
+          <span className="text-xs text-slate-400">Live tamper-proof log</span>
         </div>
 
         {recentActivities && recentActivities.length > 0 ? (
@@ -337,10 +363,15 @@ export default function AdminHomeHub({
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-slate-400 text-sm">
+          <div className="text-center py-8 text-slate-400 text-sm space-y-1">
             <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2 opacity-80" />
-            <p>System operational. All content is synced with the database and defaults.</p>
-            <p className="text-xs text-slate-500 mt-1">Changes made in Content Studio will appear here in real-time.</p>
+            <p className="font-semibold text-white">No recent audit events</p>
+            <p className="text-xs text-slate-400">
+              When student payments are approved, curriculum is edited, or settings are updated, records will appear here in real time.
+            </p>
+            <p className="text-[11px] text-slate-500 pt-1">
+              (हाल की कोई गतिविधि नहीं है। भुगतान स्वीकृत होने या पाठ्यक्रम संपादित होने पर रिकॉर्ड यहाँ दिखाई देंगे।)
+            </p>
           </div>
         )}
       </div>

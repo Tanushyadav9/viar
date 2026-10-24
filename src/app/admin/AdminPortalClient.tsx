@@ -33,6 +33,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import AdminHomeHub, { RecentActivityItem } from '@/components/admin/AdminHomeHub';
+import AdminHelpBox from '@/components/admin/AdminHelpBox';
 import {
   AsyncStateView,
   type AsyncStateStatus,
@@ -232,6 +233,7 @@ export default function AdminPortalClient({
 
   // Manual UPI Orders & Verification Queue State
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [unansweredCount, setUnansweredCount] = useState<number>(0);
   const [orderCounts, setOrderCounts] = useState<Record<string, number>>({
     ALL: 0,
     PENDING_PAYMENT: 0,
@@ -509,6 +511,16 @@ export default function AdminPortalClient({
   };
 
   const loadAdminData = React.useCallback(async () => {
+    // Fetch live unanswered questions count for Attention panel
+    fetch('/api/admin/knowledge')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.unanswered && Array.isArray(data.unanswered)) {
+          const pending = data.unanswered.filter((u: { status: string }) => u.status === 'PENDING').length;
+          setUnansweredCount(pending);
+        }
+      })
+      .catch(() => {});
     // 1. Fetch live courses catalog from PostgreSQL
     try {
       const crsRes = await fetch('/api/courses');
@@ -1318,6 +1330,9 @@ export default function AdminPortalClient({
               }
             }}
             pendingOrdersCount={orderCounts.PAYMENT_CLAIMED || 0}
+            pendingStudentsCount={orderCounts.PAYMENT_CLAIMED || 0}
+            pendingQuestionsCount={unansweredCount}
+            liveClassesTodayCount={classes.filter((c) => c.status === 'LIVE').length}
             recentActivities={recentActivities}
           />
         )}
@@ -1668,15 +1683,20 @@ export default function AdminPortalClient({
         {/* TAB: STUDENTS / ROSTER */}
         {isCurrentTabAllowed && activeTab === 'students' && (
           <div className="space-y-6">
-            {/* Non-technical Help Panel */}
-            <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
-              <div className="flex items-start gap-2.5">
-                <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-slate-300">
-                  <strong className="text-amber-300">💡 How to manage students:</strong> Search registered students by name or email. Click &quot;Add Student Manually&quot; to grant scholarship or offline enrollment access.
-                </p>
-              </div>
-            </div>
+            <AdminHelpBox
+              titleEn="Students & Scholars Management"
+              titleHi="विद्यार्थी एवं अध्येता प्रबंधन"
+              descriptionEn="View registered students, inspect course completion progress, or manually grant course access. When granting access manually, an audit reason is strictly recorded."
+              descriptionHi="पंजीकृत विद्यार्थियों की सूची देखें, पाठ्यक्रम पूर्णता प्रगति जांचें या मैन्युअल रूप से कोर्स एक्सेस दें। मैन्युअल प्रवेश देते समय ऑडिट कारण अनिवार्य रूप से दर्ज किया जाता है।"
+              tipsEn={[
+                'Search by student name or email in the search bar.',
+                'Click "Add Student Manually" to grant immediate access for scholarship or offline bank transfer.',
+              ]}
+              tipsHi={[
+                'सर्च बार में विद्यार्थी के नाम या ईमेल से खोजें।',
+                'छात्रवृत्ति या ऑफलाइन बैंक ट्रांसफर के लिए तुरंत प्रवेश देने हेतु "Add Student Manually" पर क्लिक करें।',
+              ]}
+            />
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="relative w-full sm:w-72">
@@ -1768,15 +1788,22 @@ export default function AdminPortalClient({
         {/* TAB: PAYMENTS & UPI VERIFICATION */}
         {isCurrentTabAllowed && activeTab === 'payments' && (
           <div className="space-y-6">
-            {/* Non-technical Help Panel */}
-            <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
-              <div className="flex items-start gap-2.5">
-                <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-slate-300">
-                  <strong className="text-amber-300">💡 How to verify UPI payments:</strong> Match the 12-digit UTR submitted by the student with your bank app statement. Once verified, check the bank confirmation box and click &quot;Approve Payment&quot; to instantly activate their course.
-                </p>
-              </div>
-            </div>
+            <AdminHelpBox
+              titleEn="UPI Payments Verification Studio"
+              titleHi="UPI भुगतान सत्यापन स्टूडियो"
+              descriptionEn="Direct UPI QR Code payments have zero payment gateway deductions. Students transfer directly to your UPI ID (aapkaastro@okaxis) and submit their 12-digit bank UTR reference. Verify the credit in your bank app before approving access."
+              descriptionHi="डायरेक्ट UPI क्यूआर कोड भुगतान में कोई पेमेंट गेटवे कटौती नहीं होती। विद्यार्थी सीधे आपकी UPI आईडी (aapkaastro@okaxis) पर भुगतान करते हैं और 12 अंकों का बैंक UTR संदर्भ दर्ज करते हैं। प्रवेश स्वीकृत करने से पहले अपने बैंक ऐप में क्रेडिट अवश्य जांचें।"
+              tipsEn={[
+                'Filter orders by "Claimed" to see students waiting for payment confirmation.',
+                'Match the 12-digit UTR with your bank statement.',
+                'Click "Approve Payment" to instantly activate course access without temporary passwords.',
+              ]}
+              tipsHi={[
+                'भुगतान पुष्टि की प्रतीक्षा कर रहे विद्यार्थियों को देखने के लिए "Claimed" पर फ़िल्टर करें।',
+                'अपने बैंक स्टेटमेंट के साथ 12-अंकीय UTR का मिलान करें।',
+                'बिना किसी अस्थायी पासवर्ड के तुरंत कोर्स एक्सेस सक्रिय करने के लिए "Approve Payment" पर क्लिक करें।',
+              ]}
+            />
             
             {/* WhatsApp Confirmation Banner */}
             {lastVerifiedWhatsAppUrl && (

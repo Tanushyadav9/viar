@@ -1,4 +1,5 @@
 'use client';
+import AdminHelpBox from '@/components/admin/AdminHelpBox';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -254,7 +255,7 @@ export default function AdminKnowledgePage() {
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition mb-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Back to Admin Studio</span>
+              <span>Back to Admin Home</span>
             </Link>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
@@ -292,6 +293,23 @@ export default function AdminKnowledgePage() {
             </button>
           </div>
         </div>
+
+        <AdminHelpBox
+          titleEn="AI Knowledge Studio & Visitor Inquiries"
+          titleHi="AI ज्ञान केंद्र एवं आगंतुक प्रश्नोत्तर"
+          descriptionEn="Train the AI assistant with verified institute facts and review inquiries submitted by visitors. Questions asked on the live website with no direct answer appear under 'Unanswered Questions' for your review."
+          descriptionHi="AI सहायक को संस्थान के प्रामाणिक तथ्यों से प्रशिक्षित करें और आगंतुकों द्वारा पूछे गए प्रश्नों की समीक्षा करें। वेबसाइट पर पूछे गए जिन प्रश्नों का सीधा उत्तर नहीं था, वे आपकी समीक्षा के लिए 'Unanswered Questions' में दिखाई देते हैं।"
+          tipsEn={[
+            'Click "Add Knowledge Entry" to create verified answers in English and Hindi.',
+            'Review unanswered questions and click "Answer Question" to turn them into live AI knowledge.',
+            'All visitor emails and phone numbers are automatically redacted for privacy.',
+          ]}
+          tipsHi={[
+            'अंग्रेजी और हिन्दी में प्रामाणिक उत्तर तैयार करने के लिए "Add Knowledge Entry" पर क्लिक करें।',
+            'अनुत्तरित प्रश्नों की समीक्षा करें और उन्हें AI ज्ञान में बदलने के लिए "Answer Question" पर क्लिक करें।',
+            'गोपनीयता के लिए आगंतुकों के फोन नंबर और ईमेल स्वतः हटा दिए जाते हैं।',
+          ]}
+        />
 
         {/* Feedback Alert */}
         {feedbackMessage && (

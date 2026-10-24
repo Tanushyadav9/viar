@@ -4,19 +4,19 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  ShieldCheck,
   BookOpen,
   Users,
   BarChart3,
   ArrowRight,
-  History
+  History,
+  Home
 } from 'lucide-react';
 
 export default function InstructorNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { label: 'Overview', href: '/instructor', icon: ShieldCheck, exact: true },
+    { label: 'Admin Home', href: '/admin', icon: Home, exact: true },
     { label: 'Courses & Curriculum', href: '/instructor/courses', icon: BookOpen },
     { label: 'Students & Roster', href: '/instructor/students', icon: Users },
     { label: 'Revenue & Analytics', href: '/instructor/analytics', icon: BarChart3 },
@@ -28,14 +28,14 @@ export default function InstructorNav() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
-              Admin Console
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              Admin Home
             </span>
             <span className="text-slate-500">•</span>
             <span className="text-xs text-slate-400">Course & Academy Management</span>
           </div>
           <h1 className="text-3xl font-black text-white mt-1">
-            Course & Academy Editor
+            Admin Home
           </h1>
         </div>
 
@@ -62,13 +62,13 @@ export default function InstructorNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
+              className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition flex items-center gap-2 ${
                 isActive
-                  ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
-                  : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
+                  : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white border border-white/5'
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-3.5 h-3.5" />
               <span>{item.label}</span>
             </Link>
           );

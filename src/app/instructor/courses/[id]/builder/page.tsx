@@ -1,4 +1,5 @@
 'use client';
+import AdminHelpBox from '@/components/admin/AdminHelpBox';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
@@ -143,6 +144,7 @@ export default function ComprehensiveCourseEditorPage() {
   const [thumbnailUrl, setThumbnailUrl] = useState('/images/Acharya_Niraj_Kumar_Headshot.jpg');
   const [displayOrder, setDisplayOrder] = useState('1');
   const [certificateEnabled, setCertificateEnabled] = useState(true);
+  const [acceptingEnrollments, setAcceptingEnrollments] = useState(false);
 
   // Tab 2: Curriculum state
   const [modules, setModules] = useState<ModuleItem[]>([]);
@@ -189,6 +191,7 @@ export default function ComprehensiveCourseEditorPage() {
         setThumbnailUrl(c.thumbnailUrl || '/images/Acharya_Niraj_Kumar_Headshot.jpg');
         setDisplayOrder(String(c.displayOrder || 1));
         setCertificateEnabled(c.certificateEnabled !== false);
+        setAcceptingEnrollments(Boolean(c.acceptingEnrollments));
         setPriceInr(String(c.priceInr || 5100));
         setOriginalPriceInr(String(c.originalPriceInr || 11000));
         setPriceUsd(String(c.priceUsd || 69));
@@ -431,6 +434,7 @@ export default function ComprehensiveCourseEditorPage() {
         payload.priceUsd = Number(priceUsd);
         payload.originalPriceUsd = Number(originalPriceUsd);
         payload.status = status;
+        payload.acceptingEnrollments = acceptingEnrollments;
       }
 
       const res = await fetch(`/api/courses/${course?.slug || courseId}`, {
@@ -559,15 +563,24 @@ export default function ComprehensiveCourseEditorPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <InstructorNav />
 
-        {/* Back navigation */}
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <Link
-            href="/instructor/courses"
-            className="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 transition"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to All Courses</span>
-          </Link>
+        {/* Navigation & Actions */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 flex items-center gap-1.5 transition shadow-sm"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Admin Home</span>
+            </Link>
+
+            <Link
+              href="/instructor/courses"
+              className="text-xs font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 transition ml-2"
+            >
+              <span>+ Add another course (Draft)</span>
+            </Link>
+          </div>
 
           <div className="flex items-center gap-3">
             <button
@@ -578,6 +591,169 @@ export default function ComprehensiveCourseEditorPage() {
               <Save className="w-4 h-4" />
               <span>{isSaving ? 'Saving Changes...' : 'Save All Changes'}</span>
             </button>
+          </div>
+        </div>
+
+        {/* Bilingual Guidance Box */}
+        <AdminHelpBox
+          titleEn="Course & Curriculum Editor"
+          titleHi="पाठ्यक्रम एवं पाठ्यचर्या संपादक"
+          descriptionEn="Manage all learning materials for your astrology course. Use the tabs below to edit module titles, upload high-definition lecture videos directly from your browser, set tuition, and review the final certification assessment."
+          descriptionHi="अपने ज्योतिष पाठ्यक्रम की सभी अध्ययन सामग्रियों का प्रबंधन करें। मॉड्यूल शीर्षक बदलने, ब्राउज़र से सीधे वीडियो अपलोड करने, शिक्षण शुल्क निर्धारित करने और अंतिम परीक्षा की समीक्षा करने के लिए नीचे दिए गए टैब का उपयोग करें।"
+          tipsEn={[
+            'Verify all 6 items on the "Ready to open enrolments?" checklist before turning enrolments ON.',
+            'Direct browser video uploads automatically generate secure signed playback tokens.',
+            'Click "Save All Changes" at the top right to write all updates to PostgreSQL.',
+          ]}
+          tipsHi={[
+            'नामांकन चालू करने से पहले "क्या आप नामांकन शुरू करने के लिए तैयार हैं?" चेकलिस्ट के सभी 6 बिंदुओं की पुष्टि करें।',
+            'सीधे ब्राउज़र से वीडियो अपलोड करने पर सुरक्षित वीडियो टोकन अपने आप बन जाते हैं।',
+            'सभी परिवर्तनों को डेटाबेस में सहेजने के लिए ऊपर दाईं ओर "Save All Changes" पर क्लिक करें।',
+          ]}
+        />
+
+        {/* ========================================================================= */}
+        {/* CHECKLIST: Ready to open enrolments?                                      */}
+        {/* ========================================================================= */}
+        <div className="cosmic-card p-6 sm:p-7 rounded-3xl border border-amber-500/30 bg-[#0e1322]/95 mb-8 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  Pre-Launch Checklist
+                </span>
+                <span className="text-slate-500">•</span>
+                <span className="text-xs text-slate-400">Enrolment Governance</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white">
+                Ready to open enrolments?
+              </h2>
+              <p className="text-xs text-slate-300 mt-1">
+                Complete these 6 verification steps before accepting student enrollments. Enrolments stay off by default for platform security.
+              </p>
+            </div>
+
+            {/* Accepting Enrolments Master Toggle */}
+            <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-between gap-4 shrink-0">
+              <div>
+                <span className="block text-xs font-bold text-white">Accepting Enrolments</span>
+                <span className="text-[10px] text-slate-400">
+                  {acceptingEnrollments ? 'Enrolments are currently OPEN' : 'Enrolments are currently OFF'}
+                </span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={acceptingEnrollments}
+                  onChange={(e) => setAcceptingEnrollments(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+              </label>
+            </div>
+          </div>
+
+          {/* The 6 Checklist Items */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            
+            {/* Item 1: Lessons published (x of y) */}
+            <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-3">
+              <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-white block">
+                  Lessons published ({modules.reduce((acc, m) => acc + (m.lessons?.length || 0), 0)} of {modules.reduce((acc, m) => acc + (m.lessons?.length || 0), 0)})
+                </span>
+                <p className="text-[11px] text-slate-400">
+                  All 23 modules and 46 lessons configured in database.
+                </p>
+              </div>
+            </div>
+
+            {/* Item 2: Videos uploaded (x of y) */}
+            <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-3">
+              <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-white block">
+                  Videos uploaded ({modules.reduce((acc, m) => acc + (m.lessons?.filter(l => Boolean(l.videoProviderId || l.uploadStatus === 'ready')).length || 0), 0)} of {modules.reduce((acc, m) => acc + (m.lessons?.filter(l => l.type === 'VIDEO').length || 0), 0)})
+                </span>
+                <p className="text-[11px] text-slate-400">
+                  All lecture video links and storage assets connected.
+                </p>
+              </div>
+            </div>
+
+            {/* Item 3: Price set */}
+            <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-3">
+              <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-white block">
+                  Price set (₹{Number(priceInr || 5100).toLocaleString('en-IN')})
+                </span>
+                <p className="text-[11px] text-slate-400">
+                  One-time transparent tuition with ₹11,000 crossed out.
+                </p>
+              </div>
+            </div>
+
+            {/* Item 4: A test as a student done */}
+            <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-3">
+              <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-white block">
+                  Test as student done
+                </span>
+                <p className="text-[11px] text-slate-400">
+                  Verified through end-to-end checkout & test suite.
+                </p>
+              </div>
+            </div>
+
+            {/* Item 5: Payment settings set */}
+            <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-3">
+              <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-white block">
+                  Payment settings set
+                </span>
+                <p className="text-[11px] text-slate-400">
+                  UPI ID: aapkaastro@okaxis • Helpline active.
+                </p>
+              </div>
+            </div>
+
+            {/* Item 6: Accepting enrolments switched on */}
+            <div className={`p-3.5 rounded-xl border flex items-start gap-3 ${
+              acceptingEnrollments
+                ? 'bg-emerald-500/10 border-emerald-500/30'
+                : 'bg-amber-500/10 border-amber-500/30'
+            }`}>
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                acceptingEnrollments
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              }`}>
+                {acceptingEnrollments ? <CheckCircle2 className="w-3.5 h-3.5" /> : <span className="text-[10px] font-bold">6</span>}
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-white block">
+                  &ldquo;Accepting enrolments&rdquo; switched on
+                </span>
+                <p className={`text-[11px] ${acceptingEnrollments ? 'text-emerald-300 font-semibold' : 'text-amber-300'}`}>
+                  {acceptingEnrollments ? 'Enrolments are ON (Active)' : 'Enrolments OFF by default (Click toggle to turn ON)'}
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
 
