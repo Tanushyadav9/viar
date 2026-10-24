@@ -9,7 +9,7 @@
  * 1. Visitor signs up / logs in and visits course checkout
  * 2. Scans UPI QR code (or pays to aapkaastro@okaxis)
  * 3. Enters UTR / transaction reference and sends screenshot to WhatsApp (+91 93112 15564)
- * 4. Owner verifies payment in Owner Studio and clicks "Verify & Activate Access"
+ * 4. Owner verifies payment in Admin Console and clicks "Verify & Activate Access"
  * 5. Student's existing login automatically unlocks the course (no passwords sent over WhatsApp)
  */
 

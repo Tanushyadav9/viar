@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Sparkles, Clock, CheckCircle2, ArrowRight, BookOpen, Bell, Mail, X } from 'lucide-react';
-import { ViarStore } from '@/lib/store';
 import { Course } from '@/lib/types';
 import { useLanguage } from '@/components/LanguageContext';
 
@@ -72,14 +71,12 @@ export default function CoursesPage() {
     fetch('/api/courses')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && Array.isArray(data.courses) && data.courses.length > 0) {
+        if (data.success && Array.isArray(data.courses)) {
           setCourses(data.courses);
-          return;
         }
-        setCourses(ViarStore.getCourses());
       })
-      .catch(() => {
-        setCourses(ViarStore.getCourses());
+      .catch((err) => {
+        console.error('Failed to load courses from API:', err);
       });
   }, []);
 

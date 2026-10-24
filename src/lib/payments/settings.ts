@@ -205,7 +205,7 @@ export async function updatePaymentSettings(params: {
             <p style="margin: 0;"><strong>Static QR Image URL:</strong> ${updated.qrImageUrl || 'None (Using dynamic QR)'}</p>
           </div>
           <p style="color: #64748b; font-size: 12px; line-height: 1.4;">
-            If you did not authorize this change, please sign in to Owner Studio immediately at <a href="https://viar.in/admin" style="color: #d97706;">https://viar.in/admin</a> to restore your authorized UPI credentials.
+            If you did not authorize this change, please sign in to Admin Console immediately at <a href="https://viar.in/admin" style="color: #d97706;">https://viar.in/admin</a> to restore your authorized UPI credentials.
           </p>
         </div>
       `,

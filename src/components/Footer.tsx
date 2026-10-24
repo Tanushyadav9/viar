@@ -259,8 +259,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/instructor" className="hover:text-amber-400 transition text-amber-300">
-                  {isHi ? 'मार्गदर्शक सूट' : 'Instructor Suite'}
+                <Link href="/admin" className="hover:text-amber-400 transition text-amber-300">
+                  {isHi ? 'एडमिन कंसोल' : 'Admin Console'}
                 </Link>
               </li>
               <li>

@@ -18,6 +18,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
+import { formatCourseStatus } from '@/lib/utils/formatters';
 import { Course, User } from '@/lib/types';
 import { isSiteOwner } from '@/lib/auth/permissions';
 
@@ -380,7 +381,7 @@ export default function InstructorCoursesPage() {
                     {/* Status & Level Badges */}
                     <div className="flex items-center justify-between gap-2 mb-3">
                       <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide ${
                           cStatus === 'PUBLISHED'
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                             : cStatus === 'ARCHIVED'
@@ -390,7 +391,7 @@ export default function InstructorCoursesPage() {
                             : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                         }`}
                       >
-                        {cStatus}
+                        {formatCourseStatus(cStatus)}
                       </span>
 
                       <div className="flex items-center gap-2">

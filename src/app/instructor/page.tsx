@@ -235,7 +235,7 @@ export default function InstructorOverviewPage() {
                     Course &amp; Syllabus Editor
                   </h4>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    Edit titles, 3-week blocks, pricing, and thumbnails
+                    Edit titles, modules, pricing, and curriculum
                   </p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-white transition" />

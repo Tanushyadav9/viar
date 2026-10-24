@@ -62,6 +62,7 @@ import {
   VIAR_SECTIONS,
 } from '@/lib/auth/permissions';
 import { formatInTimezone, getUserLocalTimezone } from '@/lib/timezones';
+import { formatCourseStatus, formatClassStatus } from '@/lib/utils/formatters';
 
 interface AdminStats {
   totalStudents: number;
@@ -1140,7 +1141,7 @@ export default function AdminPortalClient({
               href="/instructor"
               className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-amber-500/20"
             >
-              <span>Open Instructor Suite &rarr;</span>
+              <span>Course &amp; Curriculum Management &rarr;</span>
             </Link>
 
             {hasSectionPermission(currentUser, 'students') && (
@@ -1389,7 +1390,7 @@ export default function AdminPortalClient({
                             : 'bg-white/5 text-slate-400'
                         }`}
                       >
-                        {cls.status}
+                        {formatClassStatus(cls.status)}
                       </span>
                       <span className="text-xs text-slate-400">Module {cls.moduleNumber}</span>
                     </div>
@@ -1536,7 +1537,7 @@ export default function AdminPortalClient({
                                 : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                             }`}
                           >
-                            {courseStatus}
+                            {formatCourseStatus(courseStatus)}
                           </span>
                         </div>
                         <span className="text-xs text-slate-400">

@@ -154,16 +154,7 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
       href: '/verify',
       active: pathname.startsWith('/verify'),
     },
-    ...(showAdminNav
-      ? [
-          {
-            label: t('nav.admin', 'Admin Panel'),
-            shortLabel: t('nav.admin_short', 'Admin'),
-            href: '/admin',
-            active: pathname.startsWith('/admin'),
-          },
-        ]
-      : []),
+
   ];
 
   if (!mounted) {
@@ -527,7 +518,7 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-600 to-amber-700 text-center block shadow-md"
                   >
-                    {isOwner ? 'Site Owner Admin Console' : 'Admin Console'}
+                    Admin Console
                   </Link>
                 ) : (
                   <Link

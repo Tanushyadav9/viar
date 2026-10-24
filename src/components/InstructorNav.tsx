@@ -29,13 +29,13 @@ export default function InstructorNav() {
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
-              Instructor Dashboard
+              Admin Console
             </span>
             <span className="text-slate-500">•</span>
-            <span className="text-xs text-slate-400">Acharya Niraj Kumar</span>
+            <span className="text-xs text-slate-400">Course & Academy Management</span>
           </div>
           <h1 className="text-3xl font-black text-white mt-1">
-            Academy Management System
+            Course & Academy Editor
           </h1>
         </div>
 
