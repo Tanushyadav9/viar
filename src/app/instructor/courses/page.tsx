@@ -48,7 +48,6 @@ export default function InstructorCoursesPage() {
   const [shortDescription, setShortDescription] = useState('');
   const [description, setDescription] = useState('');
   const [priceInr, setPriceInr] = useState('5100');
-  const [priceUsd, setPriceUsd] = useState('69');
   const [level, setLevel] = useState('Beginner');
   const [thumbnailUrl, setThumbnailUrl] = useState('/images/Acharya_Niraj_Kumar_Headshot.jpg');
 
@@ -120,7 +119,6 @@ export default function InstructorCoursesPage() {
           shortDescription: shortDescription.trim() || 'Practical self-paced Vedic astrology masterclass.',
           description: description.trim() || 'Comprehensive course curriculum.',
           priceInr: Number(priceInr) || 5100,
-          priceUsd: Number(priceUsd) || 69,
           level,
           thumbnailUrl,
           status: 'DRAFT',
@@ -288,7 +286,6 @@ export default function InstructorCoursesPage() {
                 setShortDescription('');
                 setDescription('');
                 setPriceInr('5100');
-                setPriceUsd('69');
                 setLevel('Beginner');
                 setIsCreating(true);
               }}
@@ -418,7 +415,7 @@ export default function InstructorCoursesPage() {
                         <span className="text-slate-500 block text-[10px]">Tuition</span>
                         <span className="font-bold text-white">
                           ₹{crs.priceInr.toLocaleString()}
-                          {crs.priceUsd ? ` / $${crs.priceUsd}` : ''}
+                          
                         </span>
                       </div>
                       <div className="text-right">
@@ -553,17 +550,7 @@ export default function InstructorCoursesPage() {
                       className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      International Price (USD $)
-                    </label>
-                    <input
-                      type="number"
-                      value={priceUsd}
-                      onChange={(e) => setPriceUsd(e.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
+
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -686,7 +673,7 @@ export default function InstructorCoursesPage() {
                 <div className="space-y-4">
                   <p className="text-xs text-slate-300">
                     Course <strong className="text-white">&ldquo;{deletingCourse.title}&rdquo;</strong> is currently in{' '}
-                    <span className="font-bold text-amber-400">{deletingCourse.status}</span> status.
+                    <span className="font-bold text-amber-400">{formatCourseStatus(deletingCourse.status)}</span> status.
                   </p>
                   <p className="text-xs text-slate-400">
                     Only draft courses can be hard-deleted. Please move it to <strong>Archive</strong> or change status to <strong>Draft</strong> first.

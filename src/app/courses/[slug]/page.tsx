@@ -146,14 +146,7 @@ export default async function CourseDetailPage({ params }: Props) {
         category: 'Tuition',
         url: `https://viar.in/courses/${course.slug}`,
       },
-      {
-        '@type': 'Offer',
-        price: course.priceUsd,
-        priceCurrency: 'USD',
-        availability: 'https://schema.org/InStock',
-        category: 'Tuition',
-        url: `https://viar.in/courses/${course.slug}`,
-      },
+
     ],
     hasCourseInstance: {
       '@type': 'CourseInstance',

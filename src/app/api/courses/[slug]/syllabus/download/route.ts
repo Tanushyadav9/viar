@@ -238,7 +238,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     </div>
     <div class="stat-box">
       <div class="stat-label">Tuition</div>
-      <div class="stat-val">₹${course.priceInr.toLocaleString('en-IN')} / $${course.priceUsd} USD</div>
+      <div class="stat-val">₹${course.priceInr.toLocaleString('en-IN')}</div>
     </div>
   </div>
 

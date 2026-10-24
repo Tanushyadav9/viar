@@ -1,4 +1,5 @@
 'use client';
+import { formatCourseStatus } from '@/lib/utils/formatters';
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
@@ -240,7 +241,7 @@ export default function CourseCohortsPage() {
                     {coh.batchName}
                   </span>
                   <span className="text-xs text-slate-400 font-medium">
-                    Status: <strong className="text-emerald-400">{coh.status}</strong>
+                    Status: <strong className="text-emerald-400">{formatCourseStatus(coh.status)}</strong>
                   </span>
                 </div>
 

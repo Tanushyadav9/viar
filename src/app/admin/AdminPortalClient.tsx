@@ -62,7 +62,7 @@ import {
   VIAR_SECTIONS,
 } from '@/lib/auth/permissions';
 import { formatInTimezone, getUserLocalTimezone } from '@/lib/timezones';
-import { formatCourseStatus, formatClassStatus } from '@/lib/utils/formatters';
+import { formatCourseStatus, formatClassStatus, formatOrderStatus } from '@/lib/utils/formatters';
 
 interface AdminStats {
   totalStudents: number;
@@ -1171,8 +1171,12 @@ export default function AdminPortalClient({
                 <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Enrolled Students</span>
                 <Users className="w-4 h-4 text-amber-400" />
               </div>
-              <p className="text-2xl sm:text-3xl font-black text-white">{stats.totalStudents}</p>
-              <p className="text-[11px] text-emerald-400 mt-1">Across {stats.activeCohorts} Active Cohort{stats.activeCohorts === 1 ? '' : 's'}</p>
+              <p className="text-2xl sm:text-3xl font-black text-white">
+                {stats.totalStudents > 0 ? stats.totalStudents : <span className="text-lg font-bold text-slate-400">No students yet</span>}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {stats.totalStudents > 0 ? `${stats.totalStudents} enrolled scholar${stats.totalStudents === 1 ? '' : 's'}` : 'Self-paced admissions open'}
+              </p>
             </div>
 
             <div className="cosmic-card p-5 rounded-2xl border border-white/10">
@@ -1181,20 +1185,20 @@ export default function AdminPortalClient({
                 <DollarSign className="w-4 h-4 text-emerald-400" />
               </div>
               <p className="text-2xl sm:text-3xl font-black text-white">
-                ₹{stats.totalRevenueInr.toLocaleString()}
+                {stats.totalRevenueInr > 0 ? `₹${stats.totalRevenueInr.toLocaleString('en-IN')}` : <span className="text-lg font-bold text-slate-400">No revenue yet</span>}
               </p>
-              <p className="text-[11px] text-emerald-400 mt-1">Direct UPI QR • Zero gateway commissions</p>
+              <p className="text-[11px] text-emerald-400 mt-1">Direct UPI QR • Zero gateway deductions</p>
             </div>
 
             <div className="cosmic-card p-5 rounded-2xl border border-white/10">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Classes Conducted</span>
+                <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Curriculum Status</span>
                 <Video className="w-4 h-4 text-indigo-400" />
               </div>
               <p className="text-2xl sm:text-3xl font-black text-white">
-                {stats.completedClasses} <span className="text-sm text-slate-400 font-normal">/ {classes.length || (stats.completedClasses + stats.upcomingClasses) || 23}</span>
+                23 <span className="text-sm text-slate-400 font-normal">Modules</span>
               </p>
-              <p className="text-[11px] text-slate-400 mt-1">{stats.upcomingClasses} Upcoming Live Session{stats.upcomingClasses === 1 ? '' : 's'}</p>
+              <p className="text-[11px] text-slate-400 mt-1">100% self-paced on-demand video</p>
             </div>
 
             <div className="cosmic-card p-5 rounded-2xl border border-white/10">
@@ -1202,8 +1206,10 @@ export default function AdminPortalClient({
                 <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Certificates Issued</span>
                 <Award className="w-4 h-4 text-amber-400" />
               </div>
-              <p className="text-2xl sm:text-3xl font-black text-white">{stats.certificatesIssued}</p>
-              <p className="text-[11px] text-amber-300 mt-1">Verified via viar.in/verify</p>
+              <p className="text-2xl sm:text-3xl font-black text-white">
+                {stats.certificatesIssued > 0 ? stats.certificatesIssued : <span className="text-lg font-bold text-slate-400">No certificates yet</span>}
+              </p>
+              <p className="text-[11px] text-amber-300 mt-1">Verifiable at viar.in/verify</p>
             </div>
           </div>
         )}
@@ -2123,7 +2129,7 @@ export default function AdminPortalClient({
                               }`}>
                                 {isClaimed && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
                                 {isApproved && <span>✓</span>}
-                                <span>{ord.status}</span>
+                                <span>{formatOrderStatus(ord.status)}</span>
                               </span>
                               {isRejected && ord.rejectionReason && (
                                 <p className="text-[10px] text-red-400/90 mt-1 max-w-[140px] truncate" title={ord.rejectionReason}>
@@ -2304,19 +2310,23 @@ export default function AdminPortalClient({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold">Active Cohorts</span>
-                  <p className="text-2xl font-black text-amber-300 mt-1">{cohorts.length}</p>
-                  <p className="text-[10px] text-emerald-400 mt-1">{cohorts.length > 0 ? `${cohorts.length} Cohort${cohorts.length === 1 ? "" : "s"} Active` : "No Active Cohorts"}</p>
+                  <span className="text-[11px] text-slate-400 uppercase font-semibold">Course Delivery</span>
+                  <p className="text-2xl font-black text-amber-300 mt-1">Self-Paced</p>
+                  <p className="text-[10px] text-emerald-400 mt-1">23 on-demand modules published</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Course Completion Rate</span>
-                  <p className="text-2xl font-black text-emerald-300 mt-1">{stats && stats.totalStudents > 0 ? `${Math.round(((stats.certificatesIssued || 0) / stats.totalStudents) * 100)}%` : "0%"}</p>
+                  <p className="text-2xl font-black text-emerald-300 mt-1">
+                    {stats && stats.totalStudents > 0 ? `${Math.round(((stats.certificatesIssued || 0) / stats.totalStudents) * 100)}%` : <span className="text-base text-slate-400 font-bold">No students yet</span>}
+                  </p>
                   <p className="text-[10px] text-slate-400 mt-1">{stats?.certificatesIssued || 0} certified of {stats?.totalStudents || 0} enrolled</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold">Live Lecture Attendance</span>
-                  <p className="text-2xl font-black text-purple-300 mt-1">{stats?.completedClasses || 0} <span className="text-sm font-normal text-slate-400">/ {classes.length || ((stats?.completedClasses || 0) + (stats?.upcomingClasses || 0)) || 23}</span></p>
-                  <p className="text-[10px] text-slate-400 mt-1">Completed sessions conducted</p>
+                  <span className="text-[11px] text-slate-400 uppercase font-semibold">Verifiable Certificates</span>
+                  <p className="text-2xl font-black text-purple-300 mt-1">
+                    {(stats?.certificatesIssued || 0) > 0 ? stats?.certificatesIssued : <span className="text-base text-slate-400 font-bold">No certificates yet</span>}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-1">Issued upon 70%+ score on final exam</p>
                 </div>
               </div>
 

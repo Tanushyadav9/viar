@@ -536,7 +536,7 @@ export default function AdminKnowledgePage() {
                                 : 'bg-amber-400 text-slate-950 font-bold'
                             }`}
                           >
-                            {u.status}
+                            {u.status === 'CONVERTED' ? 'Added to Knowledge' : u.status === 'DISMISSED' ? 'Dismissed' : 'Pending review'}
                           </span>
                         </div>
                         <p className="text-sm font-medium text-white">{u.question}</p>

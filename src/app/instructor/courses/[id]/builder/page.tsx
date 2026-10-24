@@ -1193,31 +1193,7 @@ export default function ComprehensiveCourseEditorPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  International Price (USD $) *
-                </label>
-                <input
-                  type="number"
-                  disabled={!isOwner}
-                  value={priceUsd}
-                  onChange={(e) => setPriceUsd(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400 disabled:opacity-50"
-                />
-              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Original Strikethrough Price (USD $)
-                </label>
-                <input
-                  type="number"
-                  disabled={!isOwner}
-                  value={originalPriceUsd}
-                  onChange={(e) => setOriginalPriceUsd(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400 disabled:opacity-50"
-                />
-              </div>
             </div>
 
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-slate-400">

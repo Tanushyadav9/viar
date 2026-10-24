@@ -1,6 +1,7 @@
 /**
  * Presentation Formatters for Admin & Portal Views
- * Standardizes raw enum strings (e.g. COMING_SOON, PUBLISHED) into clean, human-readable labels.
+ * Standardizes raw enum strings into clean, human-readable labels:
+ * "Coming soon", "Published", "Draft", "Waiting for payment check", etc.
  */
 
 export function formatCourseStatus(status?: string | null): string {
@@ -9,7 +10,7 @@ export function formatCourseStatus(status?: string | null): string {
     case 'PUBLISHED':
       return 'Published';
     case 'COMING_SOON':
-      return 'Coming Soon';
+      return 'Coming soon';
     case 'DRAFT':
       return 'Draft';
     case 'ARCHIVED':
@@ -31,6 +32,31 @@ export function formatClassStatus(status?: string | null): string {
       return 'Completed';
     case 'UPCOMING':
       return 'Upcoming';
+    default:
+      return status
+        .replace(/_/g, ' ')
+        .toLowerCase()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+}
+
+export function formatOrderStatus(status?: string | null): string {
+  if (!status) return 'Waiting for payment';
+  switch (status.toUpperCase()) {
+    case 'PAYMENT_CLAIMED':
+      return 'Waiting for payment check';
+    case 'PENDING_PAYMENT':
+      return 'Waiting for payment';
+    case 'APPROVED':
+    case 'VERIFIED':
+    case 'PAID':
+      return 'Approved';
+    case 'REJECTED':
+      return 'Rejected';
+    case 'REFUNDED':
+      return 'Refunded';
+    case 'EXPIRED':
+      return 'Expired';
     default:
       return status
         .replace(/_/g, ' ')

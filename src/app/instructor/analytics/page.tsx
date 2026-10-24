@@ -6,27 +6,23 @@ import {
   Globe
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
-import { Enrollment, Cohort } from '@/lib/types';
+import { Enrollment } from '@/lib/types';
 
 export default function InstructorAnalyticsPage() {
   const [stats, setStats] = useState<Record<string, number>>({});
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [cohorts, setCohorts] = useState<Cohort[]>([]);
 
   useEffect(() => {
     Promise.all([
       fetch('/api/enrollments').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch('/api/cohorts').then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/admin/orders').then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/certificates').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    ]).then(([enrData, cohData, ordData, certData]) => {
+    ]).then(([enrData, ordData, certData]) => {
       const enrs = enrData?.success && Array.isArray(enrData.enrollments) ? enrData.enrollments : [];
-      const cohs = cohData?.success && Array.isArray(cohData.cohorts) ? cohData.cohorts : [];
       const ords = ordData?.orders && Array.isArray(ordData.orders) ? ordData.orders : [];
       const certs = certData?.success && Array.isArray(certData.certificates) ? certData.certificates : [];
 
       setEnrollments(enrs);
-      setCohorts(cohs);
 
       const verifiedOrds = ords.filter((o: { status?: string }) => o.status === 'VERIFIED' || o.status === 'APPROVED' || o.status === 'PAID');
       const totalInr = verifiedOrds
@@ -82,44 +78,44 @@ export default function InstructorAnalyticsPage() {
           <div className="cosmic-card p-6 rounded-2xl border border-white/10">
             <span className="text-xs font-semibold text-slate-400 block mb-1">Total Enrolled Students</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-white">{enrollments.length}</span>
-              <span className="text-xs font-semibold text-slate-400">
-                {enrollments.length === 1 ? '1 student' : `${enrollments.length} students`}
+              <span className="text-2xl sm:text-3xl font-black text-white">
+                {enrollments.length > 0 ? enrollments.length : <span className="text-lg font-bold text-slate-400">No students yet</span>}
               </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-2">
-              {cohorts.length > 0 ? `Active across ${cohorts.length} Cohort${cohorts.length === 1 ? '' : 's'}` : 'No cohorts created'}
+              {enrollments.length > 0 ? `${enrollments.length} enrolled scholar${enrollments.length === 1 ? '' : 's'}` : 'Self-paced admissions open'}
             </p>
           </div>
 
           <div className="cosmic-card p-6 rounded-2xl border border-emerald-500/30">
             <span className="text-xs font-semibold text-slate-400 block mb-1">Direct UPI Tuition Revenue</span>
-            <span className="text-3xl font-black text-white">
-              ₹{(stats.totalRevenueInr || 0).toLocaleString('en-IN')}
+            <span className="text-2xl sm:text-3xl font-black text-white">
+              {(stats.totalRevenueInr && stats.totalRevenueInr > 0) ? `₹${stats.totalRevenueInr.toLocaleString('en-IN')}` : <span className="text-lg font-bold text-slate-400">No revenue yet</span>}
             </span>
             <p className="text-[11px] text-emerald-400 mt-2">
-              {stats.totalStudents || 0} Direct Admissions
+              Direct UPI • Zero gateway deductions
             </p>
           </div>
 
           <div className="cosmic-card p-6 rounded-2xl border border-amber-500/30">
-            <span className="text-xs font-semibold text-slate-400 block mb-1">Gateway Commissions Saved</span>
-            <span className="text-3xl font-black text-amber-400">
-              100%
+            <span className="text-xs font-semibold text-slate-400 block mb-1">Verifiable Certificates</span>
+            <span className="text-2xl sm:text-3xl font-black text-amber-400">
+              {(stats.certificatesCount && stats.certificatesCount > 0) ? stats.certificatesCount : <span className="text-lg font-bold text-slate-400">No certificates yet</span>}
             </span>
             <p className="text-[11px] text-amber-300 mt-2">
-              Direct UPI QR (0% gateway deductions)
+              Issued upon 70%+ score on final exam
             </p>
           </div>
 
           <div className="cosmic-card p-6 rounded-2xl border border-white/10">
             <span className="text-xs font-semibold text-slate-400 block mb-1">Course Completion Rate</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-amber-400">{stats.completionRate || 0}%</span>
-              <span className="text-xs text-slate-400">certification rate</span>
+              <span className="text-2xl sm:text-3xl font-black text-amber-400">
+                {enrollments.length > 0 ? `${stats.completionRate || 0}%` : <span className="text-lg font-bold text-slate-400">No completions yet</span>}
+              </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-2">
-              {stats.certificatesCount || 0} certified of {enrollments.length} enrolled
+              {enrollments.length > 0 ? `${stats.certificatesCount || 0} certified of ${enrollments.length} enrolled` : 'Awaiting student completions'}
             </p>
           </div>
         </div>
@@ -127,43 +123,26 @@ export default function InstructorAnalyticsPage() {
         {/* Detailed Breakdown Grids */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
           
-          {/* Cohort Capacity Utilization */}
+          {/* Curriculum Delivery Status */}
           <div className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               <Users className="w-4 h-4 text-amber-400" />
-              <span>Cohort Seat Capacity Utilization</span>
+              <span>Curriculum Delivery Status</span>
             </h3>
 
-            {cohorts.length === 0 ? (
-              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-slate-400 text-center">
-                No active cohorts in database
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
+              <div className="flex justify-between text-xs font-semibold">
+                <span className="text-white">The Ultimate Astrology Course: Foundations to Chart Mastery</span>
+                <span className="text-emerald-400">₹5,100</span>
               </div>
-            ) : (
-              cohorts.map((c) => {
-                const seatCap = c.maxSeats || c.capacity || 50;
-                const enrolled = c.enrolledCount || 0;
-                const pct = Math.min(100, Math.round((enrolled / seatCap) * 100));
-                const seatsRemaining = Math.max(0, seatCap - enrolled);
-                return (
-                  <div key={c.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
-                    <div className="flex justify-between text-xs font-semibold">
-                      <span className="text-white">{c.batchName}</span>
-                      <span className="text-amber-300">{enrolled} / {seatCap} seats ({pct}%)</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full"
-                        style={{ width: `${pct}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-[10px] text-slate-400 pt-1">
-                      <span>{c.startDate ? `Starts: ${new Date(c.startDate).toLocaleDateString('en-IN')}` : 'Admissions Open'}</span>
-                      <span className="text-emerald-400 font-semibold">{seatsRemaining} seats remaining</span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+              <p className="text-xs text-slate-300">
+                23 on-demand video modules published with downloadable notes, 2 bonus real chart workshops, and final certification exam.
+              </p>
+              <div className="flex justify-between text-[10px] text-slate-400 pt-1">
+                <span>Mode: Self-Paced Masterclass</span>
+                <span className="text-amber-300 font-semibold">Lifetime Access</span>
+              </div>
+            </div>
           </div>
 
           {/* Payment Method Distribution */}
@@ -192,7 +171,7 @@ export default function InstructorAnalyticsPage() {
             </div>
 
             <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-300">
-              <strong>Zero Gateway Deductions:</strong> 100% of student tuition reaches the institute directly via UPI with zero gateway fees.
+              <strong>Direct Peer-to-Peer UPI:</strong> 100% of student tuition reaches the institute directly via UPI with zero gateway fees.
             </div>
           </div>
 

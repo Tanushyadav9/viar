@@ -17,7 +17,7 @@ export default function InstructorNav() {
 
   const navItems = [
     { label: 'Overview', href: '/instructor', icon: ShieldCheck, exact: true },
-    { label: 'Courses & Cohorts', href: '/instructor/courses', icon: BookOpen },
+    { label: 'Courses & Curriculum', href: '/instructor/courses', icon: BookOpen },
     { label: 'Students & Roster', href: '/instructor/students', icon: Users },
     { label: 'Revenue & Analytics', href: '/instructor/analytics', icon: BarChart3 },
     { label: 'Activity Log', href: '/instructor/activity', icon: History },

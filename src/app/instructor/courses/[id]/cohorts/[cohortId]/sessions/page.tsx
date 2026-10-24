@@ -1,4 +1,5 @@
 'use client';
+import { formatClassStatus } from '@/lib/utils/formatters';
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
@@ -366,7 +367,7 @@ export default function InstructorSessionsPage() {
                           : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
                       }`}
                     >
-                      {cls.status}
+                      {formatClassStatus(cls.status)}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 mt-1">

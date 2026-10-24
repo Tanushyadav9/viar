@@ -12,12 +12,10 @@ import {
   ChevronRight
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
-import { Course, Cohort } from '@/lib/types';
-import { formatInTimezone } from '@/lib/timezones';
+import { Course } from '@/lib/types';
 
 export default function InstructorOverviewPage() {
   const [courses, setCourses] = useState<Course[]>([]);
-  const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [stats, setStats] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -35,19 +33,7 @@ export default function InstructorOverviewPage() {
         setCourses([]);
       });
 
-    // 2. Fetch live cohorts
-    fetch('/api/cohorts')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.success && Array.isArray(data.cohorts)) {
-          setCohorts(data.cohorts);
-        } else {
-          setCohorts([]);
-        }
-      })
-      .catch(() => {
-        setCohorts([]);
-      });
+
 
     // 3. Stats from live database orders & enrollments
     Promise.all([
@@ -96,22 +82,22 @@ export default function InstructorOverviewPage() {
               <span className="text-xs font-semibold">Total Students</span>
               <Users className="w-4 h-4 text-amber-400" />
             </div>
-            <p className="text-3xl font-black text-white">{stats.totalStudents ?? 0}</p>
-            <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
-              <span>{stats.totalStudents ? `${stats.totalStudents} enrolled student${stats.totalStudents === 1 ? '' : 's'}` : 'No enrolled students yet'}</span>
+            <p className="text-2xl sm:text-3xl font-black text-white">
+              {(stats.totalStudents && stats.totalStudents > 0) ? stats.totalStudents : <span className="text-lg font-bold text-slate-400">No students yet</span>}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+              <span>{(stats.totalStudents && stats.totalStudents > 0) ? `${stats.totalStudents} enrolled student${stats.totalStudents === 1 ? '' : 's'}` : 'Self-paced enrollment open'}</span>
             </p>
           </div>
 
           <div className="cosmic-card p-5 rounded-2xl border border-white/10">
             <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-xs font-semibold">Active Cohorts</span>
+              <span className="text-xs font-semibold">Course Delivery</span>
               <Calendar className="w-4 h-4 text-amber-400" />
             </div>
-            <p className="text-3xl font-black text-white">{cohorts.length}</p>
+            <p className="text-2xl sm:text-3xl font-black text-white">Self-Paced</p>
             <p className="text-[11px] text-slate-400 mt-1">
-              {cohorts.length > 0
-                ? `${cohorts[0]?.batchName}: ${cohorts[0]?.enrolledCount || 0}/${cohorts[0]?.maxSeats || cohorts[0]?.capacity || 50} seats filled`
-                : 'No active cohorts in database'}
+              Instant lifetime access
             </p>
           </div>
 
@@ -120,7 +106,7 @@ export default function InstructorOverviewPage() {
               <span className="text-xs font-semibold">Video Modules</span>
               <Video className="w-4 h-4 text-amber-400" />
             </div>
-            <p className="text-3xl font-black text-white">23</p>
+            <p className="text-2xl sm:text-3xl font-black text-white">23</p>
             <p className="text-[11px] text-slate-400 mt-1">
               On-Demand Lessons &amp; Notes
             </p>
@@ -132,90 +118,74 @@ export default function InstructorOverviewPage() {
               <DollarSign className="w-4 h-4 text-emerald-400" />
             </div>
             <p className="text-2xl sm:text-3xl font-black text-white">
-              ₹{(stats.totalRevenueInr || 0).toLocaleString('en-IN')}
+              {(stats.totalRevenueInr && stats.totalRevenueInr > 0) ? `₹${stats.totalRevenueInr.toLocaleString('en-IN')}` : <span className="text-lg font-bold text-slate-400">No revenue yet</span>}
             </p>
             <p className="text-[11px] text-emerald-400 mt-1">
-              {stats.totalRevenueUsd && stats.totalRevenueUsd > 0
-                ? `+ $${stats.totalRevenueUsd} USD Global`
-                : 'Direct UPI • 0% gateway commission'}
+              Direct UPI • Zero gateway fees
             </p>
           </div>
         </div>
 
-        {/* Courses & Active Cohorts Overview */}
+        {/* Course & Curriculum Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
           
-          {/* Active Cohorts Column */}
+          {/* Course Details Column */}
           <div className="lg:col-span-7 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-amber-400" />
-                <span>Active Cohort Batches</span>
+                <Video className="w-4 h-4 text-amber-400" />
+                <span>Published Course Curriculum</span>
               </h2>
               <Link
                 href="/instructor/courses"
                 className="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1"
               >
-                <span>Manage All Courses & Cohorts</span>
+                <span>Manage Course &amp; Curriculum</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            {cohorts.length === 0 ? (
-              <div className="cosmic-card p-6 rounded-2xl border border-white/10 text-center text-xs text-slate-400">
-                No active cohorts currently configured in the database.
+            <div className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4 hover:border-amber-500/30 transition">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  Self-Paced Masterclass
+                </span>
+                <span className="text-xs text-emerald-400 font-bold">
+                  Tuition: ₹5,100
+                </span>
               </div>
-            ) : (
-              cohorts.map((coh) => {
-                const crs = courses.find((c) => c.id === coh.courseId);
-                return (
-                  <div
-                    key={coh.id}
-                    className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4 hover:border-amber-500/30 transition"
+
+              <div>
+                <h3 className="text-lg font-bold text-white">
+                  {courses[0]?.title || 'The Ultimate Astrology Course: Foundations to Chart Mastery'}
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  23 on-demand video modules • 2 practical chart reading masterclasses • Self-paced lifetime access with verifiable certification.
+                </p>
+              </div>
+
+              <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs text-slate-400">
+                  Admissions: <strong className="text-white">Active (Continuous Open Enrollment)</strong>
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/instructor/courses"
+                    className="gold-button px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1"
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                        {coh.batchName}
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        Capacity: <strong className="text-white">{coh.enrolledCount || 0} / {coh.maxSeats || coh.capacity || 50}</strong> seats
-                      </span>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-bold text-white">
-                        {crs?.title || 'What is Astrology — Foundations of Vedic Astrology'}
-                      </h3>
-                      <p className="text-xs text-slate-300 mt-1">
-                        {coh.scheduleDescription || 'Self-paced on-demand masterclass.'}
-                      </p>
-                    </div>
-
-                    <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
-                      <span className="text-xs text-slate-400">
-                        Starts: <strong className="text-white">{coh.startDate ? formatInTimezone(coh.startDate, 'Asia/Kolkata', 'short') : 'Ongoing Admissions'}</strong>
-                      </span>
-
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/instructor/courses/${coh.courseId}/cohorts/${coh.id}/sessions`}
-                          className="gold-button px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1"
-                        >
-                          <Video className="w-3.5 h-3.5" />
-                          <span>Manage 23 Lesson Modules</span>
-                        </Link>
-                        <Link
-                          href="/instructor/students"
-                          className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/10"
-                        >
-                          Student Roster
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+                    <Video className="w-3.5 h-3.5" />
+                    <span>Manage 23 Lesson Modules</span>
+                  </Link>
+                  <Link
+                    href="/instructor/students"
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/10"
+                  >
+                    Student Roster
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Quick Actions & Short-cuts */}

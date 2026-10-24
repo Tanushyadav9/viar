@@ -58,7 +58,7 @@ export default function InstructorStudentsRosterPage() {
   const [manualCourseId, setManualCourseId] = useState('course-what-is-astrology');
   const [manualCohortId, setManualCohortId] = useState('cohort-wia-batch-1');
   const [manualAmount, setManualAmount] = useState('5100');
-  const [manualCurrency, setManualCurrency] = useState<'INR' | 'USD'>('INR');
+  const manualCurrency = 'INR';
   const [manualReason, setManualReason] = useState('');
   const [modalSuccess, setModalSuccess] = useState('');
   const [modalError, setModalError] = useState('');
@@ -424,19 +424,7 @@ export default function InstructorStudentsRosterPage() {
                       className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Currency
-                    </label>
-                    <select
-                      value={manualCurrency}
-                      onChange={(e) => setManualCurrency(e.target.value as 'INR' | 'USD')}
-                      className="w-full px-4 py-2 rounded-xl bg-[#111827] border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                    >
-                      <option value="INR">INR (₹)</option>
-                      <option value="USD">USD ($)</option>
-                    </select>
-                  </div>
+
                 </div>
 
                 {/* MANDATORY AUDIT REASON */}
@@ -563,7 +551,7 @@ export default function InstructorStudentsRosterPage() {
                 {filteredStudents.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="text-center py-12 text-slate-500">
-                      No enrolled scholars found matching your search.
+                      No students yet. Once students enroll in the self-paced masterclass or are admitted manually, their progress and records will appear here.
                     </td>
                   </tr>
                 ) : (
@@ -657,7 +645,7 @@ export default function InstructorStudentsRosterPage() {
                         {/* Tuition Paid */}
                         <td className="py-4 px-6">
                           <span className="font-bold text-white block">
-                            {enr.currency === 'USD' ? `$${enr.amountPaid}` : `₹${enr.amountPaid.toLocaleString()}`}
+                            `₹${enr.amountPaid.toLocaleString('en-IN')}`
                           </span>
                           <span className="text-[10px] text-emerald-400 uppercase font-semibold">
                             {enr.paymentStatus}
