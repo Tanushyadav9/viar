@@ -826,3 +826,149 @@ As mandated by project requirements, a comprehensive automated evaluation suite 
 | **6. Privacy Masking & Redaction** | `maskSensitiveData`: Redacts 10-digit Indian mobile numbers (`93112 15564` -> `[PHONE_MASKED]`), international formatted numbers (`+91 ...`), email addresses (`aapka...` -> `[EMAIL_MASKED]`), and 12-digit bank UTR numbers (`202610...` -> `[UTR_MASKED]`). Truncates logged unanswered questions to 150 characters max. | ✅ **PASSED** |
 | **7. Staging Isolation Guarantee** | Asserts that zero mock suites or unit test runs ever touch production `DATABASE_URL`. Operates with isolated in-memory deterministic fixtures. | ✅ **PASSED** |
 | **8. Gemini Support & Auto-Detection** | `GeminiChatProvider`: Auto-detects Google Gemini when `CHATBOT_PROVIDER=gemini` or when `CHATBOT_API_KEY` starts with `AIzaSy`. Normalizes models to `gemini-1.5-flash` or preserves explicit models like `gemini-2.0-flash`. Includes streaming fallback to grounded knowledge if upstream provider errors occur. | ✅ **PASSED** |
+
+---
+
+## 17. Complete Data Provenance & Telemetry Integrity Audit (October 24, 2026)
+
+### 17.1 Staging Database Direct Inspection (Table-by-Table Row Counts)
+A live inspection of the Neon PostgreSQL database (`ep-orange-poetry-b4cupwem.c-6.us-east-2.aws.neon.tech`) was conducted on October 24, 2026. The table below documents every model, its current row count, and the exact origin/provenance of those records:
+
+| PostgreSQL Table / Model | Live Row Count | Origin / Provenance | Status & Integrity Check |
+| :--- | :---: | :--- | :--- |
+| **`Course`** | **1** | Seeding script (`scripts/seed-database.ts`). Single authentic course: *"The Ultimate Astrology Course: Foundations to Chart Mastery"* (`what-is-astrology`, ₹5,100 / $69 USD, 23 modules). | ✅ Authentic Flagship Course. All 4 unlaunched/demo courses deleted. |
+| **`Module`** | **23** | Seeding script (`scripts/seed-database.ts`). Corresponds to the 23 syllabus modules of the flagship course. | ✅ 100% matches official curriculum specification. |
+| **`Lesson`** | **46** | Seeding script (`scripts/seed-database.ts`). 2 lessons per module (Video Lesson + Study Guide / Transcript). | ✅ Matches 23 modules. |
+| **`Cohort`** | **1** | Seeding script (`scripts/seed-database.ts`). `cohort-wia-batch-1` ("Self-Paced Masterclass — Vihangam Institute of Astrology and Research", capacity: 500, enrolled: 0). | ✅ Clean self-paced cohort container. |
+| **`ClassSession`** | **23** | Seeding script (`scripts/seed-database.ts`). 23 scheduled curriculum sessions. | ✅ Real syllabus sessions. |
+| **`Quiz`** | **1** | Seeding script (`scripts/seed-database.ts`). Final Certification Quiz for `what-is-astrology`. | ✅ 20 multiple-choice assessment questions. |
+| **`Question`** | **20** | Seeding script (`scripts/seed-database.ts`). 20 certification questions. | ✅ Graded questions with 70% passing bar. |
+| **`Option`** | **80** | Seeding script (`scripts/seed-database.ts`). 4 options per question. | ✅ Relational options with correct answer pointers. |
+| **`PaymentSettings`** | **1** | Auto-initialized by `src/lib/payments/settings.ts` if row `default` is absent. Payee: *Vihangam Institute of Astrology and Research*, UPI ID: `aapkaastro@okaxis`. | ✅ Real institute UPI credentials. |
+| **`User`** | **2** | Synced via live Clerk Webhook (`/api/webhooks/clerk`) upon authentic user creation. No mock/fake users exist. | ✅ 1 Owner (`aapkaastro1606@gmail.com`) + 1 Student (`parnikagrover88@gmail.com`). |
+| **`Enrollment`** | **0** | Written strictly upon Owner bank verification of UPI payment claim or manual Owner grant. | ✅ Clean. Zero fake enrollments. |
+| **`Order`** | **0** | Written strictly upon student initiating UPI checkout or claiming payment. | ✅ Clean. Zero fake orders. |
+| **`Payment`** | **0** | Written upon payment processing. | ✅ Clean. Zero fake payments. |
+| **`LessonProgress`** | **0** | Written upon student completing lesson video/notes. | ✅ Clean. Zero fake progress. |
+| **`SessionProgress`**| **0** | Written upon student completing session. | ✅ Clean. Zero fake session progress. |
+| **`QuizAttempt`** | **0** | Written upon student submitting certification quiz. | ✅ Clean. Zero fake quiz submissions. |
+| **`Certificate`** | **0** | Written strictly upon student scoring 70%+ on final exam. | ✅ Clean. Zero fake certificates. |
+| **`NotifyMeLead`** | **0** | Written upon contact form or notify me submission. | ✅ Clean. Zero fake leads. |
+| **`StaffPermission`**| **0** | Written by Site Owner when assigning staff roles. | ✅ Clean. Zero fake staff grants. |
+| **`ActivityLog`** | **0** | Written upon critical administrative actions (approvals, settings edits). | ✅ Clean. Zero fake activity logs. |
+| **`ClerkWebhookEvent`**| **0** | Written upon Clerk Svix webhook reception. | ✅ Clean. |
+| **`KnowledgeEntry`** | **0** | Written by Owner for AI assistant dynamic FAQs. | ✅ Clean. |
+| **`UnansweredQuestion`**| **0** | Written when AI chatbot logs ungrounded seeker queries. | ✅ Clean. |
+| **`ContentItem`** | **0** | Optional CMS content items. | ✅ Clean. |
+| **`ContentRevision`**| **0** | CMS revision history. | ✅ Clean. |
+| **`MediaAsset`** | **0** | Uploaded media assets. | ✅ Clean. |
+
+---
+
+### 17.2 Provenance of Numbers, Labels, and Lists on Every Admin Screen
+
+Below is an exhaustive screen-by-screen audit tracing every figure, metric, label, and list on the admin interfaces to its exact code and data source:
+
+#### A. Admin Overview (`/admin` — `AdminPortalClient.tsx`)
+- **Total Students (Metric)**: Derived from `loadedEnrollments.length` from `GET /api/enrollments` (PostgreSQL query) or unique student emails from `GET /api/admin/orders`. Provenance: **Database query** (currently `0`).
+- **Direct Tuition Revenue INR (Metric)**: Sum of `amount` for orders where `status === 'APPROVED'` or `status === 'PAID'` from `GET /api/admin/orders`. Provenance: **Database query** (currently `₹0`).
+- **Active Batches (Metric)**: Derived from `cohorts.length` from `GET /api/cohorts`. Provenance: **Database query** (currently `1`).
+- **Curriculum Progress (Metric)**: `classes.filter(c => c.status === 'COMPLETED').length` / `classes.length` from `GET /api/sessions`. Provenance: **Database query** (currently `0 / 23 completed`).
+- **Certificates Issued (Metric)**: Derived from `certificates.length` from `GET /api/certificates`. Provenance: **Database query** (currently `0`).
+- **Active Exam Questions (Metric)**: `quiz.questions.length` from `GET /api/quizzes`. Provenance: **Database query** (currently `20`).
+- **Verification Queue Claims (Badge)**: `orders.filter(o => o.status === 'PAYMENT_CLAIMED').length` from `GET /api/admin/orders`. Provenance: **Database query** (currently `0`).
+- **Recent Registrations & Payment Claims (Table)**: `orders.map(...)` from `GET /api/admin/orders`. Provenance: **Database query**.
+- **Course Cards (List)**: `courses.map(...)` from `GET /api/courses` (`prisma.course.findMany`). Provenance: **Database query**.
+- **Status Badges (Labels)**: `formatCourseStatus(crs.status)` and `formatClassStatus(cls.status)`. Provenance: **Formatted database enums** ("Published", "Draft", "Archived", "Live Now", "Completed").
+
+#### B. Academy Overview (`/instructor` — `src/app/instructor/page.tsx`)
+- **Total Students (Metric)**: `stats.totalStudents ?? 0` from `GET /api/enrollments` and `GET /api/admin/orders`. Provenance: **Database query** (currently `0`).
+- **Active Cohorts (Metric)**: `cohorts.length` from `GET /api/cohorts`. Provenance: **Database query** (currently `1`).
+- **Seat Utilization (Subtext)**: `{cohorts[0]?.enrolledCount || 0} / {cohorts[0]?.maxSeats || 500} seats filled` from `GET /api/cohorts`. Provenance: **Database query** (currently `0 / 500 seats filled`).
+- **Video Modules (Metric)**: `23` modules. Provenance: **Static curriculum constant matching database modules count**.
+- **Total Revenue INR (Metric)**: `stats.totalRevenueInr` from `GET /api/admin/orders`. Provenance: **Database query** (currently `₹0`).
+- **USD Global Revenue (Subtext)**: Displays `+ $X USD Global` only if `stats.totalRevenueUsd > 0`; otherwise displays `Direct UPI • 0% gateway commission`. Provenance: **Database query**.
+- **Active Cohort Batches (List)**: `cohorts.map(...)` from `GET /api/cohorts`. Provenance: **Database query**.
+- **Editor Action (Label)**: *"Edit titles, modules, pricing, and curriculum"*. Provenance: **Hardcoded UI label** (updated from legacy *"3-week blocks"*).
+
+#### C. Courses Screen (`/instructor/courses` & `/admin` Courses Tab)
+- **Course Pricing**: `crs.priceInr` (₹5,100) and `crs.priceUsd` ($69) from `GET /api/courses`. Provenance: **Database query**.
+- **Enrolled Scholars**: `crs.enrollmentCount || 0` from `GET /api/courses`. Provenance: **Database query** (currently `0`).
+- **Published Lessons Count**: Summed from `m.lessons` from `GET /api/courses`. Provenance: **Database query** (currently `46` lessons across `23` modules).
+- **Status Badges**: `formatCourseStatus(cStatus)` ("Published", "Draft", "Archived", "Coming Soon"). Provenance: **Formatted database enums**.
+- **Courses List**: `filteredCourses.map(...)` from `GET /api/courses`. Provenance: **Database query** (exactly 1 course: `what-is-astrology`).
+
+#### D. Students & Roster (`/instructor/students` & `/admin` Students Tab)
+- **Enrolled Students Count**: `enrollments.length` from `GET /api/enrollments`. Provenance: **Database query** (currently `0`).
+- **Student Roster (Table)**: `enrollments.map(...)` from `GET /api/enrollments`. Provenance: **Database query**.
+- **Manual Grant Modal**: Submits to `POST /api/enrollments/grant`, which directly creates database records (`prisma.enrollment.create`). Provenance: **Database mutation**.
+
+#### E. Revenue & Analytics (`/instructor/analytics` — `src/app/instructor/analytics/page.tsx`)
+- **Total Enrolled Students**: `enrollments.length` from `GET /api/enrollments`. Provenance: **Database query** (currently `0`).
+- **Direct UPI Tuition Revenue**: Sum of verified INR orders from `GET /api/admin/orders`. Provenance: **Database query** (currently `₹0`).
+- **Gateway Commissions Saved**: `100%`. Provenance: **Analytical constant** (representing zero gateway commissions with direct UPI peer-to-peer payments).
+- **Course Completion Rate**: `Math.round((certs.length / enrs.length) * 100)`. Provenance: **Database query** (currently `0%`).
+- **Certified Count**: `stats.certificatesCount` from `GET /api/certificates`. Provenance: **Database query** (currently `0`).
+- **Cohort Capacity Utilization**: `{c.enrolledCount} / {c.maxSeats || 500} seats ({pct}%)` from `GET /api/cohorts`. Provenance: **Database query** (currently `0 / 500 seats (0%)`).
+- **Seats Remaining**: `seatsRemaining = seatCap - enrolled`. Provenance: **Database query** (currently `500 seats remaining`).
+- **Payment Method Distribution**: Counts of `UPI_QR` vs `MANUAL_UTR` from verified orders in `GET /api/admin/orders`. Provenance: **Database query** (currently `0`).
+
+#### F. Activity Log (`/instructor/activity` & `/admin` Activity Tab)
+- **Log Stream (List)**: `logs.map(...)` from `GET /api/activity` (`prisma.activityLog.findMany`). Provenance: **Database query** (currently `0`).
+- **Action Type Badges**: Formatted from `log.action` enum in PostgreSQL (`ENROLLMENT_GRANTED`, `PAYMENT_VERIFIED`, etc.). Provenance: **Database query**.
+
+---
+
+### 17.3 Root-Cause Analysis of Previous Inconsistencies & Contradictions
+
+| Previous Discrepancy Observed | Exact Root Cause & Code Source | Remediation Applied |
+| :--- | :--- | :--- |
+| **"Active Cohorts 0" beside "Flagship: 38/50 seats filled"** | In `src/app/instructor/page.tsx:112`, JSX contained hardcoded fallback `{cohorts[0]?.enrolledCount || 38}/50`. When cohorts array was empty or hydrating, it evaluated to `38/50`. | Removed hardcoded fallback `|| 38`. Derived strictly from database cohort fields (`enrolledCount: 0`, `capacity: 500`). |
+| **"Total Revenue ₹5,100 + $138 USD Global"** | In `src/app/instructor/page.tsx:135`, JSX had `stats.totalRevenueInr || 5100` and static subtext `+ $138 USD Global`. | Replaced with dynamic sum of verified orders. USD subtext renders only if `stats.totalRevenueUsd > 0`. |
+| **"₹15,300" in Analytics vs "₹5,100" in Overview** | In `src/app/instructor/analytics/page.tsx:98`, JSX had hardcoded fallback `stats.totalRevenueInr || 15300`. | Replaced with dynamic nullish coalescing `stats.totalRevenueInr || 0`. |
+| **"+12% this week"** | In `src/app/instructor/analytics/page.tsx:100`, a static cosmetic label was hardcoded in JSX. | Replaced with dynamic admission count `{stats.totalStudents || 0} Direct Admissions`. |
+| **"89% exam pass rate" (nobody finished)** | In `src/app/instructor/analytics/page.tsx:118`, JSX had hardcoded fallback `stats.completionRate || 89`. | Replaced with dynamic ratio `certs.length / enrs.length` (`0%` when no certificates exist). |
+| **"142 / 10000 seats (1%)", "Deadline: Oct 2, 2026", "9858 seats remaining"** | `INITIAL_COHORTS` in `src/lib/data.ts` had mock object: `enrolledCount: 142, maxSeats: 10000, deadline: '2026-10-02'`. This was returned when fallback occurred. | Updated `INITIAL_COHORTS` to `enrolledCount: 0, maxSeats: 500`. Fixed `/api/cohorts` to query PostgreSQL directly. |
+| **"3-week blocks" in editor description** | In `src/app/instructor/page.tsx:238`, description string read *"Edit titles, 3-week blocks, pricing, and thumbnails"*. | Changed to *"Edit titles, modules, pricing, and curriculum"*. |
+| **Three fragmented entry points ("Owner Studio", "Admin Console", "Instructor Dashboard / Academy Management System")** | 1. `en.json:10` had `"admin": "Owner Studio"` in navbar link.<br>2. `NavbarClient.tsx` had button `"Admin Console"`.<br>3. `InstructorNav.tsx` had `"Instructor Dashboard / Academy Management System"`.<br>4. `Footer.tsx` had `"Instructor Suite"`. | Unified sitewide under standard **"Admin Console"**. Redundant navbar link removed in favor of primary gold button. Direct navigation to `/admin` added to instructor header. |
+| **Raw `COMING_SOON` badges** | Direct enum rendering `{cStatus}` rendered uppercase string `COMING_SOON`. | Added `formatCourseStatus()` helper mapping to human-readable *"Coming Soon"*, *"Published"*, *"Draft"*, *"Archived"*. |
+
+---
+
+### 17.4 Comprehensive Inventory of All Seed & Demo Sources in Repository
+
+| Category | File Location | Exact Contents & Defaults | Active Runtime Usage |
+| :--- | :--- | :--- | :--- |
+| **Database Seed Scripts** | `scripts/seed-database.ts` | Seeds flagship course (`what-is-astrology`), 23 modules, 46 lessons, 1 cohort, 23 sessions, 20 quiz questions, 80 options. | Manual/CI setup only. Guarded by `assertStagingEnvironment`. |
+| **Bilingual Seed Scripts** | `scripts/seed-bilingual-content.mjs` | Hindi translations for 23 modules and flagship course. | Manual/CI setup only. Guarded by `assertStagingEnvironment`. |
+| **Content Studio Seed** | `scripts/seed-content-studio.mjs` | Builtin CMS site settings and contact defaults. | Manual/CI setup only. Currently 0 rows in staging DB. |
+| **Static Data File** | `src/lib/data.ts` | 1. `INITIAL_COURSES`: 1 course (`what-is-astrology`, ₹5,100 / $69 USD).<br>2. `INITIAL_COHORTS`: 1 cohort (`cohort-wia-batch-1`, maxSeats: 500, enrolled: 0).<br>3. `SCHEDULED_CLASSES_FLAGSHIP`: 23 class sessions.<br>4. `INITIAL_FINAL_TEST`: 20 exam questions.<br>5. `PLACEHOLDER_TESTIMONIALS`: 3 student testimonials.<br>6. `PLACEHOLDER_SOCIAL_LINKS`: WhatsApp +91 93112 15564, etc. | Fallback if database connectivity fails in catastrophic outage. |
+| **Runtime Store Defaults** | `src/lib/store.ts` | 1. `STORAGE_KEYS.ENROLLMENTS`: `[]`<br>2. `STORAGE_KEYS.CERTIFICATES`: `[]`<br>3. `STORAGE_KEYS.SUBMISSIONS`: `[]`<br>4. `STORAGE_KEYS.COHORTS`: `[]`<br>5. `STORAGE_KEYS.CURRENT_USER`: `null`<br>6. `submitFinalTest`: generates verification code format `VIAR-2026-WIA-${codeRandom}`. | Client-side helper. Admin and student portal now read strictly from PostgreSQL API routes. |
+| **Demo Users & Students** | *Purged* | Legacy mock auth provider was completely purged. | None. Users authenticate strictly through Clerk (`/api/webhooks/clerk`). |
+| **Fake Certificate Codes** | `src/lib/store.ts:192` | Format: `VIAR-2026-WIA-${codeRandom}` in local fallback store. | Live production uses database `Certificate.verifySlug` (cryptographic cuid/uuid). |
+| **Sample Quiz Results** | `src/lib/data.ts:571` | 20 questions in `INITIAL_FINAL_TEST` with 4 options each. | Mirrors database `Quiz` and `Question` tables. |
+| **Placeholder Video & Meeting Links** | `src/lib/data.ts` & PostgreSQL | `meetingPlatform: 'ZOOM'`, `joinUrl: ''`. Lessons have `videoProviderId: null` or placeholder provider IDs. | Awaiting client Cloudflare Stream / YouTube upload. |
+| **Cohort Objects** | `data.ts` & PostgreSQL | Single cohort `cohort-wia-batch-1`. | Live database row in `Cohort` table. |
+| **Seat Counts** | `data.ts` & PostgreSQL | `maxSeats: 500` (capacity: 500). `enrolledCount: 0`. | Live database row. |
+| **Deadlines** | `data.ts` & PostgreSQL | `enrollmentDeadline: '2030-12-31T23:59:59.000Z'` (self-paced masterclass lifetime enrollment). | Live database row. |
+| **USD Fields** | `data.ts` & PostgreSQL | `priceUsd: 69`, `originalPriceUsd: 129`. In orders: `currency: 'USD'`, `amountPaidUsd`. | Active multi-currency support for international students. |
+
+---
+
+### 17.5 Verification of Automatic Seeding Behavior on Empty Database
+
+A comprehensive audit of all API routes, server actions, background tasks, and build scripts was conducted to verify whether any code path seeds mock or dummy data automatically when the database is empty:
+
+1. **Build Scripts (`scripts/prisma-generate.mjs`, `package.json`)**:
+   - `scripts/prisma-generate.mjs` executes strictly `prisma migrate deploy` and `prisma generate`.
+   - **Zero automatic seeding** is triggered during Next.js build or deployment.
+2. **API Routes (`src/app/api/*`)**:
+   - `/api/courses`: Executes `prisma.course.findMany`. If the database returns 0 courses, it returns `{ success: true, courses: [] }`. It does **not** insert courses into PostgreSQL.
+   - `/api/cohorts`: Executes `prisma.cohort.findMany`. If the database returns 0 cohorts, it returns `{ success: true, cohorts: [] }`. It does **not** insert cohorts into PostgreSQL.
+   - `/api/enrollments`: Executes `prisma.enrollment.findMany`. Returns `[]` if empty.
+   - `/api/admin/orders`: Executes `prisma.order.findMany`. Returns `[]` if empty.
+   - `/api/certificates`: Executes `prisma.certificate.findMany`. Returns `[]` if empty.
+   - `/api/sessions`: Executes `prisma.classSession.findMany`. Returns `[]` if empty.
+3. **Database Defaults Initialization**:
+   - The only automatic database insertion in the entire application runtime is in `src/lib/payments/settings.ts` (`getPaymentSettings()`), which checks for the `PaymentSettings` row with `id: 'default'`. If absent, it creates the single configuration row with the institute's default UPI ID (`aapkaastro@okaxis`) and payee name (*Vihangam Institute of Astrology and Research*).
+   - **Conclusion**: There is **zero automatic mock data seeding** on empty databases. All domain records in PostgreSQL require deliberate administrative action, client checkout, or explicit staging seed script execution.

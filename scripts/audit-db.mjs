@@ -1,61 +1,118 @@
 import { PrismaClient } from '@prisma/client';
-
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Testing Prisma Database Connection...');
-  try {
-    const rawResult = await prisma.$queryRaw`SELECT 1 as connected, current_database(), current_user, version();`;
-    console.log('DB Ping Successful:', rawResult);
+  const models = [
+    { name: 'Course', accessor: 'course' },
+    { name: 'Module', accessor: 'module' },
+    { name: 'Lesson', accessor: 'lesson' },
+    { name: 'Cohort', accessor: 'cohort' },
+    { name: 'ClassSession', accessor: 'classSession' },
+    { name: 'User', accessor: 'user' },
+    { name: 'Enrollment', accessor: 'enrollment' },
+    { name: 'Order', accessor: 'order' },
+    { name: 'Payment', accessor: 'payment' },
+    { name: 'PaymentSettings', accessor: 'paymentSettings' },
+    { name: 'LessonProgress', accessor: 'lessonProgress' },
+    { name: 'SessionProgress', accessor: 'sessionProgress' },
+    { name: 'Quiz', accessor: 'quiz' },
+    { name: 'Question', accessor: 'question' },
+    { name: 'Option', accessor: 'option' },
+    { name: 'QuizAttempt', accessor: 'quizAttempt' },
+    { name: 'Certificate', accessor: 'certificate' },
+    { name: 'NotifyMeLead', accessor: 'notifyMeLead' },
+    { name: 'StaffPermission', accessor: 'staffPermission' },
+    { name: 'ActivityLog', accessor: 'activityLog' },
+    { name: 'ClerkWebhookEvent', accessor: 'clerkWebhookEvent' },
+    { name: 'KnowledgeEntry', accessor: 'knowledgeEntry' },
+    { name: 'UnansweredQuestion', accessor: 'unansweredQuestion' },
+    { name: 'ContentItem', accessor: 'contentItem' },
+    { name: 'ContentRevision', accessor: 'contentRevision' },
+    { name: 'MediaAsset', accessor: 'mediaAsset' },
+  ];
 
-    // Check migrations applied in _prisma_migrations
-    let migrations = [];
+  console.log('=== NEON POSTGRESQL ROW COUNTS ===');
+  const counts = {};
+  for (const m of models) {
     try {
-      migrations = await prisma.$queryRaw`SELECT id, checksum, finished_at, migration_name, applied_steps_count FROM _prisma_migrations ORDER BY finished_at ASC;`;
-      console.log('Applied migrations count:', migrations.length);
-      console.log('Migrations:', migrations);
-    } catch (migErr) {
-      console.error('Error querying _prisma_migrations (table might not exist!):', migErr.message);
+      const count = await prisma[m.accessor].count();
+      counts[m.name] = count;
+      console.log(`${m.name.padEnd(20)}: ${count}`);
+    } catch (e) {
+      counts[m.name] = `ERROR: ${e.message}`;
+      console.error(`Error counting ${m.name}:`, e.message);
     }
+  }
 
-    // Check row counts for key tables
-    const tables = [
-      'user',
-      'course',
-      'cohort',
-      'courseModule',
-      'lesson',
-      'enrollment',
-      'sessionProgress',
-      'quiz',
-      'quizAttempt',
-      'certificate',
-      'payment',
-      'staffPermission',
-    ];
+  console.log('\n=== USERS IN DB ===');
+  const users = await prisma.user.findMany();
+  console.log(JSON.stringify(users, null, 2));
 
-    for (const t of tables) {
-      try {
-        if (prisma[t]) {
-          const count = await prisma[t].count();
-          console.log(`Table ${t}: ${count} rows`);
-        } else {
-          console.log(`Table ${t}: not in PrismaClient models`);
+  console.log('\n=== COURSES IN DB ===');
+  const courses = await prisma.course.findMany({
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      status: true,
+      priceInr: true,
+      priceUsd: true,
+      createdAt: true,
+      _count: {
+        select: {
+          modules: true,
+          cohorts: true,
+          enrollments: true,
+          orders: true
         }
-      } catch (err) {
-        console.error(`Table ${t} error:`, err.message);
       }
     }
+  });
+  console.log(JSON.stringify(courses, null, 2));
 
-    // Check if there are any users in the User table
-    const users = await prisma.user.findMany({ take: 10 });
-    console.log(`Users sample (${users.length}):`, users.map(u => ({ id: u.id, email: u.email, role: u.role, isOwner: u.isOwner, createdAt: u.createdAt })));
+  console.log('\n=== ORDERS IN DB ===');
+  const orders = await prisma.order.findMany();
+  console.log(JSON.stringify(orders, null, 2));
 
-  } catch (err) {
-    console.error('Database connection FAILED:', err);
-  } finally {
-    await prisma.$disconnect();
-  }
+  console.log('\n=== ENROLLMENTS IN DB ===');
+  const enrollments = await prisma.enrollment.findMany({
+    include: {
+      user: { select: { email: true, name: true } },
+      course: { select: { title: true, slug: true } }
+    }
+  });
+  console.log(JSON.stringify(enrollments, null, 2));
+
+  console.log('\n=== CERTIFICATES IN DB ===');
+  const certificates = await prisma.certificate.findMany();
+  console.log(JSON.stringify(certificates, null, 2));
+
+  console.log('\n=== QUIZ ATTEMPTS IN DB ===');
+  const quizAttempts = await prisma.quizAttempt.findMany();
+  console.log(JSON.stringify(quizAttempts, null, 2));
+
+  console.log('\n=== KNOWLEDGE ENTRIES IN DB ===');
+  const knowledgeEntries = await prisma.knowledgeEntry.findMany();
+  console.log(JSON.stringify(knowledgeEntries, null, 2));
+
+  console.log('\n=== UNANSWERED QUESTIONS IN DB ===');
+  const unanswered = await prisma.unansweredQuestion.findMany();
+  console.log(JSON.stringify(unanswered, null, 2));
+
+  console.log('\n=== NOTIFY ME LEADS IN DB ===');
+  const leads = await prisma.notifyMeLead.findMany();
+  console.log(JSON.stringify(leads, null, 2));
+
+  console.log('\n=== COHORTS IN DB ===');
+  const cohorts = await prisma.cohort.findMany();
+  console.log(JSON.stringify(cohorts, null, 2));
+
+  console.log('\n=== ACTIVITY LOGS IN DB (last 10) ===');
+  const activityLogs = await prisma.activityLog.findMany({
+    take: 10,
+    orderBy: { createdAt: 'desc' }
+  });
+  console.log(JSON.stringify(activityLogs, null, 2));
 }
 
-main();
+main().catch(console.error).finally(() => prisma.$disconnect());
