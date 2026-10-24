@@ -546,7 +546,7 @@ export const INITIAL_COHORTS: Cohort[] = [
   },
 ];
 
-/* 23 Self-Paced Video Lessons corresponding to the 23 curriculum modules */
+/* 23 Scheduled Class Sessions corresponding to the 23 curriculum modules */
 export const SCHEDULED_CLASSES_FLAGSHIP: ScheduledClass[] = ULTIMATE_ASTROLOGY_MODULES.map((mod, index) => {
   const num = index + 1;
   return {
@@ -556,32 +556,14 @@ export const SCHEDULED_CLASSES_FLAGSHIP: ScheduledClass[] = ULTIMATE_ASTROLOGY_M
     sessionNumber: num,
     moduleNumber: num,
     title: mod.title,
-    subtitle: `Module ${num} • Self-Paced Video Lesson`,
+    subtitle: `Module ${num} • Scheduled Class Session`,
     description: mod.description,
-    scheduledStartTime: '2026-01-01T00:00:00.000Z',
-    scheduledAt: '2026-01-01T00:00:00.000Z',
+    scheduledStartTime: '2026-11-01T10:00:00.000Z',
+    scheduledAt: '2026-11-01T10:00:00.000Z',
     durationMinutes: mod.durationMinutes || 75,
     meetingPlatform: 'ZOOM',
     joinUrl: '',
-    status: 'COMPLETED',
-    recording: {
-      id: `rec-${num}`,
-      videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-      provider: 'YOUTUBE',
-      durationMinutes: mod.durationMinutes || 75,
-      recordedDate: '2026-01-01',
-      notesMarkdown: `### ${mod.title}\n\n${mod.description}\n\n#### Key Study Concepts\n${(mod.keyTopics || ['Vedic Astrological Principles', 'Kundali Interpretation']).map(t => `- **${t}**`).join('\n')}\n\n#### Practical Guidance from Acharya Niraj Kumar\nApproach this module by taking detailed notes on your own Lagna Kundali. Observe how the principles manifest in real life before proceeding to the next video lesson.`,
-      keyTakeaways: mod.keyTopics || ['Foundations of Vedic Jyotish', 'Practical chart interpretation'],
-      resources: [
-        {
-          id: `res-${num}-1`,
-          title: `Study Guide & Planetary Reference — Module ${num}`,
-          type: 'PDF',
-          url: '/api/courses/what-is-astrology/syllabus/download',
-          size: '1.2 MB',
-        },
-      ],
-    },
+    status: 'UPCOMING',
   };
 });
 
@@ -879,102 +861,11 @@ export const INITIAL_FINAL_TEST: FinalTest = {
   ],
 };
 
-/* PLACEHOLDER: Demo users */
-export const DEMO_USERS: User[] = [
-  {
-    id: 'user-student-demo',
-    name: 'Aarav Sharma',
-    email: 'student@example.com',
-    role: 'STUDENT',
-    timezone: 'Asia/Kolkata',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-    enrolledCohortIds: ['cohort-wia-batch-1'],
-  },
-  {
-    id: 'user-admin-demo',
-    name: 'Acharya Niraj Kumar',
-    email: 'aapkaastro1606@gmail.com',
-    role: 'OWNER',
-    isOwner: true,
-    timezone: 'Asia/Kolkata',
-    avatarUrl: '/images/Acharya_Niraj_Kumar_Headshot.jpg',
-    enrolledCohortIds: ['cohort-wia-batch-1'],
-  },
-  {
-    id: 'user-staff-content',
-    name: 'Priya Verma (Staff - Courses & Quizzes)',
-    email: 'priya.staff@viar.in',
-    role: 'ADMIN',
-    isOwner: false,
-    staffSections: ['courses', 'quizzes'],
-    timezone: 'Asia/Kolkata',
-    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop',
-    enrolledCohortIds: [],
-  },
-];
+/* PLACEHOLDER: Demo users - purged for production */
+export const DEMO_USERS: User[] = [];
 
-/* Demo certificate */
-export const DEMO_CERTIFICATES: Certificate[] = [
-  {
-    id: 'cert-wia-9842',
-    verificationCode: 'VIAR-2026-WIA-9842',
-    studentId: 'user-student-demo',
-    studentName: 'Aarav Sharma',
-    studentEmail: 'student@example.com',
-    courseId: 'course-what-is-astrology',
-    courseTitle: 'What is Astrology — Foundations of Vedic Astrology',
-    cohortBatchName: 'Self-Paced Masterclass — Vihangam Institute of Astrology and Research',
-    issueDate: 'October 15, 2026',
-    scorePercentage: 90,
-    grade: 'Distinction',
-    instructorName: 'Acharya Niraj Kumar',
-    instructorTitle: 'Jyotish Acharya (Bharatiya Vidya Bhavan) | Founder, VIAR & Aapka Astro',
-    verificationUrl: 'https://viar.in/verify/VIAR-2026-WIA-9842',
-  },
-];
+/* Demo certificate - purged for production */
+export const DEMO_CERTIFICATES: Certificate[] = [];
 
-/* PLACEHOLDER: Demo enrollments */
-export const DEMO_ENROLLMENTS: Enrollment[] = [
-  {
-    id: 'enr-101',
-    studentId: 'user-student-demo',
-    studentName: 'Aarav Sharma',
-    studentEmail: 'student@example.com',
-    courseId: 'course-what-is-astrology',
-    cohortId: 'cohort-wia-batch-1',
-    enrolledAt: '2026-09-20T10:30:00.000Z',
-    paymentStatus: 'PAID',
-    paymentAmount: 5100,
-    currency: 'INR',
-    paymentMethod: 'UPI QR (aapkaastro@okaxis)',
-    paymentId: 'pay_Nz9KqP03948Viar',
-  },
-  {
-    id: 'enr-102',
-    studentId: 'user-sarah-jenkins',
-    studentName: 'Sarah Jenkins',
-    studentEmail: 'sarah.j@london.co.uk',
-    courseId: 'course-what-is-astrology',
-    cohortId: 'cohort-wia-batch-1',
-    enrolledAt: '2026-09-20T14:15:00.000Z',
-    paymentStatus: 'PAID',
-    paymentAmount: 5100,
-    currency: 'INR',
-    paymentMethod: 'UPI QR (aapkaastro@okaxis)',
-    paymentId: 'pay_3M48KqP03948Upi',
-  },
-  {
-    id: 'enr-103',
-    studentId: 'user-david-miller',
-    studentName: 'David K. Miller',
-    studentEmail: 'david.miller@california.com',
-    courseId: 'course-what-is-astrology',
-    cohortId: 'cohort-wia-batch-1',
-    enrolledAt: '2026-09-21T02:40:00.000Z',
-    paymentStatus: 'PAID',
-    paymentAmount: 5100,
-    currency: 'INR',
-    paymentMethod: 'UPI QR (Manual Verification)',
-    paymentId: 'pay_90ViarUpi',
-  },
-];
+/* PLACEHOLDER: Demo enrollments - purged for production */
+export const DEMO_ENROLLMENTS: Enrollment[] = [];

@@ -48,14 +48,20 @@ export default function InstructorAnalyticsPage() {
           const totalInr = data.orders.reduce((sum: number, o: { amountPaidInr?: number }) => sum + (o.amountPaidInr || 0), 0);
           setStats({
             totalStudents: data.orders.length,
-            totalRevenueInr: totalInr || 5100,
+            totalRevenueInr: totalInr || 0,
           });
         } else {
-          setStats(ViarStore.getAdminStats());
+          setStats({
+            totalStudents: 0,
+            totalRevenueInr: 0,
+          });
         }
       })
       .catch(() => {
-        setStats(ViarStore.getAdminStats());
+        setStats({
+          totalStudents: 0,
+          totalRevenueInr: 0,
+        });
       });
   }, []);
 

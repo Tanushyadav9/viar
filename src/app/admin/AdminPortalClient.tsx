@@ -675,7 +675,7 @@ export default function AdminPortalClient({
       completedClasses: loadedClasses.filter((c) => c.status === 'COMPLETED').length,
       upcomingClasses: loadedClasses.filter((c) => c.status !== 'COMPLETED').length,
       certificatesIssued: loadedCertificates.length,
-      activeCohorts: loadedCohorts.filter((c) => c.status === 'ENROLLING' || c.status === 'IN_PROGRESS' || !c.status).length,
+      activeCohorts: loadedCohorts.filter((c) => c.status === 'ENROLLING' || c.status === 'IN_PROGRESS' || c.status === 'ACTIVE' || !c.status).length,
     });
 
     if (!serverAuth) {
@@ -1171,7 +1171,7 @@ export default function AdminPortalClient({
                 <Users className="w-4 h-4 text-amber-400" />
               </div>
               <p className="text-2xl sm:text-3xl font-black text-white">{stats.totalStudents}</p>
-              <p className="text-[11px] text-emerald-400 mt-1">Across 2 Active Cohorts</p>
+              <p className="text-[11px] text-emerald-400 mt-1">Across {stats.activeCohorts} Active Cohort{stats.activeCohorts === 1 ? '' : 's'}</p>
             </div>
 
             <div className="cosmic-card p-5 rounded-2xl border border-white/10">
@@ -1191,9 +1191,9 @@ export default function AdminPortalClient({
                 <Video className="w-4 h-4 text-indigo-400" />
               </div>
               <p className="text-2xl sm:text-3xl font-black text-white">
-                {stats.completedClasses} <span className="text-sm text-slate-400 font-normal">/ 23</span>
+                {stats.completedClasses} <span className="text-sm text-slate-400 font-normal">/ {classes.length || (stats.completedClasses + stats.upcomingClasses) || 23}</span>
               </p>
-              <p className="text-[11px] text-slate-400 mt-1">{stats.upcomingClasses} Upcoming Live Sessions</p>
+              <p className="text-[11px] text-slate-400 mt-1">{stats.upcomingClasses} Upcoming Live Session{stats.upcomingClasses === 1 ? '' : 's'}</p>
             </div>
 
             <div className="cosmic-card p-5 rounded-2xl border border-white/10">

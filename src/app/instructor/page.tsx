@@ -57,18 +57,31 @@ export default function InstructorOverviewPage() {
         if (data?.orders) {
           const totalOrders = data.orders.length;
           const activeStudents = new Set(data.orders.map((o: { studentEmail: string }) => o.studentEmail)).size;
+          const totalRev = data.orders
+            .filter((o: { status?: string }) => o.status === 'VERIFIED' || o.status === 'APPROVED' || o.status === 'PAID')
+            .reduce((sum: number, o: { amountPaidInr?: number }) => sum + (o.amountPaidInr || 0), 0);
           setStats({
-            totalStudents: Math.max(activeStudents, 3),
+            totalStudents: activeStudents,
             totalEnrollments: totalOrders,
+            activeCohorts: 1,
+            totalRevenue: totalRev,
+          });
+        } else {
+          setStats({
+            totalStudents: 0,
+            totalEnrollments: 0,
             activeCohorts: 1,
             totalRevenue: 0,
           });
-        } else {
-          setStats(ViarStore.getAdminStats());
         }
       })
       .catch(() => {
-        setStats(ViarStore.getAdminStats());
+        setStats({
+          totalStudents: 0,
+          totalEnrollments: 0,
+          activeCohorts: 1,
+          totalRevenue: 0,
+        });
       });
   }, []);
 
