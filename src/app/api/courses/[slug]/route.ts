@@ -188,6 +188,23 @@ export async function GET(
           isStaffOrOwner: access.isStaffOrOwner,
           course: {
             ...course,
+            instructor: {
+              name: course.instructorName || 'Acharya Niraj Kumar',
+              title: 'Founder, Aapka Astro & Master Astrologer',
+              bio:
+                course.instructorBio ||
+                'Acharya Niraj Kumar brings together deep traditional Vedic learning rooted in Baidyanath Dham (Deoghar) and corporate leadership experience. Over 20 years of practice, trusted by students and clients across India and abroad.',
+              experienceYears: 20,
+              avatarUrl: '/images/Acharya_Niraj_Kumar_Desk.jpg',
+              aapkaAstroUrl: 'https://aapkaastro.com',
+            },
+            highlights: [
+              '23 On-Demand HD Video Lessons + 2 Bonus Workshops',
+              '100% Self-Paced Permanent Lifetime Access',
+              'Official Verifiable VIAR Certificate of Completion',
+            ],
+            priceInr: course.priceInr ?? 5100,
+            originalPriceInr: course.originalPriceInr ?? 11000,
             enrollmentCount: course.enrollments.length,
             modules: sanitizedModules,
             quizzes: sanitizedQuizzes,

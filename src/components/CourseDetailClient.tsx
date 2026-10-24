@@ -132,7 +132,17 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
   const price = `₹${(course.priceInr || 5100).toLocaleString('en-IN')}`;
   const originalPrice = `₹${(course.originalPriceInr || 11000).toLocaleString('en-IN')}`;
   const savings = `Save ₹${((course.originalPriceInr || 11000) - (course.priceInr || 5100)).toLocaleString('en-IN')}`;
-  const discountPercent = course.originalPriceInr > course.priceInr
+  const origPriceNum = course.originalPriceInr || 11000;
+  const priceNum = course.priceInr || 5100;
+  const instructor = course.instructor || {
+    name: 'Acharya Niraj Kumar',
+    title: 'Founder, Aapka Astro & Master Astrologer',
+    bio: 'Acharya Niraj Kumar brings together deep traditional Vedic learning rooted in Baidyanath Dham (Deoghar) and corporate leadership experience. Over 20 years of practice, trusted by students and clients across India and abroad.',
+    experienceYears: 20,
+    avatarUrl: '/images/Acharya_Niraj_Kumar_Desk.jpg',
+    aapkaAstroUrl: 'https://aapkaastro.com',
+  };
+  const discountPercent = origPriceNum > priceNum
     ? Math.round(((course.originalPriceInr - course.priceInr) / course.originalPriceInr) * 100)
     : 54;
 
@@ -212,8 +222,8 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
             <div className="p-5 rounded-2xl cosmic-card border border-white/10 flex items-start gap-4 mt-6">
               <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-amber-500/40 shrink-0">
                 <Image
-                  src={course.instructor.avatarUrl}
-                  alt={course.instructor.name}
+                  src={instructor.avatarUrl}
+                  alt={instructor.name}
                   fill
                   sizes="64px"
                   className="object-cover"
@@ -222,7 +232,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-white">
-                    {isHi ? 'आचार्य नीरज कुमार' : course.instructor.name}
+                    {isHi ? 'आचार्य नीरज कुमार' : instructor.name}
                   </span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
                     {isHi ? 'मुख्य मार्गदर्शक' : 'Lead Astrologer'}
@@ -230,13 +240,13 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                 </div>
                 <p className="text-xs text-amber-400/90 font-medium">
                   {isHi
-                    ? `संस्थापक, आपका एस्ट्रो • ${course.instructor.experienceYears}+ वर्ष वैदिक अनुभव`
-                    : `Founder, Aapka Astro • ${course.instructor.experienceYears}+ Years Vedic Experience`}
+                    ? `संस्थापक, आपका एस्ट्रो • ${instructor.experienceYears}+ वर्ष वैदिक अनुभव`
+                    : `Founder, Aapka Astro • ${instructor.experienceYears}+ Years Vedic Experience`}
                 </p>
                 <p className="text-xs text-slate-400 leading-relaxed pt-1">
                   {isHi
                     ? 'बैद्यनाथ धाम (देवघर) की प्राचीन परंपरा और 20+ वर्षों के कॉर्पोरेट कार्यकारी नेतृत्व का दुर्लभ संगम। देश-विदेश में हजारों छात्रों और परामर्शार्थियों द्वारा प्रशंसित।'
-                    : course.instructor.bio}
+                    : instructor.bio}
                 </p>
               </div>
             </div>

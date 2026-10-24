@@ -137,7 +137,16 @@ export default function CoursesPage() {
             const courseTitle = isHi && hiData?.title ? hiData.title : course.title;
             const courseTagline = isHi && hiData?.tagline ? hiData.tagline : course.tagline;
             const courseDesc = isHi && hiData?.description ? hiData.description : course.description;
-            const courseHighlights = isHi && hiData?.highlights ? hiData.highlights : course.highlights;
+            const defaultHighlights = [
+              isHi ? '23 ऑन-डिमांड वीडियो पाठ सम्मिलित' : 'Includes 23 HD video lessons',
+              isHi ? '2 बोनस व्यावहारिक कुंडली कार्यशालाएं' : '2 Bonus chart workshops',
+              isHi ? 'सत्यापन योग्य VIAR आधिकारिक प्रमाणपत्र' : 'Verifiable Certificate included',
+            ];
+            const rawHighlights = isHi && hiData?.highlights ? hiData.highlights : (course.highlights || defaultHighlights);
+            const courseHighlights = Array.isArray(rawHighlights) && rawHighlights.length > 0 ? rawHighlights : defaultHighlights;
+
+            const origPriceFormatted = Number(course.originalPriceInr ?? 11000).toLocaleString('en-IN');
+            const priceFormatted = Number(course.priceInr ?? 5100).toLocaleString('en-IN');
 
             const badgeText = isComingSoon
               ? (isHi ? 'शीघ्र आ रहा है' : 'Coming Soon')
@@ -205,8 +214,11 @@ export default function CoursesPage() {
                         : (isHi ? 'शिक्षण शुल्क (एकमुश्त)' : 'Tuition (One-Time)')}
                     </span>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-xs text-slate-500 line-through">₹{course.originalPriceInr.toLocaleString()}</span>
-                      <span className="text-2xl font-black text-white">₹{course.priceInr.toLocaleString()}</span>
+                      <span className="text-sm font-semibold text-slate-400 line-through">₹{origPriceFormatted}</span>
+                      <span className="text-2xl font-black text-white">₹{priceFormatted}</span>
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
+                        {isHi ? '54% छूट' : '54% OFF'}
+                      </span>
                       
                     </div>
                   </div>
