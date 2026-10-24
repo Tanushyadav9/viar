@@ -211,23 +211,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 }}
               />
             </div>
-
-            {/* Quick Development & Staging Access */}
-            <div className="p-4 rounded-2xl bg-amber-500/[0.06] border border-amber-500/20 text-center space-y-2">
-              <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider block">
-                Local Development &amp; Testing Access
-              </span>
-              <p className="text-xs text-slate-300">
-                To access the Admin Panel directly as Site Owner (<code>aapkaastro1606@gmail.com</code>):
-              </p>
-              <Link
-                href="/admin?key=viar-owner-diagnostics-2026"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition shadow-sm"
-              >
-                <span>🔑 Enter Admin Panel as Site Owner</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
           </div>
         )}
 
