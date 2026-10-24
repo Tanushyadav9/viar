@@ -242,6 +242,16 @@ export interface ScheduledClass {
   passcode?: string;
   status: 'UPCOMING' | 'LIVE' | 'COMPLETED';
   recording?: ClassRecording;
+  lessonType?: 'VIDEO' | 'LIVE_SESSION' | 'DOCUMENT' | 'QUIZ';
+  isExternalVideo?: boolean;
+  externalVideoUrl?: string;
+  agenda?: string;
+  notesMarkdown?: string;
+  documentDownloadUrl?: string;
+  documentKey?: string;
+  liveTimezone?: string;
+  recordingUrl?: string;
+  isFreePreview?: boolean;
 }
 
 export interface TestQuestion {

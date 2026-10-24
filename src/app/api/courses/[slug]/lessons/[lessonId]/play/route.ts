@@ -82,8 +82,20 @@ export async function GET(
       );
     }
 
-    // 4. Secure Video Playback Token Issuance
-    // Security Rule: Do NOT use public or unlisted YouTube links for paid lessons
+    // 4. External Video or Secure Cloudflare Stream Playback
+    if (lesson.isExternalVideo && (lesson.externalVideoUrl || lesson.videoProviderId)) {
+      return NextResponse.json({
+        success: true,
+        lessonId: lesson.id,
+        lessonTitle: lesson.title,
+        playbackUrl: lesson.externalVideoUrl || lesson.videoProviderId,
+        isExternal: true,
+        duration: lesson.videoDuration,
+        provider: 'external',
+        warning: 'Not protected: anyone with this link can share it',
+      });
+    }
+
     const rawVideoId = lesson.videoProviderId || '';
     const isYouTube = rawVideoId.includes('youtube.com') || rawVideoId.includes('youtu.be');
 

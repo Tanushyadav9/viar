@@ -15,10 +15,14 @@ import {
   MessageSquare,
   Send,
   ArrowRight,
+  Calendar,
+  Video,
+  FileText,
+  Download,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { Course, Cohort, ScheduledClass, ClassDiscussionComment, User } from '@/lib/types';
-import { getUserLocalTimezone } from '@/lib/timezones';
+import { getUserLocalTimezone, formatInTimezone } from '@/lib/timezones';
 import {
   AsyncStateView,
   type AsyncStateStatus,
@@ -115,6 +119,7 @@ export default function CohortClassByClassPage() {
             for (const mod of crs.modules) {
               if (Array.isArray(mod.lessons)) {
                 for (const l of mod.lessons) {
+                  const recUrl = l.recordingUrl || l.playbackUrl;
                   mappedClasses.push({
                     id: l.id,
                     cohortId: cohortId,
@@ -124,22 +129,32 @@ export default function CohortClassByClassPage() {
                     subtitle: mod.title,
                     description: l.description || `${mod.title} lecture material.`,
                     scheduledStartTime: l.liveScheduledAt || new Date().toISOString(),
-                    durationMinutes: Math.round((l.videoDuration || 3600) / 60),
-                    meetingPlatform: 'ZOOM',
+                    durationMinutes: l.durationMinutes || Math.round((l.videoDuration || 3600) / 60),
+                    meetingPlatform: (l.meetingPlatform as 'ZOOM' | 'GOOGLE_MEET') || 'GOOGLE_MEET',
                     joinUrl: l.liveJoinLink || '',
                     status: 'UPCOMING',
-                    recording: l.playbackUrl ? {
+                    lessonType: l.type || 'VIDEO',
+                    isExternalVideo: Boolean(l.isExternalVideo),
+                    externalVideoUrl: l.externalVideoUrl || (l.isExternalVideo ? l.videoProviderId : undefined),
+                    agenda: l.agenda || null,
+                    notesMarkdown: l.notesMarkdown || null,
+                    documentDownloadUrl: l.documentDownloadUrl || l.documentUrl || null,
+                    documentKey: l.documentKey || null,
+                    liveTimezone: l.liveTimezone || 'Asia/Kolkata',
+                    recordingUrl: l.recordingUrl || null,
+                    isFreePreview: Boolean(l.isFreePreview),
+                    recording: recUrl ? {
                       id: `rec-${l.id}`,
-                      videoUrl: l.playbackUrl,
+                      videoUrl: recUrl,
                       provider: 'DIRECT',
-                      durationMinutes: Math.round((l.videoDuration || 3600) / 60),
+                      durationMinutes: l.durationMinutes || Math.round((l.videoDuration || 3600) / 60),
                       recordedDate: new Date().toISOString(),
-                      notesMarkdown: l.documentDownloadUrl
+                      notesMarkdown: l.notesMarkdown || (l.documentDownloadUrl
                         ? `Official Study Reference PDF: [Download Study Guide](${l.documentDownloadUrl})`
-                        : `${mod.title} lecture notes.`,
+                        : `${mod.title} lecture notes.`),
                       keyTakeaways: [mod.title, l.title],
-                      resources: l.documentDownloadUrl ? [
-                        { id: `res-${l.id}`, title: 'Official Study Guide', type: 'PDF', url: l.documentDownloadUrl }
+                      resources: (l.documentDownloadUrl || l.documentUrl) ? [
+                        { id: `res-${l.id}`, title: 'Official Study Guide', type: 'PDF', url: l.documentDownloadUrl || l.documentUrl }
                       ] : [],
                     } : undefined,
                   });
@@ -409,94 +424,281 @@ export default function CohortClassByClassPage() {
                   </label>
                 </div>
 
-                {/* Self-Paced Video Details */}
-                <div className="flex items-center gap-4 text-xs text-slate-300 bg-white/[0.03] p-3 rounded-xl border border-white/5">
-                  <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>
-                    Self-Paced Module • Duration: <strong className="text-white">{activeClass.durationMinutes || 60} mins</strong> • 100% On-Demand Access
-                  </span>
-                </div>
-
-                {/* Video / Join Link Container (Paywall Protected) */}
-                {!isEnrolled ? (
-                  <div className="p-8 sm:p-12 rounded-2xl bg-gradient-to-b from-[#111827] to-[#0a0f1a] border border-amber-500/40 text-center space-y-4">
-                    <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
-                      <Lock className="w-7 h-7" />
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      Course Material Locked • Paid Enrollment Required
-                    </span>
-                    <h3 className="text-xl sm:text-2xl font-black text-white">
-                      Unlock Acharya Niraj Kumar&apos;s Full Masterclass
-                    </h3>
-                    <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
-                      You are viewing preview mode for &ldquo;{activeClass.title}&rdquo;. Complete enrollment to unlock all 23 on-demand video lessons, study guide downloads, and the verified certification exam.
-                    </p>
-                    <div className="pt-2">
-                      <Link
-                        href={`/checkout/${cohort.id}`}
-                        className="gold-button px-6 py-3 rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-lg shadow-amber-500/20 uppercase tracking-wider"
-                      >
-                        <span>Enroll Now to Unlock Course Material</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    </div>
-                  </div>
-                ) : activeClass.recording ? (
+                {/* Lesson Type Header & Details */}
+                {activeClass.lessonType === 'LIVE_SESSION' ? (
                   <div className="space-y-4">
-                    <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/30 shadow-2xl bg-black aspect-video">
-                      <iframe
-                        src={activeClass.recording.videoUrl}
-                        title={activeClass.title}
-                        loading="lazy"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        className="w-full h-full object-cover"
-                      ></iframe>
-                    </div>
-                    <div className="text-xs text-slate-400 flex flex-wrap items-center justify-between gap-2">
-                      <span>Duration: {activeClass.recording.durationMinutes} mins</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          HD Replay Ready
+                    {/* Date/Time Banner in Student Timezone and IST */}
+                    <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                      <div className="flex items-start gap-3">
+                        <Calendar className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                        <div className="space-y-0.5">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 block">
+                            Live Class Session
+                          </span>
+                          <div className="font-bold text-white text-sm">
+                            {formatInTimezone(activeClass.scheduledStartTime, userTz, 'short')}
+                            <span className="text-amber-300 font-semibold ml-2">
+                              ({formatInTimezone(activeClass.scheduledStartTime, 'Asia/Kolkata', 'short')} IST)
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-300">
+                            Platform: {activeClass.meetingPlatform || 'Google Meet'} • Expected Duration: {activeClass.durationMinutes || 90} mins
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
+                          Live Interactive
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleWatched(activeClass.id)}
-                          className="px-3 py-1 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10"
-                        >
-                          {watchedSet.has(activeClass.id) ? 'Watched ✓' : 'Mark as Watched'}
-                        </button>
                       </div>
                     </div>
+
+                    {/* Class Agenda */}
+                    {activeClass.agenda && (
+                      <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 space-y-1">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">Class Agenda</span>
+                        <p className="text-xs text-slate-200 leading-relaxed">{activeClass.agenda}</p>
+                      </div>
+                    )}
+
+                    {/* Live Meeting Room Gating */}
+                    {!isEnrolled ? (
+                      <div className="p-6 rounded-2xl bg-white/[0.03] border border-dashed border-amber-500/30 text-center space-y-2">
+                        <Lock className="w-5 h-5 text-amber-400 mx-auto" />
+                        <span className="text-xs font-bold text-white block">Live Class Meeting Link Private</span>
+                        <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                          Meeting links are shareable by nature and are shown only to approved students.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <span className="text-xs font-bold text-emerald-300 block">Live Meeting Room Access</span>
+                          <span className="text-[10px] text-slate-400">
+                            Meeting links are shareable by nature. Please keep this link confidential to your cohort.
+                          </span>
+                        </div>
+                        {activeClass.joinUrl ? (
+                          <a
+                            href={activeClass.joinUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="gold-button px-5 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-2 shrink-0"
+                          >
+                            <Video className="w-4 h-4" />
+                            <span>Join Live Class ({activeClass.meetingPlatform || 'Google Meet'})</span>
+                          </a>
+                        ) : (
+                          <span className="text-xs text-amber-300 font-semibold">Join link will appear here before class starts.</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Class Recording ("Missed Class" Video) */}
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                          Class Recording (Missed Class Video)
+                        </h4>
+                        {activeClass.recording?.videoUrl && (
+                          <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                            Recording Available
+                          </span>
+                        )}
+                      </div>
+
+                      {activeClass.recording?.videoUrl ? (
+                        <div className="space-y-3">
+                          <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/30 shadow-2xl bg-black aspect-video">
+                            <iframe
+                              src={activeClass.recording.videoUrl}
+                              title={activeClass.title}
+                              loading="lazy"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              className="w-full h-full object-cover"
+                            ></iframe>
+                          </div>
+                          <div className="text-xs text-slate-400 flex items-center justify-between">
+                            <span>Students who missed the live class watch it from this same lesson.</span>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleWatched(activeClass.id)}
+                              className="px-3 py-1 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10"
+                            >
+                              {watchedSet.has(activeClass.id) ? 'Watched ✓' : 'Mark as Watched'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/10 text-center space-y-2">
+                          <div className="inline-flex px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                            Recording coming soon
+                          </div>
+                          <p className="text-xs text-slate-400 max-w-md mx-auto">
+                            Missed this class? Acharya Niraj Kumar&apos;s team attaches the class recording here after the session concludes. You can watch it directly from this lesson.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <div className="p-8 rounded-2xl bg-gradient-to-b from-[#101726] to-[#0a0f1a] border border-amber-500/20 text-center space-y-4">
+                ) : activeClass.lessonType === 'DOCUMENT' ? (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-5 h-5 text-amber-400 shrink-0" />
+                        <div>
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 block">
+                            Study Notes &amp; Reference Material
+                          </span>
+                          <span className="text-xs text-slate-200">
+                            Official companion reference guide for this module.
+                          </span>
+                        </div>
+                      </div>
+
+                      {activeClass.documentDownloadUrl && (
+                        <a
+                          href={activeClass.documentDownloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="gold-button px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shrink-0"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Download PDF</span>
+                        </a>
+                      )}
+                    </div>
+
+                    {activeClass.notesMarkdown && (
+                      <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">
+                        {activeClass.notesMarkdown}
+                      </div>
+                    )}
+                  </div>
+                ) : activeClass.lessonType === 'QUIZ' ? (
+                  <div className="p-8 rounded-2xl bg-gradient-to-b from-[#101726] to-[#0a0f1a] border border-amber-500/30 text-center space-y-4">
                     <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center mx-auto">
-                      <Play className="w-7 h-7 fill-current" />
+                      <Award className="w-7 h-7" />
                     </div>
                     <div>
                       <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
-                        Self-Paced Video Module
+                        Knowledge Assessment
                       </span>
                       <h3 className="text-xl font-bold text-white mt-1">
                         {activeClass.title}
                       </h3>
                       <p className="text-xs text-slate-400 mt-2 max-w-md mx-auto">
-                        This video lesson is available for instant streaming. Mark as watched once completed to count toward your certificate eligibility.
+                        This assessment is graded strictly on the server. Answer all questions to verify your mastery and qualify for your certificate.
                       </p>
                     </div>
                     <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleWatched(activeClass.id)}
+                      <Link
+                        href={`/dashboard/courses/${cohort.id}/quiz`}
                         className="gold-button px-6 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-2"
                       >
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>{watchedSet.has(activeClass.id) ? 'Completed ✓' : 'Mark Module as Watched'}</span>
-                      </button>
+                        <span>Start Assessment</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
                     </div>
+                  </div>
+                ) : (
+                  /* Type: VIDEO (Recorded lesson) */
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4 text-xs text-slate-300 bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                      <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>
+                        Recorded Video Lesson • Duration: <strong className="text-white">{activeClass.durationMinutes || 60} mins</strong> • 100% On-Demand Access
+                      </span>
+                      {activeClass.isExternalVideo && (
+                        <span className="ml-auto text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                          External Video
+                        </span>
+                      )}
+                    </div>
+
+                    {!isEnrolled && !activeClass.isFreePreview ? (
+                      <div className="p-8 sm:p-12 rounded-2xl bg-gradient-to-b from-[#111827] to-[#0a0f1a] border border-amber-500/40 text-center space-y-4">
+                        <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+                          <Lock className="w-7 h-7" />
+                        </div>
+                        <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          Course Material Locked • Paid Enrollment Required
+                        </span>
+                        <h3 className="text-xl sm:text-2xl font-black text-white">
+                          Unlock Acharya Niraj Kumar&apos;s Full Masterclass
+                        </h3>
+                        <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+                          You are viewing preview mode for &ldquo;{activeClass.title}&rdquo;. Complete enrollment to unlock all video lessons, study guide downloads, and the verified certification exam.
+                        </p>
+                        <div className="pt-2">
+                          <Link
+                            href={`/checkout/${cohort.id}`}
+                            className="gold-button px-6 py-3 rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-lg shadow-amber-500/20 uppercase tracking-wider"
+                          >
+                            <span>Enroll Now to Unlock Course Material</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </div>
+                    ) : activeClass.recording?.videoUrl ? (
+                      <div className="space-y-4">
+                        <div className="relative rounded-2xl overflow-hidden border-2 border-amber-500/30 shadow-2xl bg-black aspect-video">
+                          <iframe
+                            src={activeClass.recording.videoUrl}
+                            title={activeClass.title}
+                            loading="lazy"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            className="w-full h-full object-cover"
+                          ></iframe>
+                        </div>
+                        <div className="text-xs text-slate-400 flex flex-wrap items-center justify-between gap-2">
+                          <span>Duration: {activeClass.recording.durationMinutes} mins</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              HD Video Ready
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleWatched(activeClass.id)}
+                              className="px-3 py-1 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10"
+                            >
+                              {watchedSet.has(activeClass.id) ? 'Watched ✓' : 'Mark as Watched'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-8 rounded-2xl bg-gradient-to-b from-[#101726] to-[#0a0f1a] border border-amber-500/20 text-center space-y-4">
+                        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center mx-auto">
+                          <Play className="w-7 h-7 fill-current" />
+                        </div>
+                        <div>
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+                            Recorded Video Lesson
+                          </span>
+                          <h3 className="text-xl font-bold text-white mt-1">
+                            {activeClass.title}
+                          </h3>
+                          <p className="text-xs text-slate-400 mt-2 max-w-md mx-auto">
+                            This video lesson is available for instant streaming. Mark as watched once completed to count toward your certificate eligibility.
+                          </p>
+                        </div>
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleWatched(activeClass.id)}
+                            className="gold-button px-6 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-2"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>{watchedSet.has(activeClass.id) ? 'Completed ✓' : 'Mark Module as Watched'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -705,16 +907,39 @@ export default function CohortClassByClassPage() {
                           </h4>
                         </div>
                         <p className="text-[10px] text-slate-400 mt-0.5">
-                          {cls.durationMinutes || 60} mins • On-demand video
+                          {cls.lessonType === 'LIVE_SESSION'
+                            ? `${cls.durationMinutes || 90} mins • Live session`
+                            : cls.lessonType === 'DOCUMENT'
+                            ? 'PDF study material'
+                            : cls.lessonType === 'QUIZ'
+                            ? 'Graded assessment'
+                            : `${cls.durationMinutes || 60} mins • On-demand video`}
                         </p>
                       </div>
                     </div>
 
                     <div className="shrink-0 text-right">
-                      <span className="text-[10px] font-medium text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-1">
-                        <Play className="w-2.5 h-2.5 fill-current" />
-                        Video
-                      </span>
+                      {cls.lessonType === 'LIVE_SESSION' ? (
+                        <span className="text-[10px] font-medium text-amber-400 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 flex items-center gap-1">
+                          <Calendar className="w-2.5 h-2.5" />
+                          Live Class
+                        </span>
+                      ) : cls.lessonType === 'DOCUMENT' ? (
+                        <span className="text-[10px] font-medium text-blue-400 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 flex items-center gap-1">
+                          <FileText className="w-2.5 h-2.5" />
+                          Notes
+                        </span>
+                      ) : cls.lessonType === 'QUIZ' ? (
+                        <span className="text-[10px] font-medium text-purple-400 px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 flex items-center gap-1">
+                          <Award className="w-2.5 h-2.5" />
+                          Quiz
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-1">
+                          <Play className="w-2.5 h-2.5 fill-current" />
+                          Video
+                        </span>
+                      )}
                     </div>
                   </div>
                 );

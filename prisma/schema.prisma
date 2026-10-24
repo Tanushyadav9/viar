@@ -192,6 +192,7 @@ model Module {
   description   String?  @db.Text
   descriptionHi String?  @db.Text @map("description_hi")
   order         Int      @default(0)
+  status        String   @default("PUBLISHED")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
@@ -200,6 +201,7 @@ model Module {
 
   @@index([courseId])
   @@index([order])
+  @@index([status])
   @@map("modules")
 }
 
@@ -209,36 +211,46 @@ model Module {
 // ------------------------------------------------------------------------------
 
 model Lesson {
-  id               String          @id @default(cuid())
-  moduleId         String          @map("module_id")
-  module           Module          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  order            Int             @default(0)
-  type             LessonType      @default(VIDEO)
-  title            String
-  titleHi          String?         @map("title_hi")
-  description      String?         @db.Text
-  descriptionHi    String?         @db.Text @map("description_hi")
-  isFreePreview    Boolean         @default(false) @map("is_free_preview")
+  id                String          @id @default(cuid())
+  moduleId          String          @map("module_id")
+  module            Module          @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  order             Int             @default(0)
+  type              LessonType      @default(VIDEO)
+  status            String          @default("PUBLISHED")
+  title             String
+  titleHi           String?         @map("title_hi")
+  description       String?         @db.Text
+  descriptionHi     String?         @db.Text @map("description_hi")
+  isFreePreview     Boolean         @default(false) @map("is_free_preview")
 
   // Type-specific fields
-  videoProviderId  String?         @map("video_provider_id") // Cloudflare Stream UID or YouTube/Vimeo ID or URL
-  videoDuration    Int?            @map("video_duration") // duration in seconds
-  documentKey      String?         @map("document_key") // Cloudflare R2 / S3 file key
-  documentUrl      String?         @map("document_url") // Public or presigned preview URL
-  liveScheduledAt  DateTime?       @map("live_scheduled_at")
-  liveTimezone     String?         @default("Asia/Kolkata") @map("live_timezone")
-  liveJoinLink     String?         @map("live_join_link")
+  videoProviderId   String?         @map("video_provider_id") // Cloudflare Stream UID or YouTube/Vimeo ID or URL
+  videoDuration     Int?            @map("video_duration") // duration in seconds
+  isExternalVideo   Boolean         @default(false) @map("is_external_video")
+  externalVideoUrl  String?         @map("external_video_url")
+  documentKey       String?         @map("document_key") // Cloudflare R2 / S3 file key
+  documentUrl       String?         @map("document_url") // Public or presigned preview URL / PDF per lesson
+  notesMarkdown     String?         @db.Text @map("notes_markdown")
+  liveScheduledAt   DateTime?       @map("live_scheduled_at")
+  liveTimezone      String?         @default("Asia/Kolkata") @map("live_timezone")
+  durationMinutes   Int?            @default(60) @map("duration_minutes")
+  liveJoinLink      String?         @map("live_join_link")
+  meetingPlatform   MeetingPlatform? @default(GOOGLE_MEET) @map("meeting_platform")
+  agenda            String?         @db.Text
+  recordingUrl      String?         @map("recording_url")
+  recordingStreamId String?         @map("recording_stream_id")
 
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
 
   // Relations
-  quizzes          Quiz[]
-  progress         LessonProgress[]
+  quizzes           Quiz[]
+  progress          LessonProgress[]
 
   @@index([moduleId])
   @@index([order])
   @@index([type])
+  @@index([status])
   @@map("lessons")
 }
 

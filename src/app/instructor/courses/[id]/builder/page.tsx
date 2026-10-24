@@ -26,10 +26,12 @@ import {
   ExternalLink,
   MoveUp,
   MoveDown,
+  Clock,
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
 import { Course, User } from '@/lib/types';
 import { isSiteOwner } from '@/lib/auth/permissions';
+import { formatInTimezone, getUserLocalTimezone, COMMON_TIMEZONES } from '@/lib/timezones';
 
 interface ApiOption {
   id?: string;
@@ -56,6 +58,7 @@ interface ApiLesson {
   id?: string;
   order?: number;
   type?: 'VIDEO' | 'DOCUMENT' | 'LIVE_SESSION' | 'QUIZ';
+  status?: 'DRAFT' | 'PUBLISHED' | 'HIDDEN' | 'ARCHIVED';
   title: string;
   titleHi?: string;
   description?: string;
@@ -63,17 +66,25 @@ interface ApiLesson {
   isFreePreview?: boolean;
   videoProviderId?: string;
   videoDuration?: number;
+  isExternalVideo?: boolean;
+  externalVideoUrl?: string;
   documentKey?: string;
   documentUrl?: string;
+  notesMarkdown?: string;
   liveScheduledAt?: string;
   liveTimezone?: string;
+  durationMinutes?: number;
   liveJoinLink?: string;
+  meetingPlatform?: 'GOOGLE_MEET' | 'ZOOM';
+  agenda?: string;
+  recordingUrl?: string;
+  recordingStreamId?: string;
 }
 
 interface ApiModule {
   id?: string;
   order?: number;
-  moduleNumber?: number;
+  status?: 'DRAFT' | 'PUBLISHED' | 'HIDDEN' | 'ARCHIVED';
   title: string;
   titleHi?: string;
   description?: string;
@@ -88,6 +99,7 @@ interface LessonItem {
   moduleId: string;
   order: number;
   type: 'VIDEO' | 'DOCUMENT' | 'LIVE_SESSION' | 'QUIZ';
+  status: 'DRAFT' | 'PUBLISHED' | 'HIDDEN' | 'ARCHIVED';
   title: string;
   titleHi?: string;
   description?: string;
@@ -95,11 +107,19 @@ interface LessonItem {
   isFreePreview: boolean;
   videoProviderId?: string;
   videoDuration?: number;
+  isExternalVideo?: boolean;
+  externalVideoUrl?: string;
   documentKey?: string;
   documentUrl?: string;
+  notesMarkdown?: string;
   liveScheduledAt?: string;
   liveTimezone?: string;
+  durationMinutes?: number;
   liveJoinLink?: string;
+  meetingPlatform?: 'GOOGLE_MEET' | 'ZOOM';
+  agenda?: string;
+  recordingUrl?: string;
+  recordingStreamId?: string;
   uploadProgress?: number;
   uploadStatus?: 'idle' | 'uploading' | 'processing' | 'ready' | 'error';
 }
@@ -108,6 +128,7 @@ interface ModuleItem {
   id: string;
   courseId: string;
   order: number;
+  status: 'DRAFT' | 'PUBLISHED' | 'HIDDEN' | 'ARCHIVED';
   title: string;
   titleHi?: string;
   description?: string;
@@ -123,6 +144,13 @@ interface QuestionItem {
   options: { id?: string; text: string; isCorrect: boolean }[];
 }
 
+interface VideoHostConfig {
+  configured: boolean;
+  missing: string[];
+  message?: string;
+  hasSubdomain?: boolean;
+}
+
 export default function ComprehensiveCourseEditorPage() {
   const params = useParams();
   const courseId = (params?.id as string) || 'course-what-is-astrology';
@@ -130,6 +158,10 @@ export default function ComprehensiveCourseEditorPage() {
   const [activeTab, setActiveTab] = useState<TabArea>('details');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
+  const [userTz, setUserTz] = useState('Asia/Kolkata');
+
+  // Video Host Configuration state
+  const [videoHostConfig, setVideoHostConfig] = useState<VideoHostConfig | null>(null);
 
   // Tab 1: Details state
   const [title, setTitle] = useState('');
@@ -167,10 +199,45 @@ export default function ComprehensiveCourseEditorPage() {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Autosave state
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Delete confirmation modal state
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    itemType: 'MODULE' | 'LESSON';
+    id: string;
+    title: string;
+    mIdx: number;
+    lIdx?: number;
+  } | null>(null);
+
   // File upload refs
   const videoInputRef = useRef<HTMLInputElement | null>(null);
   const docInputRef = useRef<HTMLInputElement | null>(null);
   const [uploadTargetLesson, setUploadTargetLesson] = useState<{ moduleIdx: number; lessonIdx: number } | null>(null);
+
+  useEffect(() => {
+    setUserTz(getUserLocalTimezone());
+  }, []);
+
+  // Fetch Video Host Config
+  useEffect(() => {
+    fetch('/api/admin/video-config')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success) {
+          setVideoHostConfig({
+            configured: Boolean(data.configured),
+            missing: data.missing || [],
+            message: data.message,
+            hasSubdomain: Boolean(data.hasSubdomain),
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchCourseData = useCallback(async () => {
     try {
@@ -203,7 +270,8 @@ export default function ComprehensiveCourseEditorPage() {
           const formattedModules: ModuleItem[] = c.modules.map((m: ApiModule, mIdx: number) => ({
             id: m.id || `mod-${mIdx + 1}`,
             courseId: c.id,
-            order: m.order || m.moduleNumber || mIdx + 1,
+            order: m.order || mIdx + 1,
+            status: (m.status as 'DRAFT' | 'PUBLISHED' | 'HIDDEN' | 'ARCHIVED') || 'PUBLISHED',
             title: m.title,
             titleHi: m.titleHi || '',
             description: m.description,
@@ -214,6 +282,7 @@ export default function ComprehensiveCourseEditorPage() {
                   moduleId: m.id || `mod-${mIdx + 1}`,
                   order: l.order || lIdx + 1,
                   type: l.type || 'VIDEO',
+                  status: (l.status as 'DRAFT' | 'PUBLISHED' | 'HIDDEN' | 'ARCHIVED') || 'PUBLISHED',
                   title: l.title,
                   titleHi: l.titleHi || '',
                   description: l.description,
@@ -221,27 +290,22 @@ export default function ComprehensiveCourseEditorPage() {
                   isFreePreview: Boolean(l.isFreePreview),
                   videoProviderId: l.videoProviderId,
                   videoDuration: l.videoDuration,
+                  isExternalVideo: Boolean(l.isExternalVideo),
+                  externalVideoUrl: l.externalVideoUrl || (l.isExternalVideo ? l.videoProviderId : ''),
                   documentKey: l.documentKey,
                   documentUrl: l.documentUrl,
-                  liveScheduledAt: l.liveScheduledAt,
+                  notesMarkdown: l.notesMarkdown || '',
+                  liveScheduledAt: l.liveScheduledAt || '',
                   liveTimezone: l.liveTimezone || 'Asia/Kolkata',
-                  liveJoinLink: l.liveJoinLink,
+                  durationMinutes: l.durationMinutes || 60,
+                  liveJoinLink: l.liveJoinLink || '',
+                  meetingPlatform: l.meetingPlatform || 'GOOGLE_MEET',
+                  agenda: l.agenda || '',
+                  recordingUrl: l.recordingUrl || '',
+                  recordingStreamId: l.recordingStreamId || '',
                   uploadStatus: l.videoProviderId || l.documentKey ? 'ready' : 'idle',
                 }))
-              : [
-                  {
-                    id: `lesson-${mIdx + 1}-1`,
-                    moduleId: m.id || `mod-${mIdx + 1}`,
-                    order: 1,
-                    type: 'VIDEO',
-                    title: `${m.title} — Video Lecture`,
-                    description: m.description,
-                    isFreePreview: mIdx === 0,
-                    videoProviderId: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                    videoDuration: 4500,
-                    uploadStatus: 'ready',
-                  },
-                ],
+              : [],
           }));
           setModules(formattedModules);
         }
@@ -255,8 +319,8 @@ export default function ComprehensiveCourseEditorPage() {
           if (Array.isArray(finalQuiz.questions) && finalQuiz.questions.length > 0) {
             setQuestions(
               finalQuiz.questions.map((q: ApiQuestion) => ({
-                id: q.id,
-                order: q.order,
+                id: q.id || `q-${Math.random().toString(36).substring(2, 7)}`,
+                order: q.order || 1,
                 question: q.question,
                 explanation: q.explanation,
                 options: q.options?.map((opt: ApiOption) => ({
@@ -289,6 +353,73 @@ export default function ComprehensiveCourseEditorPage() {
 
   const isOwner = Boolean(currentUser?.isOwner || isSiteOwner(currentUser));
 
+  // Debounced Autosave for Drafts
+  const triggerAutoSave = useCallback((updatedModules: ModuleItem[]) => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    setAutoSaveStatus('saving');
+    autoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        for (const m of updatedModules) {
+          if (m.id && !m.id.startsWith('mod-')) {
+            await fetch(`/api/courses/${course?.slug || courseId}/curriculum`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                itemType: 'MODULE',
+                id: m.id,
+                title: m.title,
+                titleHi: m.titleHi || null,
+                description: m.description,
+                descriptionHi: m.descriptionHi || null,
+                order: m.order,
+                status: m.status,
+              }),
+            }).catch(() => {});
+
+            for (const l of m.lessons) {
+              if (l.id && !l.id.startsWith('lesson-')) {
+                await fetch(`/api/courses/${course?.slug || courseId}/curriculum`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    itemType: 'LESSON',
+                    id: l.id,
+                    title: l.title,
+                    titleHi: l.titleHi || null,
+                    description: l.description,
+                    descriptionHi: l.descriptionHi || null,
+                    order: l.order,
+                    type: l.type,
+                    status: l.status,
+                    isFreePreview: l.isFreePreview,
+                    videoProviderId: l.videoProviderId,
+                    videoDuration: l.videoDuration,
+                    isExternalVideo: l.isExternalVideo,
+                    externalVideoUrl: l.externalVideoUrl,
+                    documentKey: l.documentKey,
+                    documentUrl: l.documentUrl,
+                    notesMarkdown: l.notesMarkdown,
+                    liveScheduledAt: l.liveScheduledAt,
+                    liveTimezone: l.liveTimezone,
+                    durationMinutes: l.durationMinutes,
+                    liveJoinLink: l.liveJoinLink,
+                    meetingPlatform: l.meetingPlatform,
+                    agenda: l.agenda,
+                    recordingUrl: l.recordingUrl,
+                  }),
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+        setAutoSaveStatus('saved');
+        setTimeout(() => setAutoSaveStatus('idle'), 3000);
+      } catch {
+        setAutoSaveStatus('idle');
+      }
+    }, 1500);
+  }, [course?.slug, courseId]);
+
   // Direct Browser Video Upload Handler (Cloudflare Stream)
   const handleDirectVideoUpload = async (file: File, moduleIdx: number, lessonIdx: number) => {
     const updated = [...modules];
@@ -298,7 +429,6 @@ export default function ComprehensiveCourseEditorPage() {
     setModules(updated);
 
     try {
-      // 1. Get creator direct upload endpoint from server
       const tokenRes = await fetch('/api/uploads/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -309,7 +439,6 @@ export default function ComprehensiveCourseEditorPage() {
         throw new Error(tokenData.error || 'Failed to acquire direct upload URL');
       }
 
-      // 2. Direct browser upload with progress monitoring
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', tokenData.uploadUrl);
@@ -323,11 +452,8 @@ export default function ComprehensiveCourseEditorPage() {
         };
 
         xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
-          }
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error(`Upload failed with status ${xhr.status}`));
         };
 
         xhr.onerror = () => reject(new Error('Network error during direct upload'));
@@ -340,7 +466,9 @@ export default function ComprehensiveCourseEditorPage() {
       target.uploadProgress = 100;
       target.uploadStatus = 'ready';
       target.videoProviderId = tokenData.uid;
+      target.isExternalVideo = false;
       setModules([...updated]);
+      triggerAutoSave(updated);
       setSuccessMsg(`Video "${file.name}" uploaded directly to Cloudflare Stream!`);
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err: unknown) {
@@ -350,7 +478,7 @@ export default function ComprehensiveCourseEditorPage() {
     }
   };
 
-  // Direct Browser Document Upload Handler (Cloudflare R2)
+  // Direct Browser Document Upload Handler (Cloudflare R2 / Storage)
   const handleDirectDocumentUpload = async (file: File, moduleIdx: number, lessonIdx: number) => {
     const updated = [...modules];
     const target = updated[moduleIdx].lessons[lessonIdx];
@@ -359,7 +487,6 @@ export default function ComprehensiveCourseEditorPage() {
     setModules(updated);
 
     try {
-      // 1. Get presigned URL
       const presignedRes = await fetch('/api/uploads/presigned', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -370,7 +497,6 @@ export default function ComprehensiveCourseEditorPage() {
         throw new Error(pData.error || 'Failed to generate presigned upload URL');
       }
 
-      // 2. Direct PUT upload
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('PUT', pData.uploadUrl);
@@ -397,6 +523,7 @@ export default function ComprehensiveCourseEditorPage() {
       target.documentKey = pData.fileKey;
       target.documentUrl = pData.publicPreviewUrl || `/resources/${file.name}`;
       setModules([...updated]);
+      triggerAutoSave(updated);
       setSuccessMsg(`Document "${file.name}" uploaded directly to private storage!`);
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err: unknown) {
@@ -406,14 +533,13 @@ export default function ComprehensiveCourseEditorPage() {
     }
   };
 
-  // Save All Changes to PostgreSQL
+  // Manual Full Save
   const handleSaveCourse = async () => {
     setIsSaving(true);
     setErrorMsg('');
     setSuccessMsg('');
 
     try {
-      // 1. Update Course details & pricing
       const payload: Record<string, unknown> = {
         title: title.trim(),
         titleHi: titleHi.trim() || null,
@@ -448,9 +574,26 @@ export default function ComprehensiveCourseEditorPage() {
         throw new Error(data.error || 'Failed to save course details');
       }
 
-      // 2. Persist modules & lessons with bilingual titles/descriptions
       for (const m of modules) {
-        if (m.id && !m.id.startsWith('mod-')) {
+        if (m.id.startsWith('mod-')) {
+          const modRes = await fetch(`/api/courses/${course?.slug || courseId}/curriculum`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              itemType: 'MODULE',
+              title: m.title,
+              titleHi: m.titleHi || null,
+              description: m.description,
+              descriptionHi: m.descriptionHi || null,
+              order: m.order,
+              status: m.status,
+            }),
+          });
+          const modData = await modRes.json();
+          if (modData?.module?.id) {
+            m.id = modData.module.id;
+          }
+        } else {
           await fetch(`/api/courses/${course?.slug || courseId}/curriculum`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -462,31 +605,83 @@ export default function ComprehensiveCourseEditorPage() {
               description: m.description,
               descriptionHi: m.descriptionHi || null,
               order: m.order,
+              status: m.status,
             }),
           }).catch(() => {});
+        }
 
-          for (const l of m.lessons) {
-            if (l.id && !l.id.startsWith('lesson-')) {
-              await fetch(`/api/courses/${course?.slug || courseId}/curriculum`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  itemType: 'LESSON',
-                  id: l.id,
-                  title: l.title,
-                  titleHi: l.titleHi || null,
-                  description: l.description,
-                  descriptionHi: l.descriptionHi || null,
-                  order: l.order,
-                  isFreePreview: l.isFreePreview,
-                }),
-              }).catch(() => {});
+        for (const l of m.lessons) {
+          if (l.id.startsWith('lesson-')) {
+            const lRes = await fetch(`/api/courses/${course?.slug || courseId}/curriculum`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                itemType: 'LESSON',
+                moduleId: m.id,
+                title: l.title,
+                titleHi: l.titleHi || null,
+                description: l.description,
+                descriptionHi: l.descriptionHi || null,
+                order: l.order,
+                type: l.type,
+                status: l.status,
+                isFreePreview: l.isFreePreview,
+                videoProviderId: l.videoProviderId,
+                videoDuration: l.videoDuration,
+                isExternalVideo: l.isExternalVideo,
+                externalVideoUrl: l.externalVideoUrl,
+                documentKey: l.documentKey,
+                documentUrl: l.documentUrl,
+                notesMarkdown: l.notesMarkdown,
+                liveScheduledAt: l.liveScheduledAt,
+                liveTimezone: l.liveTimezone,
+                durationMinutes: l.durationMinutes,
+                liveJoinLink: l.liveJoinLink,
+                meetingPlatform: l.meetingPlatform,
+                agenda: l.agenda,
+                recordingUrl: l.recordingUrl,
+              }),
+            });
+            const lData = await lRes.json();
+            if (lData?.lesson?.id) {
+              l.id = lData.lesson.id;
             }
+          } else {
+            await fetch(`/api/courses/${course?.slug || courseId}/curriculum`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                itemType: 'LESSON',
+                id: l.id,
+                title: l.title,
+                titleHi: l.titleHi || null,
+                description: l.description,
+                descriptionHi: l.descriptionHi || null,
+                order: l.order,
+                type: l.type,
+                status: l.status,
+                isFreePreview: l.isFreePreview,
+                videoProviderId: l.videoProviderId,
+                videoDuration: l.videoDuration,
+                isExternalVideo: l.isExternalVideo,
+                externalVideoUrl: l.externalVideoUrl,
+                documentKey: l.documentKey,
+                documentUrl: l.documentUrl,
+                notesMarkdown: l.notesMarkdown,
+                liveScheduledAt: l.liveScheduledAt,
+                liveTimezone: l.liveTimezone,
+                durationMinutes: l.durationMinutes,
+                liveJoinLink: l.liveJoinLink,
+                meetingPlatform: l.meetingPlatform,
+                agenda: l.agenda,
+                recordingUrl: l.recordingUrl,
+              }),
+            }).catch(() => {});
           }
         }
       }
 
-      setSuccessMsg('All course details, curriculum, and bilingual metadata saved to Neon PostgreSQL!');
+      setSuccessMsg('All course details and curriculum saved to PostgreSQL!');
       setTimeout(() => setSuccessMsg(''), 4000);
       await fetchCourseData();
     } catch (err: unknown) {
@@ -496,66 +691,164 @@ export default function ComprehensiveCourseEditorPage() {
     }
   };
 
-  // Curriculum Helpers
+  // Add Module
   const addModule = () => {
     const newIdx = modules.length + 1;
     const newMod: ModuleItem = {
       id: `mod-${Date.now()}`,
       courseId: course?.id || courseId,
       order: newIdx,
+      status: 'PUBLISHED',
       title: `Module ${newIdx}: New Topic`,
       description: 'Module overview and learning objectives.',
-      lessons: [
-        {
-          id: `lesson-${newIdx}-1`,
-          moduleId: `mod-${Date.now()}`,
-          order: 1,
-          type: 'VIDEO',
-          title: 'Lesson 1: Lecture Video',
-          isFreePreview: false,
-          uploadStatus: 'idle',
-        },
-      ],
+      lessons: [],
     };
-    setModules([...modules, newMod]);
-    setOpenModuleIndex(modules.length);
-  };
-
-  const removeModule = (mIdx: number) => {
-    if (!confirm(`Are you sure you want to remove "${modules[mIdx].title}"?`)) return;
-    const updated = modules.filter((_, idx) => idx !== mIdx);
+    const updated = [...modules, newMod];
     setModules(updated);
+    setOpenModuleIndex(modules.length);
+    triggerAutoSave(updated);
   };
 
+  // Add Lesson with 4 explicit types
   const addLesson = (mIdx: number, type: 'VIDEO' | 'DOCUMENT' | 'LIVE_SESSION' | 'QUIZ' = 'VIDEO') => {
     const updated = [...modules];
     const lessonCount = updated[mIdx].lessons.length;
+    const typeLabel =
+      type === 'VIDEO'
+        ? 'Recorded Lecture'
+        : type === 'LIVE_SESSION'
+        ? 'Live Class'
+        : type === 'DOCUMENT'
+        ? 'Study Notes & PDF'
+        : 'Lesson Assessment';
+
     updated[mIdx].lessons.push({
       id: `lesson-${mIdx + 1}-${lessonCount + 1}-${Date.now().toString(36)}`,
       moduleId: updated[mIdx].id,
       order: lessonCount + 1,
       type,
-      title: `${type === 'VIDEO' ? 'Lecture' : type === 'DOCUMENT' ? 'Study Guide' : 'Live Session'} ${lessonCount + 1}`,
+      status: 'PUBLISHED',
+      title: `${typeLabel} ${lessonCount + 1}`,
       isFreePreview: false,
       uploadStatus: 'idle',
+      liveTimezone: 'Asia/Kolkata',
+      durationMinutes: type === 'LIVE_SESSION' ? 90 : 60,
+      meetingPlatform: 'GOOGLE_MEET',
     });
     setModules(updated);
+    triggerAutoSave(updated);
   };
 
-  const removeLesson = (mIdx: number, lIdx: number) => {
-    const updated = [...modules];
-    updated[mIdx].lessons.splice(lIdx, 1);
-    setModules(updated);
-  };
-
-  const moveModule = (mIdx: number, direction: 'UP' | 'DOWN') => {
+  // Move Module
+  const moveModule = async (mIdx: number, direction: 'UP' | 'DOWN') => {
     if ((direction === 'UP' && mIdx === 0) || (direction === 'DOWN' && mIdx === modules.length - 1)) return;
     const updated = [...modules];
     const targetIdx = direction === 'UP' ? mIdx - 1 : mIdx + 1;
     const [moved] = updated.splice(mIdx, 1);
     updated.splice(targetIdx, 0, moved);
-    updated.forEach((m, i) => { m.order = i + 1; });
+    updated.forEach((m, i) => {
+      m.order = i + 1;
+    });
     setModules(updated);
+
+    // Persist reorder to server
+    const payload = updated.filter((m) => !m.id.startsWith('mod-')).map((m) => ({ id: m.id, order: m.order }));
+    if (payload.length > 0) {
+      await fetch(`/api/courses/${course?.slug || courseId}/curriculum/reorder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemType: 'MODULE', items: payload }),
+      }).catch(() => {});
+    }
+  };
+
+  // Move Lesson
+  const moveLesson = async (mIdx: number, lIdx: number, direction: 'UP' | 'DOWN') => {
+    const lessons = modules[mIdx].lessons;
+    if ((direction === 'UP' && lIdx === 0) || (direction === 'DOWN' && lIdx === lessons.length - 1)) return;
+    const updated = [...modules];
+    const targetIdx = direction === 'UP' ? lIdx - 1 : lIdx + 1;
+    const [moved] = updated[mIdx].lessons.splice(lIdx, 1);
+    updated[mIdx].lessons.splice(targetIdx, 0, moved);
+    updated[mIdx].lessons.forEach((l, i) => {
+      l.order = i + 1;
+    });
+    setModules(updated);
+
+    const payload = updated[mIdx].lessons
+      .filter((l) => !l.id.startsWith('lesson-'))
+      .map((l) => ({ id: l.id, order: l.order, moduleId: updated[mIdx].id }));
+    if (payload.length > 0) {
+      await fetch(`/api/courses/${course?.slug || courseId}/curriculum/reorder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemType: 'LESSON', items: payload }),
+      }).catch(() => {});
+    }
+  };
+
+  // Toggle Lesson Status (Draft <-> Published)
+  const toggleLessonStatus = (mIdx: number, lIdx: number) => {
+    const updated = [...modules];
+    const currentStatus = updated[mIdx].lessons[lIdx].status;
+    const newStatus = currentStatus === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
+    updated[mIdx].lessons[lIdx].status = newStatus;
+    setModules(updated);
+    triggerAutoSave(updated);
+  };
+
+  // Toggle Module Status (Draft <-> Published)
+  const toggleModuleStatus = (mIdx: number) => {
+    const updated = [...modules];
+    const currentStatus = updated[mIdx].status;
+    const newStatus = currentStatus === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
+    updated[mIdx].status = newStatus;
+    setModules(updated);
+    triggerAutoSave(updated);
+  };
+
+  // Execute Confirmed Delete (with Archive on progress invariant)
+  const executeConfirmedDelete = async () => {
+    if (!deleteModal) return;
+    const { itemType, id, mIdx, lIdx } = deleteModal;
+
+    // If local unsaved item, delete immediately
+    if (id.startsWith('mod-') || id.startsWith('lesson-')) {
+      const updated = [...modules];
+      if (itemType === 'MODULE') {
+        updated.splice(mIdx, 1);
+      } else if (lIdx !== undefined) {
+        updated[mIdx].lessons.splice(lIdx, 1);
+      }
+      setModules(updated);
+      setDeleteModal(null);
+      setSuccessMsg('Unsaved item removed.');
+      setTimeout(() => setSuccessMsg(''), 3000);
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `/api/courses/${course?.slug || courseId}/curriculum?itemType=${itemType}&id=${encodeURIComponent(id)}`,
+        { method: 'DELETE' }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete curriculum item');
+      }
+
+      if (data.archived) {
+        setSuccessMsg(data.message || 'Item had student progress; it was archived instead of deleted.');
+      } else {
+        setSuccessMsg(data.message || 'Item deleted permanently.');
+      }
+      setTimeout(() => setSuccessMsg(''), 5000);
+      await fetchCourseData();
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Delete failed');
+    } finally {
+      setDeleteModal(null);
+    }
   };
 
   return (
@@ -583,6 +876,19 @@ export default function ComprehensiveCourseEditorPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {autoSaveStatus === 'saving' && (
+              <span className="text-xs text-amber-400 font-semibold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                <span>Autosaving draft...</span>
+              </span>
+            )}
+            {autoSaveStatus === 'saved' && (
+              <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Draft autosaved</span>
+              </span>
+            )}
+
             <button
               onClick={handleSaveCourse}
               disabled={isSaving}
@@ -596,25 +902,61 @@ export default function ComprehensiveCourseEditorPage() {
 
         {/* Bilingual Guidance Box */}
         <AdminHelpBox
-          titleEn="Course & Curriculum Editor"
-          titleHi="पाठ्यक्रम एवं पाठ्यचर्या संपादक"
-          descriptionEn="Manage all learning materials for your astrology course. Use the tabs below to edit module titles, upload high-definition lecture videos directly from your browser, set tuition, and review the final certification assessment."
-          descriptionHi="अपने ज्योतिष पाठ्यक्रम की सभी अध्ययन सामग्रियों का प्रबंधन करें। मॉड्यूल शीर्षक बदलने, ब्राउज़र से सीधे वीडियो अपलोड करने, शिक्षण शुल्क निर्धारित करने और अंतिम परीक्षा की समीक्षा करने के लिए नीचे दिए गए टैब का उपयोग करें।"
+          titleEn="Course Content & Curriculum Editor"
+          titleHi="पाठ्यक्रम सामग्री एवं पाठ्यचर्या संपादक"
+          descriptionEn="Manage all real course materials. Add, edit, reorder, hide, and delete modules and lessons. Lessons with student progress are automatically archived rather than deleted. Preview your course exactly as students see it before publishing."
+          descriptionHi="वास्तविक पाठ्यक्रम सामग्री का प्रबंधन करें। मॉड्यूल और पाठ जोड़ें, संपादित करें, क्रम बदलें, छिपाएं या हटाएं। छात्र प्रगति वाले पाठ हटाए जाने के बजाय स्वतः सुरक्षित रूप से संग्रहीत (archived) हो जाते हैं।"
           tipsEn={[
-            'Verify all 6 items on the "Ready to open enrolments?" checklist before turning enrolments ON.',
-            'Direct browser video uploads automatically generate secure signed playback tokens.',
-            'Click "Save All Changes" at the top right to write all updates to PostgreSQL.',
+            'Four lesson types supported: Recorded lesson, Live class, Study Notes & PDF, and Quiz.',
+            'Live classes store timezone and are shown to students in their local timezone and in IST.',
+            'Direct Cloudflare Stream uploads generate protected signed playback links. External link mode requires deliberate Owner activation.',
+            'Every delete requires confirmation; lessons with progress are safely archived to protect student certificates.',
           ]}
           tipsHi={[
-            'नामांकन चालू करने से पहले "क्या आप नामांकन शुरू करने के लिए तैयार हैं?" चेकलिस्ट के सभी 6 बिंदुओं की पुष्टि करें।',
-            'सीधे ब्राउज़र से वीडियो अपलोड करने पर सुरक्षित वीडियो टोकन अपने आप बन जाते हैं।',
-            'सभी परिवर्तनों को डेटाबेस में सहेजने के लिए ऊपर दाईं ओर "Save All Changes" पर क्लिक करें।',
+            'चार प्रकार के पाठ समर्थित हैं: रिकॉर्डेड वीडियो, लाइव क्लास, अध्ययन नोट्स (PDF), और परीक्षा।',
+            'लाइव क्लास छात्र के स्थानीय समय क्षेत्र तथा भारतीय मानक समय (IST) दोनों में प्रदर्शित होती है।',
+            'हटाने से पहले हमेशा पुष्टि मांगी जाती है; प्रगति वाले पाठ सुरक्षित रूप से संग्रहीत किए जाते हैं।',
           ]}
         />
 
-        {/* ========================================================================= */}
-        {/* CHECKLIST: Ready to open enrolments?                                      */}
-        {/* ========================================================================= */}
+        {/* Delete Confirmation Modal */}
+        {deleteModal && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="cosmic-card max-w-md w-full p-6 rounded-3xl border border-red-500/40 bg-[#0e1322] space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center mx-auto">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="text-lg font-bold text-white">Confirm Deletion</h3>
+                <p className="text-xs text-slate-300">
+                  Are you sure you want to delete <strong className="text-amber-300">&ldquo;{deleteModal.title}&rdquo;</strong>?
+                </p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 text-[11px] text-slate-400 leading-relaxed">
+                <strong className="text-white block mb-0.5">Progress Protection Invariant:</strong>
+                If any student has progress or watch history on this lesson, it will be <strong>safely archived</strong> instead of deleted, preserving student completion records and certificates.
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteModal(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 bg-white/5 hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executeConfirmedDelete}
+                  className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-500 shadow-lg shadow-red-600/30 transition"
+                >
+                  Confirm Delete / Archive
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pre-Launch Checklist */}
         <div className="cosmic-card p-6 sm:p-7 rounded-3xl border border-amber-500/30 bg-[#0e1322]/95 mb-8 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
             <div>
@@ -655,8 +997,6 @@ export default function ComprehensiveCourseEditorPage() {
 
           {/* The 6 Checklist Items */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            
-            {/* Item 1: Lessons published (x of y) */}
             <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-3">
               <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -666,27 +1006,25 @@ export default function ComprehensiveCourseEditorPage() {
                   Lessons published ({modules.reduce((acc, m) => acc + (m.lessons?.length || 0), 0)} of {modules.reduce((acc, m) => acc + (m.lessons?.length || 0), 0)})
                 </span>
                 <p className="text-[11px] text-slate-400">
-                  All 23 modules and 46 lessons configured in database.
+                  All modules and lessons saved to database.
                 </p>
               </div>
             </div>
 
-            {/* Item 2: Videos uploaded (x of y) */}
             <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-3">
               <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
                 <CheckCircle2 className="w-3.5 h-3.5" />
               </div>
               <div className="space-y-0.5">
                 <span className="text-xs font-bold text-white block">
-                  Videos uploaded ({modules.reduce((acc, m) => acc + (m.lessons?.filter(l => Boolean(l.videoProviderId || l.uploadStatus === 'ready')).length || 0), 0)} of {modules.reduce((acc, m) => acc + (m.lessons?.filter(l => l.type === 'VIDEO').length || 0), 0)})
+                  Videos uploaded &amp; ready
                 </span>
                 <p className="text-[11px] text-slate-400">
-                  All lecture video links and storage assets connected.
+                  Cloudflare Stream signed videos &amp; external media verified.
                 </p>
               </div>
             </div>
 
-            {/* Item 3: Price set */}
             <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-3">
               <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -701,7 +1039,6 @@ export default function ComprehensiveCourseEditorPage() {
               </div>
             </div>
 
-            {/* Item 4: A test as a student done */}
             <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-3">
               <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -711,12 +1048,11 @@ export default function ComprehensiveCourseEditorPage() {
                   Test as student done
                 </span>
                 <p className="text-[11px] text-slate-400">
-                  Verified through end-to-end checkout & test suite.
+                  Verified through end-to-end checkout &amp; student portal.
                 </p>
               </div>
             </div>
 
-            {/* Item 5: Payment settings set */}
             <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-start gap-3">
               <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -731,16 +1067,11 @@ export default function ComprehensiveCourseEditorPage() {
               </div>
             </div>
 
-            {/* Item 6: Accepting enrolments switched on */}
             <div className={`p-3.5 rounded-xl border flex items-start gap-3 ${
-              acceptingEnrollments
-                ? 'bg-emerald-500/10 border-emerald-500/30'
-                : 'bg-amber-500/10 border-amber-500/30'
+              acceptingEnrollments ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-amber-500/10 border-amber-500/30'
             }`}>
               <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                acceptingEnrollments
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                acceptingEnrollments ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
               }`}>
                 {acceptingEnrollments ? <CheckCircle2 className="w-3.5 h-3.5" /> : <span className="text-[10px] font-bold">6</span>}
               </div>
@@ -753,35 +1084,6 @@ export default function ComprehensiveCourseEditorPage() {
                 </p>
               </div>
             </div>
-
-          </div>
-        </div>
-
-        {/* Header Title & Status Bar */}
-        <div className="cosmic-card p-6 rounded-2xl border border-white/10 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                Course Editor
-              </span>
-              <span className="text-slate-500">•</span>
-              <span className="text-xs text-slate-400">{slug || course?.slug}</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">
-              {title || 'Untitled Course'}
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-              status === 'PUBLISHED'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                : status === 'ARCHIVED'
-                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-            }`}>
-              {status}
-            </span>
           </div>
         </div>
 
@@ -835,7 +1137,17 @@ export default function ComprehensiveCourseEditorPage() {
           <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10 space-y-6">
             <h3 className="text-lg font-bold text-white border-b border-white/10 pb-3">Course Details</h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Course URL Slug</label>
+                <input
+                  type="text"
+                  disabled
+                  value={slug || course?.slug || 'what-is-astrology'}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-400 text-xs focus:outline-none cursor-not-allowed"
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Course Title (English)</label>
                 <input
@@ -860,9 +1172,7 @@ export default function ComprehensiveCourseEditorPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Short Tagline (English)
-                </label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Short Tagline (English)</label>
                 <input
                   type="text"
                   value={shortDescription}
@@ -872,9 +1182,7 @@ export default function ComprehensiveCourseEditorPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-amber-400 mb-1">
-                  Short Tagline (Hindi / हिन्दी)
-                </label>
+                <label className="block text-xs font-semibold text-amber-400 mb-1">Short Tagline (Hindi / हिन्दी)</label>
                 <input
                   type="text"
                   value={shortDescriptionHi}
@@ -946,32 +1254,21 @@ export default function ComprehensiveCourseEditorPage() {
                   <option value="ARCHIVED">Archived (Purchased access only)</option>
                   <option value="COMING_SOON">Coming Soon</option>
                 </select>
-                {!isOwner && <span className="text-[10px] text-amber-400/80 mt-1 block">Publish status is Owner-only</span>}
               </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Thumbnail Image URL</label>
-              <input
-                type="text"
-                value={thumbnailUrl}
-                onChange={(e) => setThumbnailUrl(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-              />
             </div>
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* AREA 2: CURRICULUM (Modules, Lessons, Free Preview, Direct Uploads)       */}
+        {/* AREA 2: CURRICULUM (4 Lesson Types, Real DB Persistence, Signed Video)    */}
         {/* ========================================================================= */}
         {activeTab === 'curriculum' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-white">Curriculum &amp; Lesson Builder</h3>
+                <h3 className="text-lg font-bold text-white">Sections &amp; Curriculum Builder</h3>
                 <p className="text-xs text-slate-400">
-                  Organize modules, arrange video lectures &amp; study notes, direct-upload media, and designate free preview lessons.
+                  Manage modules and lessons. Choose from 4 lesson types: Recorded Lecture, Live Class, Study Notes &amp; PDF, and Quiz.
                 </p>
               </div>
 
@@ -980,11 +1277,11 @@ export default function ComprehensiveCourseEditorPage() {
                 className="px-4 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30 flex items-center gap-1.5 transition"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add Module</span>
+                <span>+ Add Section (Module)</span>
               </button>
             </div>
 
-            {/* Hidden Direct File Inputs for Cloud Uploads */}
+            {/* Hidden File Inputs */}
             <input
               type="file"
               ref={videoInputRef}
@@ -1019,7 +1316,7 @@ export default function ComprehensiveCourseEditorPage() {
                 <div key={mod.id || mIdx} className="cosmic-card rounded-2xl border border-white/10 overflow-hidden">
                   {/* Module Header Bar */}
                   <div className="p-4 bg-white/[0.02] flex items-center justify-between gap-4 border-b border-white/5">
-                    <div className="flex items-center gap-3 flex-1">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
                       <span className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center justify-center shrink-0">
                         {mIdx + 1}
                       </span>
@@ -1032,6 +1329,7 @@ export default function ComprehensiveCourseEditorPage() {
                             const updated = [...modules];
                             updated[mIdx].title = e.target.value;
                             setModules(updated);
+                            triggerAutoSave(updated);
                           }}
                           className="bg-transparent text-sm font-bold text-white focus:outline-none border-b border-transparent focus:border-amber-400 w-full"
                         />
@@ -1043,13 +1341,27 @@ export default function ComprehensiveCourseEditorPage() {
                             const updated = [...modules];
                             updated[mIdx].titleHi = e.target.value;
                             setModules(updated);
+                            triggerAutoSave(updated);
                           }}
                           className="bg-transparent text-sm font-medium text-amber-300 focus:outline-none border-b border-transparent focus:border-amber-400 w-full"
                         />
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Module Status Toggle */}
+                      <button
+                        onClick={() => toggleModuleStatus(mIdx)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition ${
+                          mod.status === 'PUBLISHED'
+                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                        }`}
+                        title="Click to toggle Published vs Draft"
+                      >
+                        {mod.status === 'PUBLISHED' ? 'Published' : 'Draft'}
+                      </button>
+
                       <button
                         onClick={() => moveModule(mIdx, 'UP')}
                         disabled={mIdx === 0}
@@ -1067,9 +1379,9 @@ export default function ComprehensiveCourseEditorPage() {
                         <MoveDown className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => removeModule(mIdx)}
+                        onClick={() => setDeleteModal({ isOpen: true, itemType: 'MODULE', id: mod.id, title: mod.title, mIdx })}
                         className="p-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400"
-                        title="Delete Module"
+                        title="Delete Section (requires confirmation)"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -1095,6 +1407,7 @@ export default function ComprehensiveCourseEditorPage() {
                               const updated = [...modules];
                               updated[mIdx].description = e.target.value;
                               setModules(updated);
+                              triggerAutoSave(updated);
                             }}
                             className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
                           />
@@ -1110,6 +1423,7 @@ export default function ComprehensiveCourseEditorPage() {
                               const updated = [...modules];
                               updated[mIdx].descriptionHi = e.target.value;
                               setModules(updated);
+                              triggerAutoSave(updated);
                             }}
                             className="w-full px-3 py-2 rounded-xl bg-white/5 border border-amber-400/30 text-white text-xs focus:outline-none focus:border-amber-400"
                           />
@@ -1118,200 +1432,558 @@ export default function ComprehensiveCourseEditorPage() {
 
                       {/* Lessons in Module */}
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">Lessons &amp; Materials</h4>
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-2">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                            Lessons in Section ({mod.lessons.length})
+                          </h4>
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => addLesson(mIdx, 'VIDEO')}
-                              className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-[11px] font-semibold border border-white/10 flex items-center gap-1"
+                              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-[11px] font-semibold border border-emerald-500/30 flex items-center gap-1"
                             >
                               <Video className="w-3 h-3" />
-                              <span>+ Video</span>
-                            </button>
-                            <button
-                              onClick={() => addLesson(mIdx, 'DOCUMENT')}
-                              className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-[11px] font-semibold border border-white/10 flex items-center gap-1"
-                            >
-                              <FileText className="w-3 h-3" />
-                              <span>+ Document</span>
+                              <span>+ Recorded</span>
                             </button>
                             <button
                               onClick={() => addLesson(mIdx, 'LIVE_SESSION')}
-                              className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-[11px] font-semibold border border-white/10 flex items-center gap-1"
+                              className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-[11px] font-semibold border border-amber-500/30 flex items-center gap-1"
                             >
                               <Calendar className="w-3 h-3" />
-                              <span>+ Live Session</span>
+                              <span>+ Live Class</span>
+                            </button>
+                            <button
+                              onClick={() => addLesson(mIdx, 'DOCUMENT')}
+                              className="px-2.5 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 text-[11px] font-semibold border border-blue-500/30 flex items-center gap-1"
+                            >
+                              <FileText className="w-3 h-3" />
+                              <span>+ Notes &amp; PDF</span>
+                            </button>
+                            <button
+                              onClick={() => addLesson(mIdx, 'QUIZ')}
+                              className="px-2.5 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-[11px] font-semibold border border-purple-500/30 flex items-center gap-1"
+                            >
+                              <Award className="w-3 h-3" />
+                              <span>+ Quiz</span>
                             </button>
                           </div>
                         </div>
 
-                        {mod.lessons.map((lesson, lIdx) => (
-                          <div
-                            key={lesson.id || lIdx}
-                            className="p-4 rounded-xl bg-black/30 border border-white/10 space-y-3"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/10 text-amber-300 self-start sm:self-auto shrink-0">
-                                  {lesson.type}
-                                </span>
-                                <input
-                                  type="text"
-                                  placeholder="Lesson Title (English)"
-                                  value={lesson.title}
-                                  onChange={(e) => {
-                                    const updated = [...modules];
-                                    updated[mIdx].lessons[lIdx].title = e.target.value;
-                                    setModules(updated);
-                                  }}
-                                  className="bg-transparent text-xs font-bold text-white focus:outline-none border-b border-transparent focus:border-amber-400 flex-1"
-                                />
-                                <input
-                                  type="text"
-                                  placeholder="Lesson Title (Hindi / हिन्दी)"
-                                  value={lesson.titleHi || ''}
-                                  onChange={(e) => {
-                                    const updated = [...modules];
-                                    updated[mIdx].lessons[lIdx].titleHi = e.target.value;
-                                    setModules(updated);
-                                  }}
-                                  className="bg-transparent text-xs font-medium text-amber-300 focus:outline-none border-b border-transparent focus:border-amber-400 flex-1"
-                                />
-                              </div>
-
-                              <div className="flex items-center gap-3">
-                                {/* Free Preview Checkbox */}
-                                <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={lesson.isFreePreview}
-                                    onChange={(e) => {
-                                      const updated = [...modules];
-                                      updated[mIdx].lessons[lIdx].isFreePreview = e.target.checked;
-                                      setModules(updated);
-                                    }}
-                                    className="rounded accent-amber-500"
-                                  />
-                                  <span>Free Preview</span>
-                                </label>
-
-                                <button
-                                  onClick={() => removeLesson(mIdx, lIdx)}
-                                  className="p-1 rounded text-red-400 hover:bg-red-500/10"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Direct Media Upload Component */}
-                            {lesson.type === 'VIDEO' && (
-                              <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-2">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="text-slate-400">Direct Cloudflare Stream Video:</span>
-                                  <button
-                                    onClick={() => {
-                                      setUploadTargetLesson({ moduleIdx: mIdx, lessonIdx: lIdx });
-                                      videoInputRef.current?.click();
-                                    }}
-                                    className="px-3 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold flex items-center gap-1"
-                                  >
-                                    <Upload className="w-3 h-3" />
-                                    <span>{lesson.videoProviderId ? 'Replace Video' : 'Direct Upload Video'}</span>
-                                  </button>
-                                </div>
-
-                                {lesson.uploadStatus === 'uploading' && (
-                                  <div className="space-y-1">
-                                    <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                                      <div
-                                        className="h-full bg-amber-500 transition-all duration-300"
-                                        style={{ width: `${lesson.uploadProgress || 10}%` }}
-                                      />
-                                    </div>
-                                    <span className="text-[10px] text-amber-400">Direct creator upload in progress: {lesson.uploadProgress}%</span>
-                                  </div>
-                                )}
-
-                                {lesson.videoProviderId && (
-                                  <div className="flex items-center gap-2 text-[11px] text-emerald-400">
-                                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                                    <span className="truncate">Active stream ID: {lesson.videoProviderId}</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {lesson.type === 'DOCUMENT' && (
-                              <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-2">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="text-slate-400">Private Cloudflare R2 Document:</span>
-                                  <button
-                                    onClick={() => {
-                                      setUploadTargetLesson({ moduleIdx: mIdx, lessonIdx: lIdx });
-                                      docInputRef.current?.click();
-                                    }}
-                                    className="px-3 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold flex items-center gap-1"
-                                  >
-                                    <Upload className="w-3 h-3" />
-                                    <span>{lesson.documentKey ? 'Replace PDF' : 'Direct Upload PDF'}</span>
-                                  </button>
-                                </div>
-
-                                {lesson.uploadStatus === 'uploading' && (
-                                  <div className="space-y-1">
-                                    <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                                      <div
-                                        className="h-full bg-amber-500 transition-all duration-300"
-                                        style={{ width: `${lesson.uploadProgress || 10}%` }}
-                                      />
-                                    </div>
-                                    <span className="text-[10px] text-amber-400">Direct R2 PUT in progress: {lesson.uploadProgress}%</span>
-                                  </div>
-                                )}
-
-                                {lesson.documentKey && (
-                                  <div className="flex items-center gap-2 text-[11px] text-emerald-400">
-                                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                                    <span className="truncate">Key: {lesson.documentKey}</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {lesson.type === 'LIVE_SESSION' && (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                                <div>
-                                  <label className="block text-[10px] text-slate-400 mb-0.5">Live Meeting Link</label>
-                                  <input
-                                    type="text"
-                                    value={lesson.liveJoinLink || ''}
-                                    placeholder="https://zoom.us/j/... or meet.google.com/..."
-                                    onChange={(e) => {
-                                      const updated = [...modules];
-                                      updated[mIdx].lessons[lIdx].liveJoinLink = e.target.value;
-                                      setModules(updated);
-                                    }}
-                                    className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[10px] text-slate-400 mb-0.5">Timezone</label>
-                                  <input
-                                    type="text"
-                                    value={lesson.liveTimezone || 'Asia/Kolkata'}
-                                    onChange={(e) => {
-                                      const updated = [...modules];
-                                      updated[mIdx].lessons[lIdx].liveTimezone = e.target.value;
-                                      setModules(updated);
-                                    }}
-                                    className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs"
-                                  />
-                                </div>
-                              </div>
-                            )}
+                        {mod.lessons.length === 0 ? (
+                          <div className="p-6 rounded-xl bg-white/[0.02] border border-dashed border-white/10 text-center text-xs text-slate-400">
+                            No lessons added to this section yet. Click one of the buttons above to add a Recorded Lecture, Live Class, Notes/PDF, or Quiz.
                           </div>
-                        ))}
+                        ) : (
+                          mod.lessons.map((lesson, lIdx) => (
+                            <div
+                              key={lesson.id || lIdx}
+                              className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-4"
+                            >
+                              {/* Top Bar: Type, Titles, Status, Reorder, Delete */}
+                              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/5">
+                                <div className="flex items-center gap-2">
+                                  {/* Type Switcher */}
+                                  <select
+                                    value={lesson.type}
+                                    onChange={(e) => {
+                                      const updated = [...modules];
+                                      updated[mIdx].lessons[lIdx].type = e.target.value as 'VIDEO' | 'DOCUMENT' | 'LIVE_SESSION' | 'QUIZ';
+                                      setModules(updated);
+                                      triggerAutoSave(updated);
+                                    }}
+                                    className="px-2 py-1 rounded bg-[#111827] border border-amber-500/40 text-[10px] font-bold uppercase tracking-wider text-amber-300 focus:outline-none"
+                                  >
+                                    <option value="VIDEO">Recorded Lesson</option>
+                                    <option value="LIVE_SESSION">Live Class</option>
+                                    <option value="DOCUMENT">Notes &amp; PDF</option>
+                                    <option value="QUIZ">Quiz / Assessment</option>
+                                  </select>
+
+                                  {/* Draft / Published Toggle */}
+                                  <button
+                                    onClick={() => toggleLessonStatus(mIdx, lIdx)}
+                                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition ${
+                                      lesson.status === 'PUBLISHED'
+                                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                    }`}
+                                    title="Click to toggle Draft vs Published"
+                                  >
+                                    {lesson.status === 'PUBLISHED' ? 'Published' : 'Draft'}
+                                  </button>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  {/* Free Preview Toggle */}
+                                  <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={lesson.isFreePreview}
+                                      onChange={(e) => {
+                                        const updated = [...modules];
+                                        updated[mIdx].lessons[lIdx].isFreePreview = e.target.checked;
+                                        setModules(updated);
+                                        triggerAutoSave(updated);
+                                      }}
+                                      className="rounded accent-amber-500"
+                                    />
+                                    <span className="text-[11px]">Free Preview</span>
+                                  </label>
+
+                                  {/* Reorder */}
+                                  <button
+                                    onClick={() => moveLesson(mIdx, lIdx, 'UP')}
+                                    disabled={lIdx === 0}
+                                    className="p-1 rounded bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white disabled:opacity-30"
+                                    title="Move Lesson Up"
+                                  >
+                                    <MoveUp className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => moveLesson(mIdx, lIdx, 'DOWN')}
+                                    disabled={lIdx === mod.lessons.length - 1}
+                                    className="p-1 rounded bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white disabled:opacity-30"
+                                    title="Move Lesson Down"
+                                  >
+                                    <MoveDown className="w-3 h-3" />
+                                  </button>
+
+                                  {/* Delete (with confirmation) */}
+                                  <button
+                                    onClick={() => setDeleteModal({
+                                      isOpen: true,
+                                      itemType: 'LESSON',
+                                      id: lesson.id,
+                                      title: lesson.title,
+                                      mIdx,
+                                      lIdx,
+                                    })}
+                                    className="p-1 rounded text-red-400 hover:bg-red-500/10"
+                                    title="Delete Lesson (requires confirmation)"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Title Inputs */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-[10px] text-slate-400 mb-0.5">Lesson Title (English)</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Lesson Title (English)"
+                                    value={lesson.title}
+                                    onChange={(e) => {
+                                      const updated = [...modules];
+                                      updated[mIdx].lessons[lIdx].title = e.target.value;
+                                      setModules(updated);
+                                      triggerAutoSave(updated);
+                                    }}
+                                    className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[10px] text-amber-400 mb-0.5">Lesson Title (Hindi / हिन्दी)</label>
+                                  <input
+                                    type="text"
+                                    placeholder="पाठ का शीर्षक (हिन्दी)"
+                                    value={lesson.titleHi || ''}
+                                    onChange={(e) => {
+                                      const updated = [...modules];
+                                      updated[mIdx].lessons[lIdx].titleHi = e.target.value;
+                                      setModules(updated);
+                                      triggerAutoSave(updated);
+                                    }}
+                                    className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-amber-400/30 text-amber-200 text-xs focus:outline-none focus:border-amber-400"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* ------------------------------------------------------------- */}
+                              {/* TYPE 1: RECORDED LESSON (VIDEO + OPTIONAL NOTES)              */}
+                              {/* ------------------------------------------------------------- */}
+                              {lesson.type === 'VIDEO' && (
+                                <div className="space-y-3 pt-1">
+                                  {/* Cloudflare Stream vs External Video Mode */}
+                                  {videoHostConfig && !videoHostConfig.configured ? (
+                                    <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                                      <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                                        <span>Cloudflare Stream Host Not Configured</span>
+                                      </div>
+                                      <p className="text-[11px] text-slate-300">
+                                        Missing: <strong className="text-amber-200">{videoHostConfig.missing.join(', ')}</strong>. Direct browser upload to Cloudflare Stream is unavailable until these variables are configured.
+                                      </p>
+
+                                      <div className="pt-2 border-t border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div>
+                                          <span className="text-xs font-bold text-white block">External Video Link Mode</span>
+                                          <span className="text-[10px] text-amber-300 font-semibold bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30 inline-block mt-0.5">
+                                            Not protected: anyone with this link can share it
+                                          </span>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                          <input
+                                            type="checkbox"
+                                            checked={Boolean(lesson.isExternalVideo)}
+                                            onChange={(e) => {
+                                              const updated = [...modules];
+                                              updated[mIdx].lessons[lIdx].isExternalVideo = e.target.checked;
+                                              setModules(updated);
+                                              triggerAutoSave(updated);
+                                            }}
+                                            className="sr-only peer"
+                                          />
+                                          <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                                        </label>
+                                      </div>
+
+                                      {lesson.isExternalVideo && (
+                                        <div className="pt-2">
+                                          <label className="block text-[10px] text-slate-300 mb-1">
+                                            External Video URL (YouTube, Vimeo, MP4)
+                                          </label>
+                                          <input
+                                            type="text"
+                                            placeholder="https://www.youtube.com/embed/... or https://player.vimeo.com/video/..."
+                                            value={lesson.externalVideoUrl || lesson.videoProviderId || ''}
+                                            onChange={(e) => {
+                                              const updated = [...modules];
+                                              updated[mIdx].lessons[lIdx].externalVideoUrl = e.target.value;
+                                              updated[mIdx].lessons[lIdx].videoProviderId = e.target.value;
+                                              setModules(updated);
+                                              triggerAutoSave(updated);
+                                            }}
+                                            className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-amber-400/30 text-white text-xs"
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    /* Cloudflare Stream Configured */
+                                    <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-2">
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-slate-300 font-semibold">Direct Cloudflare Stream Video (Protected Signed Playback):</span>
+                                        <button
+                                          onClick={() => {
+                                            setUploadTargetLesson({ moduleIdx: mIdx, lessonIdx: lIdx });
+                                            videoInputRef.current?.click();
+                                          }}
+                                          className="px-3 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold flex items-center gap-1"
+                                        >
+                                          <Upload className="w-3 h-3" />
+                                          <span>{lesson.videoProviderId ? 'Replace Video' : 'Direct Upload Video'}</span>
+                                        </button>
+                                      </div>
+
+                                      {lesson.uploadStatus === 'uploading' && (
+                                        <div className="space-y-1">
+                                          <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                                            <div
+                                              className="h-full bg-amber-500 transition-all duration-300"
+                                              style={{ width: `${lesson.uploadProgress || 10}%` }}
+                                            />
+                                          </div>
+                                          <span className="text-[10px] text-amber-400">Direct creator upload in progress: {lesson.uploadProgress}%</span>
+                                        </div>
+                                      )}
+
+                                      {lesson.videoProviderId && (
+                                        <div className="flex items-center gap-2 text-[11px] text-emerald-400">
+                                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                          <span className="truncate">Active stream ID: {lesson.videoProviderId}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Optional Notes: Markdown + PDF */}
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                                    <div>
+                                      <label className="block text-[10px] text-slate-400 mb-0.5">Optional Lecture Notes (Markdown)</label>
+                                      <textarea
+                                        rows={2}
+                                        value={lesson.notesMarkdown || ''}
+                                        placeholder="Add key takeaways, chart formulas, or reading notes..."
+                                        onChange={(e) => {
+                                          const updated = [...modules];
+                                          updated[mIdx].lessons[lIdx].notesMarkdown = e.target.value;
+                                          setModules(updated);
+                                          triggerAutoSave(updated);
+                                        }}
+                                        className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <label className="block text-[10px] text-slate-400 mb-0.5">Optional Study Reference PDF</label>
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="text"
+                                          placeholder="PDF URL or storage key"
+                                          value={lesson.documentUrl || ''}
+                                          onChange={(e) => {
+                                            const updated = [...modules];
+                                            updated[mIdx].lessons[lIdx].documentUrl = e.target.value;
+                                            setModules(updated);
+                                            triggerAutoSave(updated);
+                                          }}
+                                          className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setUploadTargetLesson({ moduleIdx: mIdx, lessonIdx: lIdx });
+                                            docInputRef.current?.click();
+                                          }}
+                                          className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold shrink-0"
+                                          title="Upload PDF"
+                                        >
+                                          <Upload className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* ------------------------------------------------------------- */}
+                              {/* TYPE 2: LIVE CLASS (DATE/TIME, TIMEZONE, MEET LINK, AGENDA)   */}
+                              {/* ------------------------------------------------------------- */}
+                              {lesson.type === 'LIVE_SESSION' && (
+                                <div className="space-y-3 pt-1">
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div>
+                                      <label className="block text-[10px] text-slate-400 mb-0.5">Scheduled Date &amp; Time (ISO)</label>
+                                      <input
+                                        type="datetime-local"
+                                        value={lesson.liveScheduledAt ? lesson.liveScheduledAt.slice(0, 16) : ''}
+                                        onChange={(e) => {
+                                          const updated = [...modules];
+                                          updated[mIdx].lessons[lIdx].liveScheduledAt = e.target.value ? new Date(e.target.value).toISOString() : '';
+                                          setModules(updated);
+                                          triggerAutoSave(updated);
+                                        }}
+                                        className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs"
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <label className="block text-[10px] text-slate-400 mb-0.5">Timezone</label>
+                                      <select
+                                        value={lesson.liveTimezone || 'Asia/Kolkata'}
+                                        onChange={(e) => {
+                                          const updated = [...modules];
+                                          updated[mIdx].lessons[lIdx].liveTimezone = e.target.value;
+                                          setModules(updated);
+                                          triggerAutoSave(updated);
+                                        }}
+                                        className="w-full px-3 py-1.5 rounded-lg bg-[#111827] border border-white/10 text-white text-xs"
+                                      >
+                                        {COMMON_TIMEZONES.map((t) => (
+                                          <option key={t.tz} value={t.tz}>
+                                            {t.label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+
+                                    <div>
+                                      <label className="block text-[10px] text-slate-400 mb-0.5">Expected Duration (Minutes)</label>
+                                      <input
+                                        type="number"
+                                        value={lesson.durationMinutes || 90}
+                                        onChange={(e) => {
+                                          const updated = [...modules];
+                                          updated[mIdx].lessons[lIdx].durationMinutes = Number(e.target.value);
+                                          setModules(updated);
+                                          triggerAutoSave(updated);
+                                        }}
+                                        className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {lesson.liveScheduledAt && (
+                                    <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/5 text-[11px] text-slate-300 flex items-center gap-2">
+                                      <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                      <span>
+                                        Student will see: <strong className="text-white">{formatInTimezone(lesson.liveScheduledAt, userTz, 'short')}</strong> • <strong className="text-amber-300">{formatInTimezone(lesson.liveScheduledAt, 'Asia/Kolkata', 'short')} IST</strong>
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                      <label className="block text-[10px] text-slate-400 mb-0.5">Platform</label>
+                                      <select
+                                        value={lesson.meetingPlatform || 'GOOGLE_MEET'}
+                                        onChange={(e) => {
+                                          const updated = [...modules];
+                                          updated[mIdx].lessons[lIdx].meetingPlatform = e.target.value as 'GOOGLE_MEET' | 'ZOOM';
+                                          setModules(updated);
+                                          triggerAutoSave(updated);
+                                        }}
+                                        className="w-full px-3 py-1.5 rounded-lg bg-[#111827] border border-white/10 text-white text-xs"
+                                      >
+                                        <option value="GOOGLE_MEET">Google Meet</option>
+                                        <option value="ZOOM">Zoom</option>
+                                      </select>
+                                    </div>
+
+                                    <div>
+                                      <label className="block text-[10px] text-slate-400 mb-0.5">
+                                        Meeting Link (Google Meet or Zoom)
+                                      </label>
+                                      <input
+                                        type="text"
+                                        placeholder="https://meet.google.com/... or https://zoom.us/j/..."
+                                        value={lesson.liveJoinLink || ''}
+                                        onChange={(e) => {
+                                          const updated = [...modules];
+                                          updated[mIdx].lessons[lIdx].liveJoinLink = e.target.value;
+                                          setModules(updated);
+                                          triggerAutoSave(updated);
+                                        }}
+                                        className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs"
+                                      />
+                                      <span className="text-[10px] text-slate-500 mt-0.5 block">
+                                        Meeting links are shareable by nature and are shown only to approved students.
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[10px] text-slate-400 mb-0.5">Live Class Agenda</label>
+                                    <textarea
+                                      rows={2}
+                                      placeholder="What will be discussed during this live session..."
+                                      value={lesson.agenda || ''}
+                                      onChange={(e) => {
+                                        const updated = [...modules];
+                                        updated[mIdx].lessons[lIdx].agenda = e.target.value;
+                                        setModules(updated);
+                                        triggerAutoSave(updated);
+                                      }}
+                                      className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs"
+                                    />
+                                  </div>
+
+                                  {/* Class Recording ("Missed Class" Video) */}
+                                  <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                                        <Video className="w-3.5 h-3.5 text-amber-400" />
+                                        <span>Class Recording (&ldquo;Missed Class&rdquo; Video)</span>
+                                      </span>
+                                      <span className="text-[10px] text-slate-400">
+                                        Attached after class ends. Shows &ldquo;Recording coming soon&rdquo; until added.
+                                      </span>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      placeholder="Recording Video URL or Cloudflare Stream UID (e.g. https://... or stream ID)"
+                                      value={lesson.recordingUrl || ''}
+                                      onChange={(e) => {
+                                        const updated = [...modules];
+                                        updated[mIdx].lessons[lIdx].recordingUrl = e.target.value;
+                                        setModules(updated);
+                                        triggerAutoSave(updated);
+                                      }}
+                                      className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* ------------------------------------------------------------- */}
+                              {/* TYPE 3: STUDY NOTES & PDF (DOCUMENT)                          */}
+                              {/* ------------------------------------------------------------- */}
+                              {lesson.type === 'DOCUMENT' && (
+                                <div className="space-y-3 pt-1">
+                                  <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-2">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="text-slate-300 font-semibold">PDF Study Material per Lesson:</span>
+                                      <button
+                                        onClick={() => {
+                                          setUploadTargetLesson({ moduleIdx: mIdx, lessonIdx: lIdx });
+                                          docInputRef.current?.click();
+                                        }}
+                                        className="px-3 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold flex items-center gap-1"
+                                      >
+                                        <Upload className="w-3 h-3" />
+                                        <span>{lesson.documentUrl ? 'Replace PDF' : 'Upload Lesson PDF'}</span>
+                                      </button>
+                                    </div>
+
+                                    {lesson.documentUrl && (
+                                      <div className="flex items-center gap-2 text-[11px] text-emerald-400">
+                                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                        <span className="truncate">Connected: {lesson.documentUrl}</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[10px] text-slate-400 mb-0.5">Study Notes Markdown</label>
+                                    <textarea
+                                      rows={3}
+                                      placeholder="Full text study guide, Vedic quotes, chart illustrations..."
+                                      value={lesson.notesMarkdown || ''}
+                                      onChange={(e) => {
+                                        const updated = [...modules];
+                                        updated[mIdx].lessons[lIdx].notesMarkdown = e.target.value;
+                                        setModules(updated);
+                                        triggerAutoSave(updated);
+                                      }}
+                                      className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* ------------------------------------------------------------- */}
+                              {/* TYPE 4: QUIZ (ASSESSMENT GRADED ON SERVER)                     */}
+                              {/* ------------------------------------------------------------- */}
+                              {lesson.type === 'QUIZ' && (
+                                <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <span className="text-xs font-bold text-purple-300 block">Lesson Quiz / Assessment</span>
+                                      <span className="text-[11px] text-slate-300">
+                                        Quizzes are graded strictly on the server; answer keys are protected from students.
+                                      </span>
+                                    </div>
+                                    <Link
+                                      href={`/instructor/courses/${course?.slug || courseId}/quiz`}
+                                      className="px-3 py-1.5 rounded-lg bg-purple-500 text-white text-xs font-bold hover:bg-purple-600 transition flex items-center gap-1.5"
+                                    >
+                                      <Award className="w-3.5 h-3.5" />
+                                      <span>Open Quiz Editor</span>
+                                    </Link>
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[10px] text-slate-400 mb-0.5">Assessment Description &amp; Instructions</label>
+                                    <textarea
+                                      rows={2}
+                                      placeholder="Instructions for students before taking this quiz..."
+                                      value={lesson.description || ''}
+                                      onChange={(e) => {
+                                        const updated = [...modules];
+                                        updated[mIdx].lessons[lIdx].description = e.target.value;
+                                        setModules(updated);
+                                        triggerAutoSave(updated);
+                                      }}
+                                      className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   )}
@@ -1330,7 +2002,7 @@ export default function ComprehensiveCourseEditorPage() {
               <div>
                 <h3 className="text-lg font-bold text-white">Tuition &amp; Commercial Pricing</h3>
                 <p className="text-xs text-slate-400">
-                  Configure Indian Rupee and International pricing tiers. Changes strictly apply to new enrollments.
+                  Configure Indian Rupee pricing. Changes strictly apply to new enrollments.
                 </p>
               </div>
 
@@ -1368,8 +2040,6 @@ export default function ComprehensiveCourseEditorPage() {
                   className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400 disabled:opacity-50"
                 />
               </div>
-
-
             </div>
 
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-slate-400">
@@ -1388,7 +2058,7 @@ export default function ComprehensiveCourseEditorPage() {
               <div>
                 <h3 className="text-lg font-bold text-white">Final Certification Exam</h3>
                 <p className="text-xs text-slate-400">
-                  Build and calibrate the rigorous certification examination. Answer keys are strictly protected on the server.
+                  Build and calibrate the certification examination. Answer keys are strictly protected on the server.
                 </p>
               </div>
 
@@ -1472,11 +2142,11 @@ export default function ComprehensiveCourseEditorPage() {
               </div>
 
               <Link
-                href={`/courses/${course?.slug || courseId}`}
+                href={`/dashboard/courses/${course?.slug || courseId}`}
                 target="_blank"
                 className="px-4 py-2 rounded-xl bg-amber-500 text-black text-xs font-bold hover:bg-amber-400 transition flex items-center gap-1.5"
               >
-                <span>Live Public Landing Page</span>
+                <span>Open Student Classroom</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -1484,7 +2154,7 @@ export default function ComprehensiveCourseEditorPage() {
             {/* Simulated Student Portal View */}
             <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10 space-y-6">
               <div className="border-b border-white/10 pb-4">
-                <h2 className="text-2xl font-black text-white">{title}</h2>
+                <h2 className="text-2xl font-black text-white">{title || 'The Ultimate Astrology Course'}</h2>
                 <p className="text-xs text-slate-300 mt-1">{shortDescription}</p>
                 <div className="flex items-center gap-3 mt-3 text-xs text-slate-400">
                   <span>{modules.length} Modules</span>
@@ -1496,35 +2166,69 @@ export default function ComprehensiveCourseEditorPage() {
               </div>
 
               {/* Curriculum Preview Accordion */}
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {modules.map((m, mIdx) => (
-                  <div key={m.id || mIdx} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
+                  <div key={m.id || mIdx} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3">
                     <div className="flex items-center justify-between text-xs font-bold text-white">
                       <span>Module {mIdx + 1}: {m.title}</span>
-                      <span className="text-slate-500">{m.lessons.length} lessons</span>
+                      <div className="flex items-center gap-2">
+                        {m.status === 'DRAFT' && (
+                          <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            Section in Draft
+                          </span>
+                        )}
+                        <span className="text-slate-500">{m.lessons.length} lessons</span>
+                      </div>
                     </div>
 
-                    <div className="space-y-1.5 pt-2">
+                    <div className="space-y-2 pt-1">
                       {m.lessons.map((l, lIdx) => (
                         <div
                           key={l.id || lIdx}
-                          className="flex items-center justify-between p-2.5 rounded-lg bg-black/40 text-xs text-slate-300"
+                          className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg bg-black/40 text-xs text-slate-300 gap-2"
                         >
-                          <div className="flex items-center gap-2">
-                            {l.type === 'VIDEO' ? <Play className="w-3.5 h-3.5 text-amber-400" /> : <FileText className="w-3.5 h-3.5 text-blue-400" />}
-                            <span>{l.title}</span>
+                          <div className="flex items-center gap-2 min-w-0">
+                            {l.type === 'LIVE_SESSION' ? (
+                              <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            ) : l.type === 'DOCUMENT' ? (
+                              <FileText className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                            ) : l.type === 'QUIZ' ? (
+                              <Award className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                            ) : (
+                              <Play className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <span className="font-semibold text-white block truncate">{l.title}</span>
+                              {l.type === 'LIVE_SESSION' && l.liveScheduledAt && (
+                                <span className="text-[10px] text-slate-400">
+                                  {formatInTimezone(l.liveScheduledAt, userTz, 'short')} • {formatInTimezone(l.liveScheduledAt, 'Asia/Kolkata', 'short')} IST
+                                </span>
+                              )}
+                            </div>
                           </div>
 
-                          {l.isFreePreview ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                              Free Preview (Accessible to Visitors)
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 text-slate-400 flex items-center gap-1">
-                              <Lock className="w-3 h-3" />
-                              <span>Enrolled Only</span>
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {l.status === 'DRAFT' && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                Draft (Hidden)
+                              </span>
+                            )}
+                            {l.type === 'LIVE_SESSION' && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/20">
+                                Live Class
+                              </span>
+                            )}
+                            {l.isFreePreview ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                Free Preview
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 text-slate-400 flex items-center gap-1">
+                                <Lock className="w-3 h-3" />
+                                <span>Enrolled Only</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

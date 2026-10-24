@@ -63,9 +63,19 @@ export async function GET(
         }
 
         // Content Gating: sanitize lessons and quizzes based on enrollment status
-        const sanitizedModules = course.modules.map((m) => ({
+        const filteredModules = course.modules.filter((m) => {
+          if (access.isStaffOrOwner) return true;
+          return m.status === 'PUBLISHED';
+        });
+
+        const sanitizedModules = filteredModules.map((m) => ({
           ...m,
-          lessons: m.lessons.map((lesson) => {
+          lessons: m.lessons
+            .filter((lesson) => {
+              if (access.isStaffOrOwner) return true;
+              return lesson.status === 'PUBLISHED';
+            })
+            .map((lesson) => {
             const isFree = Boolean(lesson.isFreePreview);
 
             if (isAuthorized) {
