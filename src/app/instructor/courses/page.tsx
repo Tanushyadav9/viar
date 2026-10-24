@@ -18,9 +18,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
-import { ViarStore } from '@/lib/store';
 import { Course, User } from '@/lib/types';
-import { checkStaffSectionAccess, isSiteOwner } from '@/lib/auth/permissions';
+import { isSiteOwner } from '@/lib/auth/permissions';
 
 interface ExtendedCourse extends Course {
   shortDescription?: string;
@@ -61,7 +60,7 @@ export default function InstructorCoursesPage() {
     try {
       const res = await fetch('/api/courses');
       const data = await res.json();
-      if (data.success && Array.isArray(data.courses) && data.courses.length > 0) {
+      if (data.success && Array.isArray(data.courses)) {
         setCourses(data.courses);
         return;
       }
@@ -70,7 +69,6 @@ export default function InstructorCoursesPage() {
     } finally {
       setLoading(false);
     }
-    setCourses(ViarStore.getCourses());
   };
 
   useEffect(() => {
@@ -83,9 +81,8 @@ export default function InstructorCoursesPage() {
       .catch(() => {});
   }, []);
 
-  const permissions = ViarStore.getStaffPermissions();
   const isOwner = Boolean(currentUser?.isOwner || isSiteOwner(currentUser));
-  const canManage = isOwner || currentUser?.role === 'ADMIN' || (Array.isArray(currentUser?.staffSections) && currentUser.staffSections.includes('courses')) || checkStaffSectionAccess({ user: currentUser, section: 'courses', requiredLevel: 'MANAGE', permissions }).allowed;
+  const canManage = isOwner || currentUser?.role === 'ADMIN' || (Array.isArray(currentUser?.staffSections) && currentUser.staffSections.includes('courses'));
 
   // Filter courses by search and status
   const filteredCourses = courses.filter((c) => {

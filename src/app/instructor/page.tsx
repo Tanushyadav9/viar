@@ -12,7 +12,6 @@ import {
   ChevronRight
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
-import { ViarStore } from '@/lib/store';
 import { Course, Cohort } from '@/lib/types';
 import { formatInTimezone } from '@/lib/timezones';
 
@@ -29,11 +28,11 @@ export default function InstructorOverviewPage() {
         if (data?.success && Array.isArray(data.courses)) {
           setCourses(data.courses);
         } else {
-          setCourses(ViarStore.getCourses());
+          setCourses([]);
         }
       })
       .catch(() => {
-        setCourses(ViarStore.getCourses());
+        setCourses([]);
       });
 
     // 2. Fetch live cohorts
@@ -43,46 +42,45 @@ export default function InstructorOverviewPage() {
         if (data?.success && Array.isArray(data.cohorts)) {
           setCohorts(data.cohorts);
         } else {
-          setCohorts(ViarStore.getCohorts());
+          setCohorts([]);
         }
       })
       .catch(() => {
-        setCohorts(ViarStore.getCohorts());
+        setCohorts([]);
       });
 
-    // 3. Stats from database orders / fallback
-    fetch('/api/admin/orders')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.orders) {
-          const totalOrders = data.orders.length;
-          const activeStudents = new Set(data.orders.map((o: { studentEmail: string }) => o.studentEmail)).size;
-          const totalRev = data.orders
-            .filter((o: { status?: string }) => o.status === 'VERIFIED' || o.status === 'APPROVED' || o.status === 'PAID')
-            .reduce((sum: number, o: { amountPaidInr?: number }) => sum + (o.amountPaidInr || 0), 0);
-          setStats({
-            totalStudents: activeStudents,
-            totalEnrollments: totalOrders,
-            activeCohorts: 1,
-            totalRevenue: totalRev,
-          });
-        } else {
-          setStats({
-            totalStudents: 0,
-            totalEnrollments: 0,
-            activeCohorts: 1,
-            totalRevenue: 0,
-          });
-        }
-      })
-      .catch(() => {
-        setStats({
-          totalStudents: 0,
-          totalEnrollments: 0,
-          activeCohorts: 1,
-          totalRevenue: 0,
-        });
+    // 3. Stats from live database orders & enrollments
+    Promise.all([
+      fetch('/api/admin/orders').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/enrollments').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(([ordersData, enrollmentsData]) => {
+      const orders = ordersData?.orders || [];
+      const enrollments = enrollmentsData?.enrollments || [];
+
+      const verifiedOrders = orders.filter((o: { status?: string }) => o.status === 'VERIFIED' || o.status === 'APPROVED' || o.status === 'PAID');
+      const totalRevInr = verifiedOrders
+        .filter((o: { currency?: string }) => o.currency !== 'USD')
+        .reduce((sum: number, o: { amountPaidInr?: number; amount?: number }) => sum + (o.amountPaidInr || o.amount || 0), 0);
+      const totalRevUsd = verifiedOrders
+        .filter((o: { currency?: string }) => o.currency === 'USD')
+        .reduce((sum: number, o: { amountPaidUsd?: number; amount?: number }) => sum + (o.amountPaidUsd || o.amount || 0), 0);
+
+      const totalStudents = enrollments.length > 0 ? enrollments.length : new Set(verifiedOrders.map((o: { studentEmail?: string }) => o.studentEmail).filter(Boolean)).size;
+
+      setStats({
+        totalStudents,
+        totalEnrollments: enrollments.length,
+        totalRevenueInr: totalRevInr,
+        totalRevenueUsd: totalRevUsd,
       });
+    }).catch(() => {
+      setStats({
+        totalStudents: 0,
+        totalEnrollments: 0,
+        totalRevenueInr: 0,
+        totalRevenueUsd: 0,
+      });
+    });
   }, []);
 
   return (
@@ -98,9 +96,9 @@ export default function InstructorOverviewPage() {
               <span className="text-xs font-semibold">Total Students</span>
               <Users className="w-4 h-4 text-amber-400" />
             </div>
-            <p className="text-3xl font-black text-white">{stats.totalStudents || 3}</p>
+            <p className="text-3xl font-black text-white">{stats.totalStudents ?? 0}</p>
             <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
-              <span>Cohort enrollment active</span>
+              <span>{stats.totalStudents ? `${stats.totalStudents} enrolled student${stats.totalStudents === 1 ? '' : 's'}` : 'No enrolled students yet'}</span>
             </p>
           </div>
 
@@ -111,7 +109,9 @@ export default function InstructorOverviewPage() {
             </div>
             <p className="text-3xl font-black text-white">{cohorts.length}</p>
             <p className="text-[11px] text-slate-400 mt-1">
-              Flagship: {cohorts[0]?.enrolledCount || 38}/50 seats filled
+              {cohorts.length > 0
+                ? `${cohorts[0]?.batchName}: ${cohorts[0]?.enrolledCount || 0}/${cohorts[0]?.maxSeats || cohorts[0]?.capacity || 50} seats filled`
+                : 'No active cohorts in database'}
             </p>
           </div>
 
@@ -132,10 +132,12 @@ export default function InstructorOverviewPage() {
               <DollarSign className="w-4 h-4 text-emerald-400" />
             </div>
             <p className="text-2xl sm:text-3xl font-black text-white">
-              ₹{(stats.totalRevenueInr || 5100).toLocaleString()}
+              ₹{(stats.totalRevenueInr || 0).toLocaleString('en-IN')}
             </p>
-            <p className="text-[11px] text-amber-300 mt-1">
-              + ${(stats.totalRevenueUsd || 138)} USD Global
+            <p className="text-[11px] text-emerald-400 mt-1">
+              {stats.totalRevenueUsd && stats.totalRevenueUsd > 0
+                ? `+ $${stats.totalRevenueUsd} USD Global`
+                : 'Direct UPI • 0% gateway commission'}
             </p>
           </div>
         </div>
@@ -159,55 +161,61 @@ export default function InstructorOverviewPage() {
               </Link>
             </div>
 
-            {cohorts.map((coh) => {
-              const crs = courses.find((c) => c.id === coh.courseId);
-              return (
-                <div
-                  key={coh.id}
-                  className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4 hover:border-amber-500/30 transition"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      {coh.batchName}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      Capacity: <strong className="text-white">{coh.enrolledCount} / {coh.maxSeats}</strong> seats
-                    </span>
-                  </div>
+            {cohorts.length === 0 ? (
+              <div className="cosmic-card p-6 rounded-2xl border border-white/10 text-center text-xs text-slate-400">
+                No active cohorts currently configured in the database.
+              </div>
+            ) : (
+              cohorts.map((coh) => {
+                const crs = courses.find((c) => c.id === coh.courseId);
+                return (
+                  <div
+                    key={coh.id}
+                    className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4 hover:border-amber-500/30 transition"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        {coh.batchName}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        Capacity: <strong className="text-white">{coh.enrolledCount || 0} / {coh.maxSeats || coh.capacity || 50}</strong> seats
+                      </span>
+                    </div>
 
-                  <div>
-                    <h3 className="text-lg font-bold text-white">
-                      {crs?.title || 'What is Astrology — Foundations of Vedic Astrology'}
-                    </h3>
-                    <p className="text-xs text-slate-300 mt-1">
-                      {coh.scheduleDescription}
-                    </p>
-                  </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white">
+                        {crs?.title || 'What is Astrology — Foundations of Vedic Astrology'}
+                      </h3>
+                      <p className="text-xs text-slate-300 mt-1">
+                        {coh.scheduleDescription || 'Self-paced on-demand masterclass.'}
+                      </p>
+                    </div>
 
-                  <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
-                    <span className="text-xs text-slate-400">
-                      Starts: <strong className="text-white">{formatInTimezone(coh.startDate, 'Asia/Kolkata', 'short')}</strong>
-                    </span>
+                    <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
+                      <span className="text-xs text-slate-400">
+                        Starts: <strong className="text-white">{coh.startDate ? formatInTimezone(coh.startDate, 'Asia/Kolkata', 'short') : 'Ongoing Admissions'}</strong>
+                      </span>
 
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/instructor/courses/${coh.courseId}/cohorts/${coh.id}/sessions`}
-                        className="gold-button px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1"
-                      >
-                        <Video className="w-3.5 h-3.5" />
-                        <span>Manage 23 Lesson Modules</span>
-                      </Link>
-                      <Link
-                        href="/instructor/students"
-                        className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/10"
-                      >
-                        Student Roster
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/instructor/courses/${coh.courseId}/cohorts/${coh.id}/sessions`}
+                          className="gold-button px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1"
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                          <span>Manage 23 Lesson Modules</span>
+                        </Link>
+                        <Link
+                          href="/instructor/students"
+                          className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/10"
+                        >
+                          Student Roster
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
           {/* Quick Actions & Short-cuts */}
@@ -220,54 +228,47 @@ export default function InstructorOverviewPage() {
             <div className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-3">
               <Link
                 href="/instructor/courses"
-                className="p-3.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 flex items-center justify-between transition group block"
+                className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 transition group"
               >
                 <div>
-                  <h4 className="text-sm font-semibold text-white group-hover:text-amber-300 transition">
-                    Course & Syllabus Editor
+                  <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition">
+                    Course &amp; Syllabus Editor
                   </h4>
-                  <p className="text-xs text-slate-400">Edit titles, 3-week blocks, pricing, and thumbnails</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Edit titles, 3-week blocks, pricing, and thumbnails
+                  </p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-400 group-hover:translate-x-0.5 transition" />
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-white transition" />
               </Link>
 
               <Link
                 href="/instructor/courses/course-what-is-astrology/quiz"
-                className="p-3.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 flex items-center justify-between transition group block"
+                className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 transition group"
               >
                 <div>
-                  <h4 className="text-sm font-semibold text-white group-hover:text-amber-300 transition">
+                  <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition">
                     Final Quiz Questions Builder
                   </h4>
-                  <p className="text-xs text-slate-400">Manage the 20 multiple-choice exam questions</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Manage the 20 multiple-choice exam questions
+                  </p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-400 group-hover:translate-x-0.5 transition" />
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-white transition" />
               </Link>
 
               <Link
                 href="/instructor/students"
-                className="p-3.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 flex items-center justify-between transition group block"
+                className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 transition group"
               >
                 <div>
-                  <h4 className="text-sm font-semibold text-white group-hover:text-amber-300 transition">
-                    Student Progress & Quiz Grades
+                  <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition">
+                    Student Progress &amp; Quiz Grades
                   </h4>
-                  <p className="text-xs text-slate-400">View roster, watched completion, and issued certificates</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    View roster, watched completion, and issued certificates
+                  </p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-400 group-hover:translate-x-0.5 transition" />
-              </Link>
-
-              <Link
-                href="/instructor/analytics"
-                className="p-3.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 flex items-center justify-between transition group block"
-              >
-                <div>
-                  <h4 className="text-sm font-semibold text-white group-hover:text-amber-300 transition">
-                    Enrollment Revenue & Analytics
-                  </h4>
-                  <p className="text-xs text-slate-400">INR vs USD payment breakdown and completion rates</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-400 group-hover:translate-x-0.5 transition" />
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-white transition" />
               </Link>
             </div>
           </div>

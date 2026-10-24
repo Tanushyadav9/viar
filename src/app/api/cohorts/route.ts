@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
         orderBy: { startDate: 'asc' },
       });
 
-      if (cohorts && cohorts.length > 0) {
+      if (cohorts) {
         return NextResponse.json({ success: true, cohorts });
       }
     } catch (dbError) {

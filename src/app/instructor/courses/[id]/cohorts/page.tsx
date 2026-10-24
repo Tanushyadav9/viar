@@ -13,7 +13,6 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
-import { ViarStore } from '@/lib/store';
 import { Course, Cohort } from '@/lib/types';
 import { formatInTimezone } from '@/lib/timezones';
 
@@ -54,11 +53,7 @@ export default function CourseCohortsPage() {
       })
       .catch(() => {});
 
-    const crs = ViarStore.getCourseById(courseId) || ViarStore.getCourses()[0];
-    if (crs) setCourse((prev) => prev || crs);
 
-    const list = ViarStore.getCohorts(courseId);
-    setCohorts((prev) => (prev.length > 0 ? prev : list));
   }, [courseId]);
 
   const handleCreateCohort = async (e: React.FormEvent) => {

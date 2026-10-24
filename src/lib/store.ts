@@ -17,7 +17,6 @@ import type {
 } from './types';
 import {
   INITIAL_COURSES,
-  INITIAL_COHORTS,
   SCHEDULED_CLASSES_FLAGSHIP,
   INITIAL_FINAL_TEST,
 } from './data';
@@ -104,7 +103,7 @@ export const ViarStore = {
 
   // Cohorts
   getCohorts(courseId?: string): Cohort[] {
-    const cohorts = getStorageItem<Cohort[]>(STORAGE_KEYS.COHORTS, INITIAL_COHORTS);
+    const cohorts = getStorageItem<Cohort[]>(STORAGE_KEYS.COHORTS, []);
     if (courseId) {
       return cohorts.filter((c) => c.courseId === courseId);
     }

@@ -14,7 +14,6 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
-import { ViarStore } from '@/lib/store';
 import { Cohort, Course, User } from '@/lib/types';
 import { isSiteOwner } from '@/lib/auth/permissions';
 
@@ -97,7 +96,7 @@ export default function InstructorStudentsRosterPage() {
         setCourses(cData.courses);
       }
     } catch {
-      setCourses(ViarStore.getCourses());
+      
     }
 
     try {
@@ -105,11 +104,9 @@ export default function InstructorStudentsRosterPage() {
       const cohData = await cohRes.json();
       if (cohData.success && Array.isArray(cohData.cohorts)) {
         setCohorts(cohData.cohorts);
-      } else {
-        setCohorts(ViarStore.getCohorts());
       }
     } catch {
-      setCohorts(ViarStore.getCohorts());
+      // Cohorts load fallback
     }
   }, [selectedCourseId]);
 

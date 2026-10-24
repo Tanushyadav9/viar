@@ -2064,7 +2064,7 @@ export default function AdminPortalClient({
                             {/* Amount */}
                             <td className="px-5 py-3.5">
                               <span className="font-bold text-white text-sm">
-                                ₹{(ord.amount || 5100).toLocaleString('en-IN')}
+                                ₹{(ord.amount || 0).toLocaleString('en-IN')}
                               </span>
                               <p className="text-[9px] text-slate-400 uppercase">INR Direct UPI</p>
                             </td>
@@ -2305,49 +2305,49 @@ export default function AdminPortalClient({
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Active Cohorts</span>
                   <p className="text-2xl font-black text-amber-300 mt-1">{cohorts.length}</p>
-                  <p className="text-[10px] text-emerald-400 mt-1">Batch 01 & Batch 02 live</p>
+                  <p className="text-[10px] text-emerald-400 mt-1">{cohorts.length > 0 ? `${cohorts.length} Cohort${cohorts.length === 1 ? "" : "s"} Active` : "No Active Cohorts"}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Course Completion Rate</span>
-                  <p className="text-2xl font-black text-emerald-300 mt-1">94.8%</p>
-                  <p className="text-[10px] text-slate-400 mt-1">Based on quiz eligibility</p>
+                  <p className="text-2xl font-black text-emerald-300 mt-1">{stats && stats.totalStudents > 0 ? `${Math.round(((stats.certificatesIssued || 0) / stats.totalStudents) * 100)}%` : "0%"}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">{stats?.certificatesIssued || 0} certified of {stats?.totalStudents || 0} enrolled</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Live Lecture Attendance</span>
-                  <p className="text-2xl font-black text-purple-300 mt-1">88.2%</p>
-                  <p className="text-[10px] text-slate-400 mt-1">Replay watch rate: 98.4%</p>
+                  <p className="text-2xl font-black text-purple-300 mt-1">{stats?.completedClasses || 0} <span className="text-sm font-normal text-slate-400">/ {classes.length || ((stats?.completedClasses || 0) + (stats?.upcomingClasses || 0)) || 23}</span></p>
+                  <p className="text-[10px] text-slate-400 mt-1">Completed sessions conducted</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <h4 className="font-bold text-white text-sm mb-2">Student Engagement by Module</h4>
+                  <h4 className="font-bold text-white text-sm mb-2">Curriculum Sessions & Progress</h4>
                   <div className="space-y-2 text-xs">
                     <div>
                       <div className="flex justify-between text-slate-400 mb-1">
-                        <span>Module 1: Astronomy & Frameworks</span>
-                        <span className="text-white font-bold">96%</span>
+                        <span>Modules 1–8: Foundations & Astronomy</span>
+                        <span className="text-white font-bold">{classes.filter((c) => c.classNumber <= 8 && c.status === 'COMPLETED').length} / 8 completed</span>
                       </div>
                       <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-amber-400 h-full rounded-full" style={{ width: '96%' }} />
+                        <div className="bg-amber-400 h-full rounded-full" style={{ width: `${Math.round((classes.filter((c) => c.classNumber <= 8 && c.status === 'COMPLETED').length / 8) * 100)}%` }} />
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between text-slate-400 mb-1">
-                        <span>Module 2: 12 Rashis & Chart Casting</span>
-                        <span className="text-white font-bold">92%</span>
+                        <span>Modules 9–16: 12 Rashis & Chart Casting</span>
+                        <span className="text-white font-bold">{classes.filter((c) => c.classNumber > 8 && c.classNumber <= 16 && c.status === 'COMPLETED').length} / 8 completed</span>
                       </div>
                       <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-amber-400 h-full rounded-full" style={{ width: '92%' }} />
+                        <div className="bg-amber-400 h-full rounded-full" style={{ width: `${Math.round((classes.filter((c) => c.classNumber > 8 && c.classNumber <= 16 && c.status === 'COMPLETED').length / 8) * 100)}%` }} />
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between text-slate-400 mb-1">
-                        <span>Module 3: Grahas, Bhavas & Predictions</span>
-                        <span className="text-white font-bold">89%</span>
+                        <span>Modules 17–23: Predictions & Certification</span>
+                        <span className="text-white font-bold">{classes.filter((c) => c.classNumber > 16 && c.status === 'COMPLETED').length} / 7 completed</span>
                       </div>
                       <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-amber-400 h-full rounded-full" style={{ width: '89%' }} />
+                        <div className="bg-amber-400 h-full rounded-full" style={{ width: `${Math.round((classes.filter((c) => c.classNumber > 16 && c.status === 'COMPLETED').length / 7) * 100)}%` }} />
                       </div>
                     </div>
                   </div>
@@ -2355,12 +2355,12 @@ export default function AdminPortalClient({
 
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <h4 className="font-bold text-white text-sm mb-2">Student Reviews & Trust Indicators</h4>
-                  <p className="text-xs text-slate-400 mb-3">12 verified student testimonials • Average 4.95 / 5.0 stars</p>
+                  <p className="text-xs text-slate-400 mb-3">Direct UPI verification active • Cryptographic certificate validation</p>
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-1 rounded bg-amber-400/20 text-amber-300 text-xs font-bold">
-                      ★ 4.95 Excellent
+                      ✓ System Active
                     </span>
-                    <span className="text-xs text-slate-400">100% verified enrollments</span>
+                    <span className="text-xs text-slate-400">{certificates.length} Cryptographic Certificate{certificates.length === 1 ? "" : "s"} Issued</span>
                   </div>
                 </div>
               </div>
