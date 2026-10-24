@@ -423,7 +423,7 @@ export default function HomePage() {
                     <ChevronRight className="w-4 h-4" />
                   </Link>
                   <Link
-                    href={`/checkout/${cohort?.id || 'cohort-wia-batch-1'}`}
+                    href={`/checkout/${cohort?.id || 'what-is-astrology'}`}
                     className="px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-white/10 hover:bg-white/15 border border-white/15 transition"
                   >
                     {isHi ? 'अभी नामांकन करें • तुरंत प्रवेश' : 'Enroll Now • Instant Access'}
@@ -490,7 +490,7 @@ export default function HomePage() {
                   </div>
 
                   <Link
-                    href={`/checkout/${cohort?.id || 'cohort-wia-batch-1'}`}
+                    href={`/checkout/${cohort?.id || 'what-is-astrology'}`}
                     className="gold-button w-full py-4 rounded-xl text-center font-bold text-base shadow-lg shadow-amber-500/20 block"
                   >
                     {isHi ? 'आज ही सीखना शुरू करें • आजीवन पहुंच' : 'Start Learning Today • Lifetime Access'}
@@ -614,7 +614,7 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="max-w-4xl mx-auto">
             
             {/* Flagship Course Card */}
             <div className="cosmic-card p-8 rounded-2xl border border-amber-500/40 bg-[#111827]/80 ring-1 ring-amber-500/30 flex flex-col justify-between">
@@ -660,131 +660,9 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Course 2: Vastu */}
-            <div className="cosmic-card p-8 rounded-2xl border border-purple-500/30 bg-[#0d101a]/90 opacity-95 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between gap-4 mb-4">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                    {isHi ? 'शीघ्र आ रहा है' : 'Coming Soon'}
-                  </span>
-                  <span className="text-xs text-slate-400">{isHi ? '12 कक्षाएं • 6 सप्ताह' : '12 Classes • 6 Weeks'}</span>
-                </div>
-                <h4 className="text-2xl font-bold text-white mb-2">
-                  {isHi ? 'गृह हेतु वास्तु शास्त्र' : 'Vastu Shastra for Your Home'}
-                </h4>
-                <p className="text-sm text-slate-300 mb-6">
-                  {isHi
-                    ? 'दिशात्मक ऊर्जाओं, 8 दिशाओं के अधिष्ठाताओं और बिना तोड़-फोड़ के उपायों से अपने आवास में सकारात्मक संतुलन लाएं।'
-                    : 'Harmonize living spaces with cosmic directional energies, 8 compass deities, and non-demolition remedies.'}
-                </p>
-                <div className="space-y-2 mb-6 text-xs text-slate-300">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
-                    <span>{isHi ? 'वास्तु पुरुष मंडल का नक्शा एवं कोण गणना' : 'Vastu Purusha Mandala layout calculation'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
-                    <span>{isHi ? 'स्वास्थ्य और शांति हेतु व्यावहारिक दिक्-संरेखण' : 'Practical spatial alignment for health and peace'}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="pt-6 border-t border-white/10 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 block">{isHi ? 'प्रस्तावित शुल्क' : 'Expected Tuition'}</span>
-                  <span className="text-lg font-bold text-white">₹5,999</span>
-                </div>
-                <button
-                  disabled
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 text-purple-300/70 border border-purple-500/20 cursor-not-allowed"
-                >
-                  {isHi ? 'शीघ्र आ रहा है' : 'Coming Soon'}
-                </button>
-              </div>
-            </div>
+            
 
-            {/* Course 3: Gemstones */}
-            <div className="cosmic-card p-8 rounded-2xl border border-purple-500/30 bg-[#0d101a]/90 opacity-95 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between gap-4 mb-4">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                    {isHi ? 'शीघ्र आ रहा है' : 'Coming Soon'}
-                  </span>
-                  <span className="text-xs text-slate-400">{isHi ? '8 कक्षाएं • 4 सप्ताह' : '8 Classes • 4 Weeks'}</span>
-                </div>
-                <h4 className="text-2xl font-bold text-white mb-2">
-                  {isHi ? 'रत्न विज्ञान 101' : 'Gemstone Science 101'}
-                </h4>
-                <p className="text-sm text-slate-300 mb-6">
-                  {isHi
-                    ? 'वैदिक रत्न चिकित्सा का भौतिकी और आध्यात्मिक आधार। खनिज विज्ञान, प्रकाश अपवर्तन और सुरक्षित कुंडली-आधारित चयन नियम।'
-                    : 'The physics and metaphysics of Vedic Ratna therapy. Mineralogy, light refraction, and safe chart-based prescription rules.'}
-                </p>
-                <div className="space-y-2 mb-6 text-xs text-slate-300">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
-                    <span>{isHi ? '9 नवरत्न एवं ग्रहों की रश्मियां' : 'The 9 Navaratnas & planetary frequencies'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
-                    <span>{isHi ? 'प्राकृतिक बनाम उपचारित रत्नों की पहचान' : 'Natural vs treated gemstone identification'}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="pt-6 border-t border-white/10 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 block">{isHi ? 'प्रस्तावित शुल्क' : 'Expected Tuition'}</span>
-                  <span className="text-lg font-bold text-white">₹3,999</span>
-                </div>
-                <button
-                  disabled
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 text-purple-300/70 border border-purple-500/20 cursor-not-allowed"
-                >
-                  {isHi ? 'शीघ्र आ रहा है' : 'Coming Soon'}
-                </button>
-              </div>
-            </div>
-
-            {/* Course 4: Numerology */}
-            <div className="cosmic-card p-8 rounded-2xl border border-purple-500/30 bg-[#0d101a]/90 opacity-95 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between gap-4 mb-4">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                    {isHi ? 'शीघ्र आ रहा है' : 'Coming Soon'}
-                  </span>
-                  <span className="text-xs text-slate-400">{isHi ? '8 कक्षाएं • 4 सप्ताह' : '8 Classes • 4 Weeks'}</span>
-                </div>
-                <h4 className="text-2xl font-bold text-white mb-2">
-                  {isHi ? 'अंक ज्योतिष के मूल तत्व' : 'Numerology Basics'}
-                </h4>
-                <p className="text-sm text-slate-300 mb-6">
-                  {isHi
-                    ? 'संख्यात्मक तरंगों के माध्यम से भाग्य और जीवन उद्देश्य को समझें। मूलांक, भाग्यांक और व्यक्तिगत वर्ष का विश्लेषण।'
-                    : 'Decode destiny and life purpose through numerical vibrations. Moolank, Bhagyank, and personal year forecasting.'}
-                </p>
-                <div className="space-y-2 mb-6 text-xs text-slate-300">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
-                    <span>{isHi ? 'मूलांक और भाग्यांक का संतुलन' : 'Psychic & Destiny number alignment'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
-                    <span>{isHi ? 'करियर व रिश्तों हेतु नाम स्पंदन संरेखण' : 'Name vibration tuning for career & relationships'}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="pt-6 border-t border-white/10 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 block">{isHi ? 'प्रस्तावित शुल्क' : 'Expected Tuition'}</span>
-                  <span className="text-lg font-bold text-white">₹3,499</span>
-                </div>
-                <button
-                  disabled
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/5 text-purple-300/70 border border-purple-500/20 cursor-not-allowed"
-                >
-                  {isHi ? 'शीघ्र आ रहा है' : 'Coming Soon'}
-                </button>
-              </div>
-            </div>
+            
 
           </div>
 

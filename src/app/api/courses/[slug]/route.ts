@@ -20,7 +20,7 @@ export async function GET(
     try {
       const course = await prisma.course.findFirst({
         where: {
-          OR: [{ slug: slugOrId }, { id: slugOrId }],
+          OR: [{ slug: slugOrId }, { id: slugOrId }, { cohorts: { some: { id: slugOrId } } }],
         },
         include: {
           cohorts: true,

@@ -216,18 +216,13 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/courses/vastu-shastra-for-your-home" className="hover:text-amber-400 transition">
-                  {isHi ? 'गृह हेतु वास्तु शास्त्र' : 'Vastu Shastra for Your Home'}
+                <Link href="/courses/what-is-astrology#syllabus" className="hover:text-amber-400 transition">
+                  {isHi ? '23 पाठ्यक्रम मॉड्यूल एवं विषय' : '23 Curriculum Modules & Syllabus'}
                 </Link>
               </li>
               <li>
-                <Link href="/courses/gemstone-science-101" className="hover:text-amber-400 transition">
-                  {isHi ? 'रत्न विज्ञान 101' : 'Gemstone Science 101'}
-                </Link>
-              </li>
-              <li>
-                <Link href="/courses/numerology-basics" className="hover:text-amber-400 transition">
-                  {isHi ? 'अंक ज्योतिष के मूल तत्व' : 'Numerology Basics'}
+                <Link href="/verify" className="hover:text-amber-400 transition">
+                  {isHi ? 'आधिकारिक प्रमाणपत्र सत्यापन' : 'Official Certificate Verification'}
                 </Link>
               </li>
               <li>
@@ -289,7 +284,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard/courses/cohort-wia-batch-1" className="hover:text-amber-400 transition">
+                <Link href="/dashboard/courses/what-is-astrology" className="hover:text-amber-400 transition">
                   {isHi ? '23 वीडियो मॉड्यूल एवं मास्टरक्लास' : '23 Video Modules & Masterclasses'}
                 </Link>
               </li>

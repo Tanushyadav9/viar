@@ -209,7 +209,7 @@ export default function WelcomeCohortModal({
       ? `${popupMeta.startDate} – ${popupMeta.endDate}`
       : (isHi ? 'प्रवेश प्रारंभ' : 'Launch Enrollment Open'));
   const modalImageUrl = (popupMeta.imageUrl as string) || '/images/Acharya_Niraj_Kumar_Headshot.jpg';
-  const modalLinkUrl = (popupMeta.linkUrl as string) || (popupMeta.url as string) || `/checkout/${targetCohort?.id || 'cohort-wia-batch-1'}`;
+  const modalLinkUrl = (popupMeta.linkUrl as string) || (popupMeta.url as string) || `/checkout/${targetCohort?.id || 'what-is-astrology'}`;
   const modalButtonLabel = isHi
     ? ((popupMeta.buttonLabelHi as string) || (popupMeta.buttonLabelEn as string) || 'अभी प्रवेश लें — तुरंत एक्सेस')
     : ((popupMeta.buttonLabelEn as string) || (popupMeta.buttonLabelHi as string) || 'Enroll Now — Instant Access');

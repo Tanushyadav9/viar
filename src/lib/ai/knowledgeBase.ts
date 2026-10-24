@@ -60,7 +60,7 @@ export const VIAR_ACADEMY_FACTS = {
     method: 'Direct UPI QR Code & Bank Transfer (Zero gateway commission fees)',
     upiId: 'aapkaastro@okaxis',
     payeeName: 'Vihangam Institute of Astrology and Research',
-    checkoutUrl: '/checkout?course=what-is-astrology',
+    checkoutUrl: '/checkout/what-is-astrology',
     process: [
       '1. Student visits /checkout and views the locked course tuition (₹5,100 INR) with dynamic UPI QR code.',
       '2. Student scans the QR code or pays directly to UPI ID aapkaastro@okaxis.',
@@ -86,7 +86,7 @@ export const VIAR_ACADEMY_FACTS = {
     priceUsd: 69,
     originalPriceInr: 11000,
     originalPriceUsd: 129,
-    isOneTimeFee: true,
+        isOneTimeFee: true,
     hasLifetimeAccess: true,
     deliveryMode: 'SELF_PACED',
     totalModules: 23,
@@ -128,11 +128,7 @@ export const VIAR_ACADEMY_FACTS = {
       'Module 23: Bonus Live Workshop: Real-world Marriage Chart Analysis & Final Exam',
     ],
   } as ViarCourseFact,
-  upcomingCourses: [
-    { title: 'Vastu Shastra for Your Home', priceInr: 5999, status: 'Coming Soon' },
-    { title: 'Gemstone Science 101', priceInr: 3999, status: 'Coming Soon' },
-    { title: 'Numerology Basics', priceInr: 3499, status: 'Coming Soon' },
-  ],
+  upcomingCourses: [],
 };
 
 /**
@@ -159,7 +155,7 @@ RETRIEVED KNOWLEDGE BASE & LIVE DATA:
 ${retrievedKnowledgeContext || `
 - Academy: Vihangam Institute of Astrology and Research (VIAR, viar.in)
 - Flagship Course: Vedic Astrology Masterclass: What is Astrology (23 modules + 2 bonus workshops, 50 lessons, 46+ hours, 100% self-paced with lifetime access)
-- Tuition (Live): ₹5,100 INR ($69 USD). Zero discounts, coupons, or variable pricing.
+- Tuition (Live): ₹5,100 INR Zero discounts, coupons, or variable pricing.
 - Payment: Direct UPI to aapkaastro@okaxis (0% gateway fees). No passwords over WhatsApp.
 - Refund: 7-day review window, up to 3 video modules watched, 100% full refund via direct UPI.
 - Instructor: Acharya Niraj Kumar (Jyotish Acharya, Bharatiya Vidya Bhavan under K.N. Rao, 20+ years practicing).
