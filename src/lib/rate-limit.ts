@@ -2,7 +2,7 @@ import Redis from 'ioredis';
 
 // Redis client initialization if REDIS_URL is provided, else fallback to memory
 let redisClient: Redis | null = null;
-if (process.env.REDIS_URL) {
+if (process.env.REDIS_URL && process.env.NODE_ENV !== 'test' && !process.env.NODE_TEST_CONTEXT) {
   try {
     redisClient = new Redis(process.env.REDIS_URL, {
       maxRetriesPerRequest: 1,

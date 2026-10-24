@@ -128,12 +128,18 @@ export async function GET(
               isFreePreview: false,
               videoDuration: lesson.videoDuration,
               isLocked: true,
-              // Strictly nullify secret keys and URLs on server
+              // Strictly nullify secret keys, notes, recordings, and URLs on server
               videoProviderId: null,
               playbackUrl: null,
+              externalVideoUrl: null,
+              isExternalVideo: false,
               documentKey: null,
               documentUrl: null,
+              notesMarkdown: null,
               liveJoinLink: null,
+              agenda: null,
+              recordingUrl: null,
+              recordingStreamId: null,
               signedPlaybackToken: null,
               documentDownloadUrl: null,
             };

@@ -15,7 +15,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import InstructorNav from '@/components/InstructorNav';
-import { Cohort, Course, User } from '@/lib/types';
+import { Course, User } from '@/lib/types';
 import { isSiteOwner } from '@/lib/auth/permissions';
 
 interface StudentRosterItem {
@@ -42,31 +42,46 @@ interface StudentRosterItem {
   certificateVerificationCode?: string;
 }
 
+interface CourseInvitationItem {
+  id: string;
+  email: string;
+  courseId: string;
+  course?: { id: string; title: string; slug: string };
+  cohortId?: string;
+  cohort?: { id: string; batchName: string };
+  invitedBy: string;
+  note?: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED';
+  expiresAt: string;
+  acceptedAt?: string;
+  revokedAt?: string;
+  revokeReason?: string;
+  createdAt: string;
+}
+
 export default function InstructorStudentsRosterPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [enrollments, setEnrollments] = useState<StudentRosterItem[]>([]);
+  const [invitations, setInvitations] = useState<CourseInvitationItem[]>([]);
+  const [activeTab, setActiveTab] = useState<'roster' | 'invitations'>('roster');
   const [courses, setCourses] = useState<Course[]>([]);
-  const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Manual Grant Modal State
+  // Add Student by Email Modal State
   const [isEnrolling, setIsEnrolling] = useState(false);
-  const [manualName, setManualName] = useState('');
   const [manualEmail, setManualEmail] = useState('');
-  const [manualPhone, setManualPhone] = useState('');
   const [manualCourseId, setManualCourseId] = useState('course-what-is-astrology');
-  const [manualCohortId, setManualCohortId] = useState('cohort-wia-batch-1');
-  const [manualAmount, setManualAmount] = useState('5100');
-  const manualCurrency = 'INR';
   const [manualReason, setManualReason] = useState('');
+  const [inviteExpiryDays, setInviteExpiryDays] = useState('7');
   const [modalSuccess, setModalSuccess] = useState('');
   const [modalError, setModalError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Revoke Access Modal State
   const [revokingEnrollment, setRevokingEnrollment] = useState<StudentRosterItem | null>(null);
+  const [revokingInvitation, setRevokingInvitation] = useState<CourseInvitationItem | null>(null);
   const [revokeReason, setRevokeReason] = useState('');
   const [revokeSuccess, setRevokeSuccess] = useState('');
   const [revokeError, setRevokeError] = useState('');
@@ -85,6 +100,17 @@ export default function InstructorStudentsRosterPage() {
       }
     } catch (err) {
       console.warn('Enrollment API error:', err);
+    }
+
+    try {
+      // 1.5 Fetch live course invitations
+      const invRes = await fetch('/api/enrollments/invite');
+      const invData = await invRes.json();
+      if (invData.success && Array.isArray(invData.invitations)) {
+        setInvitations(invData.invitations);
+      }
+    } catch (err) {
+      console.warn('Invitations fetch error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -98,16 +124,6 @@ export default function InstructorStudentsRosterPage() {
       }
     } catch {
       
-    }
-
-    try {
-      const cohRes = await fetch('/api/cohorts');
-      const cohData = await cohRes.json();
-      if (cohData.success && Array.isArray(cohData.cohorts)) {
-        setCohorts(cohData.cohorts);
-      }
-    } catch {
-      // Cohorts load fallback
     }
   }, [selectedCourseId]);
 
@@ -123,52 +139,77 @@ export default function InstructorStudentsRosterPage() {
 
   const handleManualGrant = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualName.trim() || !manualEmail.trim()) return;
-
-    if (!manualReason.trim()) {
-      setModalError('A mandatory reason is required to log this manual access grant.');
-      return;
-    }
+    if (!manualEmail.trim()) return;
 
     setIsSubmitting(true);
     setModalError('');
     setModalSuccess('');
 
     try {
-      const res = await fetch('/api/enrollments/grant', {
+      const res = await fetch('/api/enrollments/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          studentName: manualName.trim(),
-          studentEmail: manualEmail.trim(),
-          studentPhone: manualPhone.trim() || undefined,
+          email: manualEmail.trim(),
           courseId: manualCourseId,
-          cohortId: manualCohortId,
-          amountPaid: Number(manualAmount) || 5100,
-          currency: manualCurrency,
-          reason: manualReason.trim(),
+          note: manualReason.trim() || undefined,
+          expiresDays: Number(inviteExpiryDays) || 7,
         }),
       });
 
       const data = await res.json();
       if (!res.ok && !data.success) {
-        throw new Error(data.error || 'Failed to grant enrollment access');
+        throw new Error(data.error || 'Failed to add student by email');
       }
 
-      setModalSuccess(`Scholar ${manualName} granted access successfully! Audit log saved.`);
+      setModalSuccess(data.message || 'Access granted or invitation created! Audit log saved.');
       setTimeout(() => {
         setIsEnrolling(false);
-        setManualName('');
         setManualEmail('');
-        setManualPhone('');
         setManualReason('');
         setModalSuccess('');
         loadData();
       }, 1500);
     } catch (err: unknown) {
-      setModalError(err instanceof Error ? err.message : 'Error granting enrollment');
+      setModalError(err instanceof Error ? err.message : 'Error adding student');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleRevokeInvitation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!revokingInvitation) return;
+    if (!revokeReason.trim()) {
+      setRevokeError('A mandatory reason is strictly required to revoke an invitation.');
+      return;
+    }
+
+    setIsRevoking(true);
+    setRevokeError('');
+    setRevokeSuccess('');
+
+    try {
+      const res = await fetch(
+        `/api/enrollments/invite?id=${revokingInvitation.id}&reason=${encodeURIComponent(revokeReason.trim())}`,
+        { method: 'DELETE' }
+      );
+      const data = await res.json();
+      if (!res.ok && !data.success) {
+        throw new Error(data.error || 'Failed to revoke invitation');
+      }
+
+      setRevokeSuccess(`Invitation for ${revokingInvitation.email} was revoked.`);
+      setTimeout(() => {
+        setRevokingInvitation(null);
+        setRevokeReason('');
+        setRevokeSuccess('');
+        loadData();
+      }, 1500);
+    } catch (err: unknown) {
+      setRevokeError(err instanceof Error ? err.message : 'Error revoking invitation');
+    } finally {
+      setIsRevoking(false);
     }
   };
 
@@ -280,14 +321,16 @@ export default function InstructorStudentsRosterPage() {
               <span>Export CSV</span>
             </button>
 
-            {/* Manual Enrollment Button */}
-            <button
-              onClick={() => setIsEnrolling(true)}
-              className="gold-button px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-amber-500/20"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Manual Student Admission</span>
-            </button>
+            {/* Add Student by Email Button (Owner-Only) */}
+            {isOwner && (
+              <button
+                onClick={() => setIsEnrolling(true)}
+                className="gold-button px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-amber-500/20"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Add student by email</span>
+              </button>
+            )}
 
             <button
               onClick={loadData}
@@ -330,24 +373,30 @@ export default function InstructorStudentsRosterPage() {
           </div>
         </div>
 
-        {/* Modal: Manual Student Enrollment (Owner-only with required reason) */}
+        {/* Modal: Add Student by Email (Owner-only) */}
         {isEnrolling && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-amber-500/40 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-              <h3 className="text-xl font-bold text-white mb-1">Grant Scholar Admission Manually</h3>
-              <p className="text-xs text-slate-400 mb-6">
-                Directly provision self-paced course access for students paying via direct cash, ashram donation, or offline bank transfer.
-              </p>
+            <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-amber-500/40 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4">
+              <div>
+                <h3 className="text-xl font-bold text-white mb-1">Add Student by Email</h3>
+                <p className="text-xs text-slate-400">
+                  Provision direct course access or send an automated invitation to a student.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 leading-relaxed">
+                ✨ <strong>Automatic Activation:</strong> If the student already has an account, enrolment is activated immediately. If not, a pending invitation is stored and activates automatically the moment they sign up with this verified email. The student receives an email either way.
+              </div>
 
               {modalSuccess && (
-                <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <span>{modalSuccess}</span>
                 </div>
               )}
 
               {modalError && (
-                <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs">
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs">
                   {modalError}
                 </div>
               )}
@@ -355,111 +404,67 @@ export default function InstructorStudentsRosterPage() {
               <form onSubmit={handleManualGrant} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Scholar Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={manualName}
-                    onChange={(e) => setManualName(e.target.value)}
-                    placeholder="e.g. Priyadarshini Sen"
-                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Email Address *
+                    Student Verified Email Address *
                   </label>
                   <input
                     type="email"
                     required
                     value={manualEmail}
                     onChange={(e) => setManualEmail(e.target.value)}
-                    placeholder="scholar@example.com"
+                    placeholder="student@example.com"
                     className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    WhatsApp / Phone Number
+                    Select Course *
                   </label>
-                  <input
-                    type="tel"
-                    value={manualPhone}
-                    onChange={(e) => setManualPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                  />
+                  <select
+                    value={manualCourseId}
+                    onChange={(e) => setManualCourseId(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl bg-[#111827] border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                  >
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Assign to Course
-                    </label>
-                    <select
-                      value={manualCourseId}
-                      onChange={(e) => setManualCourseId(e.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-[#111827] border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                    >
-                      {courses.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Assign to Cohort
-                    </label>
-                    <select
-                      value={manualCohortId}
-                      onChange={(e) => setManualCohortId(e.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-[#111827] border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                    >
-                      {cohorts.map((ch) => (
-                        <option key={ch.id} value={ch.id}>
-                          {ch.batchName || ch.id}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Tuition Paid
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      value={manualAmount}
-                      onChange={(e) => setManualAmount(e.target.value)}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-
-                </div>
-
-                {/* MANDATORY AUDIT REASON */}
                 <div>
-                  <label className="block text-xs font-semibold text-amber-300 mb-1">
-                    Audit Reason (Required for Audit Log) *
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Invitation Expiry Period
+                  </label>
+                  <select
+                    value={inviteExpiryDays}
+                    onChange={(e) => setInviteExpiryDays(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl bg-[#111827] border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="7">7 Days (Standard)</option>
+                    <option value="14">14 Days</option>
+                    <option value="30">30 Days</option>
+                    <option value="90">90 Days</option>
+                  </select>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Unclaimed invitations will expire automatically after this duration.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Optional Note &amp; Audit Reason
                   </label>
                   <textarea
                     rows={2}
-                    required
                     value={manualReason}
                     onChange={(e) => setManualReason(e.target.value)}
-                    placeholder="e.g. Direct cash tuition received at Deoghar ashram; or full academic scholarship granted."
-                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-amber-500/30 text-white text-xs focus:outline-none focus:border-amber-400"
+                    placeholder="e.g. Offline Ashram donation, full scholarship grant, or direct payment."
+                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
                   />
                   <span className="text-[10px] text-slate-400 mt-1 block">
-                    This reason is permanently recorded in the system activity audit log.
+                    Logged permanently in the security audit trail.
                   </span>
                 </div>
 
@@ -476,7 +481,7 @@ export default function InstructorStudentsRosterPage() {
                     disabled={isSubmitting}
                     className="gold-button px-6 py-2.5 rounded-xl text-xs font-bold disabled:opacity-50"
                   >
-                    {isSubmitting ? 'Granting...' : 'Confirm Admission'}
+                    {isSubmitting ? 'Processing...' : 'Add Student & Send Email'}
                   </button>
                 </div>
               </form>
@@ -549,7 +554,178 @@ export default function InstructorStudentsRosterPage() {
           </div>
         )}
 
-        {/* Students Table */}
+        {/* Modal: Revoke Invitation (Owner-only with required reason) */}
+        {revokingInvitation && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-red-500/40 max-w-lg w-full">
+              <div className="flex items-center gap-3 text-red-400 mb-2">
+                <UserX className="w-6 h-6 shrink-0" />
+                <h3 className="text-lg font-bold text-white">Revoke Course Invitation</h3>
+              </div>
+
+              <p className="text-xs text-slate-300 mb-4">
+                You are revoking the invitation sent to <strong className="text-white">{revokingInvitation.email}</strong>.
+              </p>
+
+              {revokeSuccess && (
+                <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{revokeSuccess}</span>
+                </div>
+              )}
+
+              {revokeError && (
+                <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs">
+                  {revokeError}
+                </div>
+              )}
+
+              <form onSubmit={handleRevokeInvitation} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-red-300 mb-1">
+                    Audit Reason for Revocation (Strictly Required) *
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={revokeReason}
+                    onChange={(e) => setRevokeReason(e.target.value)}
+                    placeholder="e.g. Invitation issued in error or student requested cancellation."
+                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-red-500/30 text-white text-xs focus:outline-none focus:border-red-400"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Recorded permanently in the security audit trail.
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setRevokingInvitation(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isRevoking}
+                    className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition disabled:opacity-50"
+                  >
+                    {isRevoking ? 'Revoking...' : 'Confirm Revoke Invitation'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Tabs: Enrolled Students vs Invitations */}
+        <div className="flex items-center gap-3 mb-4 border-b border-white/10 pb-2">
+          <button
+            onClick={() => setActiveTab('roster')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+              activeTab === 'roster'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Enrolled Scholars ({filteredStudents.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('invitations')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+              activeTab === 'invitations'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>Invitations</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/10 text-white">
+              {invitations.length}
+            </span>
+          </button>
+        </div>
+
+        {activeTab === 'invitations' ? (
+          /* Invitations Table */
+          <div className="cosmic-card rounded-2xl border border-white/10 overflow-hidden shadow-xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-white/5 border-b border-white/10 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+                  <tr>
+                    <th className="py-4 px-6">Invited Email</th>
+                    <th className="py-4 px-6">Course</th>
+                    <th className="py-4 px-6">Expires At</th>
+                    <th className="py-4 px-6">Status</th>
+                    <th className="py-4 px-6">Note</th>
+                    <th className="py-4 px-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {invitations.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-slate-500">
+                        No invitations sent yet • अभी तक कोई आमंत्रण नहीं भेजा गया है।
+                      </td>
+                    </tr>
+                  ) : (
+                    invitations.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-white/[0.02] transition">
+                        <td className="py-4 px-6 font-semibold text-white">
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-3.5 h-3.5 text-slate-500" />
+                            <span>{inv.email}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6 text-slate-300">
+                          {inv.course?.title || 'What is Astrology'}
+                        </td>
+                        <td className="py-4 px-6 text-slate-400 font-mono text-[11px]">
+                          {new Date(inv.expiresAt).toLocaleDateString('en-IN', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </td>
+                        <td className="py-4 px-6">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              inv.status === 'ACCEPTED'
+                                ? 'bg-emerald-500/20 text-emerald-300'
+                                : inv.status === 'PENDING'
+                                ? 'bg-amber-500/20 text-amber-300'
+                                : 'bg-red-500/20 text-red-300'
+                            }`}
+                          >
+                            {inv.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-slate-400 max-w-xs truncate">
+                          {inv.note || '—'}
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          {isOwner && inv.status === 'PENDING' && (
+                            <button
+                              onClick={() => {
+                                setRevokingInvitation(inv);
+                                setRevokeReason('');
+                                setRevokeError('');
+                                setRevokeSuccess('');
+                              }}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-400 hover:text-white bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition"
+                            >
+                              Revoke
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
         <div className="cosmic-card rounded-2xl border border-white/10 overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs text-slate-300">
@@ -692,6 +868,7 @@ export default function InstructorStudentsRosterPage() {
             </table>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

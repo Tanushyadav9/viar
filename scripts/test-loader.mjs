@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+process.env.NODE_ENV = 'test';
+
 export async function resolve(specifier, context, nextResolve) {
   if (specifier === 'next/server') {
     return nextResolve('next/server.js', context);

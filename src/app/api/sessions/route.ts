@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { SCHEDULED_CLASSES_FLAGSHIP } from '@/lib/data';
 import type { ScheduledClass } from '@/lib/types';
 import { getServerAuthUser, isAuthorizedForSection, canAccessArea } from '@/lib/auth/serverAuth';
+import { verifyUserCourseAccess } from '@/lib/auth/course-access';
 import { emailService } from '@/lib/email';
 import { env } from '@/config/env';
 
@@ -15,6 +16,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'cohortId query parameter is required' },
         { status: 400 }
+      );
+    }
+
+    // Server-side Access Gating: Timetable, schedule, and live session links
+    // are visible ONLY to students with an approved enrolment or Staff / Owner
+    const access = await verifyUserCourseAccess(req, cohortId);
+    if (!access.isEnrolled && !access.isStaffOrOwner) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Forbidden: Class timetable and session details are visible only to students with an approved enrolment.',
+          code: 'ENROLLMENT_REQUIRED',
+        },
+        { status: 403 }
       );
     }
 

@@ -196,6 +196,13 @@ export async function syncDatabaseUser(params: SyncUserParams): Promise<SyncUser
       },
     });
 
+    // 5.5 Auto-activate pending Owner invitations for verified email
+    if (cleanEmail && isEmailVerified) {
+      await autoActivateInvitations(existingUser.id, cleanEmail).catch((err) =>
+        logger.warn('[userSync] Error activating pending invitations for existing user:', err)
+      );
+    }
+
     return {
       user: updated,
       created: false,
@@ -229,6 +236,13 @@ export async function syncDatabaseUser(params: SyncUserParams): Promise<SyncUser
         avatarUrl: true,
       },
     });
+
+    // 6.5 Auto-activate pending Owner invitations for verified email
+    if (cleanEmail && isEmailVerified) {
+      await autoActivateInvitations(created.id, cleanEmail).catch((err) =>
+        logger.warn('[userSync] Error activating pending invitations for created user:', err)
+      );
+    }
 
     return {
       user: created,
@@ -271,4 +285,139 @@ export async function syncDatabaseUser(params: SyncUserParams): Promise<SyncUser
     }
     throw err;
   }
+}
+
+/**
+ * Auto-activates valid, non-expired course invitations when a student signs up or in with verified email.
+ */
+export async function autoActivateInvitations(userId: string, email: string): Promise<number> {
+  const cleanEmail = email.trim().toLowerCase();
+  const now = new Date();
+
+  // Expire outdated invitations
+  await prisma.courseInvitation.updateMany({
+    where: {
+      email: cleanEmail,
+      status: 'PENDING',
+      expiresAt: { lte: now },
+    },
+    data: {
+      status: 'EXPIRED',
+    },
+  }).catch(() => {});
+
+  // Fetch valid pending invitations
+  let pending: Array<{
+    id: string;
+    email: string;
+    courseId: string;
+    cohortId?: string | null;
+    invitedBy: string;
+    course: { title: string };
+  }> = [];
+  try {
+    pending = await prisma.courseInvitation.findMany({
+      where: {
+        email: cleanEmail,
+        status: 'PENDING',
+        expiresAt: { gt: now },
+      },
+      include: {
+        course: true,
+        cohort: true,
+      },
+    });
+  } catch {
+    return 0;
+  }
+
+  if (!pending || pending.length === 0) return 0;
+
+  let activatedCount = 0;
+
+  for (const inv of pending) {
+    try {
+      let cohortId = inv.cohortId;
+      if (!cohortId) {
+        const defaultCohort = await prisma.cohort.findFirst({
+          where: { courseId: inv.courseId },
+          select: { id: true },
+        });
+        cohortId = defaultCohort?.id || null;
+      }
+
+      // Create or activate enrollment
+      const existingEnrollment = await prisma.enrollment.findFirst({
+        where: {
+          userId,
+          OR: [
+            { courseId: inv.courseId },
+            ...(cohortId ? [{ cohortId }] : []),
+          ],
+        },
+      });
+
+      let enrollmentId: string;
+      if (existingEnrollment) {
+        const updated = await prisma.enrollment.update({
+          where: { id: existingEnrollment.id },
+          data: {
+            status: 'ACTIVE',
+            paymentReference: 'INVITATION_AUTO_ACTIVATED',
+          },
+        });
+        enrollmentId = updated.id;
+      } else {
+        const created = await prisma.enrollment.create({
+          data: {
+            userId,
+            courseId: inv.courseId,
+            cohortId,
+            amountPaid: 0,
+            currency: 'INR',
+            paymentReference: 'INVITATION_AUTO_ACTIVATED',
+            status: 'ACTIVE',
+          },
+        });
+        enrollmentId = created.id;
+      }
+
+      // Mark invitation accepted
+      await prisma.courseInvitation.update({
+        where: { id: inv.id },
+        data: {
+          status: 'ACCEPTED',
+          acceptedAt: now,
+        },
+      });
+
+      // Audit log
+      await prisma.activityLog.create({
+        data: {
+          userId,
+          userEmail: cleanEmail,
+          action: 'INVITATION_ACCEPTED',
+          entityType: 'ENROLLMENT',
+          entityId: enrollmentId,
+          courseId: inv.courseId,
+          reason: 'Auto-activated upon verified sign-up',
+          details: {
+            invitationId: inv.id,
+            courseTitle: inv.course.title,
+            invitedBy: inv.invitedBy,
+            acceptedAt: now.toISOString(),
+          },
+        },
+      }).catch(() => {});
+
+      activatedCount++;
+    } catch (invErr) {
+      logger.warn(`Failed to auto-activate invitation ${inv.id}`, {
+        invitationId: inv.id,
+        error: invErr instanceof Error ? invErr.message : String(invErr),
+      });
+    }
+  }
+
+  return activatedCount;
 }

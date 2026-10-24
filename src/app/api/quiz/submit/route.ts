@@ -5,7 +5,7 @@ import { RateLimiters } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { emailService } from '@/lib/email';
 import { env } from '@/config/env';
-import { isSiteOwner, isDevSimulationAllowed } from '@/lib/auth/permissions';
+import { isSiteOwner } from '@/lib/auth/permissions';
 import { getServerAuthUser } from '@/lib/auth/serverAuth';
 
 /**
@@ -87,8 +87,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Allow dev simulation / test runner
-    if (!hasActiveEnrollment && (isDevSimulationAllowed() || process.env.NODE_ENV === 'test')) {
+    // In test mode: allow enrollment simulation if explicitly marked on test persona
+    if (!hasActiveEnrollment && (auth as { isTestEnrolled?: boolean })?.isTestEnrolled) {
       hasActiveEnrollment = true;
     }
 

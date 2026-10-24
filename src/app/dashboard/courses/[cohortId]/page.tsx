@@ -341,6 +341,37 @@ export default function CohortClassByClassPage() {
           </div>
         </div>
 
+        {/* Access Warning if Not Enrolled */}
+        {!isEnrolled && (
+          <div className="mb-6 p-5 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">Enrollment Required / अनुमोदन आवश्यक</h4>
+                <p className="text-xs text-slate-300">
+                  Full lesson videos, PDFs, live links, and exams are reserved for approved scholars.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Link
+                href="/waiting-approval"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 transition text-center"
+              >
+                Check Approval Status →
+              </Link>
+              <Link
+                href={`/checkout/${cohort.id}`}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-black bg-amber-400 hover:bg-amber-300 shadow-md transition text-center"
+              >
+                Enroll Now
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Top Header Card */}
         <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10 mb-8 bg-gradient-to-r from-[#111827] to-[#090d16]">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">

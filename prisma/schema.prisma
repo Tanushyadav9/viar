@@ -171,6 +171,7 @@ model Course {
   activityLogs       ActivityLog[]
   payments           Payment[]
   orders             Order[]
+  invitations        CourseInvitation[]
 
   @@index([slug])
   @@index([status])
@@ -280,6 +281,7 @@ model Cohort {
   certificates        Certificate[]
   payments            Payment[]
   orders              Order[]
+  invitations         CourseInvitation[]
 
   @@index([courseId])
   @@index([status])
@@ -620,6 +622,37 @@ model PaymentSettings {
   updatedBy       String?  @map("updated_by")
 
   @@map("payment_settings")
+}
+
+// ------------------------------------------------------------------------------
+// 10C. COURSE INVITATION (Owner-Approved "Add Student by Email")
+// Stores pending invitations for students added before they sign up.
+// Activates automatically when the student registers with verified email.
+// ------------------------------------------------------------------------------
+
+model CourseInvitation {
+  id           String    @id @default(cuid())
+  email        String
+  courseId     String    @map("course_id")
+  course       Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  cohortId     String?   @map("cohort_id")
+  cohort       Cohort?   @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  invitedBy    String    @map("invited_by")
+  note         String?   @db.Text
+  status       String    @default("PENDING") // PENDING | ACCEPTED | REVOKED | EXPIRED
+  expiresAt    DateTime  @map("expires_at")
+  acceptedAt   DateTime? @map("accepted_at")
+  revokedAt    DateTime? @map("revoked_at")
+  revokeReason String?   @map("revoke_reason") @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([status])
+  @@index([courseId])
+  @@index([cohortId])
+  @@index([expiresAt])
+  @@map("course_invitations")
 }
 
 // ------------------------------------------------------------------------------
