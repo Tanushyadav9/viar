@@ -521,12 +521,11 @@ export default function HomePage() {
               <div className="relative inline-block">
                 <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-2xl overflow-hidden border-2 border-amber-500/40 shadow-2xl mx-auto relative group">
                   <Image
-                    src="/images/Acharya_Niraj_Kumar_Solo.jpg"
+                    src="/images/Acharya_Niraj_Kumar_Desk.jpg"
                     alt="Acharya Niraj Kumar"
                     fill
                     sizes="(max-width: 640px) 224px, 256px"
                     className="object-cover transition duration-500 group-hover:scale-105"
-                    style={{ objectPosition: 'center 46%' }}
                   />
                 </div>
                 <div className="absolute -bottom-4 -right-2 bg-[#0f172a] border border-amber-400/40 px-3.5 py-1.5 rounded-xl shadow-xl">

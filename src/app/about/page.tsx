@@ -169,12 +169,11 @@ export default function AboutPage() {
               <div className="relative inline-block mx-auto">
                 <div className="w-64 h-64 sm:w-80 sm:h-80 rounded-3xl overflow-hidden border-2 border-amber-500/40 shadow-2xl mx-auto relative group">
                   <Image
-                    src="/images/Acharya_Niraj_Kumar_Solo.jpg"
+                    src="/images/Acharya_Niraj_Kumar_Desk.jpg"
                     alt="Acharya Niraj Kumar"
                     fill
                     sizes="(max-width: 640px) 256px, 320px"
                     className="object-cover transition duration-500 group-hover:scale-105"
-                    style={{ objectPosition: 'center 46%' }}
                     priority
                   />
                 </div>
