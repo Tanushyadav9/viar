@@ -11,6 +11,9 @@ export async function resolve(specifier, context, nextResolve) {
   if (specifier === 'next/navigation') {
     return nextResolve('next/navigation.js', context);
   }
+  if (specifier === 'next/cache') {
+    return nextResolve('next/cache.js', context);
+  }
 
   let target = specifier;
   if (target.startsWith('@/')) {

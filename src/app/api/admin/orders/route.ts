@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const [orders, counts] = await Promise.all([
+    const [orders, counts, approvedRevenueAgg] = await Promise.all([
       prisma.order.findMany({
         where: whereClause,
         include: {
@@ -54,6 +54,10 @@ export async function GET(req: NextRequest) {
       prisma.order.groupBy({
         by: ['status'],
         _count: { id: true },
+      }),
+      prisma.order.aggregate({
+        where: { status: 'APPROVED' },
+        _sum: { amount: true },
       }),
     ]);
 
@@ -78,6 +82,7 @@ export async function GET(req: NextRequest) {
       success: true,
       orders,
       countsByStatus,
+      totalApprovedRevenueInr: approvedRevenueAgg._sum.amount || 0,
     });
   } catch (err) {
     return NextResponse.json(

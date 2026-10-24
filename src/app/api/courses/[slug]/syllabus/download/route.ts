@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { INITIAL_COURSES } from '@/lib/data';
+import { prisma } from '@/lib/prisma';
 
 interface RouteParams {
   params: {
@@ -12,7 +12,58 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   const { searchParams } = new URL(req.url);
   const autoPrint = searchParams.get('print') === 'true';
 
-  const course = INITIAL_COURSES.find((c) => c.slug === slug) || INITIAL_COURSES[0];
+  let dbCourse = null;
+  try {
+    dbCourse = await prisma.course.findFirst({
+      where: {
+        OR: [{ slug }, { id: slug }],
+        status: { in: ['PUBLISHED', 'COMING_SOON'] },
+      },
+      include: {
+        modules: {
+          where: { status: { not: 'ARCHIVED' } },
+          orderBy: { order: 'asc' },
+          include: {
+            lessons: {
+              where: { status: { not: 'ARCHIVED' } },
+              orderBy: { order: 'asc' },
+            },
+          },
+        },
+      },
+    });
+  } catch (err) {
+    console.warn('Database query for syllabus download failed:', (err as Error).message);
+  }
+
+  if (!dbCourse) {
+    return new NextResponse('Course syllabus not found', { status: 404 });
+  }
+
+  const course = {
+    title: dbCourse.title,
+    tagline: dbCourse.shortDescription || 'Practical self-paced Vedic astrology masterclass.',
+    description: dbCourse.description || '',
+    level: dbCourse.category || 'All Levels',
+    totalModules: dbCourse.modules?.length || dbCourse.totalClasses || 23,
+    priceInr: dbCourse.priceInr || 5100,
+    slug: dbCourse.slug,
+    whatYouWillLearn: [
+      'The cosmic architecture: 9 Grahas, 12 Rashis, 27 Nakshatras, and 12 Bhavas',
+      'Decoding planetary dignities: Exaltation, Debilitation, Combustion, and Retrograde motion',
+      'Navigating the Dasha system (Vimshottari) to time life events with mathematical precision',
+      'Remedial Vedic sciences: Authentic Gemstone therapy, Rudraksha selection, and Daan-Dakshina principles',
+      'Step-by-step reading of the Lagna Kundali with real chart case studies',
+      'Two bonus masterclasses on career selection and marriage compatibility analysis',
+    ],
+    modules: dbCourse.modules?.map((m, idx) => ({
+      moduleNumber: idx + 1,
+      title: m.title,
+      description: m.description || (m.lessons?.map(l => l.title).join(', ') || ''),
+      durationMinutes: 75,
+      isBonus: m.title.toLowerCase().includes('bonus') || idx >= 21,
+    })) || [],
+  };
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -52,7 +103,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     .academy-brand {
       font-family: 'Cinzel', serif;
-      font-size: 24px;
+      font-size: 20px;
       font-weight: 800;
       color: #7B2D26;
       letter-spacing: 1px;
@@ -63,38 +114,37 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       color: #64748b;
       text-transform: uppercase;
       letter-spacing: 1.5px;
-      font-weight: 600;
       margin-top: 2px;
     }
 
     .course-meta {
       text-align: right;
-      font-size: 12px;
-      color: #475569;
+      font-size: 11px;
+      color: #64748b;
     }
 
     .course-title {
       font-family: 'Cinzel', serif;
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 700;
       color: #0f172a;
       margin-bottom: 6px;
     }
 
     .tagline {
-      font-size: 14px;
+      font-size: 13px;
       color: #C1662F;
       font-weight: 600;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
     }
 
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 12px;
-      background: #faf8f5;
-      border: 1px solid #f1e9dd;
-      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
       padding: 12px;
       margin-bottom: 24px;
     }

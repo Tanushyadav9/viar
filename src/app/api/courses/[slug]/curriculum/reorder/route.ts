@@ -1,3 +1,4 @@
+import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
@@ -35,6 +36,12 @@ export async function POST(
         )
       );
 
+      try {
+        revalidatePath('/courses');
+      } catch {
+        // revalidation skipped
+      }
+
       return NextResponse.json({ success: true, message: 'Modules reordered successfully' });
     }
 
@@ -50,6 +57,12 @@ export async function POST(
           })
         )
       );
+
+      try {
+        revalidatePath('/courses');
+      } catch {
+        // revalidation skipped
+      }
 
       return NextResponse.json({ success: true, message: 'Lessons reordered successfully' });
     }

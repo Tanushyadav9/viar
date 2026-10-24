@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { INITIAL_COURSES } from '@/lib/data';
 
 interface RouteParams {
   params: {
@@ -13,15 +12,17 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   const { searchParams } = new URL(req.url);
   const autoPrint = searchParams.get('print') === 'true';
 
-  let studentName = 'Dedicated Student';
-  let courseTitle = INITIAL_COURSES[0].title;
-  let issueDate = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
-  let grade = 'Distinction (95%)';
-  let certId = code || 'VIAR-2026-CERT';
-
-  // Attempt database retrieval
+  type CertRecord = {
+    certificateNumber: string;
+    issuedAt: Date;
+    grade?: string | null;
+    scorePercentage?: number | null;
+    user?: { name?: string | null } | null;
+    cohort?: { course?: { title?: string | null } | null } | null;
+  };
+  let cert: CertRecord | null = null;
   try {
-    const cert = await prisma.certificate.findFirst({
+    cert = await prisma.certificate.findFirst({
       where: {
         OR: [
           { certificateNumber: code },
@@ -33,17 +34,19 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         cohort: { include: { course: true } },
       },
     });
-
-    if (cert) {
-      studentName = cert.user?.name || studentName;
-      courseTitle = cert.cohort?.course?.title || courseTitle;
-      issueDate = cert.issuedAt.toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
-      grade = cert.grade ? `${cert.grade} (${cert.scorePercentage || 90}%)` : grade;
-      certId = cert.certificateNumber;
-    }
   } catch (err) {
-    console.warn('Database cert download lookup skipped:', (err as Error).message);
+    console.warn('Database cert download lookup error:', (err as Error).message);
   }
+
+  if (!cert) {
+    return NextResponse.json({ success: false, error: 'Certificate not found' }, { status: 404 });
+  }
+
+  const studentName = cert.user?.name || 'Student';
+  const courseTitle = cert.cohort?.course?.title || 'Vedic Astrology Masterclass';
+  const issueDate = cert.issuedAt.toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+  const grade = cert.grade ? `${cert.grade} (${cert.scorePercentage || 90}%)` : 'Passed';
+  const certId = cert.certificateNumber;
 
   const html = `<!DOCTYPE html>
 <html lang="en">

@@ -30,17 +30,21 @@ export function generateUpiUrl(params: {
   amount?: number;
   studentName?: string;
   courseTitle?: string;
+  vpa?: string;
+  payeeName?: string;
 }): string {
   const amount = params.amount || UPI_CONFIG.defaultAmountInr;
   const note = encodeURIComponent(`VIAR Astrology Tuition - ${params.studentName || 'Student'}`);
-  const payee = encodeURIComponent(UPI_CONFIG.payeeName);
-  return `upi://pay?pa=${UPI_CONFIG.vpa}&pn=${payee}&am=${amount}&cu=INR&tn=${note}`;
+  const vpa = (params.vpa || UPI_CONFIG.vpa).trim();
+  const payee = encodeURIComponent(params.payeeName || UPI_CONFIG.payeeName);
+  return `upi://pay?pa=${vpa}&pn=${payee}&am=${amount}&cu=INR&tn=${note}`;
 }
 
 /**
  * Generate direct WhatsApp message URL for student to submit payment screenshot to Owner
  */
 export function generateWhatsAppPaymentSubmissionUrl(params: {
+  ownerPhone?: string;
   studentName: string;
   studentEmail: string;
   studentPhone?: string;
@@ -63,7 +67,8 @@ export function generateWhatsAppPaymentSubmissionUrl(params: {
     .filter(Boolean)
     .join('\n');
 
-  return `https://wa.me/${UPI_CONFIG.ownerWhatsApp}?text=${encodeURIComponent(message)}`;
+  const targetPhone = (params.ownerPhone || UPI_CONFIG.ownerWhatsApp).replace(/[^0-9]/g, '');
+  return `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`;
 }
 
 /**

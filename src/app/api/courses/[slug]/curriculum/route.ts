@@ -1,3 +1,4 @@
+import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
@@ -289,7 +290,11 @@ export async function POST(
         },
       });
 
-      return NextResponse.json({ success: true, module: newModule }, { status: 201 });
+      try {
+      revalidatePath('/courses');
+      revalidatePath(`/courses/${params.slug}`);
+    } catch {}
+    return NextResponse.json({ success: true, module: newModule }, { status: 201 });
     }
 
     if (itemType === 'LESSON') {
@@ -340,7 +345,11 @@ export async function POST(
         },
       });
 
-      return NextResponse.json({ success: true, lesson: newLesson }, { status: 201 });
+      try {
+      revalidatePath('/courses');
+      revalidatePath(`/courses/${params.slug}`);
+    } catch {}
+    return NextResponse.json({ success: true, lesson: newLesson }, { status: 201 });
     }
 
     return NextResponse.json({ success: false, error: 'Invalid itemType. Must be MODULE or LESSON.' }, { status: 400 });
@@ -353,7 +362,8 @@ export async function POST(
 }
 
 export async function PATCH(
-  req: NextRequest
+  req: NextRequest,
+  { params }: { params: { slug: string } }
 ) {
   try {
     const auth = await getServerAuthUser();
@@ -415,7 +425,11 @@ export async function PATCH(
         data: updateData,
       });
 
-      return NextResponse.json({ success: true, module: updated });
+      try {
+      revalidatePath('/courses');
+      revalidatePath(`/courses/${params.slug}`);
+    } catch {}
+    return NextResponse.json({ success: true, module: updated });
     }
 
     if (itemType === 'LESSON') {
@@ -449,7 +463,11 @@ export async function PATCH(
         data: updateData,
       });
 
-      return NextResponse.json({ success: true, lesson: updated });
+      try {
+      revalidatePath('/courses');
+      revalidatePath(`/courses/${params.slug}`);
+    } catch {}
+    return NextResponse.json({ success: true, lesson: updated });
     }
 
     return NextResponse.json({ success: false, error: 'Invalid itemType. Must be MODULE or LESSON.' }, { status: 400 });

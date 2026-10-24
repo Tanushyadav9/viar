@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { UPI_CONFIG, generateUpiUrl, generateWhatsAppPaymentSubmissionUrl } from '@/lib/payments/upi';
+import { getPaymentSettings } from '@/lib/payments/settings';
 import { RateLimiters } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 
@@ -130,14 +131,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 4. Generate UPI & WhatsApp Links
+    // 4. Load live payment settings from DB & Generate UPI / WhatsApp Links
+    const pSettings = await getPaymentSettings();
+
     const upiUrl = generateUpiUrl({
       amount: finalAmount,
       studentName: cleanName,
       courseTitle,
+      vpa: pSettings.upiId,
+      payeeName: pSettings.payeeName,
     });
 
     const whatsAppUrl = generateWhatsAppPaymentSubmissionUrl({
+      ownerPhone: pSettings.whatsappNumber,
       studentName: cleanName,
       studentEmail: cleanEmail,
       studentPhone: cleanPhone || undefined,

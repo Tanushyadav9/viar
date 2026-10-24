@@ -68,8 +68,7 @@ import { formatCourseStatus, formatClassStatus, formatOrderStatus } from '@/lib/
 interface AdminStats {
   totalStudents: number;
   totalRevenueInr: number;
-  totalRevenueUsd: number;
-  completedClasses: number;
+    completedClasses: number;
   upcomingClasses: number;
   certificatesIssued: number;
   activeCohorts: number;
@@ -674,20 +673,32 @@ export default function AdminPortalClient({
     }
 
     // 7. Compute live statistics from PostgreSQL datasets
-    const totalRevInr = loadedEnrollments
+    let liveRevenueInr = loadedEnrollments
       .filter((e) => e.currency === 'INR')
       .reduce((acc, curr) => acc + (curr.paymentAmount || 0), 0);
-    const totalRevUsd = loadedEnrollments
-      .filter((e) => e.currency === 'USD')
-      .reduce((acc, curr) => acc + (curr.paymentAmount || 0), 0);
+    let liveTotalStudents = loadedEnrollments.length;
+    let liveCertificatesIssued = loadedCertificates.length;
+
+    try {
+      const statsRes = await fetch('/api/admin/stats');
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        if (statsData?.success && statsData.stats) {
+          liveRevenueInr = statsData.stats.totalRevenueInr;
+          liveTotalStudents = statsData.stats.totalStudents;
+          liveCertificatesIssued = statsData.stats.certificatesIssued;
+        }
+      }
+    } catch {
+      // stats fallback
+    }
 
     setStats({
-      totalStudents: loadedEnrollments.length,
-      totalRevenueInr: totalRevInr,
-      totalRevenueUsd: totalRevUsd,
+      totalStudents: liveTotalStudents,
+      totalRevenueInr: liveRevenueInr,
       completedClasses: loadedClasses.filter((c) => c.status === 'COMPLETED').length,
       upcomingClasses: loadedClasses.filter((c) => c.status !== 'COMPLETED').length,
-      certificatesIssued: loadedCertificates.length,
+      certificatesIssued: liveCertificatesIssued,
       activeCohorts: loadedCohorts.filter((c) => c.status !== 'COMPLETED').length,
     });
 

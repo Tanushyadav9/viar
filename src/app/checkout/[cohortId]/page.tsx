@@ -20,7 +20,6 @@ import {
   LogIn
 } from 'lucide-react';
 import { useLanguage, LanguageSwitcher } from '@/components/LanguageContext';
-import { INITIAL_COURSES } from '@/lib/data';
 import { buildStudentWhatsAppClaimUrl } from '@/lib/payments/upi';
 
 interface CheckoutCourse {
@@ -119,12 +118,12 @@ function CheckoutContent() {
       .then((data) => {
         const courses = (data?.courses || []) as CheckoutCourse[];
         const found = courses.find(
-          (c) => c.id === cohortId || c.slug === cohortId || c.id === 'cmugp9kmx000010o1wzvybmh5' || c.slug === 'what-is-astrology'
-        ) || (courses[0] as CheckoutCourse | undefined) || (INITIAL_COURSES[0] as unknown as CheckoutCourse);
-        setCourse(found);
+          (c) => c.id === cohortId || c.slug === cohortId || c.slug === 'what-is-astrology'
+        ) || (courses[0] as CheckoutCourse | undefined);
+        setCourse(found || null);
       })
       .catch(() => {
-        setCourse(INITIAL_COURSES[0] as unknown as CheckoutCourse);
+        setCourse(null);
       });
   }, [cohortId]);
 

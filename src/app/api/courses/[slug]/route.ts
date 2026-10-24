@@ -1,6 +1,6 @@
+import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { INITIAL_COURSES } from '@/lib/data';
 import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 import {
   verifyUserCourseAccess,
@@ -197,20 +197,6 @@ export async function GET(
     } catch (dbError) {
       console.warn('Database query for course slug failed:', (dbError as Error).message);
     }
-
-    const fallback = INITIAL_COURSES.find(
-      (c) => c.slug === slugOrId || c.id === slugOrId
-    );
-
-    if (fallback) {
-      return NextResponse.json({
-        success: true,
-        isUserEnrolled: isAuthorized,
-        isStaffOrOwner: access.isStaffOrOwner,
-        course: fallback,
-      });
-    }
-
     return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
   } catch (error) {
     return NextResponse.json(
@@ -342,6 +328,14 @@ export async function PATCH(
         },
       },
     });
+
+    try {
+      revalidatePath('/courses');
+      revalidatePath(`/courses/${updated.slug}`);
+      revalidatePath('/sitemap.xml');
+    } catch (e) {
+      console.warn('Revalidation skipped:', (e as Error).message);
+    }
 
     return NextResponse.json({ success: true, course: updated });
   } catch (error) {
@@ -494,6 +488,14 @@ export async function DELETE(
     await prisma.course.delete({
       where: { id: existing.id },
     });
+
+    try {
+      revalidatePath('/courses');
+      revalidatePath(`/courses/${existing.slug}`);
+      revalidatePath('/sitemap.xml');
+    } catch (e) {
+      console.warn('Revalidation skipped:', (e as Error).message);
+    }
 
     return NextResponse.json({
       success: true,

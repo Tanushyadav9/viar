@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import { INITIAL_COURSES } from '@/lib/data';
 import type { Course, CourseModule } from '@/lib/types';
 import CourseDetailClient from '@/components/CourseDetailClient';
+
+export const revalidate = 60;
 
 interface Props {
   params: {
@@ -14,7 +15,10 @@ interface Props {
 async function getCourse(slug: string) {
   try {
     const dbCourse = await prisma.course.findFirst({
-      where: { slug },
+      where: {
+        slug,
+        status: { in: ['PUBLISHED', 'COMING_SOON'] },
+      },
       include: { cohorts: true },
     });
     if (dbCourse) {
@@ -30,9 +34,7 @@ async function getCourse(slug: string) {
         totalClasses: dbCourse.totalClasses,
         classesPerWeek: dbCourse.classesPerWeek,
         priceInr: dbCourse.priceInr,
-        priceUsd: dbCourse.priceUsd,
         originalPriceInr: dbCourse.originalPriceInr,
-        originalPriceUsd: dbCourse.originalPriceUsd,
         isPublished: dbCourse.status === 'PUBLISHED',
         isComingSoon: dbCourse.status === 'COMING_SOON',
         badge: 'Masterclass',
@@ -54,7 +56,7 @@ async function getCourse(slug: string) {
   } catch (err) {
     console.warn('DB lookup failed for course metadata:', err);
   }
-  return INITIAL_COURSES.find((c) => c.slug === slug);
+  return null;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -146,7 +148,6 @@ export default async function CourseDetailPage({ params }: Props) {
         category: 'Tuition',
         url: `https://viar.in/courses/${course.slug}`,
       },
-
     ],
     hasCourseInstance: {
       '@type': 'CourseInstance',

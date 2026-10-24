@@ -35,38 +35,31 @@ export default function InstructorOverviewPage() {
 
 
 
-    // 3. Stats from live database orders & enrollments
-    Promise.all([
-      fetch('/api/admin/orders').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch('/api/enrollments').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    ]).then(([ordersData, enrollmentsData]) => {
-      const orders = ordersData?.orders || [];
-      const enrollments = enrollmentsData?.enrollments || [];
-
-      const verifiedOrders = orders.filter((o: { status?: string }) => o.status === 'VERIFIED' || o.status === 'APPROVED' || o.status === 'PAID');
-      const totalRevInr = verifiedOrders
-        .filter((o: { currency?: string }) => o.currency !== 'USD')
-        .reduce((sum: number, o: { amountPaidInr?: number; amount?: number }) => sum + (o.amountPaidInr || o.amount || 0), 0);
-      const totalRevUsd = verifiedOrders
-        .filter((o: { currency?: string }) => o.currency === 'USD')
-        .reduce((sum: number, o: { amountPaidUsd?: number; amount?: number }) => sum + (o.amountPaidUsd || o.amount || 0), 0);
-
-      const totalStudents = enrollments.length > 0 ? enrollments.length : new Set(verifiedOrders.map((o: { studentEmail?: string }) => o.studentEmail).filter(Boolean)).size;
-
-      setStats({
-        totalStudents,
-        totalEnrollments: enrollments.length,
-        totalRevenueInr: totalRevInr,
-        totalRevenueUsd: totalRevUsd,
+    // 3. Stats from unified database analytics
+    fetch('/api/admin/stats')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.success && data.stats) {
+          setStats({
+            totalStudents: data.stats.totalStudents,
+            totalEnrollments: data.stats.totalActiveEnrollments,
+            totalRevenueInr: data.stats.totalRevenueInr,
+          });
+        } else {
+          setStats({
+            totalStudents: 0,
+            totalEnrollments: 0,
+            totalRevenueInr: 0,
+          });
+        }
+      })
+      .catch(() => {
+        setStats({
+          totalStudents: 0,
+          totalEnrollments: 0,
+          totalRevenueInr: 0,
+        });
       });
-    }).catch(() => {
-      setStats({
-        totalStudents: 0,
-        totalEnrollments: 0,
-        totalRevenueInr: 0,
-        totalRevenueUsd: 0,
-      });
-    });
   }, []);
 
   return (

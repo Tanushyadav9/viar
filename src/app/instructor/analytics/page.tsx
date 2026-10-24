@@ -14,43 +14,35 @@ export default function InstructorAnalyticsPage() {
 
   useEffect(() => {
     Promise.all([
+      fetch('/api/admin/stats').then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch('/api/enrollments').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch('/api/admin/orders').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch('/api/certificates').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    ]).then(([enrData, ordData, certData]) => {
+    ]).then(([statsData, enrData]) => {
       const enrs = enrData?.success && Array.isArray(enrData.enrollments) ? enrData.enrollments : [];
-      const ords = ordData?.orders && Array.isArray(ordData.orders) ? ordData.orders : [];
-      const certs = certData?.success && Array.isArray(certData.certificates) ? certData.certificates : [];
-
       setEnrollments(enrs);
 
-      const verifiedOrds = ords.filter((o: { status?: string }) => o.status === 'VERIFIED' || o.status === 'APPROVED' || o.status === 'PAID');
-      const totalInr = verifiedOrds
-        .filter((o: { currency?: string }) => o.currency !== 'USD')
-        .reduce((sum: number, o: { amountPaidInr?: number; amount?: number }) => sum + (o.amountPaidInr || o.amount || 0), 0);
-      const totalUsd = verifiedOrds
-        .filter((o: { currency?: string }) => o.currency === 'USD')
-        .reduce((sum: number, o: { amountPaidUsd?: number; amount?: number }) => sum + (o.amountPaidUsd || o.amount || 0), 0);
-
-      const directUpiCount = verifiedOrds.filter((o: { paymentMethod?: string }) => !o.paymentMethod || o.paymentMethod === 'UPI_QR').length;
-      const manualUtrCount = verifiedOrds.filter((o: { paymentMethod?: string }) => o.paymentMethod === 'MANUAL_UTR' || o.paymentMethod === 'WHATSAPP').length;
-
-      const completionRate = enrs.length > 0 ? Math.round((certs.length / enrs.length) * 100) : 0;
-
-      setStats({
-        totalStudents: enrs.length,
-        totalRevenueInr: totalInr,
-        totalRevenueUsd: totalUsd,
-        directUpiCount,
-        manualUtrCount,
-        completionRate,
-        certificatesCount: certs.length,
-      });
+      if (statsData?.success && statsData.stats) {
+        setStats({
+          totalStudents: statsData.stats.totalStudents,
+          totalRevenueInr: statsData.stats.totalRevenueInr,
+          directUpiCount: statsData.stats.approvedOrdersCount,
+          manualUtrCount: 0,
+          completionRate: statsData.stats.completionRate,
+          certificatesCount: statsData.stats.certificatesIssued,
+        });
+      } else {
+        setStats({
+          totalStudents: 0,
+          totalRevenueInr: 0,
+          directUpiCount: 0,
+          manualUtrCount: 0,
+          completionRate: 0,
+          certificatesCount: 0,
+        });
+      }
     }).catch(() => {
       setStats({
         totalStudents: 0,
         totalRevenueInr: 0,
-        totalRevenueUsd: 0,
         directUpiCount: 0,
         manualUtrCount: 0,
         completionRate: 0,

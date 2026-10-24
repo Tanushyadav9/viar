@@ -16,7 +16,6 @@ import {
   Lock,
   MessageCircle,
 } from 'lucide-react';
-import { ViarStore } from '@/lib/store';
 import { Course, Cohort, ContentItem } from '@/lib/types';
 import { useLanguage } from '@/components/LanguageContext';
 import { BUILTIN_CONTENT_DEFAULTS } from '@/lib/content/defaultContent';
@@ -50,19 +49,6 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
   }, [course]);
 
   useEffect(() => {
-    function loadFallback() {
-      const targetCourse = ViarStore.getCourseBySlug(slug);
-      if (targetCourse) {
-        setCourse(targetCourse);
-        const cohorts = ViarStore.getCohorts(targetCourse.id);
-        if (cohorts.length > 0) {
-          setCohort(cohorts[0]);
-        }
-      } else {
-        setNotFound(true);
-      }
-    }
-
     fetch(`/api/courses/${slug}`)
       .then((res) => res.json())
       .then((data) => {
@@ -70,15 +56,14 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
           setCourse(data.course);
           if (data.course.cohorts && data.course.cohorts.length > 0) {
             setCohort(data.course.cohorts[0]);
-          } else {
-            const cohorts = ViarStore.getCohorts(data.course.id);
-            if (cohorts.length > 0) setCohort(cohorts[0]);
           }
         } else {
-          loadFallback();
+          setNotFound(true);
         }
       })
-      .catch(() => loadFallback());
+      .catch(() => {
+        setNotFound(true);
+      });
 
     fetch('/api/content?collection=testimonials')
       .then((res) => res.json())

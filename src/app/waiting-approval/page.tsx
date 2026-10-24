@@ -85,11 +85,12 @@ export default function WaitingForApprovalPage() {
       }
 
       // 3. Fetch payment settings for WhatsApp number
-      const settingsRes = await fetch('/api/admin/settings/payment').catch(() => null);
+      const settingsRes = await fetch('/api/payments/config').catch(() => null);
       if (settingsRes && settingsRes.ok) {
         const sData = await settingsRes.json();
-        if (sData?.settings?.whatsappNumber) {
-          setWhatsappNumber(sData.settings.whatsappNumber);
+        const num = sData?.config?.whatsappNumber || sData?.settings?.whatsappNumber;
+        if (num) {
+          setWhatsappNumber(num);
         }
       }
     } catch (err) {

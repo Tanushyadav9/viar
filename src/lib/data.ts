@@ -313,6 +313,9 @@ export const ULTIMATE_ASTROLOGY_MODULES: CourseModule[] = [
   },
 ];
 
+/**
+ * @deprecated Staging seed fixtures only. Runtime code must strictly query Neon PostgreSQL via prisma.course.
+ */
 export const INITIAL_COURSES: Course[] = [
   {
     id: 'course-what-is-astrology',
