@@ -354,7 +354,7 @@ describe('Full Core-Flow End-to-End Walkthrough', () => {
       cohortId: testCohortId,
       amount: inrOrder.chargeAmount,
       currency: inrOrder.currency,
-      paymentMethod: 'UPI QR (aapkaastro@okaxis)',
+      paymentMethod: 'UPI QR (9310709233m@pnb)',
     });
 
     assert.strictEqual(checkoutEnrollment.paymentAmount, 5100, 'Enrollment recorded amount must be ₹5,100');

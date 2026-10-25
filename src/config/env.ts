@@ -119,7 +119,7 @@ export const env: AppEnvConfig = {
   },
 
   payments: {
-    upiVpa: getEnvVar('UPI_VPA', 'aapkaastro@okaxis'),
+    upiVpa: getEnvVar('UPI_VPA', '9310709233m@pnb'),
     payeeName: getEnvVar('UPI_PAYEE_NAME', 'Vihangam Institute of Astrology and Research'),
     ownerWhatsApp: getEnvVar('OWNER_WHATSAPP', '919311215564'),
     defaultTuitionInr: Number(getEnvVar('DEFAULT_TUITION_INR', '5100')) || 5100,

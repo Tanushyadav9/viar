@@ -58,12 +58,12 @@ export const VIAR_ACADEMY_FACTS = {
   },
   paymentPolicy: {
     method: 'Direct UPI QR Code & Bank Transfer (Zero gateway commission fees)',
-    upiId: 'aapkaastro@okaxis',
+    upiId: '9310709233m@pnb',
     payeeName: 'Vihangam Institute of Astrology and Research',
     checkoutUrl: '/checkout/what-is-astrology',
     process: [
       '1. Student visits /checkout and views the locked course tuition (₹5,100 INR) with dynamic UPI QR code.',
-      '2. Student scans the QR code or pays directly to UPI ID aapkaastro@okaxis.',
+      '2. Student scans the QR code or pays directly to UPI ID 9310709233m@pnb.',
       '3. Student clicks "I have paid" and enters their 12-digit numeric bank UTR / transaction reference number.',
       '4. Student sends the payment confirmation screenshot to Acharya Niraj Kumar on WhatsApp (+91 93112 15564).',
       '5. Acharya Niraj Kumar verifies the credit against his bank statement in the Admin Verification Queue and approves the order.',
@@ -156,7 +156,7 @@ ${retrievedKnowledgeContext || `
 - Academy: Vihangam Institute of Astrology and Research (VIAR, viar.in)
 - Flagship Course: Vedic Astrology Masterclass: What is Astrology (23 modules + 2 bonus workshops, 50 lessons, 46+ hours, 100% self-paced with lifetime access)
 - Tuition (Live): ₹5,100 INR Zero discounts, coupons, or variable pricing.
-- Payment: Direct UPI to aapkaastro@okaxis (0% gateway fees). No passwords over WhatsApp.
+- Payment: Direct UPI to 9310709233m@pnb (0% gateway fees). No passwords over WhatsApp.
 - Refund: 7-day review window, up to 3 video modules watched, 100% full refund via direct UPI.
 - Instructor: Acharya Niraj Kumar (Jyotish Acharya, Bharatiya Vidya Bhavan under K.N. Rao, 20+ years practicing).
 - Official Contacts: WhatsApp: +91 93112 15564 | Phone: +91 93112 15564 | Checkout: https://viar.in/checkout?course=what-is-astrology

@@ -345,7 +345,7 @@ function CheckoutContent() {
   const orderRef = orderData?.order?.orderReference || 'Generating...';
   const orderStatus = orderData?.order?.status || 'PENDING_PAYMENT';
   const whatsappNumber = orderData?.settings?.whatsappNumber || '919311215564';
-  const upiId = orderData?.settings?.upiId || 'aapkaastro@okaxis';
+  const upiId = orderData?.settings?.upiId || '9310709233m@pnb';
   const payeeName = orderData?.settings?.payeeName || 'Vihangam Institute of Astrology and Research';
   const isClaimed = orderStatus === 'PAYMENT_CLAIMED';
   const isApproved = orderStatus === 'APPROVED';
@@ -551,7 +551,7 @@ function CheckoutContent() {
                   <div className="p-3 bg-white rounded-2xl shadow-xl shadow-amber-500/10 border-2 border-amber-400/50 shrink-0 text-center">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={orderData?.qrCodeUrl || (orderData?.staticQrUrl ? orderData.staticQrUrl : `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=12&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${tuitionInr}&cu=INR&tn=${encodeURIComponent(orderRef)}`)}`)}
+                      src={orderData?.staticQrUrl || '/images/upi-qr.jpg'}
                       alt="VIAR UPI QR Code"
                       width={220}
                       height={220}

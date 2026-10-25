@@ -24,9 +24,9 @@ export interface PaymentSettingsData {
 
 export const DEFAULT_PAYMENT_SETTINGS: Omit<PaymentSettingsData, 'updatedAt'> = {
   id: 'default',
-  upiId: 'aapkaastro@okaxis',
+  upiId: '9310709233m@pnb',
   payeeName: 'Vihangam Institute of Astrology and Research',
-  qrImageUrl: null,
+  qrImageUrl: '/images/upi-qr.jpg',
   whatsappNumber: '919311215564', // +91 93112 15564 (Flagged for client confirmation)
   orderExpiryDays: 3,
   updatedBy: 'system',
@@ -42,11 +42,29 @@ export async function getPaymentSettings(): Promise<PaymentSettingsData> {
     });
 
     if (settings) {
+      const activeUpiId = (!settings.upiId || settings.upiId === 'aapkaastro@okaxis')
+        ? DEFAULT_PAYMENT_SETTINGS.upiId
+        : settings.upiId;
+      const activeQrUrl = (!settings.qrImageUrl)
+        ? DEFAULT_PAYMENT_SETTINGS.qrImageUrl
+        : settings.qrImageUrl;
+
+      if (activeUpiId !== settings.upiId || activeQrUrl !== settings.qrImageUrl) {
+        prisma.paymentSettings.update({
+          where: { id: 'default' },
+          data: { upiId: activeUpiId, qrImageUrl: activeQrUrl },
+        }).catch((err) => {
+          logger.warn('Non-fatal: failed to auto-migrate payment settings row', {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+      }
+
       return {
         id: settings.id,
-        upiId: settings.upiId,
+        upiId: activeUpiId,
         payeeName: settings.payeeName,
-        qrImageUrl: settings.qrImageUrl,
+        qrImageUrl: activeQrUrl,
         whatsappNumber: settings.whatsappNumber,
         orderExpiryDays: settings.orderExpiryDays,
         updatedAt: settings.updatedAt,

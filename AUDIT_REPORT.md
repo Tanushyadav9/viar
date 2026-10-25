@@ -226,7 +226,7 @@ Executed via `scripts/e2e-proof-flow.mjs` with real Neon database operations:
   "expiresAt": "2026-10-18T17:35:36.028Z"
 }
 ```
-* **Dynamic UPI URI:** `upi://pay?pa=aapkaastro@okaxis&pn=Vihangam%20Institute%20of%20Astrology%20and%20Research&am=5100&cu=INR&tn=VIAR%20Tuition%20VIAR-ORD-TKRQ3-YV7G`
+* **Dynamic UPI URI:** `upi://pay?pa=9310709233m@pnb&pn=Vihangam%20Institute%20of%20Astrology%20and%20Research&am=5100&cu=INR&tn=VIAR%20Tuition%20VIAR-ORD-TKRQ3-YV7G`
 * **Note:** Carries the exact order reference so the client can cross-reference the bank credit statement immediately.
 
 #### Step 3: Student Submits Payment Claim & Bank UTR
@@ -534,7 +534,7 @@ A full dry-run audit of the production database (`neondb`) was performed via `sc
   - Tuition: Exactly ₹5,100 INR one-time (approx. $69 USD for international students). Zero discounts, coupons, or variable pricing.
   - Instructor: Acharya Niraj Kumar (Jyotish Acharya from Bharatiya Vidya Bhavan under legendary Shri K.N. Rao, 20+ years practicing, Logical Vastu Consultant).
   - Refund Policy: Strict 7-day review guarantee — full 100% refund via direct UPI if student has watched 3 or fewer modules.
-  - Payment Flow: Direct UPI ID (`aapkaastro@okaxis`) with dynamic QR code generation.
+  - Payment Flow: Direct UPI ID (`9310709233m@pnb`) with dynamic QR code generation.
 - **Deterministic Semantic Engine (`src/lib/ai/assistantEngine.ts`)**:
   - Operates at $0 cost and 0ms latency with zero API dependencies.
   - Categorizes queries into 10 intent buckets (`fees_pricing`, `syllabus_curriculum`, `format_schedule`, `certificate`, `instructor`, `payment_how_to`, `refund`, `personal_consultation`, `contact_whatsapp`, `greeting`, `out_of_scope`).
@@ -771,7 +771,7 @@ As mandated by project requirements, a comprehensive automated evaluation suite 
 | **Q6** | How to Enrol | "How soon do I get access to the course after enrolling?" | Unlocks in minutes once bank credit verified in admin queue | `payment_how_to` | ✅ **PASS** |
 | **Q7** | How to Enrol | "Are admissions open right now or is there a waitlist?" | Self-paced admission open 24/7 with immediate unlock | `general_course_inquiry` | ✅ **PASS** |
 | **Q8** | How to Enrol | "What are the prerequisites to join this astrology class?" | Starts from zero/foundational astronomy; no prior experience | `syllabus_curriculum` | ✅ **PASS** |
-| **Q9** | Payment Mechanism | "How does UPI payment work on your website?" | Dynamic QR or pay to aapkaastro@okaxis; 0% gateway fee | `payment_how_to` | ✅ **PASS** |
+| **Q9** | Payment Mechanism | "How does UPI payment work on your website?" | Dynamic QR or pay to 9310709233m@pnb; 0% gateway fee | `payment_how_to` | ✅ **PASS** |
 | **Q10** | Payment Mechanism | "Where do I submit my 12-digit UTR transaction reference?" | Submit on checkout screen 'I have paid' button and WhatsApp | `payment_how_to` | ✅ **PASS** |
 | **Q11** | Payment Mechanism | "Will you send my login password on WhatsApp after payment?" | Refuse: Zero passwords on WhatsApp; login with own email | `payment_how_to` | ✅ **PASS** |
 | **Q12** | Payment Mechanism | "Which UPI apps can I use to pay the tuition?" | Google Pay, PhonePe, Paytm, BHIM, or any UPI banking app | `payment_how_to` | ✅ **PASS** |
@@ -844,7 +844,7 @@ A live inspection of the Neon PostgreSQL database (`ep-orange-poetry-b4cupwem.c-
 | **`Quiz`** | **1** | Seeding script (`scripts/seed-database.ts`). Final Certification Quiz for `what-is-astrology`. | ✅ 20 multiple-choice assessment questions. |
 | **`Question`** | **20** | Seeding script (`scripts/seed-database.ts`). 20 certification questions. | ✅ Graded questions with 70% passing bar. |
 | **`Option`** | **80** | Seeding script (`scripts/seed-database.ts`). 4 options per question. | ✅ Relational options with correct answer pointers. |
-| **`PaymentSettings`** | **1** | Auto-initialized by `src/lib/payments/settings.ts` if row `default` is absent. Payee: *Vihangam Institute of Astrology and Research*, UPI ID: `aapkaastro@okaxis`. | ✅ Real institute UPI credentials. |
+| **`PaymentSettings`** | **1** | Auto-initialized by `src/lib/payments/settings.ts` if row `default` is absent. Payee: *Vihangam Institute of Astrology and Research*, UPI ID: `9310709233m@pnb`. | ✅ Real institute UPI credentials. |
 | **`User`** | **2** | Synced via live Clerk Webhook (`/api/webhooks/clerk`) upon authentic user creation. No mock/fake users exist. | ✅ 1 Owner (`aapkaastro1606@gmail.com`) + 1 Student (`parnikagrover88@gmail.com`). |
 | **`Enrollment`** | **0** | Written strictly upon Owner bank verification of UPI payment claim or manual Owner grant. | ✅ Clean. Zero fake enrollments. |
 | **`Order`** | **0** | Written strictly upon student initiating UPI checkout or claiming payment. | ✅ Clean. Zero fake orders. |
@@ -970,5 +970,5 @@ A comprehensive audit of all API routes, server actions, background tasks, and b
    - `/api/certificates`: Executes `prisma.certificate.findMany`. Returns `[]` if empty.
    - `/api/sessions`: Executes `prisma.classSession.findMany`. Returns `[]` if empty.
 3. **Database Defaults Initialization**:
-   - The only automatic database insertion in the entire application runtime is in `src/lib/payments/settings.ts` (`getPaymentSettings()`), which checks for the `PaymentSettings` row with `id: 'default'`. If absent, it creates the single configuration row with the institute's default UPI ID (`aapkaastro@okaxis`) and payee name (*Vihangam Institute of Astrology and Research*).
+   - The only automatic database insertion in the entire application runtime is in `src/lib/payments/settings.ts` (`getPaymentSettings()`), which checks for the `PaymentSettings` row with `id: 'default'`. If absent, it creates the single configuration row with the institute's default UPI ID (`9310709233m@pnb`) and payee name (*Vihangam Institute of Astrology and Research*).
    - **Conclusion**: There is **zero automatic mock data seeding** on empty databases. All domain records in PostgreSQL require deliberate administrative action, client checkout, or explicit staging seed script execution.

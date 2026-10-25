@@ -6,11 +6,11 @@
 export const POLICIES_KNOWLEDGE = {
   paymentPolicy: {
     method: 'Direct UPI QR Code & Direct Bank Transfer (0% gateway surcharge)',
-    upiVpa: 'aapkaastro@okaxis',
+    upiVpa: '9310709233m@pnb',
     payeeName: 'Vihangam Institute of Astrology and Research',
     checkoutProcess: [
       '1. Student visits /checkout or clicks Enroll Now.',
-      '2. Scans the dynamic UPI QR code or copies the UPI ID (aapkaastro@okaxis).',
+      '2. Scans the dynamic UPI QR code or copies the UPI ID (9310709233m@pnb).',
       '3. Completes payment in any UPI app (GPay, PhonePe, Paytm, BHIM, Cred).',
       '4. Submits the 12-digit UTR reference number on the checkout page.',
       '5. Sends screenshot to WhatsApp (+91 93112 15564) for instant reconciliation.',

@@ -611,7 +611,7 @@ model Order {
 
 model PaymentSettings {
   id              String   @id @default("default")
-  upiId           String   @default("aapkaastro@okaxis") @map("upi_id")
+  upiId           String   @default("9310709233m@pnb") @map("upi_id")
   payeeName       String   @default("Vihangam Institute of Astrology and Research") @map("payee_name")
   qrImageUrl      String?  @map("qr_image_url")
   whatsappNumber  String   @default("919311215564") @map("whatsapp_number")

@@ -59,7 +59,7 @@ test('Transactional Email System', async (t) => {
       cohortName: 'Batch 1',
       amount: 5100,
       currency: '₹',
-      paymentMethod: 'Direct UPI (aapkaastro@okaxis)',
+      paymentMethod: 'Direct UPI (9310709233m@pnb)',
       status: 'PAID' as const,
       dashboardUrl: 'https://viar.in/dashboard/payments',
     };

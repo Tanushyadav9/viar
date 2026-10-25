@@ -8,7 +8,7 @@ import {
 
 describe('Manual UPI Payment Workflow & Verification Security', () => {
   const defaultSettings = {
-    upiId: 'aapkaastro@okaxis',
+    upiId: '9310709233m@pnb',
     payeeName: 'Acharya Niraj Kumar',
     whatsappNumber: '919311215564',
     orderExpiryDays: 3,
@@ -35,7 +35,7 @@ describe('Manual UPI Payment Workflow & Verification Security', () => {
       });
 
       assert.ok(uri.startsWith('upi://pay?'), 'URI must begin with upi://pay');
-      assert.ok(uri.includes('pa=aapkaastro@okaxis'), 'Payee VPA must match settings');
+      assert.ok(uri.includes('pa=9310709233m@pnb'), 'Payee VPA must match settings');
       assert.ok(uri.includes('am=5100'), 'Amount must be locked to 5100');
       assert.ok(uri.includes('cu=INR'), 'Currency must be INR');
       assert.ok(uri.includes('tn='), 'Transaction note must be present');

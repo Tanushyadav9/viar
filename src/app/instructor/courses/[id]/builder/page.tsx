@@ -1062,7 +1062,7 @@ export default function ComprehensiveCourseEditorPage() {
                   Payment settings set
                 </span>
                 <p className="text-[11px] text-slate-400">
-                  UPI ID: aapkaastro@okaxis • Helpline active.
+                  UPI ID: 9310709233m@pnb • Helpline active.
                 </p>
               </div>
             </div>

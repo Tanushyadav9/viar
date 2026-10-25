@@ -121,9 +121,9 @@ const EVALUATION_TEST_SET: EvaluationCase[] = [
     id: 9,
     category: 'how_payment_works',
     query: 'How does UPI payment work on your website?',
-    expectedBehavior: 'Explain scanning dynamic QR or paying to aapkaastro@okaxis with 0% gateway fee',
+    expectedBehavior: 'Explain scanning dynamic QR or paying to 9310709233m@pnb with 0% gateway fee',
     expectedIntent: 'payment_how_to',
-    requiredSubstrings: ['aapkaastro@okaxis', 'QR', 'UTR'],
+    requiredSubstrings: ['9310709233m@pnb', 'QR', 'UTR'],
   },
   {
     id: 10,

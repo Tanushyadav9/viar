@@ -232,9 +232,9 @@ export const BUILTIN_CONTENT_DEFAULTS: Record<string, BuiltinContentItem[]> = {
       titleEn: 'How does payment work and how soon is my account unlocked?',
       titleHi: 'पेमेंट कैसे करें और कोर्स कितनी देर में अनलॉक होता है?',
       contentEn:
-        'At viar.in/checkout, scan the dynamic UPI QR code or transfer ₹5,100 directly to aapkaastro@okaxis. Enter your 12-digit bank UTR reference and click "I Have Paid", then share the screenshot on WhatsApp (+91 93112 15564). Once verified by the Site Owner in the admin queue, your student portal account immediately unlocks with zero password sharing required.',
+        'At viar.in/checkout, scan the dynamic UPI QR code or transfer ₹5,100 directly to 9310709233m@pnb. Enter your 12-digit bank UTR reference and click "I Have Paid", then share the screenshot on WhatsApp (+91 93112 15564). Once verified by the Site Owner in the admin queue, your student portal account immediately unlocks with zero password sharing required.',
       contentHi:
-        'viar.in/checkout पेज पर दिए गए डायनामिक यूपीआई क्यूआर कोड को स्कैन करें या ₹5,100 aapkaastro@okaxis पर भेजें। 12 अंकों का यूटीआर नंबर दर्ज कर स्क्रीनशॉट व्हाट्सएप पर भेजें। बैंक सत्यापन होते ही आपका कोर्स स्वतः अनलॉक हो जाता है।',
+        'viar.in/checkout पेज पर दिए गए डायनामिक यूपीआई क्यूआर कोड को स्कैन करें या ₹5,100 9310709233m@pnb पर भेजें। 12 अंकों का यूटीआर नंबर दर्ज कर स्क्रीनशॉट व्हाट्सएप पर भेजें। बैंक सत्यापन होते ही आपका कोर्स स्वतः अनलॉक हो जाता है।',
       metadata: { category: 'payment' },
       sortOrder: 7,
     },

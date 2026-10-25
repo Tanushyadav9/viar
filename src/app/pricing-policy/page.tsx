@@ -112,7 +112,7 @@ export default function PricingPolicyPage() {
                 All tuition fees on viar.in are priced transparently in <strong>Indian Rupees (₹ INR)</strong>. Third-party payment gateways charge steep 2% to 3% intermediary commission fees. To ensure student tuition remains fully dedicated to genuine Vedic instruction, VIAR receives all payments directly via <strong>UPI QR Code</strong> (Google Pay, PhonePe, Paytm, BHIM, and bank UPI apps).
               </p>
               <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200">
-                <strong>Official Academy UPI ID:</strong> <code className="font-mono bg-black/40 px-2 py-0.5 rounded text-amber-300">aapkaastro@okaxis</code> (Vihangam Institute of Astrology and Research)
+                <strong>Official Academy UPI ID:</strong> <code className="font-mono bg-black/40 px-2 py-0.5 rounded text-amber-300">9310709233m@pnb</code> (Vihangam Institute of Astrology and Research)
               </div>
             </div>
           </section>

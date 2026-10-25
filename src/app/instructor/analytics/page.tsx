@@ -150,7 +150,7 @@ export default function InstructorAnalyticsPage() {
                 <span className="text-2xl font-bold text-white mt-1 block">
                   {stats.directUpiCount || 0}
                 </span>
-                <p className="text-[10px] text-emerald-400 mt-1">aapkaastro@okaxis</p>
+                <p className="text-[10px] text-emerald-400 mt-1">9310709233m@pnb</p>
               </div>
 
               <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">

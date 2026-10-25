@@ -495,7 +495,7 @@ export function generateGroundedAssistantResponse(
   if (intent === 'payment_how_to') {
     if (language === 'hi') {
       return {
-        reply: `प्रवेश एवं भुगतान की प्रक्रिया अत्यंत सरल और सुरक्षित है:\n\n1. viar.in/checkout पर जाएं जहाँ ₹5,100 का शुल्क और डायनामिक UPI QR कोड दिखाई देगा।\n2. किसी भी UPI ऐप (Google Pay, PhonePe, Paytm, BHIM) से QR कोड स्कैन करें या सीधे UPI ID: aapkaastro@okaxis पर ₹5,100 भेजें।\n3. 'मैंने भुगतान कर दिया' पर क्लिक करके 12 अंकों का बैंक UTR / ट्रांजैक्शन नंबर दर्ज करें।\n4. पेमेंट का स्क्रीनशॉट व्हाट्सएप पर आचार्य नीरज कुमार (+91 93112 15564) को भेजें।\n5. बैंक में राशि सत्यापित होते ही आपके रजिस्टर्ड ईमेल पर तुरंत कोर्स अनलॉक हो जाता है। (व्हाट्सएप पर कोई अस्थायी पासवर्ड नहीं भेजा जाता; आप अपने ही ईमेल से लॉगिन करते हैं)।`,
+        reply: `प्रवेश एवं भुगतान की प्रक्रिया अत्यंत सरल और सुरक्षित है:\n\n1. viar.in/checkout पर जाएं जहाँ ₹5,100 का शुल्क और डायनामिक UPI QR कोड दिखाई देगा।\n2. किसी भी UPI ऐप (Google Pay, PhonePe, Paytm, BHIM) से QR कोड स्कैन करें या सीधे UPI ID: 9310709233m@pnb पर ₹5,100 भेजें।\n3. 'मैंने भुगतान कर दिया' पर क्लिक करके 12 अंकों का बैंक UTR / ट्रांजैक्शन नंबर दर्ज करें।\n4. पेमेंट का स्क्रीनशॉट व्हाट्सएप पर आचार्य नीरज कुमार (+91 93112 15564) को भेजें।\n5. बैंक में राशि सत्यापित होते ही आपके रजिस्टर्ड ईमेल पर तुरंत कोर्स अनलॉक हो जाता है। (व्हाट्सएप पर कोई अस्थायी पासवर्ड नहीं भेजा जाता; आप अपने ही ईमेल से लॉगिन करते हैं)।`,
         language,
         intent,
         confidence: 'high',
@@ -504,7 +504,7 @@ export function generateGroundedAssistantResponse(
     }
     if (language === 'hinglish') {
       return {
-        reply: `Course mein enroll karne ka process direct aur safe hai:\n\n1. viar.in/checkout par jaiye jahan ₹5,100 locked fee aur dynamic UPI QR code show hota hai.\n2. Kisi bhi UPI app (GPay, PhonePe, Paytm) se QR code scan karein ya UPI ID: aapkaastro@okaxis par ₹5,100 pay karein.\n3. 'I have paid' par click karke apna 12-digit bank UTR number submit karein.\n4. WhatsApp par payment screenshot Acharya Niraj Kumar (+91 93112 15564) ko bhejein.\n5. Bank credit verify hote hi aapka account dashboard par instant unlock ho jaata hai. (WhatsApp par koi random password nahi bheja jata; aap apne registered email se hi login karte hain).`,
+        reply: `Course mein enroll karne ka process direct aur safe hai:\n\n1. viar.in/checkout par jaiye jahan ₹5,100 locked fee aur dynamic UPI QR code show hota hai.\n2. Kisi bhi UPI app (GPay, PhonePe, Paytm) se QR code scan karein ya UPI ID: 9310709233m@pnb par ₹5,100 pay karein.\n3. 'I have paid' par click karke apna 12-digit bank UTR number submit karein.\n4. WhatsApp par payment screenshot Acharya Niraj Kumar (+91 93112 15564) ko bhejein.\n5. Bank credit verify hote hi aapka account dashboard par instant unlock ho jaata hai. (WhatsApp par koi random password nahi bheja jata; aap apne registered email se hi login karte hain).`,
         language,
         intent,
         confidence: 'high',
@@ -512,7 +512,7 @@ export function generateGroundedAssistantResponse(
       };
     }
     return {
-      reply: `Enrollment is direct, secure, and completed in 5 simple steps:\n\n1. Visit viar.in/checkout to view your locked ₹5,100 tuition and dynamic UPI QR code.\n2. Scan the QR code using any UPI app (Google Pay, PhonePe, Paytm, BHIM) or pay to UPI ID: aapkaastro@okaxis.\n3. Click "I have paid" and enter your 12-digit bank UTR transaction reference.\n4. Send your payment screenshot to Acharya Niraj Kumar on WhatsApp (+91 93112 15564).\n5. Once bank credit is verified in the admin queue, your student account unlocks automatically. (No passwords are sent over WhatsApp; you sign in securely with your own registered email or Google account on viar.in/login).`,
+      reply: `Enrollment is direct, secure, and completed in 5 simple steps:\n\n1. Visit viar.in/checkout to view your locked ₹5,100 tuition and dynamic UPI QR code.\n2. Scan the QR code using any UPI app (Google Pay, PhonePe, Paytm, BHIM) or pay to UPI ID: 9310709233m@pnb.\n3. Click "I have paid" and enter your 12-digit bank UTR transaction reference.\n4. Send your payment screenshot to Acharya Niraj Kumar on WhatsApp (+91 93112 15564).\n5. Once bank credit is verified in the admin queue, your student account unlocks automatically. (No passwords are sent over WhatsApp; you sign in securely with your own registered email or Google account on viar.in/login).`,
       language,
       intent,
       confidence: 'high',

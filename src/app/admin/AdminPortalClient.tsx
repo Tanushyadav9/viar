@@ -272,7 +272,7 @@ export default function AdminPortalClient({
   // Payment Settings State (Owner Only)
   const [isPaymentSettingsOpen, setIsPaymentSettingsOpen] = useState(false);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettingsState>({
-    upiId: 'aapkaastro@okaxis',
+    upiId: '9310709233m@pnb',
     payeeName: 'Acharya Niraj Kumar',
     qrImageUrl: '',
     whatsappNumber: '919311215564',
@@ -349,7 +349,7 @@ export default function AdminPortalClient({
       const data = await res.json();
       if (data?.success && data.settings) {
         setPaymentSettings({
-          upiId: data.settings.upiId || 'aapkaastro@okaxis',
+          upiId: data.settings.upiId || '9310709233m@pnb',
           payeeName: data.settings.payeeName || 'Acharya Niraj Kumar',
           qrImageUrl: data.settings.qrImageUrl || '',
           whatsappNumber: data.settings.whatsappNumber || '919311215564',
@@ -1802,8 +1802,8 @@ export default function AdminPortalClient({
             <AdminHelpBox
               titleEn="UPI Payments Verification Studio"
               titleHi="UPI भुगतान सत्यापन स्टूडियो"
-              descriptionEn="Direct UPI QR Code payments have zero payment gateway deductions. Students transfer directly to your UPI ID (aapkaastro@okaxis) and submit their 12-digit bank UTR reference. Verify the credit in your bank app before approving access."
-              descriptionHi="डायरेक्ट UPI क्यूआर कोड भुगतान में कोई पेमेंट गेटवे कटौती नहीं होती। विद्यार्थी सीधे आपकी UPI आईडी (aapkaastro@okaxis) पर भुगतान करते हैं और 12 अंकों का बैंक UTR संदर्भ दर्ज करते हैं। प्रवेश स्वीकृत करने से पहले अपने बैंक ऐप में क्रेडिट अवश्य जांचें।"
+              descriptionEn="Direct UPI QR Code payments have zero payment gateway deductions. Students transfer directly to your UPI ID (9310709233m@pnb) and submit their 12-digit bank UTR reference. Verify the credit in your bank app before approving access."
+              descriptionHi="डायरेक्ट UPI क्यूआर कोड भुगतान में कोई पेमेंट गेटवे कटौती नहीं होती। विद्यार्थी सीधे आपकी UPI आईडी (9310709233m@pnb) पर भुगतान करते हैं और 12 अंकों का बैंक UTR संदर्भ दर्ज करते हैं। प्रवेश स्वीकृत करने से पहले अपने बैंक ऐप में क्रेडिट अवश्य जांचें।"
               tipsEn={[
                 'Filter orders by "Claimed" to see students waiting for payment confirmation.',
                 'Match the 12-digit UTR with your bank statement.',
@@ -1925,7 +1925,7 @@ export default function AdminPortalClient({
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">UPI VPA & WhatsApp</span>
                   <p className="text-sm font-mono font-bold text-white mt-1.5 truncate">
-                    {paymentSettings.upiId || 'aapkaastro@okaxis'}
+                    {paymentSettings.upiId || '9310709233m@pnb'}
                   </p>
                   <p className="text-[10px] text-slate-400 mt-0.5 truncate font-mono">
                     WA: +{paymentSettings.whatsappNumber || '919311215564'}
@@ -3532,7 +3532,7 @@ export default function AdminPortalClient({
                     required
                     value={paymentSettings.upiId}
                     onChange={(e) => setPaymentSettings((prev) => ({ ...prev, upiId: e.target.value }))}
-                    placeholder="e.g. aapkaastro@okaxis"
+                    placeholder="e.g. 9310709233m@pnb"
                     className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-mono focus:outline-none focus:border-amber-400"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">

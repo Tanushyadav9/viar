@@ -89,11 +89,11 @@ export default function TermsPage() {
             <p>
               {isHi ? (
                 <>
-                  कमीशन शुल्क से बचने और विद्यार्थियों को न्यूनतम शिक्षण शुल्क (₹5,100 INR) उपलब्ध कराने के उद्देश्य से, सभी भुगतान संस्थान की अधिकृत UPI आईडी (<code>aapkaastro@okaxis</code> / आचार्य नीरज कुमार) पर प्रत्यक्ष रूप से प्राप्त किए जाते हैं।
+                  कमीशन शुल्क से बचने और विद्यार्थियों को न्यूनतम शिक्षण शुल्क (₹5,100 INR) उपलब्ध कराने के उद्देश्य से, सभी भुगतान संस्थान की अधिकृत UPI आईडी (<code>9310709233m@pnb</code> / आचार्य नीरज कुमार) पर प्रत्यक्ष रूप से प्राप्त किए जाते हैं।
                 </>
               ) : (
                 <>
-                  To eliminate third-party gateway commissions and provide students with optimal tuition rates (₹5,100 INR), all tuition is received strictly via direct UPI QR payment or bank transfer to the Academy&apos;s authorized UPI ID (<code>aapkaastro@okaxis</code> / Acharya Niraj Kumar).
+                  To eliminate third-party gateway commissions and provide students with optimal tuition rates (₹5,100 INR), all tuition is received strictly via direct UPI QR payment or bank transfer to the Academy&apos;s authorized UPI ID (<code>9310709233m@pnb</code> / Acharya Niraj Kumar).
                 </>
               )}
             </p>

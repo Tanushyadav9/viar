@@ -147,7 +147,7 @@ describe('Floating AI Assistant — Grounded Knowledge & Multilingual Engine', (
     it('Payment & Credentials Security: Must state direct UPI and ZERO passwords sent over WhatsApp', () => {
       const res = generateGroundedAssistantResponse('How to pay and get login access?');
       assert.ok(res.reply.includes('UPI') || res.reply.includes('यूपीआई'), 'Must state UPI');
-      assert.ok(res.reply.includes('aapkaastro@okaxis'), 'Must state official UPI VPA');
+      assert.ok(res.reply.includes('9310709233m@pnb'), 'Must state official UPI VPA');
       assert.ok(res.reply.includes('12') && res.reply.includes('UTR'), 'Must mention 12-digit UTR');
     });
   });

@@ -198,7 +198,7 @@ export async function getLiveAcademyData(): Promise<LiveAcademyData> {
       courseTitle: course?.title || 'Vedic Astrology Masterclass: What is Astrology',
       priceInr: course?.priceInr || 5100,
       priceUsd: course?.priceUsd || 69,
-      upiVpa: paymentSettings?.upiId || 'aapkaastro@okaxis',
+      upiVpa: paymentSettings?.upiId || '9310709233m@pnb',
       payeeName: paymentSettings?.payeeName || 'Vihangam Institute of Astrology and Research',
       activeCohorts: cohorts.map((c) => ({
         batchName: c.batchName,
@@ -233,7 +233,7 @@ export async function getLiveAcademyData(): Promise<LiveAcademyData> {
       courseTitle: 'Vedic Astrology Masterclass: What is Astrology',
       priceInr: 5100,
       priceUsd: 69,
-      upiVpa: 'aapkaastro@okaxis',
+      upiVpa: '9310709233m@pnb',
       payeeName: 'Vihangam Institute of Astrology and Research',
       activeCohorts: [{ batchName: 'Cohort Admissions Active', startDate: 'Self-Paced Instant Access', capacity: 50 }],
       customKnowledgeEntries: cachedOrFallback,

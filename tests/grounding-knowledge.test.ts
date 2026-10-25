@@ -16,7 +16,7 @@ describe('Grounding, Knowledge Retrieval & System Prompt Rules Suite', () => {
     courseTitle: 'Vedic Astrology Masterclass: What is Astrology',
     priceInr: 5100,
     priceUsd: 69,
-    upiVpa: 'aapkaastro@okaxis',
+    upiVpa: '9310709233m@pnb',
     payeeName: 'Vihangam Institute of Astrology and Research',
     activeCohorts: [{ batchName: 'Batch 1 - October', startDate: '2026-10-20', seatLimit: 50 }],
     customKnowledgeEntries: [
