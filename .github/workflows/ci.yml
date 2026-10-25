@@ -21,7 +21,7 @@ jobs:
       NEXT_TELEMETRY_DISABLED: '1'
       NEXT_PUBLIC_SITE_URL: 'http://localhost:3005'
       NEXT_PUBLIC_APP_URL: 'http://localhost:3005'
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_dGVzdC1jbGVyay1wdWJsaXNoYWJsZS1rZXk'
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_live_Y2xlcmsudmlhci5pbiQ'
       CLERK_SECRET_KEY: 'sk_test_mock_clerk_secret_key_for_ci_pipeline'
       OWNER_EMAIL: 'aapkaastro1606@gmail.com'
       SUPERADMIN_EMAILS: 'aapkaastro1606@gmail.com'
