@@ -19,9 +19,25 @@ import {
   Send,
   RefreshCw,
   Key,
+  Mail,
+  Settings,
+  AlertTriangle,
 } from 'lucide-react';
 import type { StudentSessionRecord, SessionRequestRecord, CourseSessionSettings } from '@/lib/sessions/types';
 import { formatSessionIST, formatInTimezone } from '@/lib/timezones';
+
+interface OutboxFailureItem {
+  id: string;
+  sessionId?: string | null;
+  recipientEmail: string;
+  recipientName?: string | null;
+  emailType: string;
+  subject: string;
+  lastError?: string | null;
+  attempts: number;
+  maxAttempts: number;
+  updatedAt: string;
+}
 
 interface StudentOption {
   id: string;
@@ -125,6 +141,20 @@ export default function SessionsManager({
   // Expanded cards state & clipboard
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
+  // Outbox Failures State
+  const [outboxFailures, setOutboxFailures] = useState<OutboxFailureItem[]>([]);
+  const [showOutboxModal, setShowOutboxModal] = useState(false);
+  const [retryingEmailId, setRetryingEmailId] = useState<string | null>(null);
+  const [outboxActionMessage, setOutboxActionMessage] = useState<string | null>(null);
+
+  // Course Policies & Reschedule Notice State
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsNoticeHours, setSettingsNoticeHours] = useState(24);
+  const [settingsIncludedCount, setSettingsIncludedCount] = useState<number | ''>('');
+  const [settingsMaxStudents, setSettingsMaxStudents] = useState<number | ''>('');
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsSaveSuccess, setSettingsSaveSuccess] = useState(false);
+
   // Fetch Data
   const fetchData = useCallback(async () => {
     try {
@@ -138,6 +168,9 @@ export default function SessionsManager({
         setStudents(data.students || []);
         if (data.courseSettings) {
           setCourseSettings(data.courseSettings);
+          setSettingsNoticeHours(data.courseSettings.minimumRescheduleNoticeHours ?? 24);
+          setSettingsIncludedCount(data.courseSettings.sessionsIncludedPerStudent ?? '');
+          setSettingsMaxStudents(data.courseSettings.maximumActiveStudents ?? '');
         }
         if (data.students?.length > 0 && !formStudentId) {
           setFormStudentId(data.students[0].id);
@@ -156,6 +189,13 @@ export default function SessionsManager({
       if (feedRes.ok) {
         const feedData = await feedRes.json();
         setCalendarFeedUrl(feedData.feedUrl || '');
+      }
+
+      // 4. Outbox Failures
+      const outboxRes = await fetch('/api/admin/sessions/outbox/failures');
+      if (outboxRes.ok) {
+        const outboxData = await outboxRes.json();
+        setOutboxFailures(outboxData.failures || []);
       }
     } catch {
       // offline / test fallback
@@ -536,6 +576,59 @@ export default function SessionsManager({
     return days;
   }, [filteredSessions]);
 
+  // Outbox Retry Handler
+  const handleRetryOutboxEmail = async (emailId: string) => {
+    setRetryingEmailId(emailId);
+    setOutboxActionMessage(null);
+    try {
+      const res = await fetch('/api/admin/sessions/outbox/failures/retry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOutboxActionMessage('Delivery retry dispatched successfully!');
+        fetchData();
+      } else {
+        setOutboxActionMessage(data.error || 'Retry failed');
+      }
+    } catch {
+      setOutboxActionMessage('Failed to trigger retry');
+    } finally {
+      setRetryingEmailId(null);
+    }
+  };
+
+  // Save Course Policy Settings Handler
+  const handleSaveCourseSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingSettings(true);
+    setSettingsSaveSuccess(false);
+    try {
+      const res = await fetch('/api/admin/sessions/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionsIncludedPerStudent: settingsIncludedCount === '' ? null : Number(settingsIncludedCount),
+          maximumActiveStudents: settingsMaxStudents === '' ? null : Number(settingsMaxStudents),
+          minimumRescheduleNoticeHours: Number(settingsNoticeHours) || 24,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCourseSettings(data.settings);
+        setSettingsSaveSuccess(true);
+        setTimeout(() => {
+          setShowSettingsModal(false);
+          setSettingsSaveSuccess(false);
+        }, 1200);
+      }
+    } catch {} finally {
+      setIsSavingSettings(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* 1. Header Navigation & Mode Toggles */}
@@ -568,8 +661,51 @@ export default function SessionsManager({
               <Plus className="w-4 h-4" />
               <span>Schedule a session</span>
             </button>
+
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition"
+            >
+              <Settings className="w-4 h-4 text-slate-400" />
+              <span>Session Policies</span>
+            </button>
+
+            <button
+              onClick={() => setShowOutboxModal(true)}
+              className={`px-4 py-2.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition ${
+                outboxFailures.length > 0
+                  ? 'bg-rose-500/20 border-rose-500/40 text-rose-300'
+                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300'
+              }`}
+            >
+              <Mail className="w-4 h-4 text-amber-400" />
+              <span>Email Outbox</span>
+              {outboxFailures.length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white animate-pulse">
+                  {outboxFailures.length} failed
+                </span>
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Outbox Failures Alert Banner */}
+        {outboxFailures.length > 0 && (
+          <div className="mt-4 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between flex-wrap gap-2 text-xs">
+            <div className="flex items-center gap-2 text-rose-300">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>
+                <strong>{outboxFailures.length} email delivery attempt(s) failed</strong> in the transactional outbox.
+              </span>
+            </div>
+            <button
+              onClick={() => setShowOutboxModal(true)}
+              className="px-3 py-1 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs transition"
+            >
+              Review Failures &amp; Retry
+            </button>
+          </div>
+        )}
 
         {/* Optional Course Settings: Sessions Included per Student (Shown ONLY when set!) */}
         {courseSettings.sessionsIncludedPerStudent !== null &&
@@ -1658,6 +1794,244 @@ export default function SessionsManager({
                 {isSubmitting ? 'Sending...' : 'Confirm & Email Scholar'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------------ */}
+      {/* MODAL 5: EMAIL OUTBOX FAILURES & MANUAL RETRY                           */}
+      {/* ------------------------------------------------------------------------ */}
+      {showOutboxModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-2xl rounded-3xl bg-slate-900 border border-white/10 p-6 sm:p-7 shadow-2xl space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-amber-400" />
+                  <h3 className="text-lg font-bold text-white">Transactional Email Outbox</h3>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Automatic retry queue and delivery telemetry for scheduled sessions, schedule adjustments, cancellations, and 24h / 1h pre-class reminders.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowOutboxModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {outboxActionMessage && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between">
+                <span>{outboxActionMessage}</span>
+                <button
+                  onClick={() => setOutboxActionMessage(null)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {outboxFailures.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/5 text-center space-y-2">
+                <Check className="w-8 h-8 text-emerald-400 mx-auto" />
+                <h4 className="text-sm font-bold text-white">All Emails Delivered Successfully</h4>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  There are no failed email dispatches. Scheduled confirmations, update notices, cancellations, and pre-class reminders are delivering without errors.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                <p className="text-xs font-semibold text-rose-300 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>{outboxFailures.length} failed delivery attempt(s) requiring attention:</span>
+                </p>
+
+                <div className="space-y-2.5">
+                  {outboxFailures.map((failure) => (
+                    <div
+                      key={failure.id}
+                      className="p-4 rounded-2xl bg-slate-950 border border-rose-500/30 space-y-2"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                              {failure.emailType}
+                            </span>
+                            <span className="text-xs font-bold text-white">
+                              {failure.recipientEmail}
+                            </span>
+                            {failure.recipientName && (
+                              <span className="text-xs text-slate-400">({failure.recipientName})</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-300 font-semibold mt-1">
+                            {failure.subject}
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => handleRetryOutboxEmail(failure.id)}
+                          disabled={retryingEmailId === failure.id}
+                          className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5 self-start sm:self-center transition disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${retryingEmailId === failure.id ? 'animate-spin' : ''}`} />
+                          <span>{retryingEmailId === failure.id ? 'Retrying...' : 'Retry Now'}</span>
+                        </button>
+                      </div>
+
+                      <div className="text-[11px] text-slate-400 space-y-1">
+                        {failure.lastError && (
+                          <p className="text-rose-400 font-mono text-[10px] bg-rose-950/40 p-2 rounded border border-rose-900/30">
+                            Error: {failure.lastError}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between text-slate-500 text-[10px]">
+                          <span>Attempts exhausted: {failure.attempts} / {failure.maxAttempts}</span>
+                          <span>Last attempted: {new Date(failure.updatedAt).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-3 border-t border-white/10 text-xs">
+              <span className="text-[11px] text-slate-500">
+                Processed every 15 minutes by GitHub Actions workflow
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowOutboxModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 font-semibold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------------ */}
+      {/* MODAL 6: COURSE POLICIES & RESCHEDULE NOTICE PERIOD                     */}
+      {/* ------------------------------------------------------------------------ */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-3xl bg-slate-900 border border-white/10 p-6 sm:p-7 shadow-2xl space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-amber-400" />
+                  <h3 className="text-lg font-bold text-white">1-on-1 Session Policies</h3>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Configure reschedule advance notice periods and optional per-scholar included session counts.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {settingsSaveSuccess ? (
+              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-2">
+                <Check className="w-8 h-8 text-emerald-400 mx-auto" />
+                <p className="text-xs font-bold text-emerald-300">Session policies updated successfully!</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSaveCourseSettings} className="space-y-4 text-xs">
+                {/* 1. Reschedule Notice Period */}
+                <div className="space-y-1">
+                  <label className="font-bold text-white flex items-center justify-between">
+                    <span>Reschedule Notice Period (Hours)</span>
+                    <span className="text-[10px] text-amber-400 font-normal">Default: 24 Hours</span>
+                  </label>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Scholars must submit online reschedule requests at least this many hours in advance of the session. Within this window, they are directed to contact Acharya ji on WhatsApp.
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="number"
+                      min={1}
+                      max={168}
+                      value={settingsNoticeHours}
+                      onChange={(e) => setSettingsNoticeHours(Number(e.target.value))}
+                      required
+                      className="w-32 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-sm focus:outline-none focus:border-amber-400"
+                    />
+                    <span className="text-xs text-slate-300 font-medium">Hours before class</span>
+                  </div>
+                </div>
+
+                {/* 2. Optional Sessions Included */}
+                <div className="space-y-1 pt-3 border-t border-white/10">
+                  <label className="font-bold text-white flex items-center justify-between">
+                    <span>Sessions Included Per Scholar</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Optional / Empty by default</span>
+                  </label>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Leave blank to hide quota counters. If set, scholars and admins will see usage progress (e.g. &quot;2 of 5 sessions used&quot;).
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="e.g. 5 (or leave empty)"
+                      value={settingsIncludedCount}
+                      onChange={(e) => setSettingsIncludedCount(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-48 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSettingsIncludedCount('')}
+                      className="text-[11px] text-slate-400 hover:text-white"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Optional Max Students */}
+                <div className="space-y-1 pt-3 border-t border-white/10">
+                  <label className="font-bold text-white flex items-center justify-between">
+                    <span>Maximum Active Scholars Capacity</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Optional</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="e.g. 25 (or leave empty)"
+                    value={settingsMaxStudents}
+                    onChange={(e) => setSettingsMaxStudents(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-48 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setShowSettingsModal(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingSettings}
+                    className="gold-button px-5 py-2 rounded-xl font-bold flex items-center gap-1.5 shadow-lg"
+                  >
+                    <span>{isSavingSettings ? 'Saving...' : 'Save Policies'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

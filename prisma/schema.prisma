@@ -182,8 +182,9 @@ model Course {
   sessionRequests    SessionRequest[]
 
   // Optional 1-on-1 personal mentorship settings (empty by default, shown only when Owner sets them)
-  sessionsIncludedPerStudent Int?               @map("sessions_included_per_student")
-  maximumActiveStudents      Int?               @map("maximum_active_students")
+  sessionsIncludedPerStudent   Int?             @map("sessions_included_per_student")
+  maximumActiveStudents        Int?             @map("maximum_active_students")
+  minimumRescheduleNoticeHours Int?             @default(24) @map("minimum_reschedule_notice_hours")
 
   @@index([slug])
   @@index([status])
@@ -399,6 +400,10 @@ model StudentSession {
   sharedNotes     String?           @db.Text @map("shared_notes")  // Shared notes the student can see
   homework        String?           @db.Text @map("homework")      // Homework the student can see
   recordingUrl    String?           @map("recording_url")         // Optional recording link
+
+  // Reminder tracking (Idempotent: prevents duplicate reminder dispatches)
+  reminder24hSentAt DateTime?       @map("reminder_24h_sent_at")
+  reminder1hSentAt  DateTime?       @map("reminder_1h_sent_at")
   
   createdByUserId String            @map("created_by_user_id")
   createdByUser   User              @relation("StudentSessionsAsCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
@@ -408,6 +413,7 @@ model StudentSession {
   // Relations
   sessionRequests SessionRequest[]
   historyLogs     SessionHistoryLog[]
+  outboxEmails    SessionEmailOutbox[]
 
   @@index([enrollmentId])
   @@index([studentId])
@@ -505,6 +511,41 @@ model SessionHistoryLog {
   @@index([actorUserId])
   @@index([createdAt])
   @@map("session_history_logs")
+}
+
+// ------------------------------------------------------------------------------
+// 4G. SESSION EMAIL OUTBOX (Transactional Outbox with Retry & Idempotency)
+// ------------------------------------------------------------------------------
+
+model SessionEmailOutbox {
+  id              String          @id @default(cuid())
+  sessionId       String?         @map("session_id")
+  session         StudentSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  recipientEmail  String          @map("recipient_email")
+  recipientName   String?         @map("recipient_name")
+  emailType       String          @map("email_type") // SCHEDULED, CHANGED, CANCELLED, REMINDER_24H, REMINDER_1H
+  subject         String
+  htmlContent     String          @db.Text @map("html_content")
+  textContent     String          @db.Text @map("text_content")
+  
+  status          String          @default("PENDING") // PENDING, SENT, FAILED
+  attempts        Int             @default(0)
+  maxAttempts     Int             @default(3) @map("max_attempts")
+  nextAttemptAt   DateTime?       @map("next_attempt_at")
+  lastError       String?         @db.Text @map("last_error")
+  sentAt          DateTime?       @map("sent_at")
+  
+  idempotencyKey  String?         @unique @map("idempotency_key")
+  
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([nextAttemptAt])
+  @@index([sessionId])
+  @@index([emailType])
+  @@map("session_email_outbox")
 }
 
 // ------------------------------------------------------------------------------

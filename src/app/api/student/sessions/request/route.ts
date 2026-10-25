@@ -5,6 +5,7 @@ import {
   createSessionRequest,
   listStudentSessions,
   updateStudentSession,
+  getCourseSessionSettings,
 } from '@/lib/sessions/oneOnOneService';
 
 export async function POST(req: NextRequest) {
@@ -66,6 +67,26 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           { error: 'Session not found or does not belong to your account' },
           { status: 404 }
+        );
+      }
+
+      // Check Owner-configured notice period (default: 24 hours)
+      const settings = await getCourseSessionSettings(targetSession.courseId || 'course-what-is-astrology');
+      const noticeHours = settings.minimumRescheduleNoticeHours ?? 24;
+      const hoursRemaining = (new Date(targetSession.startTime).getTime() - Date.now()) / (1000 * 60 * 60);
+
+      if (hoursRemaining < noticeHours) {
+        const roundedHours = Math.max(0, Math.round(hoursRemaining));
+        return NextResponse.json(
+          {
+            error: `Reschedule requests require at least ${noticeHours} hours advance notice. This session is scheduled in ${roundedHours} hours. Please message Acharya ji directly on WhatsApp for urgent adjustments.`,
+            noticePeriodHours: noticeHours,
+            hoursRemaining: roundedHours,
+            whatsAppUrl: `https://wa.me/919311215564?text=${encodeURIComponent(
+              `Namaste Acharya ji, I have an urgent reschedule request for my session (${targetSession.title}) starting in ${roundedHours} hours.`
+            )}`,
+          },
+          { status: 400 }
         );
       }
 

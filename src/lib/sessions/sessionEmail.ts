@@ -6,6 +6,13 @@
 import { emailService } from '@/lib/email';
 import { formatSessionIST } from './oneOnOneService';
 import { formatInTimezone } from '@/lib/timezones';
+import {
+  enqueueSessionEmail,
+  sendSessionChangedEmail,
+  sendSessionCancelledEmail,
+} from './outboxService';
+
+export { sendSessionChangedEmail, sendSessionCancelledEmail };
 
 export async function sendSessionScheduledEmail(data: {
   studentName: string;
@@ -16,6 +23,7 @@ export async function sendSessionScheduledEmail(data: {
   meetingLink?: string | null;
   notes?: string | null;
   studentTimezone?: string;
+  sessionId?: string;
 }): Promise<boolean> {
   const timeIst = formatSessionIST(data.startTimeUtc);
   const tz = data.studentTimezone || 'Asia/Kolkata';
@@ -93,13 +101,18 @@ export async function sendSessionScheduledEmail(data: {
   const text = `Namaste ${data.studentName} ji,\n\nYour 1-on-1 personal class with Acharya Niraj Kumar is scheduled for:\nTopic: ${data.topic}\nDate & Time: ${timeIst} IST\nDuration: ${data.durationMinutes} mins\nMeeting Link: ${data.meetingLink || 'Shared via WhatsApp'}\n\nPre-class notes: ${data.notes || 'Please have your birth chart ready.'}\n\nHelpline: +91 93112 15564\nViar.in`;
 
   try {
-    const res = await emailService.sendEmail({
-      to: data.studentEmail,
+    const record = await enqueueSessionEmail({
+      sessionId: data.sessionId,
+      recipientEmail: data.studentEmail,
+      recipientName: data.studentName,
+      emailType: 'SCHEDULED',
       subject,
-      html,
-      text,
+      htmlContent: html,
+      textContent: text,
+      idempotencyKey: data.sessionId ? `scheduled_${data.sessionId}` : undefined,
+      immediateDispatch: true,
     });
-    return res.success;
+    return record.status === 'SENT';
   } catch {
     return false;
   }

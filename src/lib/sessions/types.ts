@@ -138,4 +138,5 @@ export interface SessionHistoryLogRecord {
 export interface CourseSessionSettings {
   sessionsIncludedPerStudent?: number | null; // Count of sessions included, empty/null by default
   maximumActiveStudents?: number | null;      // Real maximum chosen by Owner, empty/null by default
+  minimumRescheduleNoticeHours?: number | null; // Owner-configurable notice period (default 24h)
 }

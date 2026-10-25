@@ -452,9 +452,9 @@ export async function createStudentSession(data: {
       id,
       enrollmentId: data.enrollmentId,
       studentId: data.studentId,
-      studentName: 'Student',
-      studentEmail: '',
-      studentPhone: '',
+      studentName: (data as { studentName?: string }).studentName || 'Student',
+      studentEmail: (data as { studentEmail?: string }).studentEmail || '',
+      studentPhone: (data as { studentPhone?: string }).studentPhone || '',
       courseId: data.courseId,
       courseTitle: 'Foundations of Vedic Astrology (Jyotish)',
       moduleId: data.moduleId || null,
@@ -651,6 +651,39 @@ export async function updateStudentSession(
       newStatus: updates.status,
       notes: updates.sharedNotes || updates.privateNotes || 'Status updated',
     });
+  }
+
+  // Transactional Outbox Notifications: Cancelled & Changed
+  if (updatedRecord && updatedRecord.studentEmail) {
+    if (updates.status === 'CANCELLED' && prevStatus !== 'CANCELLED') {
+      import('./outboxService').then(({ sendSessionCancelledEmail }) => {
+        sendSessionCancelledEmail({
+          studentName: updatedRecord!.studentName,
+          studentEmail: updatedRecord!.studentEmail,
+          topic: updatedRecord!.title,
+          scheduledTimeUtc: updatedRecord!.startTime,
+          cancellationReason: updates.sharedNotes || updates.privateNotes || 'Schedule adjustment by Owner',
+          sessionId: updatedRecord!.id,
+        }).catch(() => {});
+      }).catch(() => {});
+    } else if (
+      (updates.startTime && updates.startTime !== existing?.startTime) ||
+      (updates.meetingLink && updates.meetingLink !== existing?.meetingLink)
+    ) {
+      import('./outboxService').then(({ sendSessionChangedEmail }) => {
+        sendSessionChangedEmail({
+          studentName: updatedRecord!.studentName,
+          studentEmail: updatedRecord!.studentEmail,
+          topic: updatedRecord!.title,
+          newStartTimeUtc: updatedRecord!.startTime,
+          previousStartTimeUtc: existing?.startTime,
+          durationMinutes: updatedRecord!.duration,
+          meetingLink: updatedRecord!.meetingLink,
+          notes: updatedRecord!.sharedNotes,
+          sessionId: updatedRecord!.id,
+        }).catch(() => {});
+      }).catch(() => {});
+    }
   }
 
   return updatedRecord;
@@ -1168,6 +1201,7 @@ export async function getCourseSessionSettings(courseId: string): Promise<Course
       select: {
         sessionsIncludedPerStudent: true,
         maximumActiveStudents: true,
+        minimumRescheduleNoticeHours: true,
       },
     });
 
@@ -1175,13 +1209,16 @@ export async function getCourseSessionSettings(courseId: string): Promise<Course
       return {
         sessionsIncludedPerStudent: course.sessionsIncludedPerStudent ?? null,
         maximumActiveStudents: course.maximumActiveStudents ?? null,
+        minimumRescheduleNoticeHours: course.minimumRescheduleNoticeHours ?? 24,
       };
     }
   } catch {}
 
-  return _memoryCourseSettings.get(courseId) || {
-    sessionsIncludedPerStudent: null,
-    maximumActiveStudents: null,
+  const mem = _memoryCourseSettings.get(courseId);
+  return {
+    sessionsIncludedPerStudent: mem?.sessionsIncludedPerStudent ?? null,
+    maximumActiveStudents: mem?.maximumActiveStudents ?? null,
+    minimumRescheduleNoticeHours: mem?.minimumRescheduleNoticeHours ?? 24,
   };
 }
 
@@ -1195,11 +1232,13 @@ export async function updateCourseSessionSettings(
       data: {
         sessionsIncludedPerStudent: settings.sessionsIncludedPerStudent !== undefined ? settings.sessionsIncludedPerStudent : undefined,
         maximumActiveStudents: settings.maximumActiveStudents !== undefined ? settings.maximumActiveStudents : undefined,
+        minimumRescheduleNoticeHours: settings.minimumRescheduleNoticeHours !== undefined ? settings.minimumRescheduleNoticeHours : undefined,
       },
     });
   } catch {}
 
   const merged = {
+    minimumRescheduleNoticeHours: 24,
     ...(_memoryCourseSettings.get(courseId) || {}),
     ...settings,
   };

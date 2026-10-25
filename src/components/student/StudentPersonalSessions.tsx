@@ -101,6 +101,7 @@ export default function StudentPersonalSessions() {
   const [isSubmittingResched, setIsSubmittingResched] = useState(false);
   const [reschedSuccessMessage, setReschedSuccessMessage] = useState('');
   const [reschedErrorMessage, setReschedErrorMessage] = useState('');
+  const [reschedWhatsAppUrl, setReschedWhatsAppUrl] = useState<string | null>(null);
 
   // Detect student timezone on mount
   useEffect(() => {
@@ -230,6 +231,7 @@ export default function StudentPersonalSessions() {
     setIsSubmittingResched(true);
     setReschedErrorMessage('');
     setReschedSuccessMessage('');
+    setReschedWhatsAppUrl(null);
 
     try {
       const formattedWindows = formatWindowsToUtc(reschedWindows, userTz);
@@ -250,6 +252,9 @@ export default function StudentPersonalSessions() {
 
       const data = await res.json();
       if (!res.ok) {
+        if (data?.whatsAppUrl) {
+          setReschedWhatsAppUrl(data.whatsAppUrl);
+        }
         throw new Error(data?.error || 'Failed to submit reschedule request');
       }
 
@@ -969,10 +974,43 @@ export default function StudentPersonalSessions() {
               </div>
             ) : (
               <form onSubmit={handleSubmitReschedule} className="space-y-4 text-xs">
+                {targetRescheduleSession && (() => {
+                  const hoursRemaining = (new Date(targetRescheduleSession.startTime).getTime() - Date.now()) / (1000 * 3600);
+                  if (hoursRemaining < 24) {
+                    return (
+                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-1">
+                        <span className="font-bold flex items-center gap-1.5 text-amber-300">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <span>Notice Period: {Math.max(0, Math.round(hoursRemaining))} hours remaining</span>
+                        </span>
+                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                          Standard reschedule requests require at least 24 hours advance notice. If you cannot attend, you may also message Acharya ji directly on WhatsApp.
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
                 {reschedErrorMessage && (
-                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>{reschedErrorMessage}</span>
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{reschedErrorMessage}</span>
+                    </div>
+                    {reschedWhatsAppUrl && (
+                      <div>
+                        <a
+                          href={reschedWhatsAppUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>Message Acharya ji on WhatsApp</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
 
