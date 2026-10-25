@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuthUser, canAccessSection } from '@/lib/auth/serverAuth';
 import {
-  listOneOnOneSessions,
-  createOneOnOneSession,
-  updateOneOnOneSession,
-  recordTaughtContent,
+  listStudentSessions,
+  createStudentSessionWithValidation,
+  updateStudentSession,
   deleteOneOnOneSession,
   generateWhatsAppShareUrl,
+  getCourseSessionSettings,
 } from '@/lib/sessions/oneOnOneService';
+import { sendSessionScheduledEmail } from '@/lib/sessions/sessionEmail';
 import { prisma } from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
@@ -20,41 +23,87 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const studentId = searchParams.get('studentId') || undefined;
     const status = searchParams.get('status') || undefined;
-    const search = searchParams.get('search') || undefined;
 
-    const sessions = await listOneOnOneSessions({ studentId, status, search });
+    const sessions = await listStudentSessions({ studentId, status });
 
-    // Also get enrolled students list for the dropdown in the scheduling modal
-    let enrolledStudents: Array<{ id: string; name: string; email: string; phone?: string | null }> = [];
+    // Also get enrolled students list for the dropdown
+    let enrolledStudents: Array<{
+      id: string;
+      name: string;
+      email: string;
+      phone?: string | null;
+      timezone?: string;
+      enrolledAt?: string;
+      courseTitle?: string;
+    }> = [];
+
     try {
       const dbUsers = await prisma.user.findMany({
         where: {
           role: 'STUDENT',
         },
-        select: { id: true, name: true, email: true, phone: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          enrollments: {
+            select: {
+              enrolledAt: true,
+              course: { select: { title: true } },
+            },
+            take: 1,
+          },
+        },
         orderBy: { name: 'asc' },
         take: 100,
       });
+
       if (dbUsers && dbUsers.length > 0) {
         enrolledStudents = dbUsers.map((u) => ({
           id: u.id,
           name: u.name,
           email: u.email || '',
           phone: u.phone,
+          timezone: 'Asia/Kolkata',
+          enrolledAt: u.enrollments?.[0]?.enrolledAt?.toISOString(),
+          courseTitle: u.enrollments?.[0]?.course?.title || 'Foundations of Vedic Astrology (Jyotish)',
         }));
       }
     } catch {}
 
     if (enrolledStudents.length === 0) {
-      // Fallback students
       enrolledStudents = [
-        { id: 'usr_student_enrolled_001', name: 'Rohan Sharma', email: 'rohan.sharma@example.com', phone: '+91 98101 23456' },
-        { id: 'usr_student_enrolled_002', name: 'Priya Patel', email: 'priya.patel@example.com', phone: '+91 99202 34567' },
-        { id: 'usr_student_enrolled_003', name: 'Amit Verma', email: 'amit.verma@example.com', phone: '+91 98765 43210' },
+        {
+          id: 'usr_student_enrolled_001',
+          name: 'Rohan Sharma',
+          email: 'rohan.sharma@example.com',
+          phone: '+91 98101 23456',
+          timezone: 'Asia/Kolkata',
+          courseTitle: 'Foundations of Vedic Astrology (Jyotish)',
+        },
+        {
+          id: 'usr_student_enrolled_002',
+          name: 'Priya Patel',
+          email: 'priya.patel@example.com',
+          phone: '+91 99202 34567',
+          timezone: 'Asia/Kolkata',
+          courseTitle: 'Foundations of Vedic Astrology (Jyotish)',
+        },
+        {
+          id: 'usr_student_enrolled_003',
+          name: 'Amit Verma',
+          email: 'amit.verma@example.com',
+          phone: '+91 98765 43210',
+          timezone: 'Asia/Kolkata',
+          courseTitle: 'Foundations of Vedic Astrology (Jyotish)',
+        },
       ];
     }
 
-    // Enhance sessions with pre-computed WhatsApp share URLs
+    // Per-course session settings (e.g. sessionsIncludedPerStudent)
+    const settings = await getCourseSessionSettings('course-what-is-astrology');
+
     const enhancedSessions = sessions.map((s) => ({
       ...s,
       whatsAppShareUrl: generateWhatsAppShareUrl(s),
@@ -64,6 +113,7 @@ export async function GET(req: NextRequest) {
       success: true,
       sessions: enhancedSessions,
       students: enrolledStudents,
+      courseSettings: settings,
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to fetch sessions';
@@ -79,34 +129,103 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { studentId, studentName, studentEmail, studentPhone, title, scheduledAt, durationMinutes, meetingPlatform, meetingLink, notes } = body;
+    const {
+      studentId,
+      studentName,
+      studentEmail,
+      studentTimezone,
+      courseId,
+      moduleId,
+      lessonId,
+      title,
+      scheduledAt,
+      durationMinutes,
+      meetingPlatform,
+      meetingLink,
+      notes,
+      sharedNotes,
+      privateNotes,
+      repeatWeeklyCount,
+      allowOutsideWorkingHours,
+    } = body;
 
     if (!studentId || !title || !scheduledAt) {
       return NextResponse.json(
-        { error: 'Missing required fields: studentId, title, and scheduledAt are required' },
+        { error: 'Missing required fields: studentId, title, and scheduledAt are required.' },
         { status: 400 }
       );
     }
 
-    const session = await createOneOnOneSession({
+    const validation = await createStudentSessionWithValidation({
       studentId,
-      studentName,
-      studentEmail,
-      studentPhone,
+      courseId: courseId || 'course-what-is-astrology',
+      moduleId: moduleId || null,
+      lessonId: lessonId || null,
       title,
-      scheduledAt,
-      durationMinutes: durationMinutes ? Number(durationMinutes) : 60,
+      startTime: scheduledAt,
+      duration: durationMinutes ? Number(durationMinutes) : 60,
       meetingPlatform: meetingPlatform || 'GOOGLE_MEET',
       meetingLink: meetingLink || null,
-      notes: notes || null,
+      sharedNotes: sharedNotes || notes || null,
+      privateNotes: privateNotes || null,
+      createdByUserId: auth.userId || 'usr_owner_001',
+      repeatWeeklyCount: repeatWeeklyCount ? Number(repeatWeeklyCount) : 1,
+      allowOutsideWorkingHours: Boolean(allowOutsideWorkingHours),
     });
+
+    if (validation.clashError) {
+      return NextResponse.json(
+        {
+          error: validation.clashError,
+          isClash: true,
+        },
+        { status: 409 }
+      );
+    }
+
+    if (validation.workingHoursWarning) {
+      return NextResponse.json(
+        {
+          error: validation.workingHoursWarning,
+          requiresConfirmation: true,
+        },
+        { status: 422 }
+      );
+    }
+
+    const primarySession = validation.sessions[0];
+
+    // Trigger transactional confirmation email to student
+    if (studentEmail) {
+      try {
+        await sendSessionScheduledEmail({
+          studentName: studentName || primarySession.studentName,
+          studentEmail,
+          topic: title,
+          startTimeUtc: primarySession.startTime,
+          durationMinutes: primarySession.duration,
+          meetingLink: primarySession.meetingLink,
+          notes: primarySession.sharedNotes,
+          studentTimezone: studentTimezone || 'Asia/Kolkata',
+        });
+      } catch {}
+    }
 
     return NextResponse.json({
       success: true,
       session: {
-        ...session,
-        whatsAppShareUrl: generateWhatsAppShareUrl(session),
+        ...primarySession,
+        whatsAppShareUrl: generateWhatsAppShareUrl(primarySession),
       },
+      sessions: validation.sessions.map((s) => ({
+        ...s,
+        whatsAppShareUrl: generateWhatsAppShareUrl(s),
+      })),
+      countCreated: validation.sessions.length,
+      message:
+        validation.sessions.length > 1
+          ? `Successfully scheduled ${validation.sessions.length} weekly sessions. Confirmation email sent.`
+          : 'Session scheduled successfully. Confirmation email sent to student.',
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to create session';
@@ -122,26 +241,46 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { id, taughtRecord, homework, recordingUrl, markCompleted, ...updates } = body;
+    const {
+      id,
+      title,
+      startTime,
+      scheduledAt,
+      duration,
+      durationMinutes,
+      meetingLink,
+      meetingPlatform,
+      status,
+      privateNotes,
+      sharedNotes,
+      homework,
+      recordingUrl,
+      taughtRecord,
+    } = body;
 
     if (!id) {
-      return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Session ID is required.' }, { status: 400 });
     }
 
-    let updated;
-    if (taughtRecord !== undefined) {
-      updated = await recordTaughtContent(id, {
-        taughtRecord,
+    const updated = await updateStudentSession(
+      id,
+      {
+        title,
+        startTime: startTime || scheduledAt,
+        duration: duration || durationMinutes,
+        meetingLink,
+        meetingPlatform,
+        status,
+        privateNotes,
+        sharedNotes: sharedNotes || taughtRecord,
         homework,
         recordingUrl,
-        markCompleted: markCompleted ?? true,
-      });
-    } else {
-      updated = await updateOneOnOneSession(id, updates);
-    }
+      },
+      auth.userId || 'usr_owner_001'
+    );
 
     if (!updated) {
-      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Session not found.' }, { status: 404 });
     }
 
     return NextResponse.json({

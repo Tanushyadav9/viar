@@ -41,6 +41,7 @@ import {
 import ContentStudio from '@/components/admin/ContentStudio';
 import MediaLibrary from '@/components/admin/MediaLibrary';
 import SessionsManager from '@/components/admin/SessionsManager';
+import StudentProfileView from '@/components/admin/StudentProfileView';
 import {
   ScheduledClass,
   Course,
@@ -194,6 +195,7 @@ export default function AdminPortalClient({
   const [courses, setCourses] = useState<Course[]>([]);
   const [enrollments, setEnrollments] = useState<AdminEnrollmentItem[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   // Editing Class Modal/Form State
   // Manual Enrollment Form Modal
   const [isManualEnrollOpen, setIsManualEnrollOpen] = useState(false);
@@ -1085,7 +1087,7 @@ export default function AdminPortalClient({
             </h1>
             <p className="text-xs text-slate-400 mt-1">
               {isOwner
-                ? 'Full administrative control over all 8 modules, class schedules, financial telemetry, and staff delegations.'
+                ? 'Full administrative control over courses, 1-on-1 personal live sessions, student roster, financial telemetry, and staff delegations.'
                 : `Section-restricted console. You currently have access to: ${allowedSections.map((s) => ADMIN_SECTIONS_META[s]?.shortTitle).join(', ') || 'None'}.`}
             </p>
           </div>
@@ -1506,6 +1508,18 @@ export default function AdminPortalClient({
 
         {/* TAB: STUDENTS / ROSTER */}
         {isCurrentTabAllowed && activeTab === 'students' && (
+          selectedStudentId ? (
+            <StudentProfileView
+              studentId={selectedStudentId}
+              onBack={() => setSelectedStudentId(null)}
+              onScheduleSession={() => {
+                setActiveTab('sessions');
+              }}
+              onOpenAttendanceModal={() => {
+                setActiveTab('sessions');
+              }}
+            />
+          ) : (
           <div className="space-y-6">
             <AdminHelpBox
               titleEn="Students & Scholars Management"
@@ -1554,12 +1568,13 @@ export default function AdminPortalClient({
                       <th className="px-6 py-4">Payment Method</th>
                       <th className="px-6 py-4">Amount Paid</th>
                       <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {enrollmentsStatus !== 'success' || filteredEnrollments.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-10 text-center">
+                        <td colSpan={7} className="px-6 py-10 text-center">
                           <AsyncStateView
                             status={enrollmentsStatus}
                             errorType={enrollmentsErrorType}
@@ -1579,7 +1594,12 @@ export default function AdminPortalClient({
                           return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN');
                         })() : '—';
                         return (
-                          <tr key={enr.id} className="hover:bg-white/[0.02] transition">
+                          <tr
+                            key={enr.id}
+                            onClick={() => setSelectedStudentId(enr.studentId || enr.id)}
+                            className="hover:bg-white/[0.05] transition cursor-pointer group"
+                            title="Click to view scholar profile & 1-on-1 sessions"
+                          >
                             <td className="px-6 py-4">
                               <p className="font-bold text-white">{enr.studentName || 'Student'}</p>
                               <p className="text-[11px] text-slate-400">{enr.studentEmail || 'No email provided'}</p>
@@ -1603,8 +1623,20 @@ export default function AdminPortalClient({
                             </td>
                             <td className="px-6 py-4">
                               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                                {enr.paymentStatus || 'ACTIVE'}
+                                                                {enr.paymentStatus || 'ACTIVE'}
                               </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedStudentId(enr.studentId || enr.id);
+                                }}
+                                className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-white/5 group-hover:bg-amber-400 group-hover:text-slate-950 text-slate-300 transition"
+                              >
+                                View Profile & Sessions →
+                              </button>
                             </td>
                           </tr>
                         );
@@ -1615,6 +1647,7 @@ export default function AdminPortalClient({
               </div>
             </div>
           </div>
+          )
         )}
 
         {/* TAB: PAYMENTS & UPI VERIFICATION */}

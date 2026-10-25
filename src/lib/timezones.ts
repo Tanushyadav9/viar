@@ -198,3 +198,22 @@ export function generateGoogleCalendarUrl(
     return '#';
   }
 }
+
+export function formatSessionIST(isoString: string): string {
+  try {
+    const d = new Date(isoString);
+    return d.toLocaleString('en-IN', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Kolkata',
+      hour12: true,
+    });
+  } catch {
+    return isoString;
+  }
+}
+

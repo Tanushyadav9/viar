@@ -150,6 +150,187 @@ function initializeDefaults() {
 initializeDefaults();
 
 // ------------------------------------------------------------------------------
+// 0. Clash Protection & Working Hours Validation
+// ------------------------------------------------------------------------------
+
+export async function checkSessionClash(data: {
+  startTime: Date | string;
+  duration: number;
+  excludeSessionId?: string;
+}): Promise<{ hasClash: boolean; conflictMessage?: string; clashingSession?: StudentSessionRecord }> {
+  const reqStart = new Date(data.startTime).getTime();
+  const reqEnd = reqStart + data.duration * 60 * 1000;
+
+  const allSessions = await listStudentSessions({ status: 'ALL' });
+  const activeSessions = allSessions.filter((s) => s.status !== 'CANCELLED' && s.id !== data.excludeSessionId);
+
+  for (const s of activeSessions) {
+    const sStart = new Date(s.startTime).getTime();
+    const sEnd = sStart + (s.duration || 60) * 60 * 1000;
+
+    // Overlap: sStart < reqEnd && sEnd > reqStart
+    if (sStart < reqEnd && sEnd > reqStart) {
+      const clashTimeIst = formatSessionIST(s.startTime);
+      return {
+        hasClash: true,
+        conflictMessage: `Time clash: Acharya Niraj Kumar already has a scheduled class with ${s.studentName} ("${s.title}") on ${clashTimeIst} IST. Please choose another time slot.`,
+        clashingSession: s,
+      };
+    }
+  }
+
+  return { hasClash: false };
+}
+
+export async function checkWorkingHours(data: {
+  startTime: Date | string;
+  duration: number;
+}): Promise<{ isWithinHours: boolean; warning?: string }> {
+  const dateObj = new Date(data.startTime);
+  if (isNaN(dateObj.getTime())) {
+    return { isWithinHours: false, warning: 'Invalid date or time format.' };
+  }
+
+  const istDateStr = dateObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const istHours = dateObj.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
+  const dayName = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long' }).format(dateObj);
+  const istDayIndex = new Date(dateObj.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })).getDay();
+
+  // 1. Blocked Dates Check
+  const blockedDates = await listOwnerBlockedDates();
+  const isBlocked = blockedDates.some((b) => {
+    const bDateStr = new Date(b.blockedDate).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    return bDateStr === istDateStr;
+  });
+
+  if (isBlocked) {
+    return {
+      isWithinHours: false,
+      warning: `${istDateStr} is marked as a blocked date on Acharya Niraj Kumar's calendar. Confirm anyway to override and schedule.`,
+    };
+  }
+
+  // 2. Working Hours Check
+  const hours = await getOwnerWorkingHours();
+  const dayConfig = hours.find((h) => h.dayOfWeek === istDayIndex);
+
+  if (!dayConfig || !dayConfig.isEnabled) {
+    return {
+      isWithinHours: false,
+      warning: `${dayName} is marked as a non-teaching day in Acharya Niraj Kumar's schedule. Confirm anyway to override and schedule.`,
+    };
+  }
+
+  const [h, m] = istHours.split(':').map((x) => parseInt(x, 10));
+  const startMin = h * 60 + m;
+  const endMin = startMin + data.duration;
+
+  const [cfgStartH, cfgStartM] = dayConfig.startTime.split(':').map((x) => parseInt(x, 10));
+  const [cfgEndH, cfgEndM] = dayConfig.endTime.split(':').map((x) => parseInt(x, 10));
+  const cfgStartMin = cfgStartH * 60 + cfgStartM;
+  const cfgEndMin = cfgEndH * 60 + cfgEndM;
+
+  if (startMin < cfgStartMin || endMin > cfgEndMin) {
+    return {
+      isWithinHours: false,
+      warning: `Selected time (${istHours} IST) is outside standard teaching hours (${dayConfig.startTime} – ${dayConfig.endTime} IST) for ${dayName}. Confirm anyway to override and schedule.`,
+    };
+  }
+
+  return { isWithinHours: true };
+}
+
+export async function createStudentSessionWithValidation(data: {
+  enrollmentId?: string;
+  studentId: string;
+  courseId?: string;
+  moduleId?: string | null;
+  lessonId?: string | null;
+  title: string;
+  startTime: Date | string;
+  duration?: number;
+  meetingLink?: string | null;
+  meetingPlatform?: string;
+  privateNotes?: string | null;
+  sharedNotes?: string | null;
+  homework?: string | null;
+  recordingUrl?: string | null;
+  createdByUserId: string;
+  repeatWeeklyCount?: number;
+  allowOutsideWorkingHours?: boolean;
+}): Promise<{
+  sessions: StudentSessionRecord[];
+  clashError?: string;
+  workingHoursWarning?: string;
+}> {
+  const duration = data.duration || 60;
+  const repeatCount = Math.max(1, Math.min(12, data.repeatWeeklyCount || 1));
+  const baseStart = new Date(data.startTime);
+
+  const plannedDates: Date[] = [];
+  for (let i = 0; i < repeatCount; i++) {
+    const d = new Date(baseStart.getTime() + i * 7 * 24 * 60 * 60 * 1000);
+    plannedDates.push(d);
+
+    const clash = await checkSessionClash({
+      startTime: d,
+      duration,
+    });
+    if (clash.hasClash) {
+      return {
+        sessions: [],
+        clashError: repeatCount > 1
+          ? `Week ${i + 1} (${formatSessionIST(d.toISOString())} IST): ${clash.conflictMessage}`
+          : clash.conflictMessage,
+      };
+    }
+
+    if (!data.allowOutsideWorkingHours) {
+      const wh = await checkWorkingHours({
+        startTime: d,
+        duration,
+      });
+      if (!wh.isWithinHours) {
+        return {
+          sessions: [],
+          workingHoursWarning: repeatCount > 1
+            ? `Week ${i + 1} (${formatSessionIST(d.toISOString())} IST): ${wh.warning}`
+            : wh.warning,
+        };
+      }
+    }
+  }
+
+  const createdSessions: StudentSessionRecord[] = [];
+  for (let i = 0; i < plannedDates.length; i++) {
+    const sessionDate = plannedDates[i];
+    const sessionTitle = repeatCount > 1 ? `${data.title} (Part ${i + 1}/${repeatCount})` : data.title;
+
+    const s = await createStudentSession({
+      enrollmentId: data.enrollmentId || `enr_${data.studentId}`,
+      studentId: data.studentId,
+      courseId: data.courseId || 'course-what-is-astrology',
+      moduleId: data.moduleId,
+      lessonId: data.lessonId,
+      title: sessionTitle,
+      startTime: sessionDate,
+      duration,
+      meetingLink: data.meetingLink,
+      meetingPlatform: data.meetingPlatform,
+      privateNotes: data.privateNotes,
+      sharedNotes: data.sharedNotes,
+      homework: data.homework,
+      recordingUrl: data.recordingUrl,
+      createdByUserId: data.createdByUserId,
+    });
+
+    createdSessions.push(s);
+  }
+
+  return { sessions: createdSessions };
+}
+
+// ------------------------------------------------------------------------------
 // 1. StudentSession CRUD & Operations
 // ------------------------------------------------------------------------------
 
@@ -660,6 +841,49 @@ export async function listSessionRequests(options: {
   if (options.status && options.status !== 'ALL') list = list.filter((r) => r.status === options.status);
   list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return list;
+}
+
+export async function resolveSessionRequest(data: {
+  requestId: string;
+  status: 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
+  resolvedByUserId: string;
+  rescheduleReason?: string;
+  studentSessionId?: string | null;
+}): Promise<SessionRequestRecord | null> {
+  const now = new Date().toISOString();
+  let updated: SessionRequestRecord | null = null;
+
+  try {
+    const delegate = (prisma as unknown as { sessionRequest?: { update: (args: unknown) => Promise<Record<string, unknown>> } }).sessionRequest;
+    if (delegate) {
+      await delegate.update({
+        where: { id: data.requestId },
+        data: {
+          status: data.status,
+          resolvedAt: new Date(),
+          resolvedByUserId: data.resolvedByUserId,
+          studentSessionId: data.studentSessionId || undefined,
+          rescheduleReason: data.rescheduleReason || undefined,
+        },
+      });
+    }
+  } catch {}
+
+  const mem = _memorySessionRequests.get(data.requestId);
+  if (mem) {
+    updated = {
+      ...mem,
+      status: data.status,
+      resolvedAt: now,
+      resolvedByUserId: data.resolvedByUserId,
+      studentSessionId: data.studentSessionId || mem.studentSessionId,
+      rescheduleReason: data.rescheduleReason || mem.rescheduleReason,
+      updatedAt: now,
+    };
+    _memorySessionRequests.set(data.requestId, updated);
+  }
+
+  return updated;
 }
 
 // ------------------------------------------------------------------------------

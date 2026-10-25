@@ -7,96 +7,226 @@ import {
   User,
   Plus,
   Search,
-  CheckCircle2,
-  ExternalLink,
   Copy,
-  FileText,
   AlertCircle,
   MessageCircle,
   Check,
-  ChevronDown,
-  ChevronUp,
   X,
+  Calendar as CalendarIcon,
+  RotateCcw,
+  ShieldCheck,
+  Inbox,
+  Send,
+  RefreshCw,
+  Key,
 } from 'lucide-react';
-import type { OneOnOneSessionRecord } from '@/lib/sessions/types';
+import type { StudentSessionRecord, SessionRequestRecord, CourseSessionSettings } from '@/lib/sessions/types';
+import { formatSessionIST, formatInTimezone } from '@/lib/timezones';
 
 interface StudentOption {
   id: string;
   name: string;
   email: string;
   phone?: string | null;
+  timezone?: string;
+  enrolledAt?: string;
+  courseTitle?: string;
 }
 
-type ExtendedSession = OneOnOneSessionRecord & {
+type ExtendedSession = StudentSessionRecord & {
   whatsAppShareUrl?: string;
 };
 
-const TOPIC_SUGGESTIONS = [
-  '1. Kundli Basics & 12 Houses (Bhavas)',
-  '2. Planetary Aspects, Yogas & Strengths',
-  '3. Vimshottari Dasha & Timing of Events',
-  '4. Transit (Gochara) Analysis & Sade Sati',
-  '5. Navamsha (D9) Chart Reading',
-  '6. Personal Kundli Consultation & Remedies',
+// 23 Modules of the Ultimate Vedic Astrology Course for quick topic selection
+export const FLAGSHIP_23_MODULES = [
+  'Module 1: What is Astrology? (Nature of 9 planets, 12 houses & attributes, 12 Rashis & lords)',
+  'Module 2: Significations of 12 Houses (Bhavas, Kendras, Trikonas, Dusthanas)',
+  'Module 3: Planetary Characteristics & Graha Balas (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu)',
+  'Module 4: Planetary Dignities (Exaltation, Debilitation, Moolatrikona, Own Sign, Friendly/Enemy)',
+  'Module 5: Combustion (Asta) and Planetary War (Graha Yuddha)',
+  'Module 6: Retrograde Motion (Vakri Grahas) & Directional Strength (Digbala)',
+  'Module 7: Planetary Aspects (Drishti) & Special Planetary Combinations',
+  'Module 8: The Ascendant (Lagna) & How to Cast a Birth Chart (Kundli)',
+  'Module 9: Sun Sign vs Moon Sign vs Rising Lagna Dynamics',
+  'Module 10: Panchanga Principles (Tithi, Vara, Nakshatra, Yoga, Karana)',
+  'Module 11: 27 Lunar Mansions (Nakshatras) & Padas in Chart Reading',
+  'Module 12: Vimshottari Dasha System & Mahadasha / Antardasha Timing',
+  'Module 13: Gochara (Planetary Transits) & Sade Sati of Saturn',
+  'Module 14: Major Auspicious Yogas (Raja Yogas, Dhana Yogas, Gajakesari Yoga)',
+  'Module 15: Inauspicious Yogas & Doshas (Kaal Sarp, Kemadruma, Manglik, Guru Chandal)',
+  'Module 16: Navamsha Chart (D9) & Divisional Charts Analysis',
+  'Module 17: Career & Profession Analysis (10th House, D10 Dashamsha)',
+  'Module 18: Marriage & Compatibility (7th House, Kundli Milan, Ashtakoota)',
+  'Module 19: Health, Longevity & Medical Astrology (6th, 8th, 12th Houses)',
+  'Module 20: Financial Wealth & Prosperity (2nd and 11th Houses)',
+  'Module 21: Vedic Remedial Sciences (Gemstones, Rudraksha, Mantras, Daan)',
+  'Module 22: Practical Kundli Breakdown: Real-Life Client Case Studies',
+  'Module 23: Ethics, Professional Practice & Modern Jyotish Consultation',
 ];
 
-export default function SessionsManager() {
+interface SessionsManagerProps {
+  initialStudentId?: string;
+  initialScheduleOpen?: boolean;
+}
+
+export default function SessionsManager({
+  initialStudentId,
+  initialScheduleOpen = false,
+}: SessionsManagerProps) {
+  // Main Navigation within Sessions
+  const [activeMainTab, setActiveMainTab] = useState<'CALENDAR' | 'REQUESTS'>('CALENDAR');
+
+  // Calendar View Mode: List vs Week View
+  const [calendarViewMode, setCalendarViewMode] = useState<'LIST' | 'WEEK'>('LIST');
+
+  // State
   const [sessions, setSessions] = useState<ExtendedSession[]>([]);
   const [students, setStudents] = useState<StudentOption[]>([]);
+  const [requests, setRequests] = useState<SessionRequestRecord[]>([]);
+  const [courseSettings, setCourseSettings] = useState<CourseSessionSettings>({
+    sessionsIncludedPerStudent: null,
+    maximumActiveStudents: null,
+  });
+
   const [isLoading, setIsLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<'ALL' | 'UPCOMING' | 'TODAY' | 'COMPLETED'>('UPCOMING');
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'TODAY' | 'TOMORROW' | 'THIS_WEEK' | 'COMPLETED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudentFilter, setSelectedStudentFilter] = useState('ALL');
 
+  // Secret iCal calendar feed token
+  const [calendarFeedUrl, setCalendarFeedUrl] = useState<string>('');
+  const [isRegeneratingToken, setIsRegeneratingToken] = useState(false);
+  const [feedCopySuccess, setFeedCopySuccess] = useState(false);
+
   // Modals
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [isTaughtModalOpen, setIsTaughtModalOpen] = useState(false);
-  const [selectedSession, setSelectedSession] = useState<ExtendedSession | null>(null);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(initialScheduleOpen);
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+  const [selectedSessionForAttendance, setSelectedSessionForAttendance] = useState<ExtendedSession | null>(null);
+
+  // Requests action modal
+  const [activeRequestAction, setActiveRequestAction] = useState<{
+    request: SessionRequestRecord;
+    type: 'PROPOSE' | 'DECLINE';
+  } | null>(null);
+  const [proposalTimeInput, setProposalTimeInput] = useState('');
+  const [requestActionNote, setRequestActionNote] = useState('');
 
   // Form State: Schedule
-  const [formStudentId, setFormStudentId] = useState('');
-  const [formTitle, setFormTitle] = useState('');
+  const [formStudentId, setFormStudentId] = useState(initialStudentId || '');
+  const [formTopicMode, setFormTopicMode] = useState<'MODULE' | 'CUSTOM'>('MODULE');
+  const [formSelectedModule, setFormSelectedModule] = useState(FLAGSHIP_23_MODULES[0]);
+  const [formCustomTitle, setFormCustomTitle] = useState('');
   const [formDate, setFormDate] = useState('');
   const [formTime, setFormTime] = useState('16:00');
   const [formDuration, setFormDuration] = useState(60);
   const [formPlatform, setFormPlatform] = useState('GOOGLE_MEET');
-  const [formLink, setFormLink] = useState('');
-  const [formNotes, setFormNotes] = useState('');
+  const [formLink, setFormLink] = useState('https://meet.google.com/new');
+  const [formSharedNotes, setFormSharedNotes] = useState('Please have your natal birth details and chart ready.');
+  const [formPrivateNotes, setFormPrivateNotes] = useState('');
+  const [formRepeatWeekly, setFormRepeatWeekly] = useState(false);
+  const [formRepeatWeeks, setFormRepeatWeeks] = useState(8);
+  const [formAllowOutsideWorkingHours, setFormAllowOutsideWorkingHours] = useState(false);
+
+  // Submission & Feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [clashError, setClashError] = useState<string | null>(null);
+  const [workingHoursWarning, setWorkingHoursWarning] = useState<string | null>(null);
+  const [scheduleSuccessResult, setScheduleSuccessResult] = useState<{
+    countCreated: number;
+    whatsAppShareUrl: string;
+    studentName: string;
+    title: string;
+  } | null>(null);
 
-  // Form State: Record What Was Taught
-  const [formTaughtRecord, setFormTaughtRecord] = useState('');
-  const [formHomework, setFormHomework] = useState('');
-  const [formRecordingUrl, setFormRecordingUrl] = useState('');
-  const [formMarkCompleted, setFormMarkCompleted] = useState(true);
+  // Attendance & Taught Form
+  const [attStatus, setAttStatus] = useState<'COMPLETED' | 'MISSED' | 'CANCELLED'>('COMPLETED');
+  const [attPrivateNotes, setAttPrivateNotes] = useState('');
+  const [attSharedNotes, setAttSharedNotes] = useState('');
+  const [attHomework, setAttHomework] = useState('');
+  const [attRecordingUrl, setAttRecordingUrl] = useState('');
 
-  // Expanded cards state
-  const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
-  const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
+  // Expanded cards state & clipboard
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
-  const fetchSessions = useCallback(async () => {
+  // Fetch Data
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
+
+      // 1. Sessions & Students
       const res = await fetch('/api/admin/sessions');
       if (res.ok) {
         const data = await res.json();
         setSessions(data.sessions || []);
         setStudents(data.students || []);
+        if (data.courseSettings) {
+          setCourseSettings(data.courseSettings);
+        }
         if (data.students?.length > 0 && !formStudentId) {
           setFormStudentId(data.students[0].id);
         }
       }
+
+      // 2. Requests
+      const reqRes = await fetch('/api/admin/sessions/requests');
+      if (reqRes.ok) {
+        const reqData = await reqRes.json();
+        setRequests(reqData.requests || []);
+      }
+
+      // 3. Calendar Feed Token
+      const feedRes = await fetch('/api/admin/sessions/calendar-feed');
+      if (feedRes.ok) {
+        const feedData = await feedRes.json();
+        setCalendarFeedUrl(feedData.feedUrl || '');
+      }
     } catch {
-      // Offline fallback
+      // offline / test fallback
     } finally {
       setIsLoading(false);
     }
   }, [formStudentId]);
 
   useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+    fetchData();
+  }, [fetchData]);
+
+  // Selected student object for schedule modal
+  const selectedStudentObj = useMemo(() => {
+    return students.find((s) => s.id === formStudentId) || null;
+  }, [students, formStudentId]);
+
+  const studentTz = selectedStudentObj?.timezone || 'Asia/Kolkata';
+
+  // Compute local time for student preview
+  const scheduledTimePreview = useMemo(() => {
+    if (!formDate || !formTime) return null;
+    const dateObj = new Date(`${formDate}T${formTime}:00+05:30`);
+    if (isNaN(dateObj.getTime())) return null;
+
+    const istTime = dateObj.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Kolkata',
+    });
+
+    const studentTime =
+      studentTz !== 'Asia/Kolkata'
+        ? dateObj.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: studentTz,
+            timeZoneName: 'short',
+          })
+        : null;
+
+    return {
+      istTime,
+      studentTime,
+    };
+  }, [formDate, formTime, studentTz]);
 
   // Quick Time preset helper
   const setQuickTime = (type: 'TODAY_4PM' | 'TOMORROW_11AM' | 'TOMORROW_4PM' | 'TOMORROW_6PM') => {
@@ -113,157 +243,285 @@ export default function SessionsManager() {
     }
   };
 
-  const handleOpenScheduleModal = () => {
+  const handleOpenScheduleModal = (prefillStudentId?: string) => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     setFormDate(tomorrow.toISOString().split('T')[0]);
     setFormTime('16:00');
-    setFormTitle('');
+    if (prefillStudentId) {
+      setFormStudentId(prefillStudentId);
+    }
+    setFormTopicMode('MODULE');
+    setFormSelectedModule(FLAGSHIP_23_MODULES[0]);
+    setFormCustomTitle('');
     setFormLink('https://meet.google.com/new');
-    setFormNotes('Please have your birth chart ready. Revise basic planetary significators.');
-    setFeedbackMsg(null);
+    setFormSharedNotes('Please have your birth chart ready. Revise basic planetary significators.');
+    setFormPrivateNotes('');
+    setFormRepeatWeekly(false);
+    setFormRepeatWeeks(8);
+    setFormAllowOutsideWorkingHours(false);
+    setClashError(null);
+    setWorkingHoursWarning(null);
+    setScheduleSuccessResult(null);
     setIsScheduleModalOpen(true);
   };
 
-  const handleCreateSession = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formStudentId || !formTitle || !formDate || !formTime) {
-      setFeedbackMsg({ type: 'error', text: 'Please fill all required fields: student, topic, date, and time.' });
+  // Schedule Session Submit
+  const handleScheduleSubmit = async (e?: React.FormEvent, forceOverrideWorkingHours = false) => {
+    if (e) e.preventDefault();
+
+    if (!formStudentId || !formDate || !formTime) {
+      setClashError('Please fill in student, date, and time.');
+      return;
+    }
+
+    const finalTitle = formTopicMode === 'MODULE' ? formSelectedModule : formCustomTitle.trim();
+    if (!finalTitle) {
+      setClashError('Please specify the topic or select a module.');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      setFeedbackMsg(null);
+      setClashError(null);
+      setWorkingHoursWarning(null);
 
-      // Combine date and time in IST (+05:30)
+      // Stored in UTC (ISO 8601) calculated from input IST (+05:30)
       const scheduledAtIso = `${formDate}T${formTime}:00+05:30`;
-      const selectedStudent = students.find((s) => s.id === formStudentId);
+
+      const payload = {
+        studentId: formStudentId,
+        studentName: selectedStudentObj?.name,
+        studentEmail: selectedStudentObj?.email,
+        studentPhone: selectedStudentObj?.phone,
+        studentTimezone: studentTz,
+        title: finalTitle,
+        scheduledAt: scheduledAtIso,
+        durationMinutes: formDuration,
+        meetingPlatform: formPlatform,
+        meetingLink: formLink,
+        sharedNotes: formSharedNotes,
+        privateNotes: formPrivateNotes,
+        repeatWeeklyCount: formRepeatWeekly ? formRepeatWeeks : 1,
+        allowOutsideWorkingHours: forceOverrideWorkingHours || formAllowOutsideWorkingHours,
+      };
 
       const res = await fetch('/api/admin/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          studentId: formStudentId,
-          studentName: selectedStudent?.name,
-          studentEmail: selectedStudent?.email,
-          studentPhone: selectedStudent?.phone,
-          title: formTitle,
-          scheduledAt: scheduledAtIso,
-          durationMinutes: formDuration,
-          meetingPlatform: formPlatform,
-          meetingLink: formLink,
-          notes: formNotes,
-        }),
+        body: JSON.stringify(payload),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to create session');
+        if (res.status === 409 && data.isClash) {
+          // Clash Protection: Server refused overlapping session
+          setClashError(data.error || 'Schedule Conflict: Overlaps another student session.');
+          return;
+        }
+        if (res.status === 422 && data.requiresConfirmation) {
+          // Outside Working Hours: Requires Owner confirmation
+          setWorkingHoursWarning(data.error || 'Outside working hours.');
+          return;
+        }
+        throw new Error(data.error || 'Failed to schedule session');
       }
 
-      await fetchSessions();
-      setIsScheduleModalOpen(false);
+      await fetchData();
+
+      setScheduleSuccessResult({
+        countCreated: data.countCreated || 1,
+        whatsAppShareUrl: data.session?.whatsAppShareUrl || '',
+        studentName: selectedStudentObj?.name || 'Student',
+        title: finalTitle,
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error creating session';
-      setFeedbackMsg({ type: 'error', text: msg });
+      setClashError(msg);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleOpenTaughtModal = (session: ExtendedSession) => {
-    setSelectedSession(session);
-    setFormTaughtRecord(session.taughtRecord || '');
-    setFormHomework(session.homework || '');
-    setFormRecordingUrl(session.recordingUrl || '');
-    setFormMarkCompleted(session.status !== 'COMPLETED');
-    setFeedbackMsg(null);
-    setIsTaughtModalOpen(true);
+  // Open Attendance & Post-Class Modal
+  const handleOpenAttendanceModal = (session: ExtendedSession) => {
+    setSelectedSessionForAttendance(session);
+    setAttStatus(session.status === 'CANCELLED' ? 'CANCELLED' : session.status === 'MISSED' ? 'MISSED' : 'COMPLETED');
+    setAttPrivateNotes(session.privateNotes || '');
+    setAttSharedNotes(session.sharedNotes || '');
+    setAttHomework(session.homework || '');
+    setAttRecordingUrl(session.recordingUrl || '');
+    setIsAttendanceModalOpen(true);
   };
 
-  const handleSaveTaughtContent = async (e: React.FormEvent) => {
+  // Save Attendance & Post-Class Notes
+  const handleSaveAttendance = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedSession || !formTaughtRecord.trim()) {
-      setFeedbackMsg({ type: 'error', text: 'Please enter what was taught in this class.' });
-      return;
-    }
+    if (!selectedSessionForAttendance) return;
 
     try {
       setIsSubmitting(true);
-      setFeedbackMsg(null);
-
       const res = await fetch('/api/admin/sessions', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: selectedSession.id,
-          taughtRecord: formTaughtRecord,
-          homework: formHomework,
-          recordingUrl: formRecordingUrl,
-          markCompleted: formMarkCompleted,
+          id: selectedSessionForAttendance.id,
+          status: attStatus,
+          privateNotes: attPrivateNotes,
+          sharedNotes: attSharedNotes,
+          homework: attHomework,
+          recordingUrl: attRecordingUrl,
         }),
       });
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Failed to update record');
+        throw new Error(err.error || 'Failed to update session record');
       }
 
-      await fetchSessions();
-      setIsTaughtModalOpen(false);
+      await fetchData();
+      setIsAttendanceModalOpen(false);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error saving taught record';
-      setFeedbackMsg({ type: 'error', text: msg });
+      alert(err instanceof Error ? err.message : 'Error updating session');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleCopyLink = (session: ExtendedSession) => {
-    if (!session.meetingLink) return;
-    navigator.clipboard.writeText(session.meetingLink);
-    setCopiedSessionId(session.id);
-    setTimeout(() => setCopiedSessionId(null), 2500);
+  // Requests: One-click actions
+  const handleScheduleFromRequest = (req: SessionRequestRecord) => {
+    handleOpenScheduleModal(req.studentId);
+    if (req.preferredWindows && req.preferredWindows.length > 0) {
+      const firstWin = req.preferredWindows[0];
+      const winDate = new Date(firstWin.startUtc);
+      if (!isNaN(winDate.getTime())) {
+        const istDate = winDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+        const istTime = winDate.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
+        setFormDate(istDate);
+        setFormTime(istTime);
+      }
+    }
+    if (req.message) {
+      setFormSharedNotes(`Student Request: "${req.message}"`);
+    }
   };
 
-  const toggleExpand = (id: string) => {
-    setExpandedSessionIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const handleExecuteRequestAction = async () => {
+    if (!activeRequestAction) return;
+
+    try {
+      setIsSubmitting(true);
+      const { request, type } = activeRequestAction;
+
+      const payload = {
+        action: type,
+        studentEmail: request.studentEmail,
+        studentName: request.studentName,
+        proposedTimeText: proposalTimeInput,
+        note: requestActionNote,
+        reason: requestActionNote,
+      };
+
+      const res = await fetch(`/api/admin/sessions/requests/${request.id}/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to update request');
+      }
+
+      await fetchData();
+      setActiveRequestAction(null);
+      setProposalTimeInput('');
+      setRequestActionNote('');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Error processing request');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Filtered Sessions
+  // Calendar feed token regeneration
+  const handleRegenerateFeedToken = async () => {
+    if (!confirm('Are you sure you want to regenerate your private calendar feed token? Your old Google Calendar subscription URL will stop receiving updates.')) {
+      return;
+    }
+
+    try {
+      setIsRegeneratingToken(true);
+      const res = await fetch('/api/admin/sessions/calendar-feed', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setCalendarFeedUrl(data.feedUrl || '');
+        alert('Secret calendar subscription feed URL regenerated successfully.');
+      }
+    } catch {
+      alert('Error regenerating calendar token.');
+    } finally {
+      setIsRegeneratingToken(false);
+    }
+  };
+
+  const handleCopyFeedUrl = () => {
+    if (!calendarFeedUrl) return;
+    navigator.clipboard.writeText(calendarFeedUrl);
+    setFeedCopySuccess(true);
+    setTimeout(() => setFeedCopySuccess(false), 2500);
+  };
+
+  const handleCopyLink = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedLink(id);
+    setTimeout(() => setCopiedLink(null), 2500);
+  };
+
+  // Filtering Sessions
   const filteredSessions = useMemo(() => {
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
+    const tomorrow = new Date(now.getTime() + 24 * 3600 * 1000);
+    const tomorrowStr = tomorrow.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
+    // Week boundaries in IST
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Monday as first day
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 7);
 
     return sessions.filter((s) => {
-      // Student Filter
       if (selectedStudentFilter !== 'ALL' && s.studentId !== selectedStudentFilter) {
         return false;
       }
 
-      // Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matches =
           s.title.toLowerCase().includes(q) ||
           s.studentName.toLowerCase().includes(q) ||
-          s.studentEmail.toLowerCase().includes(q) ||
-          (s.studentPhone && s.studentPhone.toLowerCase().includes(q));
+          s.studentEmail.toLowerCase().includes(q);
         if (!matches) return false;
       }
 
-      // Tab Filter
-      if (activeFilter === 'UPCOMING') {
-        return s.status === 'SCHEDULED' || s.status === 'LIVE';
-      }
+      const sDateObj = new Date(s.startTime);
+      const sDateStr = sDateObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
       if (activeFilter === 'TODAY') {
-        return s.scheduledAt.startsWith(todayStr);
+        return sDateStr === todayStr && s.status !== 'CANCELLED';
+      }
+      if (activeFilter === 'TOMORROW') {
+        return sDateStr === tomorrowStr && s.status !== 'CANCELLED';
+      }
+      if (activeFilter === 'THIS_WEEK') {
+        return sDateObj >= startOfWeek && sDateObj < endOfWeek && s.status !== 'CANCELLED';
       }
       if (activeFilter === 'COMPLETED') {
         return s.status === 'COMPLETED';
@@ -273,580 +531,1076 @@ export default function SessionsManager() {
     });
   }, [sessions, selectedStudentFilter, searchQuery, activeFilter]);
 
-  // Statistics
-  const stats = useMemo(() => {
-    const upcoming = sessions.filter((s) => s.status === 'SCHEDULED' || s.status === 'LIVE').length;
-    const completed = sessions.filter((s) => s.status === 'COMPLETED').length;
-    const studentIds = new Set(sessions.map((s) => s.studentId));
-    return { total: sessions.length, upcoming, completed, mentoredStudents: studentIds.size };
-  }, [sessions]);
+  // Pending requests count
+  const pendingRequestsCount = useMemo(() => {
+    return requests.filter((r) => r.status === 'PENDING').length;
+  }, [requests]);
+
+  // Grouped sessions for Week View (Monday to Sunday)
+  const weekGroupedSessions = useMemo(() => {
+    const days: Record<string, ExtendedSession[]> = {
+      Monday: [],
+      Tuesday: [],
+      Wednesday: [],
+      Thursday: [],
+      Friday: [],
+      Saturday: [],
+      Sunday: [],
+    };
+
+    filteredSessions.forEach((s) => {
+      const d = new Date(s.startTime);
+      const dayName = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long' }).format(d);
+      if (days[dayName]) {
+        days[dayName].push(s);
+      }
+    });
+
+    return days;
+  }, [filteredSessions]);
 
   return (
     <div className="space-y-6">
-      {/* 1. Bilingual Guidance & Header Card */}
-      <div className="p-6 rounded-3xl cosmic-card border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-900 relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                Personal 1-on-1 Mentorship
+      {/* 1. Header Navigation & Mode Toggles */}
+      <div className="cosmic-card p-6 sm:p-8 rounded-3xl border border-white/10 bg-gradient-to-r from-[#0d121f] via-[#111728] to-[#0d121f]">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
+                <Video className="w-3.5 h-3.5 text-amber-400" />
+                <span>Sessions & Personal Live Classes</span>
               </span>
               <span className="text-xs text-slate-400">•</span>
-              <span className="text-xs text-slate-300 font-hindi">व्यक्तिगत लाइव कक्षाएं</span>
+              <span className="text-xs text-slate-300 font-hindi">व्यक्तिगत लाइव ज्योतिष कक्षाएं</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-white">
-              1-on-1 Student Live Classes
-            </h2>
+
+            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2">
+              <span>1-on-1 Mentorship & Sessions Console</span>
+              {isLoading && <span className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />}
+            </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Schedule private astrology classes for each student at their convenient date and time. Send meeting links directly via WhatsApp in 1 click, and keep an ongoing record of what was taught in each class.
+              Full scheduling, calendar telemetry, and clash protection for individual scholars. Schedule separate weekly series, inspect student request inboxes, and export your private calendar feed.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleOpenScheduleModal}
-            className="gold-button px-5 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 shrink-0 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Schedule 1-on-1 Class</span>
-          </button>
-        </div>
-
-        {/* Telemetry Chips */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 mt-6 border-t border-white/10">
-          <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5">
-            <span className="text-[11px] text-slate-400 block">Upcoming Classes</span>
-            <span className="text-xl font-black text-amber-400">{stats.upcoming}</span>
-          </div>
-          <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5">
-            <span className="text-[11px] text-slate-400 block">Classes Completed</span>
-            <span className="text-xl font-black text-emerald-400">{stats.completed}</span>
-          </div>
-          <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5">
-            <span className="text-[11px] text-slate-400 block">Students Mentored</span>
-            <span className="text-xl font-black text-white">{stats.mentoredStudents}</span>
-          </div>
-          <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5">
-            <span className="text-[11px] text-slate-400 block">Total Scheduled</span>
-            <span className="text-xl font-black text-slate-300">{stats.total}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Controls & Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 bg-slate-900/80 p-1.5 rounded-2xl border border-white/10 overflow-x-auto">
-          {(['UPCOMING', 'TODAY', 'COMPLETED', 'ALL'] as const).map((filter) => (
+          <div className="flex flex-wrap items-center gap-3">
             <button
-              key={filter}
-              type="button"
-              onClick={() => setActiveFilter(filter)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-                activeFilter === filter
-                  ? 'bg-amber-500 text-black shadow-md'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
+              onClick={() => handleOpenScheduleModal()}
+              className="gold-button px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-lg shadow-amber-500/20"
             >
-              {filter === 'UPCOMING'
-                ? 'Upcoming (आगामी)'
-                : filter === 'TODAY'
-                ? 'Today (आज)'
-                : filter === 'COMPLETED'
-                ? 'Completed (पूर्ण)'
-                : 'All Classes'}
+              <Plus className="w-4 h-4" />
+              <span>Schedule a session</span>
             </button>
-          ))}
+          </div>
         </div>
 
-        {/* Search & Student Filter */}
-        <div className="flex items-center gap-2">
-          {/* Search Input */}
-          <div className="relative flex-1 sm:w-60">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search student or topic..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-900 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
-            />
-          </div>
+        {/* Optional Course Settings: Sessions Included per Student (Shown ONLY when set!) */}
+        {courseSettings.sessionsIncludedPerStudent !== null &&
+          courseSettings.sessionsIncludedPerStudent !== undefined &&
+          courseSettings.sessionsIncludedPerStudent > 0 && (
+            <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between flex-wrap gap-2 text-xs">
+              <span className="text-slate-400 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <span>Course Policy:</span>
+                <strong className="text-white">
+                  {courseSettings.sessionsIncludedPerStudent} 1-on-1 sessions included per enrolled scholar
+                </strong>
+              </span>
+              {courseSettings.maximumActiveStudents !== null && (
+                <span className="text-slate-400">
+                  Maximum Active Students Capacity:{' '}
+                  <strong className="text-amber-300">{courseSettings.maximumActiveStudents}</strong>
+                </span>
+              )}
+            </div>
+          )}
 
-          {/* Student Dropdown */}
-          <select
-            value={selectedStudentFilter}
-            onChange={(e) => setSelectedStudentFilter(e.target.value)}
-            className="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+        {/* Primary Tabs: Calendar vs Requests Inbox */}
+        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-white/10">
+          <button
+            onClick={() => setActiveMainTab('CALENDAR')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+              activeMainTab === 'CALENDAR'
+                ? 'bg-amber-400 text-slate-950 shadow-md'
+                : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'
+            }`}
           >
-            <option value="ALL">All Students</option>
-            {students.map((st) => (
-              <option key={st.id} value={st.id}>
-                {st.name}
-              </option>
-            ))}
-          </select>
+            <CalendarIcon className="w-4 h-4" />
+            <span>Sessions Calendar ({sessions.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveMainTab('REQUESTS')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 relative ${
+              activeMainTab === 'REQUESTS'
+                ? 'bg-amber-400 text-slate-950 shadow-md'
+                : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'
+            }`}
+          >
+            <Inbox className="w-4 h-4" />
+            <span>Requests Inbox</span>
+            {pendingRequestsCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white">
+                {pendingRequestsCount} Waiting
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* 3. Sessions List */}
-      {isLoading ? (
-        <div className="text-center py-16 text-slate-400 text-xs">
-          Loading 1-on-1 mentorship sessions...
-        </div>
-      ) : filteredSessions.length === 0 ? (
-        <div className="text-center py-16 px-4 rounded-3xl cosmic-card border border-white/10 space-y-4">
-          <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto">
-            <Video className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="font-bold text-white text-base">No 1-on-1 Sessions Found</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              {searchQuery || selectedStudentFilter !== 'ALL'
-                ? 'No classes match your current search or filter criteria.'
-                : 'You have not scheduled any personal 1-on-1 classes for this filter yet.'}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleOpenScheduleModal}
-            className="gold-button px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Schedule First 1-on-1 Class</span>
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredSessions.map((session) => {
-            const isExpanded = expandedSessionIds.has(session.id);
-            const isCopied = copiedSessionId === session.id;
-            const scheduledDate = new Date(session.scheduledAt);
-            const formattedDate = scheduledDate.toLocaleString('en-IN', {
-              weekday: 'short',
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              timeZone: 'Asia/Kolkata',
-              hour12: true,
-            });
-
-            // Status Styling
-            const isCompleted = session.status === 'COMPLETED';
-
-            return (
-              <div
-                key={session.id}
-                className={`p-5 rounded-3xl cosmic-card border transition ${
-                  isCompleted
-                    ? 'border-emerald-500/20 bg-slate-900/60'
-                    : 'border-amber-500/30 bg-slate-900/90 shadow-lg'
-                }`}
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  {/* Left: Info */}
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          isCompleted
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                        }`}
-                      >
-                        {isCompleted ? 'Completed • पूर्ण' : 'Scheduled • आगामी'}
-                      </span>
-                      <span className="text-xs text-slate-500">•</span>
-                      <span className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-amber-400" />
-                        <span>{formattedDate} (IST)</span>
-                      </span>
-                      <span className="text-xs text-slate-500">•</span>
-                      <span className="text-xs text-slate-400">{session.durationMinutes} mins</span>
-                    </div>
-
-                    <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                      <span>{session.title}</span>
-                    </h3>
-
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                      <span className="flex items-center gap-1.5 text-slate-300 font-medium">
-                        <User className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Student: <strong className="text-white">{session.studentName}</strong></span>
-                      </span>
-                      {session.studentPhone && (
-                        <span>Phone: <strong className="text-slate-300 font-mono">{session.studentPhone}</strong></span>
-                      )}
-                      <span>Email: <strong className="text-slate-300">{session.studentEmail}</strong></span>
-                    </div>
-                  </div>
-
-                  {/* Right: Actions */}
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    {/* Send on WhatsApp Button */}
-                    {session.whatsAppShareUrl && (
-                      <a
-                        href={session.whatsAppShareUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-md shadow-emerald-900/30"
-                        title="Send class schedule and join link to student on WhatsApp"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span>Send on WhatsApp</span>
-                      </a>
-                    )}
-
-                    {/* Copy Link Button */}
-                    {session.meetingLink && (
-                      <button
-                        type="button"
-                        onClick={() => handleCopyLink(session)}
-                        className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/10 font-medium text-xs flex items-center gap-1.5 transition"
-                        title="Copy meeting link"
-                      >
-                        {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-amber-400" />}
-                        <span>{isCopied ? 'Copied' : 'Copy Link'}</span>
-                      </button>
-                    )}
-
-                    {/* Record Taught Content Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleOpenTaughtModal(session)}
-                      className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold text-xs flex items-center gap-1.5 transition"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{session.taughtRecord ? 'Edit Taught Record' : 'Record What Was Taught'}</span>
-                    </button>
-
-                    {/* Expand Details */}
-                    <button
-                      type="button"
-                      onClick={() => toggleExpand(session.id)}
-                      className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition"
-                      aria-label="Toggle details"
-                    >
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Expanded Details Section */}
-                {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-white/10 text-xs space-y-3">
-                    {/* Meeting Link */}
-                    {session.meetingLink && (
-                      <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between gap-2">
-                        <span className="text-slate-400">Meeting Link:</span>
-                        <a
-                          href={session.meetingLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-amber-300 font-mono underline hover:text-amber-200 truncate max-w-md flex items-center gap-1"
-                        >
-                          <span>{session.meetingLink}</span>
-                          <ExternalLink className="w-3 h-3 shrink-0" />
-                        </a>
-                      </div>
-                    )}
-
-                    {/* Pre-class Preparation Notes */}
-                    {session.notes && (
-                      <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 text-slate-300 space-y-1">
-                        <span className="font-bold text-amber-300 block">Pre-Class Preparation Notes:</span>
-                        <p className="leading-relaxed">{session.notes}</p>
-                      </div>
-                    )}
-
-                    {/* Record of What Was Taught */}
-                    {session.taughtRecord ? (
-                      <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-slate-200 space-y-2">
-                        <div className="flex items-center gap-1.5 font-bold text-emerald-300">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                          <span>Record of What Was Taught (पढ़ाए गए विषय):</span>
-                        </div>
-                        <p className="leading-relaxed whitespace-pre-wrap">{session.taughtRecord}</p>
-
-                        {session.homework && (
-                          <div className="pt-2 border-t border-emerald-500/20">
-                            <span className="font-bold text-amber-300 block">Homework / Practice Assigned:</span>
-                            <p className="leading-relaxed text-slate-300">{session.homework}</p>
-                          </div>
-                        )}
-
-                        {session.recordingUrl && (
-                          <div className="pt-2">
-                            <a
-                              href={session.recordingUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-amber-300 font-medium underline flex items-center gap-1 hover:text-amber-200"
-                            >
-                              <Video className="w-3.5 h-3.5" />
-                              <span>View Lecture Recording / Notes Document</span>
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 text-slate-400 flex items-center justify-between">
-                        <span>No taught record logged yet. Click &quot;Record What Was Taught&quot; after conducting the class.</span>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenTaughtModal(session)}
-                          className="text-amber-400 hover:underline font-semibold"
-                        >
-                          Log Record Now →
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* 4. Schedule 1-on-1 Class Modal */}
-      {isScheduleModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-slate-900 border-2 border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-xl w-full text-white shadow-2xl space-y-5 my-8">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
-                  <Video className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base text-white">Schedule 1-on-1 Live Class</h3>
-                  <p className="text-xs text-slate-400">व्यक्तिगत ज्योतिष कक्षा निर्धारित करें</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsScheduleModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      {/* 2. TAB: CALENDAR */}
+      {activeMainTab === 'CALENDAR' && (
+        <div className="space-y-6">
+          {/* Controls: Views, Filters, Student Filter, Search */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            {/* View Filter Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs">
+              {(
+                [
+                  { id: 'ALL', label: 'All Sessions' },
+                  { id: 'TODAY', label: 'Today' },
+                  { id: 'TOMORROW', label: 'Tomorrow' },
+                  { id: 'THIS_WEEK', label: 'This Week' },
+                  { id: 'COMPLETED', label: 'Completed' },
+                ] as const
+              ).map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setActiveFilter(f.id)}
+                  className={`px-3 py-1.5 rounded-xl font-semibold whitespace-nowrap transition ${
+                    activeFilter === f.id
+                      ? 'bg-amber-400/20 text-amber-300 border border-amber-500/40'
+                      : 'bg-white/5 text-slate-400 hover:text-white border border-white/10'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
             </div>
 
-            {feedbackMsg && (
-              <div
-                className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
-                  feedbackMsg.type === 'error'
-                    ? 'bg-red-500/20 border border-red-500/40 text-red-300'
-                    : 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
-                }`}
-              >
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{feedbackMsg.text}</span>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Search Bar */}
+              <div className="relative w-44 sm:w-56">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                <input
+                  type="text"
+                  placeholder="Search topic or scholar..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                />
               </div>
-            )}
 
-            <form onSubmit={handleCreateSession} className="space-y-4 text-xs">
-              {/* Select Student */}
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Select Enrolled Student (छात्र चुनें) *
-                </label>
+              {/* Filter by Student */}
+              <div className="relative">
                 <select
-                  value={formStudentId}
-                  onChange={(e) => setFormStudentId(e.target.value)}
-                  className="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  required
+                  value={selectedStudentFilter}
+                  onChange={(e) => setSelectedStudentFilter(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400 cursor-pointer"
                 >
+                  <option value="ALL" className="bg-slate-900 text-white">
+                    Filter by Scholar: All ({students.length})
+                  </option>
                   {students.map((st) => (
-                    <option key={st.id} value={st.id}>
-                      {st.name} ({st.phone ? `${st.phone} • ` : ''}{st.email})
+                    <option key={st.id} value={st.id} className="bg-slate-900 text-white">
+                      {st.name} ({st.email})
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Topic / Class Title */}
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Class Topic / Title (कक्षा का विषय) *
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Personal Chart Reading & Planetary Aspects"
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  required
-                />
+              {/* View Mode Toggle: List vs Week */}
+              <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 text-xs">
+                <button
+                  onClick={() => setCalendarViewMode('LIST')}
+                  className={`px-3 py-1 rounded-lg font-semibold transition ${
+                    calendarViewMode === 'LIST'
+                      ? 'bg-amber-400 text-slate-950 font-bold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  List View
+                </button>
+                <button
+                  onClick={() => setCalendarViewMode('WEEK')}
+                  className={`px-3 py-1 rounded-lg font-semibold transition ${
+                    calendarViewMode === 'WEEK'
+                      ? 'bg-amber-400 text-slate-950 font-bold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Week View
+                </button>
+              </div>
+            </div>
+          </div>
 
-                {/* Suggested Topics Chips */}
-                <div className="flex flex-wrap gap-1.5 pt-2">
-                  <span className="text-[10px] text-slate-400 self-center">Suggestions:</span>
-                  {TOPIC_SUGGESTIONS.map((topic) => (
-                    <button
-                      key={topic}
-                      type="button"
-                      onClick={() => setFormTitle(topic)}
-                      className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-amber-500/20 hover:text-amber-300 text-[10px] text-slate-400 border border-white/5 transition"
+          {/* Private iCal Subscription Box for Google Calendar */}
+          <div className="cosmic-card p-4 sm:p-5 rounded-2xl border border-white/10 bg-slate-900/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                <Key className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Private iCal Calendar Feed (Secret Link)
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300">
+                    Google Calendar Sync
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-1 max-w-xl">
+                  Add this secret URL to your Google Calendar or iPhone to automatically see all student live classes. Treat this link as a secret password.
+                </p>
+                <code className="text-[11px] text-amber-300 font-mono block mt-2 truncate max-w-md sm:max-w-xl bg-black/40 px-2 py-1 rounded border border-white/5">
+                  {calendarFeedUrl || 'Loading calendar feed URL...'}
+                </code>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleCopyFeedUrl}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/10 transition flex items-center gap-1.5"
+              >
+                {feedCopySuccess ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{feedCopySuccess ? 'URL Copied!' : 'Copy Feed Link'}</span>
+              </button>
+
+              <button
+                onClick={handleRegenerateFeedToken}
+                disabled={isRegeneratingToken}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition flex items-center gap-1.5"
+                title="Invalidate current URL and generate a new secret token"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRegeneratingToken ? 'animate-spin' : ''}`} />
+                <span>Regenerate URL</span>
+              </button>
+            </div>
+          </div>
+
+          {/* LIST VIEW */}
+          {calendarViewMode === 'LIST' && (
+            <div className="space-y-4">
+              {filteredSessions.length === 0 ? (
+                <div className="cosmic-card p-12 text-center text-slate-500 rounded-2xl border border-white/10 space-y-3">
+                  <CalendarIcon className="w-10 h-10 text-slate-600 mx-auto" />
+                  <p className="text-sm font-semibold text-slate-400">No sessions match the selected filter</p>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    Try changing the student filter or click &quot;Schedule a session&quot; to create a new 1-on-1 class.
+                  </p>
+                  <button
+                    onClick={() => handleOpenScheduleModal()}
+                    className="gold-button px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Schedule 1-on-1 Class</span>
+                  </button>
+                </div>
+              ) : (
+                filteredSessions.map((s) => {
+                  const timeIst = formatSessionIST(s.startTime);
+                  const st = students.find((x) => x.id === s.studentId);
+                  const stTz = st?.timezone || 'Asia/Kolkata';
+                  const timeLocal =
+                    stTz !== 'Asia/Kolkata' ? formatInTimezone(s.startTime, stTz, 'full') : null;
+
+                  return (
+                    <div
+                      key={s.id}
+                      className="cosmic-card p-5 rounded-2xl border border-white/10 hover:border-amber-500/30 transition space-y-3 bg-slate-900/40"
                     >
-                      {topic}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-white text-base">{s.title}</span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                s.status === 'COMPLETED'
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                  : s.status === 'MISSED'
+                                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                  : s.status === 'CANCELLED'
+                                  ? 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+                                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              }`}
+                            >
+                              {s.status}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
+                            <span className="text-amber-300 font-bold flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5" />
+                              {timeIst} (IST)
+                            </span>
+                            {timeLocal && (
+                              <span className="text-sky-300 font-mono text-[11px]">
+                                ({timeLocal} in {stTz})
+                              </span>
+                            )}
+                            <span className="text-slate-500">• {s.duration} mins</span>
+                            <span className="text-slate-500">•</span>
+                            <span className="text-white font-medium flex items-center gap-1">
+                              <User className="w-3.5 h-3.5 text-purple-400" />
+                              {s.studentName} ({s.studentEmail})
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {s.whatsAppShareUrl && (
+                            <a
+                              href={s.whatsAppShareUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                              <span>Message on WhatsApp</span>
+                            </a>
+                          )}
+
+                          <button
+                            onClick={() => handleOpenAttendanceModal(s)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/10 transition"
+                          >
+                            Attendance & Notes
+                          </button>
+
+                          {/* Missed session: Reschedule in 1 Click */}
+                          {s.status === 'MISSED' && (
+                            <button
+                              onClick={() => handleOpenScheduleModal(s.studentId)}
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition flex items-center gap-1"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Reschedule in 1 Click</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Class Join Link */}
+                      {s.meetingLink && (
+                        <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-white/5">
+                          <span className="text-slate-400">Class Link:</span>
+                          <a
+                            href={s.meetingLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-amber-400 hover:underline font-mono truncate max-w-sm sm:max-w-md"
+                          >
+                            {s.meetingLink}
+                          </a>
+                          <button
+                            onClick={() => handleCopyLink(s.meetingLink!, s.id)}
+                            className="p-1 rounded text-slate-400 hover:text-white transition ml-auto"
+                            title="Copy link"
+                          >
+                            {copiedLink === s.id ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Notes / Homework / Private Notes preview */}
+                      {(s.sharedNotes || s.homework || s.privateNotes) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                          {s.sharedNotes && (
+                            <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                                Shared Notes / Syllabus Covered
+                              </span>
+                              <p className="text-slate-300 whitespace-pre-wrap">{s.sharedNotes}</p>
+                            </div>
+                          )}
+                          {s.homework && (
+                            <div className="p-2.5 rounded-xl bg-white/5 border border-white/5">
+                              <span className="text-[10px] uppercase font-bold text-amber-400 block mb-1">
+                                Assigned Homework & Charts
+                              </span>
+                              <p className="text-slate-300 whitespace-pre-wrap">{s.homework}</p>
+                            </div>
+                          )}
+                          {s.privateNotes && (
+                            <div className="p-2.5 rounded-xl bg-rose-500/5 border border-rose-500/20 sm:col-span-2">
+                              <div className="flex items-center gap-1.5 text-rose-300 font-bold text-[10px] uppercase mb-1">
+                                <ShieldCheck className="w-3 h-3" />
+                                <span>Private Notes (Owner Only)</span>
+                              </div>
+                              <p className="text-slate-300 whitespace-pre-wrap">{s.privateNotes}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* WEEK VIEW */}
+          {calendarViewMode === 'WEEK' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-3">
+              {(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const).map(
+                (dayName) => {
+                  const daySessions = weekGroupedSessions[dayName] || [];
+
+                  return (
+                    <div
+                      key={dayName}
+                      className="cosmic-card p-3 rounded-2xl border border-white/10 bg-slate-900/50 flex flex-col min-h-[220px]"
+                    >
+                      <div className="pb-2 border-b border-white/10 flex items-center justify-between">
+                        <span className="text-xs font-bold text-white">{dayName}</span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-slate-400">
+                          {daySessions.length}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 pt-2 flex-1">
+                        {daySessions.length === 0 ? (
+                          <div className="text-center py-6 text-slate-600 text-[11px] italic">
+                            No classes
+                          </div>
+                        ) : (
+                          daySessions.map((s) => {
+                            const timeIst = new Date(s.startTime).toLocaleTimeString('en-IN', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true,
+                              timeZone: 'Asia/Kolkata',
+                            });
+
+                            return (
+                              <div
+                                key={s.id}
+                                onClick={() => handleOpenAttendanceModal(s)}
+                                className="p-2 rounded-xl bg-white/5 border border-white/5 hover:border-amber-400/50 transition cursor-pointer text-xs space-y-1"
+                              >
+                                <span className="text-amber-300 font-bold block text-[11px]">
+                                  {timeIst} IST
+                                </span>
+                                <p className="font-semibold text-white truncate text-[11px]" title={s.title}>
+                                  {s.title}
+                                </p>
+                                <p className="text-[10px] text-slate-400 truncate">{s.studentName}</p>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3. TAB: REQUESTS INBOX */}
+      {activeMainTab === 'REQUESTS' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-white">
+              Student Session Requests ({requests.length})
+            </h3>
+            <span className="text-xs text-slate-400">
+              Students request personal time windows or reschedules directly from their portal.
+            </span>
+          </div>
+
+          {requests.length === 0 ? (
+            <div className="cosmic-card p-12 text-center text-slate-500 rounded-2xl border border-white/10 space-y-2">
+              <Inbox className="w-10 h-10 text-slate-600 mx-auto" />
+              <p className="text-sm font-semibold text-slate-400">No session requests in inbox</p>
+              <p className="text-xs text-slate-500">
+                When students request a 1-on-1 session or propose a reschedule, it will appear here for 1-click scheduling.
+              </p>
+            </div>
+          ) : (
+            requests.map((r) => (
+              <div
+                key={r.id}
+                className="cosmic-card p-5 rounded-2xl border border-white/10 hover:border-amber-500/20 transition space-y-3 bg-slate-900/40"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-white text-base">
+                        {r.requestType === 'RESCHEDULE' ? 'Reschedule Request' : 'New Session Request'}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          r.status === 'ACCEPTED'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : r.status === 'DECLINED'
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-400 mt-1">
+                      From: <strong className="text-white">{r.studentName}</strong> ({r.studentEmail})
+                    </p>
+                  </div>
+
+                  {/* 3 One-Click Actions (Active when PENDING) */}
+                  {r.status === 'PENDING' && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => handleScheduleFromRequest(r)}
+                        className="gold-button px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1"
+                      >
+                        <CalendarIcon className="w-3.5 h-3.5" />
+                        <span>Schedule from this request</span>
+                      </button>
+
+                      <button
+                        onClick={() => setActiveRequestAction({ request: r, type: 'PROPOSE' })}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 transition flex items-center gap-1"
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Propose another time</span>
+                      </button>
+
+                      <button
+                        onClick={() => setActiveRequestAction({ request: r, type: 'DECLINE' })}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 transition flex items-center gap-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Decline</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Message / Reason */}
+                {r.message && (
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-300">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+                      Student Message / Reason:
+                    </span>
+                    <p>{r.message}</p>
+                  </div>
+                )}
+
+                {/* Preferred Time Windows */}
+                {r.preferredWindows && r.preferredWindows.length > 0 && (
+                  <div className="space-y-1 text-xs">
+                    <span className="text-[10px] uppercase font-bold text-amber-400 block">
+                      Preferred Time Windows (2-3 Slots Selected by Scholar):
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                      {r.preferredWindows.map((win, idx) => {
+                        const winStart = formatSessionIST(win.startUtc);
+                        return (
+                          <div
+                            key={idx}
+                            className="p-2 rounded-xl bg-black/40 border border-white/10 text-[11px] text-slate-300"
+                          >
+                            <span className="font-bold text-amber-300 block">Slot #{idx + 1}</span>
+                            <span>{win.label || winStart} (IST)</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* 4. MODAL: SCHEDULE SESSION */}
+      {isScheduleModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="cosmic-card w-full max-w-2xl p-6 sm:p-8 rounded-3xl border border-white/20 bg-slate-950 space-y-6 my-8">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <Video className="w-5 h-5 text-amber-400" />
+                <h3 className="text-lg font-bold text-white">Schedule 1-on-1 Class</h3>
+              </div>
+              <button
+                onClick={() => setIsScheduleModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Success View with Ready WhatsApp Button */}
+            {scheduleSuccessResult ? (
+              <div className="space-y-4 py-4 text-center">
+                <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mx-auto">
+                  <Check className="w-7 h-7" />
+                </div>
+                <h4 className="text-xl font-bold text-white">Session Successfully Scheduled!</h4>
+                <p className="text-xs text-slate-300 max-w-md mx-auto">
+                  {scheduleSuccessResult.countCreated > 1
+                    ? `${scheduleSuccessResult.countCreated} weekly sessions have been added to the calendar.`
+                    : 'The class is confirmed. A transactional confirmation email has been sent to the student.'}
+                </p>
+
+                <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  {scheduleSuccessResult.whatsAppShareUrl && (
+                    <a
+                      href={scheduleSuccessResult.whatsAppShareUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 shadow-lg shadow-emerald-600/30"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>Message on WhatsApp</span>
+                    </a>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setIsScheduleModalOpen(false);
+                      setScheduleSuccessResult(null);
+                    }}
+                    className="gold-button px-5 py-2.5 rounded-xl text-xs font-bold"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={(e) => handleScheduleSubmit(e)} className="space-y-4 text-xs">
+                {/* Clash Error Alert */}
+                {clashError && (
+                  <div className="p-3.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block text-white">Clash Protection Alert:</strong>
+                      <p>{clashError}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Working Hours Warning with Confirm Anyway */}
+                {workingHoursWarning && (
+                  <div className="p-3.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 space-y-2">
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="block text-white">Outside Working Hours Notice:</strong>
+                        <p>{workingHoursWarning}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleScheduleSubmit(undefined, true)}
+                      className="px-4 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 hover:bg-amber-400 transition"
+                    >
+                      Confirm & Schedule Anyway
+                    </button>
+                  </div>
+                )}
+
+                {/* 1. Student Selector */}
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1.5">
+                    Select Scholar / Enrolled Student:
+                  </label>
+                  <select
+                    value={formStudentId}
+                    onChange={(e) => setFormStudentId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                  >
+                    {students.map((st) => (
+                      <option key={st.id} value={st.id} className="bg-slate-900 text-white">
+                        {st.name} ({st.email}) {st.timezone ? `• ${st.timezone}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. Topic Selector: Pick Module or Custom */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-slate-300 font-bold">Topic for this Class:</label>
+                    <div className="flex items-center gap-2 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => setFormTopicMode('MODULE')}
+                        className={`px-2 py-0.5 rounded font-semibold ${
+                          formTopicMode === 'MODULE' ? 'bg-amber-400 text-slate-950' : 'text-slate-400'
+                        }`}
+                      >
+                        Pick 23-Module
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormTopicMode('CUSTOM')}
+                        className={`px-2 py-0.5 rounded font-semibold ${
+                          formTopicMode === 'CUSTOM' ? 'bg-amber-400 text-slate-950' : 'text-slate-400'
+                        }`}
+                      >
+                        Custom Topic
+                      </button>
+                    </div>
+                  </div>
+
+                  {formTopicMode === 'MODULE' ? (
+                    <select
+                      value={formSelectedModule}
+                      onChange={(e) => setFormSelectedModule(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                    >
+                      {FLAGSHIP_23_MODULES.map((mod, idx) => (
+                        <option key={idx} value={mod} className="bg-slate-900 text-white">
+                          {mod}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="e.g. Navamsha D9 Chart Reading & Career Consultation"
+                      value={formCustomTitle}
+                      onChange={(e) => setFormCustomTitle(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                    />
+                  )}
+                </div>
+
+                {/* 3. Date & Time Picker with dual IST + Student Timezone live preview */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-300 font-bold block mb-1">Class Date:</label>
+                    <input
+                      type="date"
+                      value={formDate}
+                      onChange={(e) => setFormDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-bold block mb-1">Class Time (IST):</label>
+                    <input
+                      type="time"
+                      value={formTime}
+                      onChange={(e) => setFormTime(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Dual Timezone Live Preview Card */}
+                {scheduledTimePreview && (
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-white/10 flex items-center justify-between text-xs">
+                    <span className="text-amber-300 font-bold">
+                      🇮🇳 Time in IST: {scheduledTimePreview.istTime}
+                    </span>
+                    {scheduledTimePreview.studentTime ? (
+                      <span className="text-sky-300 font-mono">
+                        Scholar Time ({studentTz}): {scheduledTimePreview.studentTime}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 italic">Scholar is in India Standard Time</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Quick Presets */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] text-slate-400">Quick presets:</span>
+                  <button
+                    type="button"
+                    onClick={() => setQuickTime('TODAY_4PM')}
+                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-[10px]"
+                  >
+                    Today 4 PM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickTime('TOMORROW_11AM')}
+                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-[10px]"
+                  >
+                    Tomorrow 11 AM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickTime('TOMORROW_4PM')}
+                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-[10px]"
+                  >
+                    Tomorrow 4 PM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickTime('TOMORROW_6PM')}
+                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-[10px]"
+                  >
+                    Tomorrow 6 PM
+                  </button>
+                </div>
+
+                {/* 4. Duration & Meeting Link */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-slate-300 font-bold block mb-1">Duration:</label>
+                    <select
+                      value={formDuration}
+                      onChange={(e) => setFormDuration(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                    >
+                      <option value={30} className="bg-slate-900">30 Minutes</option>
+                      <option value={45} className="bg-slate-900">45 Minutes</option>
+                      <option value={60} className="bg-slate-900">60 Minutes (Standard)</option>
+                      <option value={90} className="bg-slate-900">90 Minutes</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-bold block mb-1">Meeting Platform:</label>
+                    <select
+                      value={formPlatform}
+                      onChange={(e) => setFormPlatform(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                    >
+                      <option value="GOOGLE_MEET" className="bg-slate-900">Google Meet</option>
+                      <option value="ZOOM" className="bg-slate-900">Zoom Meeting</option>
+                      <option value="WHATSAPP_CALL" className="bg-slate-900">WhatsApp Video Call</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">Meeting Link:</label>
+                  <input
+                    type="text"
+                    value={formLink}
+                    onChange={(e) => setFormLink(e.target.value)}
+                    placeholder="https://meet.google.com/..."
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-mono focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                {/* 5. Repeat Weekly Option */}
+                <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formRepeatWeekly}
+                      onChange={(e) => setFormRepeatWeekly(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-400 bg-white/5 border-white/20"
+                    />
+                    <span className="font-bold text-white text-xs">
+                      Repeat weekly (create a scheduled set of classes)
+                    </span>
+                  </label>
+
+                  {formRepeatWeekly && (
+                    <div className="pl-6 space-y-2 pt-1">
+                      <div className="flex items-center gap-3">
+                        <span className="text-slate-300">Repeat for:</span>
+                        <select
+                          value={formRepeatWeeks}
+                          onChange={(e) => setFormRepeatWeeks(Number(e.target.value))}
+                          className="px-3 py-1 rounded-lg bg-slate-900 border border-white/20 text-amber-300 font-bold text-xs"
+                        >
+                          <option value={2}>2 weeks (2 classes)</option>
+                          <option value={4}>4 weeks (4 classes)</option>
+                          <option value={6}>6 weeks (6 classes)</option>
+                          <option value={8}>8 weeks (8 classes - Recommended)</option>
+                          <option value={12}>12 weeks (12 classes)</option>
+                        </select>
+                      </div>
+                      <p className="text-[11px] text-amber-300/80">
+                        Notice: Each class is created as an independent session in the database. Editing or cancelling one never modifies the others.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 6. Note for Student & Private Notes */}
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">
+                    Note for Student (included in email & WhatsApp message):
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formSharedNotes}
+                    onChange={(e) => setFormSharedNotes(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">
+                    Private Notes for Acharya Niraj Kumar (strictly private, student never sees):
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="e.g. Needs extra practice on Dasha calculation. Astrological aptitude high."
+                    value={formPrivateNotes}
+                    onChange={(e) => setFormPrivateNotes(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-rose-500/5 border border-rose-500/20 text-white focus:outline-none focus:border-rose-400"
+                  />
+                </div>
+
+                <div className="pt-4 border-t border-white/10 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsScheduleModalOpen(false)}
+                    className="px-4 py-2 rounded-xl text-slate-400 hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="gold-button px-5 py-2.5 rounded-xl font-bold flex items-center gap-2"
+                  >
+                    {isSubmitting ? (
+                      <span>Validating & Scheduling...</span>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Schedule & Send Email</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 5. MODAL: ATTENDANCE & POST-CLASS SUMMARY */}
+      {isAttendanceModalOpen && selectedSessionForAttendance && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="cosmic-card w-full max-w-xl p-6 sm:p-8 rounded-3xl border border-white/20 bg-slate-950 space-y-5 my-8 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  Post-Class Attendance & Notes
+                </h3>
+                <p className="text-slate-400 text-[11px]">
+                  {selectedSessionForAttendance.title} with {selectedSessionForAttendance.studentName}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsAttendanceModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAttendance} className="space-y-4">
+              {/* Status Radio Group */}
+              <div>
+                <label className="text-slate-300 font-bold block mb-1.5">Class Status:</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['COMPLETED', 'MISSED', 'CANCELLED'] as const).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setAttStatus(st)}
+                      className={`p-2.5 rounded-xl border text-center font-bold transition ${
+                        attStatus === st
+                          ? st === 'COMPLETED'
+                            ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
+                            : st === 'MISSED'
+                            ? 'bg-rose-500/20 border-rose-500 text-rose-300'
+                            : 'bg-slate-500/20 border-slate-400 text-slate-300'
+                          : 'bg-white/5 border-white/10 text-slate-400'
+                      }`}
+                    >
+                      {st}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Date & Time Picker */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
-                    Class Date (दिनांक) *
-                  </label>
-                  <input
-                    type="date"
-                    value={formDate}
-                    onChange={(e) => setFormDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
-                    Start Time (IST समय) *
-                  </label>
-                  <input
-                    type="time"
-                    value={formTime}
-                    onChange={(e) => setFormTime(e.target.value)}
-                    className="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Quick Time Presets */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] text-slate-400">Quick presets:</span>
-                <button
-                  type="button"
-                  onClick={() => setQuickTime('TODAY_4PM')}
-                  className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-amber-500/20 text-[10px] text-slate-300"
-                >
-                  Today 4:00 PM
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickTime('TOMORROW_11AM')}
-                  className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-amber-500/20 text-[10px] text-slate-300"
-                >
-                  Tomorrow 11:00 AM
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickTime('TOMORROW_4PM')}
-                  className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-amber-500/20 text-[10px] text-slate-300"
-                >
-                  Tomorrow 4:00 PM
-                </button>
-              </div>
-
-              {/* Duration & Platform */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
-                    Duration (अवधि)
-                  </label>
-                  <div className="flex items-center gap-1.5">
-                    {[30, 45, 60, 90].map((mins) => (
-                      <button
-                        key={mins}
-                        type="button"
-                        onClick={() => setFormDuration(mins)}
-                        className={`flex-1 py-2 rounded-xl text-xs font-bold border transition ${
-                          formDuration === mins
-                            ? 'bg-amber-500 text-black border-amber-400'
-                            : 'bg-slate-950 text-slate-400 border-white/10 hover:text-white'
-                        }`}
-                      >
-                        {mins}m
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
-                    Platform (माध्यम)
-                  </label>
-                  <select
-                    value={formPlatform}
-                    onChange={(e) => setFormPlatform(e.target.value)}
-                    className="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
-                  >
-                    <option value="GOOGLE_MEET">Google Meet</option>
-                    <option value="ZOOM">Zoom</option>
-                    <option value="WHATSAPP">WhatsApp Video Call</option>
-                    <option value="CUSTOM">Custom Phone / Audio</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Meeting Link */}
+              {/* Shared Notes (What was taught) */}
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Meeting Link (मीटिंग लिंक)
+                <label className="text-slate-300 font-bold block mb-1">
+                  Shared Notes & Summary (Visible to Student):
                 </label>
-                <input
-                  type="url"
-                  placeholder="https://meet.google.com/xyz-abcd-efg"
-                  value={formLink}
-                  onChange={(e) => setFormLink(e.target.value)}
-                  className="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-amber-500"
+                <textarea
+                  rows={3}
+                  placeholder="e.g. Covered Navamsha Lagna calculation, D9 house placements, and chart interpretation rules."
+                  value={attSharedNotes}
+                  onChange={(e) => setAttSharedNotes(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
                 />
-                <div className="flex justify-between items-center pt-1 text-[11px] text-slate-400">
-                  <span>Student will receive this link directly.</span>
-                  <a
-                    href="https://meet.google.com/new"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-amber-400 hover:underline flex items-center gap-1 font-semibold"
-                  >
-                    <span>Create Instant Google Meet</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
               </div>
 
-              {/* Pre-class Instructions */}
+              {/* Homework */}
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Notes for Student (छात्र के लिए निर्देश)
+                <label className="text-amber-300 font-bold block mb-1">
+                  Assigned Homework / Chart Analysis (Visible to Student):
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="e.g. Please keep your birth chart ready, revise Module 3 video."
-                  value={formNotes}
-                  onChange={(e) => setFormNotes(e.target.value)}
-                  className="w-full bg-slate-950 border border-white/15 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500"
+                  placeholder="e.g. Analyze 3 sample kundlis for Gajakesari Yoga and calculate D9 Lagna for each."
+                  value={attHomework}
+                  onChange={(e) => setAttHomework(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
                 />
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+              {/* Private Notes strictly for Owner */}
+              <div>
+                <label className="text-rose-300 font-bold block mb-1 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Private Observations (Strictly for Acharya Niraj Kumar):</span>
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Student grasped Kendras quickly. Struggled with retrograde planetary aspects."
+                  value={attPrivateNotes}
+                  onChange={(e) => setAttPrivateNotes(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-rose-500/5 border border-rose-500/20 text-white focus:outline-none focus:border-rose-400"
+                />
+              </div>
+
+              {/* Recording URL */}
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">
+                  Class Recording URL (Google Drive, Zoom Cloud, or YouTube Unlisted):
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://drive.google.com/..."
+                  value={attRecordingUrl}
+                  onChange={(e) => setAttRecordingUrl(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-mono focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-white/10 flex items-center justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsScheduleModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
+                  onClick={() => setIsAttendanceModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="gold-button px-6 py-2.5 rounded-xl font-bold shadow-lg disabled:opacity-50 flex items-center gap-2"
+                  className="gold-button px-5 py-2 rounded-xl font-bold"
                 >
-                  {isSubmitting ? 'Scheduling...' : 'Save & Schedule Class'}
+                  {isSubmitting ? 'Saving Record...' : 'Save Attendance Record'}
                 </button>
               </div>
             </form>
@@ -854,113 +1608,79 @@ export default function SessionsManager() {
         </div>
       )}
 
-      {/* 5. Record What Was Taught Modal */}
-      {isTaughtModalOpen && selectedSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-6 sm:p-8 max-w-xl w-full text-white shadow-2xl space-y-5 my-8">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base text-white">Record What Was Taught</h3>
-                  <p className="text-xs text-slate-400">
-                    Student: <strong className="text-amber-300">{selectedSession.studentName}</strong> • {selectedSession.title}
-                  </p>
-                </div>
-              </div>
+      {/* 6. MODAL: PROPOSE OR DECLINE REQUEST */}
+      {activeRequestAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="cosmic-card w-full max-w-md p-6 rounded-3xl border border-white/20 bg-slate-950 space-y-4 text-xs">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <h3 className="text-sm font-bold text-white">
+                {activeRequestAction.type === 'PROPOSE' ? 'Propose Alternate Time' : 'Decline Session Request'}
+              </h3>
               <button
-                type="button"
-                onClick={() => setIsTaughtModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10"
+                onClick={() => setActiveRequestAction(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {feedbackMsg && (
-              <div className="p-3 rounded-xl text-xs bg-red-500/20 border border-red-500/40 text-red-300 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{feedbackMsg.text}</span>
+            <p className="text-slate-300">
+              For scholar: <strong className="text-white">{activeRequestAction.request.studentName}</strong>
+            </p>
+
+            {activeRequestAction.type === 'PROPOSE' ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">Proposed Alternate Slot:</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Thursday at 5:00 PM IST or Saturday 11:00 AM IST"
+                    value={proposalTimeInput}
+                    onChange={(e) => setProposalTimeInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">Note for Scholar:</label>
+                  <textarea
+                    rows={2}
+                    placeholder="e.g. Thursday works best for an in-depth chart reading."
+                    value={requestActionNote}
+                    onChange={(e) => setRequestActionNote(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Reason for Declining:</label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. Fully booked this week. Please propose a date next week."
+                  value={requestActionNote}
+                  onChange={(e) => setRequestActionNote(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                />
               </div>
             )}
 
-            <form onSubmit={handleSaveTaughtContent} className="space-y-4 text-xs">
-              {/* Taught Record */}
-              <div>
-                <label className="block text-emerald-300 font-bold mb-1">
-                  What was taught in this class? (पढ़ाए गए विषय) *
-                </label>
-                <textarea
-                  rows={4}
-                  placeholder="e.g. Covered 7th house and Venus placements. Discussed Navamsha (D9) chart and partner compatibility. Analyzed student's own birth chart."
-                  value={formTaughtRecord}
-                  onChange={(e) => setFormTaughtRecord(e.target.value)}
-                  className="w-full bg-slate-950 border border-white/15 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-500 leading-relaxed"
-                  required
-                />
-              </div>
-
-              {/* Homework / Practice */}
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Homework / Practice Assigned (गृहकार्य / अभ्यास)
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="e.g. Practice identifying 7th lord in 3 family charts."
-                  value={formHomework}
-                  onChange={(e) => setFormHomework(e.target.value)}
-                  className="w-full bg-slate-950 border border-white/15 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              {/* Recording Link */}
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">
-                  Lecture Recording / Notes Link (वैकल्पिक रिकॉर्डिंग लिंक)
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://drive.google.com/file/d/..."
-                  value={formRecordingUrl}
-                  onChange={(e) => setFormRecordingUrl(e.target.value)}
-                  className="w-full bg-slate-950 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              {/* Mark Completed Checkbox */}
-              <label className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/10 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={formMarkCompleted}
-                  onChange={(e) => setFormMarkCompleted(e.target.checked)}
-                  className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
-                />
-                <span className="text-slate-300 font-semibold">
-                  Mark session status as <strong className="text-emerald-400">COMPLETED</strong>
-                </span>
-              </label>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsTaughtModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Saving...' : 'Save & Preserve Record'}
-                </button>
-              </div>
-            </form>
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveRequestAction(null)}
+                className="px-3 py-1.5 rounded-xl text-slate-400 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteRequestAction}
+                disabled={isSubmitting}
+                className="gold-button px-4 py-1.5 rounded-xl font-bold"
+              >
+                {isSubmitting ? 'Sending...' : 'Confirm & Email Scholar'}
+              </button>
+            </div>
           </div>
         </div>
       )}
