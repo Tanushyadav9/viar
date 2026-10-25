@@ -113,6 +113,16 @@ export default function WelcomeCohortModal({
       }
     }
 
+    // 4.5 Enrolled Student Suppression Check: Never show to enrolled students
+    fetch('/api/courses/what-is-astrology/status')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((statusData) => {
+        if (statusData?.isEnrolled || statusData?.state === 'ENROLLED') {
+          setIsOpen(false);
+        }
+      })
+      .catch(() => {});
+
     // 5. Load flagship course and cohort data
     const flagshipSlug = 'what-is-astrology-basics-of-astrology';
     const flagship =

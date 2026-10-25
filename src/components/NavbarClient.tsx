@@ -1,5 +1,7 @@
 'use client';
 
+import type { UserCourseStatusResult } from '@/lib/courses/enrollmentTypes';
+
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -46,6 +48,7 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [courseStatus, setCourseStatus] = useState<UserCourseStatusResult | null>(null);
   const tzRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,6 +58,16 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
     setSelectedTz(savedTz);
 
     // Sync authoritative user from server session on mount (if authenticated)
+    // Fetch authoritative user course status
+    fetch('/api/courses/what-is-astrology/status')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && data.state) {
+          setCourseStatus(data);
+        }
+      })
+      .catch(() => {});
+
     if (serverAuth?.isAuthenticated) {
       fetch('/api/users/sync')
         .then((res) => (res.ok ? res.json() : null))
@@ -348,10 +361,10 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
                 Sign In
               </Link>
               <Link
-                href="/courses/what-is-astrology"
+                href={courseStatus?.button?.href || "/courses/what-is-astrology"}
                 className="gold-button whitespace-nowrap px-3 xl:px-4 py-1.5 rounded-lg xl:rounded-xl text-xs font-bold shadow-md transition flex items-center justify-center gap-1 h-8 xl:h-[34px]"
               >
-                <span>Enroll Now</span>
+                <span>{courseStatus?.button?.text || "Enroll Now"}</span>
               </Link>
             </div>
           ) : (
@@ -369,11 +382,11 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
                 </Link>
               ) : (
                 <Link
-                  href="/dashboard"
+                  href={courseStatus?.state === 'ENROLLED' ? "/dashboard/courses" : (courseStatus?.button?.href || "/dashboard")}
                   className="gold-button whitespace-nowrap px-2.5 xl:px-3.5 py-1.5 rounded-lg xl:rounded-xl text-xs font-bold shadow-md transition flex items-center justify-center gap-1.5 h-8 xl:h-[34px]"
                 >
                   <GraduationCap className="w-3.5 h-3.5" />
-                  <span>Student Portal</span>
+                  <span>{courseStatus?.state === 'ENROLLED' ? "You're enrolled. Go to my course" : (courseStatus?.button?.text || "Student Portal")}</span>
                 </Link>
               )}
 
@@ -481,11 +494,11 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
             {!isAuthenticated ? (
               <>
                 <Link
-                  href="/courses/what-is-astrology"
+                  href={courseStatus?.button?.href || "/courses/what-is-astrology"}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="gold-button w-full py-2.5 rounded-xl text-xs font-bold shadow-md text-center block"
                 >
-                  Enroll in Masterclass Now
+                  {courseStatus?.button?.text || "Enroll in Masterclass Now"}
                 </Link>
                 <Link
                   href="/login"

@@ -11,10 +11,14 @@ import {
   Award,
   ArrowRight,
   ExternalLink,
+  Clock,
+  AlertTriangle,
+  MessageCircle,
 } from 'lucide-react';
 import { ViarStore } from '@/lib/store';
 import { User, Course } from '@/lib/types';
 import { isSiteOwner } from '@/lib/auth/permissions';
+import type { UserCourseStatusResult } from '@/lib/courses/enrollmentTypes';
 import {
   AsyncStateView,
   type AsyncStateStatus,
@@ -45,6 +49,7 @@ export default function MyCoursesPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourseItem[]>([]);
   const [catalogCourses, setCatalogCourses] = useState<Course[]>([]);
+  const [courseStatus, setCourseStatus] = useState<UserCourseStatusResult | null>(null);
   const [pageStatus, setPageStatus] = useState<AsyncStateStatus>('loading');
   const [errorType, setErrorType] = useState<ErrorType>('server');
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -82,6 +87,15 @@ export default function MyCoursesPage() {
       return;
     }
     setCurrentUser(user);
+
+    fetch('/api/courses/what-is-astrology/status')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && data.state) {
+          setCourseStatus(data);
+        }
+      })
+      .catch(() => {});
 
     const isStaff = user.role === 'ADMIN' || user.role === 'OWNER' || isSiteOwner(user);
 
@@ -144,8 +158,9 @@ export default function MyCoursesPage() {
       for (const crs of allCourses) {
         // Staff or actively enrolled
         const matchingEnrollment = rawEnrollments.find(
-          (e: { courseId?: string; cohort?: { courseId?: string } }) =>
-            e.courseId === crs.id || e.cohort?.courseId === crs.id
+          (e: { courseId?: string; cohort?: { courseId?: string }; paymentStatus?: string; status?: string }) =>
+            (e.courseId === crs.id || e.cohort?.courseId === crs.id) &&
+            (e.paymentStatus !== 'REVOKED' && e.status !== 'REVOKED')
         );
 
         const hasAccess = isStaff || Boolean(matchingEnrollment) || (
@@ -220,6 +235,78 @@ export default function MyCoursesPage() {
     <div className="cosmic-bg min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
+{/* Status Banners for Pending Orders or Revoked Access */}
+        {courseStatus?.state === 'ORDER_CLAIMED' && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-amber-200">
+            <Clock className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
+            <div className="flex-1 text-sm">
+              <strong className="text-amber-300 font-semibold block">Payment Under Verification</strong>
+              <span>
+                Your payment for Order #{courseStatus.order?.id?.slice(0, 8)} (UTR: {courseStatus.order?.utr || 'Submitted'}) is currently being verified by Acharya Niraj Kumar. Your course lessons will unlock here as soon as bank credit is confirmed.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {courseStatus?.state === 'ORDER_PENDING' && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-4 text-amber-200 flex-wrap">
+            <div className="flex items-start gap-3">
+              <Clock className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
+              <div className="text-sm">
+                <strong className="text-amber-300 font-semibold block">Order Waiting for Payment</strong>
+                <span>You have an open order for this course. Complete UPI payment to activate your access.</span>
+              </div>
+            </div>
+            <Link
+              href="/checkout?course=what-is-astrology"
+              className="gold-button px-4 py-2 rounded-xl text-xs font-bold"
+            >
+              Resume Payment
+            </Link>
+          </div>
+        )}
+
+        {courseStatus?.state === 'ORDER_REJECTED' && (
+          <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-4 text-red-200 flex-wrap">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
+              <div className="text-sm">
+                <strong className="text-red-300 font-semibold block">Payment Verification Failed</strong>
+                <span>
+                  {courseStatus.order?.rejectionReason ? `Reason: ${courseStatus.order.rejectionReason}` : 'Your previous payment could not be matched with bank credits.'}
+                </span>
+              </div>
+            </div>
+            <Link
+              href="/checkout?course=what-is-astrology"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-200 border border-red-500/30 hover:bg-red-500/30"
+            >
+              Try Again
+            </Link>
+          </div>
+        )}
+
+        {courseStatus?.state === 'ACCESS_REVOKED' && (
+          <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-4 text-red-200 flex-wrap">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
+              <div className="text-sm">
+                <strong className="text-red-300 font-semibold block">Course Access Ended</strong>
+                <span>Your access to this course has ended. Please connect with us if you need assistance.</span>
+              </div>
+            </div>
+            <a
+              href="https://wa.me/919311215564?text=Namaste%20Acharya%20ji%2C%20my%20course%20access%20has%20ended%20and%20I%20would%20like%20to%20inquire."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 flex items-center gap-1.5"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span>Contact Us on WhatsApp</span>
+            </a>
+          </div>
+        )}
+
         {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
           <div>

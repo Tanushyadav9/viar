@@ -41,9 +41,12 @@ const STORAGE_KEYS = {
 };
 
 const DEFAULT_CLASS_DISCUSSIONS: ClassDiscussionComment[] = [];
+const memoryStore: Record<string, unknown> = {};
 
 function getStorageItem<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
+  if (typeof window === 'undefined') {
+    return memoryStore[key] !== undefined ? (memoryStore[key] as T) : fallback;
+  }
   try {
     const item = localStorage.getItem(key);
     return item ? JSON.parse(item) : fallback;
@@ -54,7 +57,10 @@ function getStorageItem<T>(key: string, fallback: T): T {
 }
 
 function setStorageItem<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') {
+    memoryStore[key] = value;
+    return;
+  }
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {

@@ -78,9 +78,26 @@ export async function GET(req: NextRequest) {
     }
     countsByStatus.ALL = total;
 
+    // Check which users in the orders list are already actively enrolled
+    const userIds = Array.from(new Set(orders.map((o) => o.userId).filter(Boolean)));
+    const activeEnrollments = await prisma.enrollment.findMany({
+      where: {
+        userId: { in: userIds },
+        status: 'ACTIVE',
+      },
+      select: { id: true, userId: true, courseId: true },
+    });
+
+    const activeKeySet = new Set(activeEnrollments.map((e) => e.userId + ":" + e.courseId));
+
+    const enrichedOrders = orders.map((order) => ({
+      ...order,
+      isAlreadyEnrolled: activeKeySet.has(order.userId + ":" + order.courseId) && order.status !== "APPROVED",
+    }));
+
     return NextResponse.json({
       success: true,
-      orders,
+      orders: enrichedOrders,
       countsByStatus,
       totalApprovedRevenueInr: approvedRevenueAgg._sum.amount || 0,
     });

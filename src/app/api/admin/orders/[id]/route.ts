@@ -29,18 +29,40 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     const { action, bankConfirmed, rejectionReason, refundReason } = body;
     const userEmail = auth.email || 'aapkaastro1606@gmail.com';
 
-    if (action === 'APPROVE') {
-      const result = await approveOrder({
-        orderId: id,
-        reviewedByEmail: userEmail,
-        bankConfirmed: Boolean(bankConfirmed),
-      });
+    if (action === 'APPROVE' || action === 'RECORD_DUPLICATE_PAYMENT' || action === 'CANCEL_DUPLICATE') {
+      const duplicateResolution = action === 'RECORD_DUPLICATE_PAYMENT'
+        ? 'RECORD_REFUND_DUE'
+        : action === 'CANCEL_DUPLICATE'
+        ? 'CANCEL_ORDER'
+        : body.duplicateResolution;
 
-      return NextResponse.json({
-        success: true,
-        action: 'APPROVED',
-        ...result,
-      });
+      try {
+        const result = await approveOrder({
+          orderId: id,
+          reviewedByEmail: userEmail,
+          bankConfirmed: Boolean(bankConfirmed || duplicateResolution),
+          duplicateResolution,
+        });
+
+        return NextResponse.json({
+          success: true,
+          action: duplicateResolution ? (duplicateResolution === 'RECORD_REFUND_DUE' ? 'REFUNDED' : 'CANCELLED') : 'APPROVED',
+          ...result,
+        });
+      } catch (err: unknown) {
+        if ((err as { code?: string })?.code === 'DUPLICATE_PAYMENT_BLOCKED') {
+          return NextResponse.json(
+            {
+              success: false,
+              code: 'DUPLICATE_PAYMENT_BLOCKED',
+              isAlreadyEnrolled: true,
+              error: (err as Error).message,
+            },
+            { status: 409 }
+          );
+        }
+        throw err;
+      }
     }
 
     if (action === 'REJECT') {
@@ -93,9 +115,10 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Order action failed.';
+    const status = message.toLowerCase().includes('not found') ? 404 : 400;
     return NextResponse.json(
       { success: false, error: message },
-      { status: 400 }
+      { status }
     );
   }
 }

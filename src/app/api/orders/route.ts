@@ -48,7 +48,47 @@ export async function POST(req: NextRequest) {
       success: true,
       ...result,
     });
-  } catch (err) {
+  } catch (err: unknown) {
+    const errorObj = err as {
+      code?: string;
+      status?: number;
+      message?: string;
+      order?: unknown;
+      upiUri?: string;
+      qrCodeUrl?: string;
+      staticQrUrl?: string | null;
+      settings?: unknown;
+      redirectUrl?: string;
+    };
+
+    if (errorObj?.code === 'ALREADY_ENROLLED') {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'ALREADY_ENROLLED',
+          error: errorObj.message || 'You already have an active enrollment in this course.',
+          redirectUrl: errorObj.redirectUrl || '/dashboard/courses',
+        },
+        { status: 409 }
+      );
+    }
+
+    if (errorObj?.code === 'ORDER_EXISTS') {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'ORDER_EXISTS',
+          message: errorObj.message || 'An open order already exists for this course.',
+          order: errorObj.order,
+          upiUri: errorObj.upiUri,
+          qrCodeUrl: errorObj.qrCodeUrl,
+          staticQrUrl: errorObj.staticQrUrl,
+          settings: errorObj.settings,
+        },
+        { status: 409 }
+      );
+    }
+
     const message = err instanceof Error ? err.message : 'Failed to create or retrieve order.';
     return NextResponse.json(
       { success: false, error: message },

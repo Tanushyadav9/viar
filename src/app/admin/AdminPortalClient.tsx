@@ -107,6 +107,7 @@ export interface AdminOrder {
   cohort?: { id: string; batchName: string } | null;
   user?: { id: string; name?: string | null; email: string; phone?: string | null } | null;
   enrollment?: { id: string; status: string; enrolledAt: string | Date } | null;
+  isAlreadyEnrolled?: boolean;
 }
 
 export interface PaymentSettingsState {
@@ -392,6 +393,32 @@ export default function AdminPortalClient({
       });
     } finally {
       setIsSavingSettings(false);
+    }
+  };
+
+  const handleDuplicateResolution = async (action: 'RECORD_DUPLICATE_PAYMENT' | 'CANCEL_DUPLICATE') => {
+    if (!orderToApprove) return;
+    setIsApproving(true);
+    setApproveErrorMessage(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderToApprove.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setOrderToApprove(null);
+        setBankCheckConfirmed(false);
+        loadOrders();
+        loadAdminData();
+      } else {
+        setApproveErrorMessage(data?.error || 'Failed to process duplicate payment action.');
+      }
+    } catch (err: unknown) {
+      setApproveErrorMessage(err instanceof Error ? err.message : 'Action failed.');
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -3266,6 +3293,38 @@ export default function AdminPortalClient({
                   <span className="text-lg font-black text-white">₹{orderToApprove.amount.toLocaleString('en-IN')} INR</span>
                 </div>
               </div>
+
+              {/* Duplicate Payment Protection Warning */}
+              {orderToApprove.isAlreadyEnrolled && (
+                <div className="p-4 rounded-xl bg-amber-500/15 border-2 border-amber-500/40 text-amber-200 text-xs space-y-3">
+                  <div className="flex items-center gap-2 font-black text-amber-300 text-sm">
+                    <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+                    <span>Duplicate Payment Protection</span>
+                  </div>
+                  <p className="leading-relaxed">
+                    This student is <strong className="text-emerald-400 font-bold">ALREADY ACTIVELY ENROLLED</strong> in this course. Approving another enrollment would charge them twice. Nothing will be activated twice.
+                  </p>
+                  <p className="text-white font-semibold">Please choose an action:</p>
+                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleDuplicateResolution('RECORD_DUPLICATE_PAYMENT')}
+                      disabled={isApproving}
+                      className="px-3.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition shadow-md flex-1 text-center disabled:opacity-50"
+                    >
+                      Record as duplicate payment (refund due)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDuplicateResolution('CANCEL_DUPLICATE')}
+                      disabled={isApproving}
+                      className="px-3.5 py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 font-semibold text-xs transition flex-1 text-center disabled:opacity-50"
+                    >
+                      Cancel this order
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Crucial Verification Notice */}
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-1">

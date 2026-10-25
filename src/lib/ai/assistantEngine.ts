@@ -173,7 +173,7 @@ export function identifyIntent(query: string): string {
  */
 export function generateGroundedAssistantResponse(
   query: string,
-  options: { locale?: string } = {}
+  options: { locale?: string; isEnrolled?: boolean } = {}
 ): AssistantResponse {
   const language = options.locale === 'hi' ? 'hi' : detectLanguage(query);
   const intent = identifyIntent(query);
@@ -199,13 +199,24 @@ export function generateGroundedAssistantResponse(
     variant: 'secondary',
   });
 
-  const getEnrollAction = (): ActionButton => ({
-    label: language === 'hi' ? 'कोर्स में प्रवेश लें (₹5,100)' : language === 'hinglish' ? 'Enroll in Course (₹5,100)' : 'Enroll in Masterclass (₹5,100)',
-    url: '/checkout?course=what-is-astrology',
-    isExternal: false,
-    type: 'enroll',
-    variant: 'accent',
-  });
+  const getEnrollAction = (): ActionButton => {
+    if (options.isEnrolled) {
+      return {
+        label: language === 'hi' ? 'मेरे कोर्स पर जाएं' : language === 'hinglish' ? 'Go to My Course' : 'Go to My Course',
+        url: '/dashboard/courses',
+        isExternal: false,
+        type: 'link',
+        variant: 'primary',
+      };
+    }
+    return {
+      label: language === 'hi' ? 'कोर्स में प्रवेश लें (₹5,100)' : language === 'hinglish' ? 'Enroll in Course (₹5,100)' : 'Enroll in Masterclass (₹5,100)',
+      url: '/checkout?course=what-is-astrology',
+      isExternal: false,
+      type: 'enroll',
+      variant: 'accent',
+    };
+  };
 
   const getSyllabusAction = (): ActionButton => ({
     label: language === 'hi' ? '23-मॉड्यूल पाठ्यक्रम देखें' : language === 'hinglish' ? '23 Modules Syllabus Dekhein' : 'View 23-Module Syllabus',
@@ -493,6 +504,42 @@ export function generateGroundedAssistantResponse(
 
   // 7. HOW TO PAY & ENROLLMENT PROCESS
   if (intent === 'payment_how_to') {
+    if (options.isEnrolled) {
+      const getMyCourseAction = (): ActionButton => ({
+        label: language === 'hi' ? 'मेरे कोर्स पर जाएं' : language === 'hinglish' ? 'Go to My Course' : 'Go to My Course',
+        url: '/dashboard/courses',
+        isExternal: false,
+        type: 'link',
+        variant: 'primary',
+      });
+
+      if (language === 'hi') {
+        return {
+          reply: 'आप पहले से ही इस पाठ्यक्रम में नामांकित हैं! आप सीधे अपने छात्र पोर्टल (viar.in/dashboard/courses) से अपने सभी पाठ देख सकते हैं। आपको दोबारा कोई भुगतान करने की आवश्यकता नहीं है।',
+          language,
+          intent,
+          confidence: 'high',
+          actionButtons: [getMyCourseAction(), getWhatsAppAction('Namaste Acharya ji, I am an enrolled student and have a question.')],
+        };
+      }
+      if (language === 'hinglish') {
+        return {
+          reply: 'Aap already iss course mein enrolled hain! Aap direct apne Student Portal (viar.in/dashboard/courses) se access kar sakte hain. Aapko dobara payment karne ki zaroorat nahi hai.',
+          language,
+          intent,
+          confidence: 'high',
+          actionButtons: [getMyCourseAction(), getWhatsAppAction('Namaste Acharya ji, I am an enrolled student and have a question.')],
+        };
+      }
+      return {
+        reply: 'You are already enrolled in this course! You have active lifetime access to all lessons in your Student Portal (viar.in/dashboard/courses). You do not need to make any further payment.',
+        language,
+        intent,
+        confidence: 'high',
+        actionButtons: [getMyCourseAction(), getWhatsAppAction('Namaste Acharya ji, I am an enrolled student and have a question.')],
+      };
+    }
+
     if (language === 'hi') {
       return {
         reply: `प्रवेश एवं भुगतान की प्रक्रिया अत्यंत सरल और सुरक्षित है:\n\n1. viar.in/checkout पर जाएं जहाँ ₹5,100 का शुल्क और डायनामिक UPI QR कोड दिखाई देगा।\n2. किसी भी UPI ऐप (Google Pay, PhonePe, Paytm, BHIM) से QR कोड स्कैन करें या सीधे UPI ID: 9310709233m@pnb पर ₹5,100 भेजें।\n3. 'मैंने भुगतान कर दिया' पर क्लिक करके 12 अंकों का बैंक UTR / ट्रांजैक्शन नंबर दर्ज करें।\n4. पेमेंट का स्क्रीनशॉट व्हाट्सएप पर आचार्य नीरज कुमार (+91 93112 15564) को भेजें।\n5. बैंक में राशि सत्यापित होते ही आपके रजिस्टर्ड ईमेल पर तुरंत कोर्स अनलॉक हो जाता है। (व्हाट्सएप पर कोई अस्थायी पासवर्ड नहीं भेजा जाता; आप अपने ही ईमेल से लॉगिन करते हैं)।`,

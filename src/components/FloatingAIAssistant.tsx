@@ -47,12 +47,25 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isEnrolled, setIsEnrolled] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const liveRegionRef = useRef<HTMLDivElement>(null);
+
+  // Check enrollment status to avoid showing checkout/payment prompts to enrolled students
+  useEffect(() => {
+    fetch('/api/courses/what-is-astrology/status')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.state === 'ENROLLED') {
+          setIsEnrolled(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // 1. Route Suppression: Hide on /admin, /dashboard, /instructor, /checkout
   const isSuppressed = shouldSuppressAssistant(pathname);
@@ -67,12 +80,19 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
         : 'Namaste! 🙏 I am your VIAR Academic Assistant. I can answer any questions about our 23-module Vedic Astrology masterclass, the ₹5,100 INR tuition, syllabus, Acharya Niraj Kumar, and the enrollment process. Feel free to ask in English, हिंदी, or Hinglish!',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       actionButtons: [
-        {
-          label: isHi ? 'कोर्स में प्रवेश लें (₹5,100)' : 'Enroll in Course (₹5,100)',
-          url: '/checkout?course=what-is-astrology',
-          type: 'enroll',
-          variant: 'accent',
-        },
+        isEnrolled
+          ? {
+              label: isHi ? 'मेरे कोर्स पर जाएं' : 'Go to My Course',
+              url: '/dashboard/courses',
+              type: 'link',
+              variant: 'primary',
+            }
+          : {
+              label: isHi ? 'कोर्स में प्रवेश लें (₹5,100)' : 'Enroll in Course (₹5,100)',
+              url: '/checkout?course=what-is-astrology',
+              type: 'enroll',
+              variant: 'accent',
+            },
         {
           label: isHi ? 'व्हाट्सएप पर बात करें' : 'Chat on WhatsApp',
           url: 'https://wa.me/919311215564?text=Namaste%20Acharya%20ji%2C%20I%20have%20an%20inquiry%20regarding%20the%20VIAR%20Astrology%20Course.',
@@ -82,7 +102,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
         },
       ],
     };
-  }, [isHi]);
+  }, [isHi, isEnrolled]);
 
   // 3. Load conversation from sessionStorage only (Zero localStorage usage)
   useEffect(() => {
@@ -292,7 +312,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
         }
 
         // Contextual action buttons after completion
-        const fallback = generateGroundedAssistantResponse(text, { locale: isHi ? 'hi' : undefined });
+        const fallback = generateGroundedAssistantResponse(text, { locale: isHi ? 'hi' : undefined, isEnrolled });
         setMessages((prev) =>
           prev.map((m) =>
             m.id === asstId ? { ...m, actionButtons: fallback.actionButtons } : m

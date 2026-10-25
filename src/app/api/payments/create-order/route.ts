@@ -111,6 +111,52 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check if student already has an active enrollment
+    const activeEnrollment = await prisma.enrollment.findFirst({
+      where: {
+        userId: user.id,
+        OR: [
+          { courseId: resolvedCourseId },
+          { cohort: { courseId: resolvedCourseId } },
+        ],
+        status: 'ACTIVE',
+      },
+    });
+
+    if (activeEnrollment) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'ALREADY_ENROLLED',
+          error: 'You already have an active enrollment in this course.',
+          redirectUrl: `/dashboard/courses/${activeEnrollment.cohortId || cohortId}`,
+        },
+        { status: 409 }
+      );
+    }
+
+    // Check for open order (PENDING_PAYMENT or PAYMENT_CLAIMED)
+    const existingOpenOrder = await prisma.order.findFirst({
+      where: {
+        userId: user.id,
+        courseId: resolvedCourseId,
+        status: { in: ['PENDING_PAYMENT', 'PAYMENT_CLAIMED'] },
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (existingOpenOrder) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'ORDER_EXISTS',
+          message: 'An open order already exists for this course.',
+          order: existingOpenOrder,
+        },
+        { status: 409 }
+      );
+    }
+
     // 3. Create or record Payment in PostgreSQL with status PENDING
     const paymentRef = utr?.trim() || `upi_qr_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     const payment = await prisma.payment.create({

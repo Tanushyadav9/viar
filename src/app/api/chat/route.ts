@@ -13,6 +13,8 @@ import {
   logUnansweredQuestion,
 } from '@/lib/ai/knowledgeRetriever';
 import { generateGroundedAssistantResponse } from '@/lib/ai/assistantEngine';
+import { getServerAuthUser } from '@/lib/auth/serverAuth';
+import { getUserCourseStatus } from '@/lib/courses/enrollmentStatus';
 
 export const runtime = 'nodejs';
 
@@ -136,7 +138,27 @@ export async function POST(req: NextRequest) {
     // 4. Live Data Retrieval & Context Selection (Single source of truth)
     const liveData = await getLiveAcademyData();
     const { contextText, hasSpecificMatch } = retrieveRelevantKnowledgeContext(rawMessage, liveData);
-    const systemPrompt = buildGroundedSystemPrompt(contextText);
+    let systemPrompt = buildGroundedSystemPrompt(contextText);
+
+    // Check if authenticated user is actively enrolled
+    let isEnrolled = false;
+    try {
+      const auth = await getServerAuthUser();
+      if (auth.userId || auth.email) {
+        const status = await getUserCourseStatus({
+          userId: auth.userId || null,
+          userEmail: auth.email || null,
+          courseSlugOrId: 'what-is-astrology',
+        });
+        isEnrolled = status.state === 'ENROLLED';
+      }
+    } catch {
+      // Non-blocking auth check
+    }
+
+    if (isEnrolled) {
+      systemPrompt += `\n\n[USER CONTEXT: The user is authenticated and ALREADY ENROLLED with active lifetime access. Under NO circumstances ask them to pay, visit checkout, or enroll. Remind them they have full active access at viar.in/dashboard/courses.]`;
+    }
 
     // Asynchronously log low-confidence / unmatched question for Owner review (non-blocking)
     if (!hasSpecificMatch) {
@@ -207,7 +229,7 @@ export async function POST(req: NextRequest) {
 
       console.warn('[Chat API] Upstream provider error; activating deterministic grounded response stream:', err);
       // Fail-safe: Stream 100% verified grounded response so visitor never receives a broken chatbot error
-      const grounded = generateGroundedAssistantResponse(rawMessage);
+      const grounded = generateGroundedAssistantResponse(rawMessage, { isEnrolled });
       const groundedReply = grounded.reply;
       const chunks = groundedReply.match(/[\s\S]{1,24}/g) || [groundedReply];
 

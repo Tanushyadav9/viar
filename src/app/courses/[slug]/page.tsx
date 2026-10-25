@@ -1,3 +1,5 @@
+import { getServerAuthUser } from '@/lib/auth/serverAuth';
+import { getUserCourseStatus } from '@/lib/courses/enrollmentStatus';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -87,6 +89,13 @@ export default async function CourseDetailPage({ params }: Props) {
     notFound();
   }
 
+  const auth = await getServerAuthUser();
+  const initialStatus = await getUserCourseStatus({
+    userId: auth.userId || null,
+    userEmail: auth.email || null,
+    courseSlugOrId: params.slug,
+  });
+
   // Schema.org Course Structured Data (JSON-LD)
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -138,7 +147,7 @@ export default async function CourseDetailPage({ params }: Props) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <CourseDetailClient slug={params.slug} />
+      <CourseDetailClient slug={params.slug} initialStatus={initialStatus} />
     </>
   );
 }

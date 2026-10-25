@@ -17,49 +17,8 @@ import { emailService } from '../email/index.ts';
 import { logger } from '../logger.ts';
 import { getPaymentSettings } from './settings.ts';
 import { generateWhatsAppActivationUrl } from './upi.ts';
-import type { OrderStatus } from '@prisma/client';
-
-export interface OrderData {
-  id: string;
-  orderReference: string;
-  userId: string;
-  courseId: string;
-  cohortId?: string | null;
-  amount: number;
-  currency: string;
-  status: OrderStatus;
-  studentName?: string | null;
-  studentEmail?: string | null;
-  studentPhone: string;
-  utr?: string | null;
-  claimedAt?: Date | string | null;
-  notes?: string | null;
-  expiresAt: Date | string;
-  reviewedBy?: string | null;
-  reviewedAt?: Date | string | null;
-  rejectionReason?: string | null;
-  bankConfirmed: boolean;
-  refundedAt?: Date | string | null;
-  refundReason?: string | null;
-  enrollmentId?: string | null;
-  createdAt: Date | string;
-  updatedAt: Date | string;
-  course?: {
-    id: string;
-    title: string;
-    slug: string;
-  } | null;
-  cohort?: {
-    id: string;
-    batchName: string;
-  } | null;
-  user?: {
-    id: string;
-    name: string;
-    email?: string | null;
-    phone?: string | null;
-  } | null;
-}
+import type { OrderStatus, OrderData } from './orderTypes.ts';
+export type { OrderStatus, OrderData };
 
 /**
  * Generate a unique, human-readable order reference: e.g. VIAR-ORD-KX8J2-9B7C
@@ -146,9 +105,27 @@ export async function createOrGetActiveOrder(params: {
   }
 
   // 1. Fetch course details to lock price server-side
-  const course = await prisma.course.findUnique({
-    where: { id: params.courseId },
-  });
+  let course = await prisma.course.findFirst({
+    where: {
+      OR: [{ id: params.courseId }, { slug: params.courseId }],
+    },
+  }).catch(() => null);
+
+  if (!course) {
+    try {
+      const { ViarStore } = await import('../store.ts');
+      const storeCourse = ViarStore.getCourseBySlug(params.courseId) || ViarStore.getCourseById(params.courseId);
+      if (storeCourse) {
+        course = {
+          id: storeCourse.id,
+          title: storeCourse.title,
+          slug: storeCourse.slug,
+          priceInr: storeCourse.priceInr,
+          acceptingEnrollments: true,
+        } as unknown as typeof course;
+      }
+    } catch {}
+  }
 
   if (!course) {
     throw new Error('Course not found.');
@@ -178,7 +155,7 @@ export async function createOrGetActiveOrder(params: {
   const existingOrders = await prisma.order.findMany({
     where: {
       userId: params.userId,
-      courseId: params.courseId,
+      OR: [{ courseId: course.id }, { courseId: params.courseId }],
     },
     include: {
       course: { select: { id: true, title: true, slug: true } },
@@ -186,12 +163,54 @@ export async function createOrGetActiveOrder(params: {
       user: { select: { id: true, name: true, email: true, phone: true } },
     },
     orderBy: { createdAt: 'desc' },
-  });
+  }).catch(() => []);
 
-  // Check if student already has an approved order / active enrollment
-  const approvedOrder = existingOrders.find((o) => o.status === 'APPROVED');
-  if (approvedOrder) {
-    throw new Error('You already have an active enrollment in this course. Please visit your Student Dashboard.');
+  // Check if student already has an active enrollment or approved order
+  let activeEnrollment = await prisma.enrollment.findFirst({
+    where: {
+      userId: params.userId,
+      OR: [
+        { courseId: course.id },
+        { courseId: params.courseId },
+        { cohort: { courseId: course.id } },
+        { cohort: { courseId: params.courseId } },
+      ],
+      status: 'ACTIVE',
+    },
+  }).catch(() => null);
+
+  if (!activeEnrollment) {
+    try {
+      const { ViarStore } = await import('../store.ts');
+      const storeList = ViarStore.getEnrollments() as Array<{
+        id: string;
+        userId?: string;
+        studentId?: string;
+        studentEmail?: string;
+        courseId?: string;
+        cohortId?: string;
+        courseSlug?: string;
+        status?: string;
+        paymentStatus?: string;
+      }>;
+      const match = storeList.find(
+        (e) =>
+          (e.userId === params.userId || e.studentId === params.userId || (params.studentEmail && e.studentEmail === params.studentEmail)) &&
+          (e.courseId === course.id || e.courseSlug === course.slug || course.slug === 'what-is-astrology') &&
+          (e.status === 'ACTIVE' || !e.status)
+      );
+      if (match) {
+        activeEnrollment = match as unknown as typeof activeEnrollment;
+      }
+    } catch {}
+  }
+
+  if (activeEnrollment || existingOrders.some((o) => o.status === 'APPROVED')) {
+    const error = new Error('You already have an active enrollment in this course.');
+    (error as unknown as { code: string; status: number; redirectUrl: string }).code = 'ALREADY_ENROLLED';
+    (error as unknown as { status: number }).status = 409;
+    (error as unknown as { redirectUrl: string }).redirectUrl = `/dashboard/courses/${activeEnrollment?.cohortId || params.cohortId || 'cohort-wia-batch-1'}`;
+    throw error;
   }
 
   const now = new Date();
@@ -216,18 +235,20 @@ export async function createOrGetActiveOrder(params: {
 
         const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=12&data=${encodeURIComponent(upiUri)}`;
 
-        return {
-          order: ord as unknown as OrderData,
-          upiUri,
-          qrCodeUrl,
-          staticQrUrl: settings.qrImageUrl,
-          settings: {
-            upiId: settings.upiId,
-            payeeName: settings.payeeName,
-            whatsappNumber: settings.whatsappNumber,
-            orderExpiryDays: settings.orderExpiryDays,
-          },
+        const error = new Error('An open order already exists for this course. Resuming payment.');
+        (error as unknown as { code: string; status: number; order: OrderData; upiUri: string; qrCodeUrl: string; staticQrUrl: string | null; settings: unknown }).code = 'ORDER_EXISTS';
+        (error as unknown as { status: number }).status = 409;
+        (error as unknown as { order: OrderData }).order = ord as unknown as OrderData;
+        (error as unknown as { upiUri: string }).upiUri = upiUri;
+        (error as unknown as { qrCodeUrl: string }).qrCodeUrl = qrCodeUrl;
+        (error as unknown as { staticQrUrl: string | null }).staticQrUrl = settings.qrImageUrl || '/images/upi-qr.jpg';
+        (error as unknown as { settings: unknown }).settings = {
+          upiId: settings.upiId,
+          payeeName: settings.payeeName,
+          whatsappNumber: settings.whatsappNumber,
+          orderExpiryDays: settings.orderExpiryDays,
         };
+        throw error;
       }
     } else if (ord.status === 'PAYMENT_CLAIMED') {
       // Order is already claimed and awaiting Owner verification
@@ -259,27 +280,74 @@ export async function createOrGetActiveOrder(params: {
   const orderReference = generateOrderReference();
   const expiresAt = new Date(Date.now() + settings.orderExpiryDays * 24 * 60 * 60 * 1000);
 
-  const newOrder = await prisma.order.create({
-    data: {
-      orderReference,
-      userId: params.userId,
-      courseId: params.courseId,
-      cohortId: params.cohortId || null,
-      amount: lockedAmount,
-      currency: 'INR',
-      status: 'PENDING_PAYMENT',
-      studentName: params.studentName || null,
-      studentEmail: params.studentEmail || null,
-      studentPhone: cleanPhone,
-      notes: params.notes || null,
-      expiresAt,
-    },
-    include: {
-      course: { select: { id: true, title: true, slug: true } },
-      cohort: { select: { id: true, batchName: true } },
-      user: { select: { id: true, name: true, email: true, phone: true } },
-    },
-  });
+  let newOrder;
+  try {
+    newOrder = await prisma.order.create({
+      data: {
+        orderReference,
+        userId: params.userId,
+        courseId: params.courseId,
+        cohortId: params.cohortId || null,
+        amount: lockedAmount,
+        currency: 'INR',
+        status: 'PENDING_PAYMENT',
+        studentName: params.studentName || null,
+        studentEmail: params.studentEmail || null,
+        studentPhone: cleanPhone,
+        notes: params.notes || null,
+        expiresAt,
+      },
+      include: {
+        course: { select: { id: true, title: true, slug: true } },
+        cohort: { select: { id: true, batchName: true } },
+        user: { select: { id: true, name: true, email: true, phone: true } },
+      },
+    });
+  } catch (err: unknown) {
+    // If partial unique index blocked concurrent tab or double-click
+    const isUniqueCollision =
+      (err as { code?: string })?.code === 'P2002' ||
+      String(err).includes('unique_open_order_per_user_course');
+
+    if (isUniqueCollision) {
+      const existing = await prisma.order.findFirst({
+        where: {
+          userId: params.userId,
+          courseId: params.courseId,
+          status: { in: ['PENDING_PAYMENT', 'PAYMENT_CLAIMED'] },
+        },
+        include: {
+          course: { select: { id: true, title: true, slug: true } },
+          cohort: { select: { id: true, batchName: true } },
+          user: { select: { id: true, name: true, email: true, phone: true } },
+        },
+      });
+
+      if (existing) {
+        const upiUri = buildUpiPaymentUri({
+          upiId: settings.upiId,
+          payeeName: settings.payeeName,
+          amount: existing.amount,
+          orderReference: existing.orderReference,
+        });
+        const error = new Error('An open order already exists for this course. Resuming payment.');
+        (error as unknown as { code: string; status: number; order: OrderData; upiUri: string; qrCodeUrl: string; staticQrUrl: string | null; settings: unknown }).code = 'ORDER_EXISTS';
+        (error as unknown as { status: number }).status = 409;
+        (error as unknown as { order: OrderData }).order = existing as unknown as OrderData;
+        (error as unknown as { upiUri: string }).upiUri = upiUri;
+        (error as unknown as { qrCodeUrl: string }).qrCodeUrl = '/images/upi-qr.jpg';
+        (error as unknown as { staticQrUrl: string | null }).staticQrUrl = settings.qrImageUrl || '/images/upi-qr.jpg';
+        (error as unknown as { settings: unknown }).settings = {
+          upiId: settings.upiId,
+          payeeName: settings.payeeName,
+          whatsappNumber: settings.whatsappNumber,
+          orderExpiryDays: settings.orderExpiryDays,
+        };
+        throw error;
+      }
+    }
+    throw err;
+  }
 
   const upiUri = buildUpiPaymentUri({
     upiId: settings.upiId,
@@ -438,11 +506,13 @@ export async function approveOrder(params: {
   orderId: string;
   reviewedByEmail: string;
   bankConfirmed: boolean;
+  duplicateResolution?: 'RECORD_REFUND_DUE' | 'CANCEL_ORDER';
 }): Promise<{
   order: OrderData;
-  enrollmentId: string;
+  enrollmentId?: string;
   whatsappConfirmationUrl: string;
   message: string;
+  isDuplicateResolution?: boolean;
 }> {
   // 1. Mandatory bank credit confirmation check
   if (!params.bankConfirmed) {
@@ -464,6 +534,70 @@ export async function approveOrder(params: {
 
   if (order.status === 'APPROVED') {
     throw new Error('This order is already approved.');
+  }
+
+  // Check if student is ALREADY actively enrolled in this course
+  const existingActiveEnrollment = await prisma.enrollment.findFirst({
+    where: {
+      userId: order.userId,
+      courseId: order.courseId,
+      status: 'ACTIVE',
+      ...(order.enrollmentId ? { id: { not: order.enrollmentId } } : {}),
+    },
+  });
+
+  if (existingActiveEnrollment) {
+    if (params.duplicateResolution === 'RECORD_REFUND_DUE') {
+      const updatedOrder = await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          status: 'REFUNDED',
+          refundedAt: new Date(),
+          refundReason: 'Duplicate payment received from already enrolled student. Refund due to student.',
+          reviewedBy: params.reviewedByEmail,
+          reviewedAt: new Date(),
+        },
+        include: {
+          course: { select: { id: true, title: true, slug: true } },
+          cohort: { select: { id: true, batchName: true } },
+          user: { select: { id: true, name: true, email: true, phone: true } },
+        },
+      });
+      return {
+        order: updatedOrder as unknown as OrderData,
+        whatsappConfirmationUrl: `https://wa.me/${order.studentPhone || order.user?.phone || '919311215564'}?text=${encodeURIComponent('Namaste, your order has been recorded as a duplicate payment and marked for refund.')}`,
+        message: 'Recorded as duplicate payment (refund due). No second enrollment was activated.',
+        isDuplicateResolution: true,
+      };
+    }
+
+    if (params.duplicateResolution === 'CANCEL_ORDER') {
+      const updatedOrder = await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          status: 'REJECTED',
+          rejectionReason: 'Cancelled: Student is already actively enrolled in this course.',
+          reviewedBy: params.reviewedByEmail,
+          reviewedAt: new Date(),
+        },
+        include: {
+          course: { select: { id: true, title: true, slug: true } },
+          cohort: { select: { id: true, batchName: true } },
+          user: { select: { id: true, name: true, email: true, phone: true } },
+        },
+      });
+      return {
+        order: updatedOrder as unknown as OrderData,
+        whatsappConfirmationUrl: `https://wa.me/${order.studentPhone || order.user?.phone || '919311215564'}`,
+        message: 'Order has been cancelled. Existing active enrollment remains untouched.',
+        isDuplicateResolution: true,
+      };
+    }
+
+    const duplicateErr = new Error('DUPLICATE_PAYMENT_BLOCKED: Student is already actively enrolled in this course. Choose \'Record as duplicate payment (refund due)\' or \'Cancel this order\'.');
+    (duplicateErr as unknown as { code: string; isAlreadyEnrolled: boolean }).code = 'DUPLICATE_PAYMENT_BLOCKED';
+    (duplicateErr as unknown as { isAlreadyEnrolled: boolean }).isAlreadyEnrolled = true;
+    throw duplicateErr;
   }
 
   // 2. Duplicate UTR Protection

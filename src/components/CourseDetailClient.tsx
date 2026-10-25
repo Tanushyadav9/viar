@@ -1,5 +1,7 @@
 'use client';
 
+import type { UserCourseStatusResult } from '@/lib/courses/enrollmentTypes';
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -23,9 +25,11 @@ import { BUILTIN_CONTENT_DEFAULTS } from '@/lib/content/defaultContent';
 
 interface CourseDetailClientProps {
   slug: string;
+  initialStatus?: UserCourseStatusResult | null;
 }
 
-export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
+export default function CourseDetailClient({ slug, initialStatus }: CourseDetailClientProps) {
+  const [userStatus, setUserStatus] = useState<UserCourseStatusResult | null>(initialStatus || null);
   const { isHi } = useLanguage();
   const [course, setCourse] = useState<CoursePublicDTO | null>(null);
   const [cohort, setCohort] = useState<Cohort | null>(null);
@@ -65,6 +69,15 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
       .catch(() => {
         setNotFound(true);
       });
+
+    fetch(`/api/courses/${slug}/status`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && data.state) {
+          setUserStatus(data);
+        }
+      })
+      .catch(() => {});
 
     fetch('/api/content?collection=testimonials')
       .then((res) => res.json())
@@ -416,17 +429,119 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <Link
-                      href={`/checkout/${cohort.id}`}
-                      className="gold-button w-full py-3.5 rounded-2xl text-center font-black text-sm block shadow-lg shadow-amber-500/20 tracking-wide uppercase"
-                    >
-                      {isHi ? `आज ही सीखना शुरू करें • ${price}` : `Start Learning Today • ${price}`}
-                    </Link>
-
-                    <p className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>{isHi ? 'सीधा UPI भुगतान • शून्य गेटवे शुल्क • त्वरित सत्यापन' : 'Direct UPI Payment • Zero Gateway Fee • Fast Verification'}</span>
-                    </p>
+                    {/* State: ENROLLED */}
+                    {userStatus?.state === 'ENROLLED' ? (
+                      <div className="space-y-3">
+                        <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs text-center space-y-1">
+                          <div className="flex items-center justify-center gap-1.5 font-bold text-emerald-400">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>{isHi ? 'आप पहले से नामांकित हैं' : 'You are Enrolled'}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-300">
+                            {isHi ? 'आपके पास सभी 23 वीडियो मॉड्यूल की आजीवन पहुंच है।' : 'You have active lifetime access to all lessons & certificates.'}
+                          </p>
+                        </div>
+                        <Link
+                          href={`/dashboard/courses/${cohort.id}`}
+                          className="w-full py-3.5 rounded-2xl text-center font-black text-sm block shadow-lg shadow-emerald-500/20 tracking-wide uppercase bg-emerald-500 hover:bg-emerald-400 text-black transition"
+                        >
+                          {isHi ? 'आप नामांकित हैं। मेरे कोर्स पर जाएं' : "You're enrolled. Go to my course"}
+                        </Link>
+                      </div>
+                    ) : userStatus?.state === 'ORDER_CLAIMED' ? (
+                      <div className="space-y-3">
+                        <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs text-center">
+                          <p className="font-semibold">{isHi ? 'भुगतान सत्यापन प्रक्रिया में है' : 'Payment Under Verification'}</p>
+                          <p className="text-[11px] text-slate-300 mt-1">{isHi ? 'बैंक में राशि सत्यापित होते ही कोर्स स्वतः खुल जाएगा।' : 'Access unlocks as soon as bank credit is verified.'}</p>
+                        </div>
+                        <Link
+                          href={`/checkout/${cohort.id}`}
+                          className="w-full py-3.5 rounded-2xl text-center font-bold text-xs block bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 transition"
+                        >
+                          {isHi ? 'भुगतान सत्यापन स्थिति देखें' : 'Payment under verification'}
+                        </Link>
+                      </div>
+                    ) : userStatus?.state === 'ORDER_PENDING' ? (
+                      <div className="space-y-3">
+                        <Link
+                          href={`/checkout/${cohort.id}`}
+                          className="gold-button w-full py-3.5 rounded-2xl text-center font-black text-sm block shadow-lg shadow-amber-500/20 tracking-wide uppercase"
+                        >
+                          {isHi ? 'भुगतान जारी रखें' : 'Resume payment'}
+                        </Link>
+                        <p className="text-[11px] text-amber-300/80 text-center font-mono">
+                          {userStatus.order?.orderReference ? `Order: ${userStatus.order.orderReference}` : ''}
+                        </p>
+                      </div>
+                    ) : userStatus?.state === 'ORDER_REJECTED' ? (
+                      <div className="space-y-3">
+                        <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-200 text-xs text-center">
+                          <p className="font-bold text-red-300">{isHi ? 'पिछला भुगतान अस्वीकृत हुआ' : 'Previous Order Not Approved'}</p>
+                          <p className="text-[11px] text-slate-300 mt-1">{userStatus.rejectionReason}</p>
+                        </div>
+                        <Link
+                          href={`/checkout/${cohort.id}?retry=1`}
+                          className="gold-button w-full py-3.5 rounded-2xl text-center font-black text-sm block shadow-lg shadow-amber-500/20 tracking-wide uppercase"
+                        >
+                          {isHi ? 'पुनः प्रयास करें' : 'Try again'}
+                        </Link>
+                      </div>
+                    ) : userStatus?.state === 'ACCESS_REVOKED' ? (
+                      <div className="space-y-3">
+                        <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs text-center">
+                          <p className="font-semibold">{isHi ? 'पहुंच समाप्त हो चुकी है' : 'Course Access Ended'}</p>
+                          <p className="text-[11px] text-slate-300 mt-1">{isHi ? 'पहुंच पुनः शुरू करने हेतु व्हाट्सएप पर संपर्क करें।' : 'Please contact Acharya Ji on WhatsApp to restore access.'}</p>
+                        </div>
+                        <a
+                          href={userStatus.whatsappUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-3.5 rounded-2xl text-center font-black text-sm block bg-amber-600 hover:bg-amber-500 text-white transition flex items-center justify-center gap-2 shadow-lg"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span>{isHi ? 'पहुंच समाप्त। संपर्क करें' : 'Access ended. Contact us'}</span>
+                        </a>
+                      </div>
+                    ) : userStatus?.state === 'INVITATION_PENDING' ? (
+                      <div className="space-y-3">
+                        <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs text-center">
+                          <p className="font-semibold">{isHi ? 'आपके लिए आमंत्रण उपलब्ध है' : 'Course Invitation Waiting'}</p>
+                          <p className="text-[11px] text-slate-300 mt-1">{userStatus.invitedEmail ? `${userStatus.invitedEmail}` : ''}</p>
+                        </div>
+                        <Link
+                          href={userStatus.button.href}
+                          className="gold-button w-full py-3.5 rounded-2xl text-center font-black text-sm block shadow-lg shadow-amber-500/20 tracking-wide uppercase"
+                        >
+                          {isHi ? 'आमंत्रित ईमेल से लॉगिन करें' : 'Sign in with the invited email'}
+                        </Link>
+                      </div>
+                    ) : userStatus?.state === 'NOT_SIGNED_IN' ? (
+                      <div className="space-y-3">
+                        <Link
+                          href={`/login?redirect=/courses/${slug}`}
+                          className="gold-button w-full py-3.5 rounded-2xl text-center font-black text-sm block shadow-lg shadow-amber-500/20 tracking-wide uppercase"
+                        >
+                          {isHi ? 'प्रवेश लें' : 'Enroll'}
+                        </Link>
+                        <p className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>{isHi ? 'सीधा UPI भुगतान • शून्य गेटवे शुल्क • त्वरित सत्यापन' : 'Direct UPI Payment • Zero Gateway Fee • Fast Verification'}</span>
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <Link
+                          href={`/checkout/${cohort.id}`}
+                          className="gold-button w-full py-3.5 rounded-2xl text-center font-black text-sm block shadow-lg shadow-amber-500/20 tracking-wide uppercase"
+                        >
+                          {isHi ? 'प्रवेश लें' : 'Enroll'}
+                        </Link>
+                        <p className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>{isHi ? 'सीधा UPI भुगतान • शून्य गेटवे शुल्क • त्वरित सत्यापन' : 'Direct UPI Payment • Zero Gateway Fee • Fast Verification'}</span>
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )
               ) : null}
