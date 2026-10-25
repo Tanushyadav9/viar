@@ -93,7 +93,7 @@ export async function sendSessionScheduledEmail(data: {
   const text = `Namaste ${data.studentName} ji,\n\nYour 1-on-1 personal class with Acharya Niraj Kumar is scheduled for:\nTopic: ${data.topic}\nDate & Time: ${timeIst} IST\nDuration: ${data.durationMinutes} mins\nMeeting Link: ${data.meetingLink || 'Shared via WhatsApp'}\n\nPre-class notes: ${data.notes || 'Please have your birth chart ready.'}\n\nHelpline: +91 93112 15564\nViar.in`;
 
   try {
-    const res = await emailService.send({
+    const res = await emailService.sendEmail({
       to: data.studentEmail,
       subject,
       html,
@@ -158,7 +158,7 @@ export async function sendSessionRequestStatusEmail(data: {
   `;
 
   try {
-    const res = await emailService.send({
+    const res = await emailService.sendEmail({
       to: data.studentEmail,
       subject,
       html,

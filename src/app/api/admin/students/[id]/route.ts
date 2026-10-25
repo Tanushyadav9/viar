@@ -77,7 +77,7 @@ export async function GET(
         userRecord = {
           id: u.id,
           name: u.name,
-          email: u.email,
+          email: u.email || '',
           phone: u.phone,
           timezone: 'Asia/Kolkata',
           role: u.role,
@@ -90,7 +90,7 @@ export async function GET(
           const enr = u.enrollments[0];
           enrollmentRecord = {
             id: enr.id,
-            courseId: enr.courseId,
+            courseId: enr.courseId || 'course-what-is-astrology',
             courseTitle: enr.course?.title || 'The Ultimate Astrology Course: Foundations to Chart Mastery',
             enrolledAt: enr.enrolledAt,
             status: enr.status,

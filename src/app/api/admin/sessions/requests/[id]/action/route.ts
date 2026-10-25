@@ -37,7 +37,7 @@ export async function POST(
         duration: data.duration || 60,
         meetingLink: data.meetingLink,
         meetingPlatform: data.meetingPlatform || 'GOOGLE_MEET',
-        notes: data.notes,
+        sharedNotes: data.notes,
         createdByUserId: auth.userId || 'usr_owner_001',
         allowOutsideWorkingHours: Boolean(data.allowOutsideWorkingHours),
       });

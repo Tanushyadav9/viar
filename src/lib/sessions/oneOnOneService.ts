@@ -1233,7 +1233,7 @@ export function generateWhatsAppShareUrl(session: OneOnOneSessionRecord | Studen
   });
 
   const duration = 'durationMinutes' in session ? session.durationMinutes : session.duration;
-  const notesText = 'notes' in session ? session.notes : session.sharedNotes;
+  const notesText = 'sharedNotes' in session ? session.sharedNotes : 'notes' in session ? (session as { notes?: string | null }).notes : null;
 
   const message = [
     `Namaste ${session.studentName} ji,`,
