@@ -508,6 +508,18 @@ function StudentDashboardContent() {
           </button>
 
           <button
+            onClick={() => setActiveTab('sessions')}
+            className={`px-5 py-3 text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 ${
+              activeTab === 'sessions'
+                ? 'border-amber-400 text-amber-300'
+                : 'border-transparent text-slate-400 hover:text-white'
+            }`}
+          >
+            <Video className="w-4 h-4" />
+            <span>My Sessions (1-on-1)</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('recordings')}
             className={`px-5 py-3 text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 ${
               activeTab === 'recordings'

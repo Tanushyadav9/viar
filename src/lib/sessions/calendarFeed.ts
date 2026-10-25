@@ -119,3 +119,61 @@ export function generateICalendarFeed(
 
   return lines.join('\r\n');
 }
+
+/**
+ * Generate RFC 5545 single-event .ics file for a student
+ * Strictly omits private notes for the Owner.
+ */
+export function generateStudentSessionICal(session: {
+  id: string;
+  title: string;
+  startTime: string | Date;
+  duration: number;
+  meetingLink?: string | null;
+  meetingPlatform?: string | null;
+  sharedNotes?: string | null;
+  homework?: string | null;
+  courseTitle?: string | null;
+  baseUrl?: string;
+}): string {
+  const nowUtc = formatToICalUtc(new Date());
+  const startDate = session.startTime instanceof Date ? session.startTime : new Date(session.startTime);
+  const endDate = new Date(startDate.getTime() + (session.duration || 60) * 60 * 1000);
+  const dtStart = formatToICalUtc(startDate);
+  const dtEnd = formatToICalUtc(endDate);
+
+  const summary = `1-on-1 Class with Acharya Niraj Kumar: ${session.title}`;
+  const descLines = [
+    `Acharya Niraj Kumar — Personal Vedic Astrology Mentorship`,
+    session.courseTitle ? `Course: ${session.courseTitle}` : `The Ultimate Astrology Course: Foundations to Chart Mastery`,
+    session.meetingLink ? `Meeting Link: ${session.meetingLink}` : `Platform: ${session.meetingPlatform || 'Online'}`,
+    session.sharedNotes ? `Pre-Class Notes: ${session.sharedNotes}` : null,
+    session.homework ? `Homework & Exercises: ${session.homework}` : null,
+    `VIAR Student Portal: ${session.baseUrl || 'https://viar.in'}/dashboard?tab=sessions`,
+  ].filter(Boolean) as string[];
+
+  const description = escapeICalText(descLines.join('\n'));
+  const location = escapeICalText(session.meetingLink || session.meetingPlatform || 'Online Video Class');
+
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Viar.in//1-on-1 Student Class//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:student-${session.id}@viar.in`,
+    `DTSTAMP:${nowUtc}`,
+    `DTSTART:${dtStart}`,
+    `DTEND:${dtEnd}`,
+    `SUMMARY:${escapeICalText(summary)}`,
+    `DESCRIPTION:${description}`,
+    `LOCATION:${location}`,
+    session.meetingLink ? `URL:${session.meetingLink}` : null,
+    'STATUS:CONFIRMED',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].filter(Boolean);
+
+  return lines.join('\r\n');
+}
