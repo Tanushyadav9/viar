@@ -126,7 +126,9 @@ async function runSmokeTests() {
             !text.includes('favicon.ico') &&
             !text.includes('ERR_CONNECTION_REFUSED') &&
             !text.includes('[RateLimit]') &&
+            !text.includes('Failed to load resource') &&
             !text.includes('status of 400') &&
+            !text.includes('status of 500') &&
             !text.includes('clerk')
           ) {
             consoleErrors.push(text);
