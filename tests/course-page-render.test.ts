@@ -203,7 +203,7 @@ test('Course Page Render Regression Test Suite', async (t) => {
     assert.ok(content.includes('/courses'), 'must link to catalog /courses');
     assert.ok(content.includes('wa.me/919311215564'), 'must link to WhatsApp admissions');
     assert.ok(content.includes('+91 93112 15564'), 'must include direct contact phone');
-    assert.ok(content.includes('aapkaastro1606@gmail.com'), 'must include support email');
+    assert.ok(content.includes('admissions@viar.in'), 'must include support email');
   });
 
   await t.test('6. Segment error boundary (courses/[slug]/error.tsx) is configured for calm recovery', () => {

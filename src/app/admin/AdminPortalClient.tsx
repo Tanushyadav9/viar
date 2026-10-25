@@ -110,6 +110,31 @@ export interface AdminOrder {
   isAlreadyEnrolled?: boolean;
 }
 
+export interface AdminEnrollmentItem {
+  id: string;
+  studentId?: string;
+  studentName?: string | null;
+  studentEmail?: string | null;
+  studentPhone?: string | null;
+  courseId?: string;
+  courseTitle?: string | null;
+  cohortId?: string | null;
+  cohortBatchName?: string | null;
+  enrolledAt?: string | Date | null;
+  amountPaid?: number | null;
+  paymentAmount?: number | null;
+  currency?: string | null;
+  paymentStatus?: string | null;
+  paymentReference?: string | null;
+  paymentMethod?: string | null;
+  paymentId?: string | null;
+  progressPercentage?: number;
+  completedLessonsCount?: number;
+  totalLessonsCount?: number;
+  quizResult?: string | null;
+  certificateStatus?: string | null;
+}
+
 export interface PaymentSettingsState {
   upiId: string;
   payeeName: string;
@@ -172,7 +197,7 @@ export default function AdminPortalClient({
   const [classes, setClasses] = useState<ScheduledClass[]>([]);
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [enrollments, setEnrollments] = useState<AdminEnrollmentItem[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [selectedCohortId, setSelectedCohortId] = useState<string>('cohort-wia-batch-1');
   const [userTz, setUserTz] = useState<string>('Asia/Kolkata');
@@ -1122,12 +1147,19 @@ export default function AdminPortalClient({
     }
   };
 
-  const filteredEnrollments = enrollments.filter(
-    (e) =>
-      e.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.studentEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.paymentMethod.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const searchQ = (searchQuery || '').trim().toLowerCase();
+  const filteredEnrollments = enrollments.filter((e) => {
+    if (!searchQ) return true;
+    return (
+      (e.studentName || '').toLowerCase().includes(searchQ) ||
+      (e.studentEmail || '').toLowerCase().includes(searchQ) ||
+      (e.studentPhone || '').toLowerCase().includes(searchQ) ||
+      (e.paymentMethod || '').toLowerCase().includes(searchQ) ||
+      (e.paymentReference || e.paymentId || '').toLowerCase().includes(searchQ) ||
+      (e.courseTitle || '').toLowerCase().includes(searchQ) ||
+      (e.cohortBatchName || '').toLowerCase().includes(searchQ)
+    );
+  });
 
   return (
     <div className="cosmic-bg min-h-screen py-10">
@@ -1650,7 +1682,7 @@ export default function AdminPortalClient({
                       <div className="flex items-center justify-between text-xs">
                         <div>
                           <span className="text-slate-400">Tuition:</span>
-                          <span className="font-bold text-white ml-1">₹{crs.priceInr.toLocaleString('en-IN')}</span>
+                          <span className="font-bold text-white ml-1">₹{(crs.priceInr || 5100).toLocaleString('en-IN')}</span>
                         </div>
                         <Link
                           href={`/courses/${crs.slug}`}
@@ -1786,35 +1818,43 @@ export default function AdminPortalClient({
                         </td>
                       </tr>
                     ) : (
-                      filteredEnrollments.map((enr) => (
-                      <tr key={enr.id} className="hover:bg-white/[0.02] transition">
-                        <td className="px-6 py-4">
-                          <p className="font-bold text-white">{enr.studentName}</p>
-                          <p className="text-[11px] text-slate-400">{enr.studentEmail}</p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="text-white font-medium">What is Astrology</p>
-                          <p className="text-[10px] text-amber-400">Cohort 01 (Autumn 2026)</p>
-                        </td>
-                        <td className="px-6 py-4 text-slate-400">
-                          {new Date(enr.enrolledAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="text-slate-200">{enr.paymentMethod}</p>
-                          <p className="text-[10px] font-mono text-slate-500">{enr.paymentId}</p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="font-bold text-white">
-                            ₹{enr.paymentAmount.toLocaleString('en-IN')}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                            {enr.paymentStatus}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
+                      filteredEnrollments.map((enr) => {
+                        const amount = enr.amountPaid ?? enr.paymentAmount ?? 5100;
+                        const dateStr = enr.enrolledAt ? (() => {
+                          const d = new Date(enr.enrolledAt);
+                          return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN');
+                        })() : '—';
+                        return (
+                          <tr key={enr.id} className="hover:bg-white/[0.02] transition">
+                            <td className="px-6 py-4">
+                              <p className="font-bold text-white">{enr.studentName || 'Student'}</p>
+                              <p className="text-[11px] text-slate-400">{enr.studentEmail || 'No email provided'}</p>
+                              {enr.studentPhone && <p className="text-[10px] font-mono text-slate-500">{enr.studentPhone}</p>}
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-white font-medium">{enr.courseTitle || 'The Ultimate Vedic Astrology Course'}</p>
+                              <p className="text-[10px] text-amber-400">{enr.cohortBatchName || 'Self-Paced Access'}</p>
+                            </td>
+                            <td className="px-6 py-4 text-slate-400">
+                              {dateStr}
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-slate-200">{enr.paymentMethod || 'Direct Tuition'}</p>
+                              <p className="text-[10px] font-mono text-slate-500">{enr.paymentReference || enr.paymentId || '—'}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="font-bold text-white">
+                                ₹{amount.toLocaleString('en-IN')}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                {enr.paymentStatus || 'ACTIVE'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
                   )}
                   </tbody>
                 </table>
@@ -1921,7 +1961,7 @@ export default function AdminPortalClient({
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Total Verified Tuition</span>
                   <p className="text-2xl font-black text-amber-300 mt-1">
-                    ₹{orders.filter(o => o.status === 'APPROVED').reduce((acc, o) => acc + (o.amount || 0), 0).toLocaleString('en-IN') || stats?.totalRevenueInr.toLocaleString('en-IN')}
+                    ₹{orders.filter(o => o.status === 'APPROVED').reduce((acc, o) => acc + (o.amount || 0), 0).toLocaleString('en-IN') || (stats?.totalRevenueInr || 0).toLocaleString('en-IN')}
                   </p>
                   <p className="text-[10px] text-emerald-400 mt-1">Direct bank credit • Zero gateway fees</p>
                 </div>
@@ -1944,7 +1984,7 @@ export default function AdminPortalClient({
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Active Enrolled Students</span>
                   <p className="text-2xl font-black text-purple-300 mt-1">
-                    {orderCounts.APPROVED || enrollments.filter(e => e.paymentAmount > 0).length}
+                    {orderCounts.APPROVED || enrollments.filter(e => ((e.amountPaid ?? e.paymentAmount ?? 0) > 0)).length}
                   </p>
                   <p className="text-[10px] text-slate-400 mt-1">Unlocked in PostgreSQL database</p>
                 </div>

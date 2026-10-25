@@ -56,8 +56,8 @@ describe('ADMIN AND WEBSITE ARE ONE SYSTEM — Comprehensive Specification', () 
       assert.ok(typeof stats.certificatesIssued === 'number', 'certificatesIssued must be a number');
       
       // USD metrics must NOT exist in the unified admin stats interface
-      assert.strictEqual((stats as Record<string, unknown>).totalRevenueUsd, undefined, 'totalRevenueUsd must be eliminated');
-      assert.strictEqual((stats as Record<string, unknown>).priceUsd, undefined, 'priceUsd must be eliminated');
+      assert.strictEqual((stats as unknown as Record<string, unknown>).totalRevenueUsd, undefined, 'totalRevenueUsd must be eliminated');
+      assert.strictEqual((stats as unknown as Record<string, unknown>).priceUsd, undefined, 'priceUsd must be eliminated');
     });
 
     it('exam pass rate is either null (when 0 attempts) or a realistic percentage between 0 and 100', async () => {

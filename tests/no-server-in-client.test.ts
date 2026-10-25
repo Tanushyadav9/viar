@@ -111,7 +111,7 @@ test('Architectural Boundary: Client components must NEVER import server-only mo
   for (const clientFile of clientComponentFiles) {
     const visited = new Set<string>();
 
-    function trace(currentFile: string, currentChain: string[]) {
+    const trace = (currentFile: string, currentChain: string[]) => {
       if (visited.has(currentFile)) return;
       visited.add(currentFile);
 

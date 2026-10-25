@@ -839,7 +839,7 @@ export default function InstructorStudentsRosterPage() {
                         {/* Tuition Paid */}
                         <td className="py-4 px-6">
                           <span className="font-bold text-white block">
-                            `₹${enr.amountPaid.toLocaleString('en-IN')}`
+                            ₹{(enr.amountPaid ?? 0).toLocaleString('en-IN')}
                           </span>
                           <span className="text-[10px] text-emerald-400 uppercase font-semibold">
                             {enr.paymentStatus}

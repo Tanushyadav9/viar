@@ -9,7 +9,7 @@ export default function GlobalNotFound() {
 
   return (
     <div className="min-h-[75vh] cosmic-bg flex items-center justify-center px-4 py-16 text-slate-100">
-      <div className="w-full max-w-2xl bg-slate-900/90 border border-amber-500/30 rounded-2xl p-6 sm:p-10 shadow-2xl backdrop-blur-md text-center">
+      <div className="w-full max-w-2xl bg-white dark:bg-slate-900/95 border border-slate-200 dark:border-amber-500/30 rounded-2xl p-6 sm:p-10 shadow-2xl backdrop-blur-md text-center text-slate-900 dark:text-slate-100">
         {/* Icon */}
         <div className="mx-auto w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-6">
           <Compass className="w-8 h-8 text-amber-400" />
@@ -21,17 +21,17 @@ export default function GlobalNotFound() {
           <span>पृष्ठ नहीं मिला</span>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mb-2">
           Page Not Found
         </h1>
         <p className="text-amber-300 font-medium text-sm sm:text-base mb-4">
           पृष्ठ नहीं मिला — यह पता मौजूद नहीं है
         </p>
 
-        <p className="text-slate-300 text-sm leading-relaxed mb-3">
+        <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed mb-3">
           The page or resource you are looking for doesn&apos;t exist, may have moved, or is temporarily unavailable.
         </p>
-        <p className="text-slate-400 text-xs leading-relaxed mb-8">
+        <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed mb-8">
           आपके द्वारा अनुरोधित पृष्ठ या संसाधन उपलब्ध नहीं है अथवा स्थानांतरित कर दिया गया है।
         </p>
 
@@ -47,7 +47,7 @@ export default function GlobalNotFound() {
 
           <Link
             href="/courses"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-colors"
           >
             <BookOpen className="w-4 h-4 text-amber-400" />
             <span>Browse Courses / पाठ्यक्रम देखें</span>
@@ -65,11 +65,11 @@ export default function GlobalNotFound() {
         </div>
 
         {/* Contact info */}
-        <div className="border-t border-slate-800 pt-6 mt-6">
+        <div className="border-t border-slate-200 dark:border-slate-800 pt-6 mt-6">
           <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-3">
             Institute Support Desk / संस्थान सहायता
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm text-slate-300">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
             <a
               href="tel:+919311215564"
               className="inline-flex items-center gap-2 hover:text-amber-400 transition-colors"
@@ -78,11 +78,11 @@ export default function GlobalNotFound() {
               <span>+91 93112 15564</span>
             </a>
             <a
-              href="mailto:aapkaastro1606@gmail.com"
+              href="mailto:admissions@viar.in"
               className="inline-flex items-center gap-2 hover:text-amber-400 transition-colors"
             >
               <Mail className="w-4 h-4 text-amber-400" />
-              <span>aapkaastro1606@gmail.com</span>
+              <span>admissions@viar.in</span>
             </a>
           </div>
         </div>

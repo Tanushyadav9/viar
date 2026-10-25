@@ -12,48 +12,49 @@ interface ErrorProps {
 
 export default function RootError({ error, reset }: ErrorProps) {
   useEffect(() => {
-    // Automatically report runtime error to the server endpoint
     logClientError(error, { segment: 'app/error' });
   }, [error]);
 
   const whatsappMessage = encodeURIComponent(
-    `Namaste VIAR Team, I encountered an issue on viar.in: ${error?.message || 'Unexpected page error'}${
+    `Namaste VIAR Support, I encountered an issue on viar.in: ${error?.message || 'Unexpected page error'}${
       error?.digest ? ` (Error ID: ${error.digest})` : ''
     }`
   );
 
   return (
-    <div className="min-h-[80vh] cosmic-bg flex items-center justify-center px-4 py-16 text-slate-100">
-      <div className="w-full max-w-2xl bg-slate-900/90 border border-amber-500/30 rounded-2xl p-6 sm:p-10 shadow-2xl backdrop-blur-md text-center">
+    <div className="min-h-[85vh] cosmic-bg bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-4 py-16 text-slate-900 dark:text-slate-100 transition-colors">
+      <div className="w-full max-w-2xl bg-white dark:bg-slate-900/95 border-2 border-amber-500/30 dark:border-amber-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-md text-center">
         {/* Warning Icon Badge */}
-        <div className="mx-auto w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-6">
-          <AlertTriangle className="w-8 h-8 text-amber-400" />
+        <div className="mx-auto w-16 h-16 rounded-full bg-amber-500/15 border border-amber-500/40 flex items-center justify-center mb-6">
+          <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400" />
         </div>
 
         {/* Calm Bilingual Notice */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs font-bold uppercase tracking-wider mb-4">
           <span>System Notice</span>
           <span>•</span>
           <span>सूचना</span>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mb-2">
           Something Went Wrong
         </h1>
-        <p className="text-amber-300 font-medium text-sm sm:text-base mb-4">
+        <p className="text-amber-700 dark:text-amber-300 font-semibold text-sm sm:text-base mb-4">
           कुछ गलत हो गया — पृष्ठ लोड नहीं हो सका
         </p>
 
-        <p className="text-slate-300 text-sm leading-relaxed mb-3">
-          We apologize for the inconvenience. Our technical engineering team has been automatically notified and is looking into it. Please try reloading or reach out to our team directly.
+        {/* Honest, Helpful Explanation */}
+        <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed mb-3 font-medium">
+          Please try reloading the page, or contact us directly on WhatsApp (+91 93112 15564) if the issue persists.
         </p>
-        <p className="text-slate-400 text-xs leading-relaxed mb-8">
-          असुविधा के लिए खेद है। हमारी तकनीकी टीम को स्वचालित रूप से सूचित कर दिया गया है। आप पृष्ठ को पुनः लोड करने का प्रयास कर सकते हैं या हमसे संपर्क कर सकते हैं।
+        <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed mb-8">
+          कृपया पृष्ठ को पुनः लोड करने का प्रयास करें, या यदि समस्या बनी रहती है तो सीधे व्हाट्सएप (+91 93112 15564) पर हमसे संपर्क करें।
         </p>
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-8">
           <button
+            type="button"
             onClick={() => reset()}
             className="gold-button inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold shadow-lg shadow-amber-500/20 cursor-pointer"
           >
@@ -73,44 +74,44 @@ export default function RootError({ error, reset }: ErrorProps) {
 
           <Link
             href="/courses"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-colors"
           >
-            <BookOpen className="w-4 h-4 text-amber-400" />
+            <BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             <span>All Courses</span>
           </Link>
 
           <Link
             href="/"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-colors"
           >
-            <Home className="w-4 h-4 text-slate-400" />
+            <Home className="w-4 h-4 text-slate-600 dark:text-slate-400" />
             <span>Home</span>
           </Link>
         </div>
 
-        {/* Direct Contact Details */}
-        <div className="border-t border-slate-800 pt-6 mt-6">
-          <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-3">
+        {/* Direct Contact Details with Official Public Inquiry Address */}
+        <div className="border-t border-slate-200 dark:border-slate-800 pt-6 mt-6">
+          <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold mb-3">
             Direct Academic & Technical Assistance / सीधा संपर्क
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm text-slate-300">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium">
             <a
               href="tel:+919311215564"
-              className="inline-flex items-center gap-2 hover:text-amber-400 transition-colors"
+              className="inline-flex items-center gap-2 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
             >
-              <Phone className="w-4 h-4 text-amber-400" />
+              <Phone className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               <span>+91 93112 15564</span>
             </a>
             <a
-              href="mailto:aapkaastro1606@gmail.com"
-              className="inline-flex items-center gap-2 hover:text-amber-400 transition-colors"
+              href="mailto:admissions@viar.in"
+              className="inline-flex items-center gap-2 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
             >
-              <Mail className="w-4 h-4 text-amber-400" />
-              <span>aapkaastro1606@gmail.com</span>
+              <Mail className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span>admissions@viar.in</span>
             </a>
           </div>
           {error?.digest && (
-            <p className="text-[10px] text-slate-500 font-mono mt-4">
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono mt-4">
               Error Digest: {error.digest}
             </p>
           )}
