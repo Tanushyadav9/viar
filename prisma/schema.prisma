@@ -114,6 +114,10 @@ model User {
   orders           Order[]
   staffPermissions StaffPermission[]
   oneOnOneSessions OneOnOneSession[]
+  studentSessionsAsStudent StudentSession[] @relation("StudentSessionsAsStudent")
+  studentSessionsAsCreator StudentSession[] @relation("StudentSessionsAsCreator")
+  sessionRequests          SessionRequest[]
+  sessionAuditLogs         SessionHistoryLog[]
 
   @@index([role])
   @@index([isOwner])
@@ -174,6 +178,12 @@ model Course {
   orders             Order[]
   invitations        CourseInvitation[]
   oneOnOneSessions   OneOnOneSession[]
+  studentSessions    StudentSession[]
+  sessionRequests    SessionRequest[]
+
+  // Optional 1-on-1 personal mentorship settings (empty by default, shown only when Owner sets them)
+  sessionsIncludedPerStudent Int?               @map("sessions_included_per_student")
+  maximumActiveStudents      Int?               @map("maximum_active_students")
 
   @@index([slug])
   @@index([status])
@@ -200,7 +210,8 @@ model Module {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   // Relations
-  lessons     Lesson[]
+  lessons         Lesson[]
+  studentSessions StudentSession[]
 
   @@index([courseId])
   @@index([order])
@@ -249,6 +260,7 @@ model Lesson {
   // Relations
   quizzes           Quiz[]
   progress          LessonProgress[]
+  studentSessions   StudentSession[]
 
   @@index([moduleId])
   @@index([order])
@@ -360,6 +372,142 @@ model OneOnOneSession {
 }
 
 // ------------------------------------------------------------------------------
+// 4C. STUDENT SESSIONS (1-on-1 Personal Mentorship Classes)
+// ------------------------------------------------------------------------------
+
+model StudentSession {
+  id              String            @id @default(cuid())
+  enrollmentId    String            @map("enrollment_id")
+  enrollment      Enrollment        @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  studentId       String            @map("student_id")
+  student         User              @relation("StudentSessionsAsStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  courseId        String            @map("course_id")
+  course          Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  moduleId        String?           @map("module_id")
+  module          Module?           @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  lessonId        String?           @map("lesson_id")
+  lesson          Lesson?           @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  
+  title           String
+  startTime       DateTime          @map("start_time") // Stored in UTC
+  duration        Int               @default(60) // Duration in minutes
+  meetingLink     String?           @map("meeting_link") // Google Meet, Zoom, or "WhatsApp call"
+  meetingPlatform String            @default("GOOGLE_MEET") @map("meeting_platform") // GOOGLE_MEET, ZOOM, WHATSAPP_CALL, CUSTOM
+  status          String            @default("SCHEDULED") // SCHEDULED, COMPLETED, MISSED, CANCELLED, RESCHEDULE_REQUESTED
+  
+  privateNotes    String?           @db.Text @map("private_notes") // Private notes strictly for the Owner
+  sharedNotes     String?           @db.Text @map("shared_notes")  // Shared notes the student can see
+  homework        String?           @db.Text @map("homework")      // Homework the student can see
+  recordingUrl    String?           @map("recording_url")         // Optional recording link
+  
+  createdByUserId String            @map("created_by_user_id")
+  createdByUser   User              @relation("StudentSessionsAsCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  sessionRequests SessionRequest[]
+  historyLogs     SessionHistoryLog[]
+
+  @@index([enrollmentId])
+  @@index([studentId])
+  @@index([courseId])
+  @@index([startTime])
+  @@index([status])
+  @@map("student_sessions")
+}
+
+// ------------------------------------------------------------------------------
+// 4D. SESSION REQUESTS (Student Session / Reschedule Requests)
+// ------------------------------------------------------------------------------
+
+model SessionRequest {
+  id                 String          @id @default(cuid())
+  enrollmentId       String          @map("enrollment_id")
+  enrollment         Enrollment      @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  studentId          String          @map("student_id")
+  student            User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId           String?         @map("course_id")
+  course             Course?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  studentSessionId   String?         @map("student_session_id")
+  studentSession     StudentSession? @relation(fields: [studentSessionId], references: [id], onDelete: SetNull)
+  
+  requestType        String          @default("INITIAL") @map("request_type") // INITIAL | RESCHEDULE
+  message            String?         @db.Text
+  preferredWindows   Json            @map("preferred_windows") // Array of 2-3 preferred time windows
+  rescheduleReason   String?         @db.Text @map("reschedule_reason")
+  status             String          @default("PENDING") // PENDING | ACCEPTED | DECLINED | CANCELLED
+  resolvedAt         DateTime?       @map("resolved_at")
+  resolvedByUserId   String?         @map("resolved_by_user_id")
+
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  @@index([enrollmentId])
+  @@index([studentId])
+  @@index([studentSessionId])
+  @@index([status])
+  @@map("session_requests")
+}
+
+// ------------------------------------------------------------------------------
+// 4E. OWNER WORKING HOURS & BLOCKED DATES (Asia/Kolkata)
+// ------------------------------------------------------------------------------
+
+model OwnerWorkingHours {
+  id                  String   @id @default(cuid())
+  dayOfWeek           Int      @map("day_of_week") // 0 = Sunday, 1 = Monday ... 6 = Saturday
+  startTime           String   @map("start_time") // e.g. "10:00" in Asia/Kolkata
+  endTime             String   @map("end_time")   // e.g. "19:00" in Asia/Kolkata
+  timezone            String   @default("Asia/Kolkata")
+  slotDurationMinutes Int      @default(60) @map("slot_duration_minutes")
+  isEnabled           Boolean  @default(true) @map("is_enabled")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@unique([dayOfWeek])
+  @@map("owner_working_hours")
+}
+
+model OwnerBlockedDate {
+  id          String   @id @default(cuid())
+  blockedDate DateTime @map("blocked_date")
+  reason      String?  @db.Text
+  isFullDay   Boolean  @default(true) @map("is_full_day")
+  startTime   String?  @map("start_time")
+  endTime     String?  @map("end_time")
+  timezone    String   @default("Asia/Kolkata")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([blockedDate])
+  @@map("owner_blocked_dates")
+}
+
+// ------------------------------------------------------------------------------
+// 4F. SESSION HISTORY LOG (Audit Trail)
+// ------------------------------------------------------------------------------
+
+model SessionHistoryLog {
+  id             String         @id @default(cuid())
+  sessionId      String         @map("session_id")
+  session        StudentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  action         String         // CREATED, RESCHEDULED, COMPLETED, MISSED, CANCELLED, NOTES_UPDATED, REQUEST_ACCEPTED
+  actorUserId    String?        @map("actor_user_id")
+  actorUser      User?          @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  previousStatus String?        @map("previous_status")
+  newStatus      String?        @map("new_status")
+  notes          String?        @db.Text
+  changeSummary  Json?          @map("change_summary")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  @@index([sessionId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("session_history_logs")
+}
+
+// ------------------------------------------------------------------------------
 // 5. ENROLLMENT (Never cascade deleted)
 // ------------------------------------------------------------------------------
 
@@ -380,6 +528,8 @@ model Enrollment {
   status           String        @default("ACTIVE") // ACTIVE | ARCHIVED | REVOKED | REFUNDED
   discountAmount   Int?          @default(0) @map("discount_amount")
   order            Order?
+  studentSessions  StudentSession[]
+  sessionRequests  SessionRequest[]
 
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
