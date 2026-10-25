@@ -23,6 +23,8 @@ jobs:
       NEXT_PUBLIC_APP_URL: 'http://localhost:3005'
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_dGVzdC1jbGVyay1wdWJsaXNoYWJsZS1rZXk'
       CLERK_SECRET_KEY: 'sk_test_mock_clerk_secret_key_for_ci_pipeline'
+      OWNER_EMAIL: 'aapkaastro1606@gmail.com'
+      SUPERADMIN_EMAILS: 'aapkaastro1606@gmail.com'
       DATABASE_URL: 'postgresql://neondb_owner:npg_GU0YIPlXe3ia@ep-orange-poetry-b4cupwem.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require'
       DIRECT_URL: 'postgresql://neondb_owner:npg_GU0YIPlXe3ia@ep-orange-poetry-b4cupwem.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require'
 
