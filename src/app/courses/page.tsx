@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Sparkles, Clock, CheckCircle2, ArrowRight, BookOpen, Bell, Mail, X } from 'lucide-react';
-import { Course } from '@/lib/types';
+import { CoursePublicDTO } from '@/lib/courses/dto';
+
 import { useLanguage } from '@/components/LanguageContext';
 
 const COURSE_HINDI_MAP: Record<string, {
@@ -28,9 +29,9 @@ const COURSE_HINDI_MAP: Record<string, {
 
 export default function CoursesPage() {
   const { isHi } = useLanguage();
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<CoursePublicDTO[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<string>('All');
-  const [notifyCourse, setNotifyCourse] = useState<Course | null>(null);
+  const [notifyCourse, setNotifyCourse] = useState<CoursePublicDTO | null>(null);
   const [notifyEmail, setNotifyEmail] = useState('');
   const [notifySuccess, setNotifySuccess] = useState(false);
 

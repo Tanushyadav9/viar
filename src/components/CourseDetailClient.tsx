@@ -16,7 +16,8 @@ import {
   Lock,
   MessageCircle,
 } from 'lucide-react';
-import { Course, Cohort, ContentItem } from '@/lib/types';
+import { Cohort, ContentItem } from '@/lib/types';
+import { CoursePublicDTO } from '@/lib/courses/dto';
 import { useLanguage } from '@/components/LanguageContext';
 import { BUILTIN_CONTENT_DEFAULTS } from '@/lib/content/defaultContent';
 
@@ -26,7 +27,7 @@ interface CourseDetailClientProps {
 
 export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
   const { isHi } = useLanguage();
-  const [course, setCourse] = useState<Course | null>(null);
+  const [course, setCourse] = useState<CoursePublicDTO | null>(null);
   const [cohort, setCohort] = useState<Cohort | null>(null);
   const [openModule, setOpenModule] = useState<number | null>(1);
   const [notifyEmail, setNotifyEmail] = useState('');
@@ -36,9 +37,9 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
 
   const publishedLessonsCount = React.useMemo(() => {
     if (!course) return 0;
-    if (course.modules && course.modules.length > 0) {
+    if (Array.isArray(course.modules) && course.modules.length > 0) {
       const total = course.modules.reduce((acc, m) => {
-        if (m.lessons && m.lessons.length > 0) {
+        if (Array.isArray(m.lessons) && m.lessons.length > 0) {
           return acc + m.lessons.filter((l) => l.isPublished !== false).length;
         }
         return acc + (m.isPublished !== false ? 1 : 0);
@@ -54,7 +55,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
       .then((data) => {
         if (data.success && data.course) {
           setCourse(data.course);
-          if (data.course.cohorts && data.course.cohorts.length > 0) {
+          if (Array.isArray(data.course.cohorts) && data.course.cohorts.length > 0) {
             setCohort(data.course.cohorts[0]);
           }
         } else {
@@ -109,13 +110,36 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
   if (notFound) {
     return (
       <div className="min-h-screen cosmic-bg flex flex-col items-center justify-center p-4 text-center">
-        <h1 className="text-3xl font-black text-white mb-2">Course Not Found</h1>
-        <p className="text-slate-400 text-sm max-w-md mb-6">
-          The course you are looking for does not exist or has been moved in the Vihangam Institute catalog.
-        </p>
-        <Link href="/courses" className="gold-button px-6 py-3 rounded-xl text-xs font-bold inline-block">
-          Explore All Courses
-        </Link>
+        <div className="w-full max-w-xl bg-slate-900/90 border border-amber-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-md">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-4">
+            <span>404 Notice</span>
+            <span>•</span>
+            <span>पाठ्यक्रम नहीं मिला</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">Course Not Found</h1>
+          <p className="text-amber-300 font-medium text-sm mb-3">
+            यह पाठ्यक्रम उपलब्ध नहीं है अथवा इसका पता बदल गया है
+          </p>
+          <p className="text-slate-400 text-xs sm:text-sm max-w-md mx-auto mb-6">
+            The course you are looking for does not exist or has been moved in the Vihangam Institute catalog.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
+            <Link href="/courses" className="gold-button px-6 py-3 rounded-xl text-xs font-bold inline-block">
+              Explore All Courses / सभी पाठ्यक्रम
+            </Link>
+            <a
+              href="https://wa.me/919311215564?text=Namaste%20VIAR%20Admissions%2C%20I%20was%20looking%20for%20a%20course%20on%20viar.in%20that%20was%20not%20found."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+            >
+              WhatsApp Admissions
+            </a>
+          </div>
+          <div className="border-t border-slate-800 pt-4 text-xs text-slate-400">
+            Admissions Desk: <a href="tel:+919311215564" className="text-amber-400 hover:underline">+91 93112 15564</a> • <a href="mailto:aapkaastro1606@gmail.com" className="text-amber-400 hover:underline">aapkaastro1606@gmail.com</a>
+          </div>
+        </div>
       </div>
     );
   }
@@ -142,8 +166,8 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
     avatarUrl: '/images/Acharya_Niraj_Kumar_Desk.jpg',
     aapkaAstroUrl: 'https://aapkaastro.com',
   };
-  const discountPercent = origPriceNum > priceNum
-    ? Math.round(((course.originalPriceInr - course.priceInr) / course.originalPriceInr) * 100)
+  const discountPercent = origPriceNum > priceNum && origPriceNum > 0
+    ? Math.round(((origPriceNum - priceNum) / origPriceNum) * 100)
     : 54;
 
   return (
@@ -518,7 +542,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
           </div>
 
           <div className="space-y-4 max-w-4xl mx-auto">
-            {course.modules.map((module) => {
+            {(Array.isArray(course.modules) ? course.modules : []).map((module) => {
               const modNum = module.moduleNumber || module.number || 1;
               const isOpen = openModule === modNum;
 
@@ -726,7 +750,7 @@ export default function CourseDetailClient({ slug }: CourseDetailClientProps) {
           <h3 className="text-2xl font-bold text-white text-center mb-6">
             {isHi ? 'अक्सर पूछे जाने वाले प्रश्न' : 'Frequently Asked Questions'}
           </h3>
-          {course.faqs.map((faq, idx) => (
+          {(Array.isArray(course.faqs) ? course.faqs : []).map((faq, idx) => (
             <div key={idx} className="cosmic-card p-5 rounded-2xl border border-white/5 space-y-2">
               <h4 className="text-sm font-bold text-white">{faq.question}</h4>
               <p className="text-xs text-slate-400 leading-relaxed">{faq.answer}</p>

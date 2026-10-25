@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  productionBrowserSourceMaps: true,
   env: {
     OWNER_EMAIL: process.env.OWNER_EMAIL || '',
   },

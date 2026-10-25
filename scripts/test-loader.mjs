@@ -5,6 +5,10 @@ import { fileURLToPath } from 'node:url';
 process.env.NODE_ENV = 'test';
 
 export async function resolve(specifier, context, nextResolve) {
+  if (specifier === 'server-only') {
+    const emptyFile = path.resolve('node_modules/server-only/empty.js').replace(/\\/g, '/');
+    return nextResolve(new URL('file:///' + emptyFile).href, context);
+  }
   if (specifier === 'next/server') {
     return nextResolve('next/server.js', context);
   }

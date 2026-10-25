@@ -80,7 +80,7 @@ export default function FinalQuizPage() {
           const courseData = await courseRes.json();
           if (courseData.success && courseData.course) {
             const crs = courseData.course;
-            if (crs.cohorts && crs.cohorts.length > 0) {
+            if (Array.isArray(crs.cohorts) && crs.cohorts.length > 0) {
               if (!isCancelled) setCohort(crs.cohorts[0]);
             } else {
               if (!isCancelled) {

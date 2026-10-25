@@ -21,7 +21,7 @@ import {
   Loader2,
   RefreshCw,
 } from 'lucide-react';
-import { FormattedContent } from '@/lib/content/contentService';
+import type { FormattedContent } from '@/lib/content/contentTypes';
 import { renderSafeContent } from '@/lib/content/sanitizer';
 import { ContentStatus } from '@/lib/types';
 import { BUILTIN_CONTENT_DEFAULTS } from '@/lib/content/defaultContent';

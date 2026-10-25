@@ -1,3 +1,4 @@
+import 'server-only';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerAuthUser, isAuthorizedForSection } from './serverAuth';

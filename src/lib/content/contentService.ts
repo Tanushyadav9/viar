@@ -1,23 +1,13 @@
+import 'server-only';
+
 import { prisma } from '../prisma.ts';
 import { BUILTIN_CONTENT_DEFAULTS } from './defaultContent.ts';
 import type { BuiltinContentItem } from './defaultContent.ts';
 import { sanitizeRichText } from './sanitizer.ts';
 import type { ContentStatus } from '../types.ts';
+import type { FormattedContent } from './contentTypes.ts';
 
-export interface FormattedContent {
-  id?: string;
-  collection: string;
-  key: string;
-  titleEn: string;
-  titleHi: string;
-  contentEn: string;
-  contentHi: string;
-  metadata: Record<string, unknown>;
-  status: ContentStatus;
-  sortOrder: number;
-  isCustomized: boolean;
-  updatedAt?: string | Date;
-}
+export type { FormattedContent };
 
 /**
  * Maps database item or fallback item into uniform FormattedContent structure

@@ -1,3 +1,4 @@
+import 'server-only';
 import type { auth as ClerkAuthFn, currentUser as ClerkCurrentUserFn } from '@clerk/nextjs/server';
 import { createRequire } from 'node:module';
 import { redirect } from 'next/navigation.js';

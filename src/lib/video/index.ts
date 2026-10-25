@@ -1,3 +1,4 @@
+import 'server-only';
 import { env } from '@/config/env';
 
 export interface VideoMetadata {

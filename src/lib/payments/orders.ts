@@ -11,6 +11,7 @@
  * - Refund and access revocation audit trail
  */
 
+import 'server-only';
 import { prisma } from '../prisma.ts';
 import { emailService } from '../email/index.ts';
 import { logger } from '../logger.ts';

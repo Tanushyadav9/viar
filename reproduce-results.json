@@ -1,0 +1,294 @@
+[
+  {
+    "name": "1. Logged Out - English",
+    "status": 200,
+    "hasClientException": false,
+    "consoleErrors": [
+      {
+        "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "location": {
+          "url": "http://localhost:3000/api/users/sync",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: the server responded with a status of 400 ()",
+        "location": {
+          "url": "https://clerk.viar.in/v1/client?__clerk_api_version=2025-11-10&_clerk_js_version=5.128.0",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: the server responded with a status of 400 ()",
+        "location": {
+          "url": "https://clerk.viar.in/v1/environment?__clerk_api_version=2025-11-10&_clerk_js_version=5.128.0",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      }
+    ],
+    "pageErrors": [],
+    "networkFailures": [
+      {
+        "url": "http://localhost:3000/?_rsc=kigj2",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://localhost:3000/verify?_rsc=kigj2",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "screenshotPath": "C:\\Users\\TANUSH YADAV\\Desktop\\viar\\public\\screenshots\\reproduce-1__logged_out___english.png"
+  },
+  {
+    "name": "2. Logged Out - Hindi",
+    "status": 200,
+    "hasClientException": false,
+    "consoleErrors": [
+      {
+        "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "location": {
+          "url": "http://localhost:3000/api/users/sync",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: the server responded with a status of 400 ()",
+        "location": {
+          "url": "https://clerk.viar.in/v1/client?__clerk_api_version=2025-11-10&_clerk_js_version=5.128.0",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: the server responded with a status of 400 ()",
+        "location": {
+          "url": "https://clerk.viar.in/v1/environment?__clerk_api_version=2025-11-10&_clerk_js_version=5.128.0",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "location": {
+          "url": "http://localhost:3000/api/courses?slug=what-is-astrology",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "location": {
+          "url": "http://localhost:3000/api/content?collection=popup&key=course_promo_popup",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "location": {
+          "url": "http://localhost:3000/_next/image?url=%2Fimages%2Flogo-icon.png&w=32&q=75",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "location": {
+          "url": "http://localhost:3000/_next/image?url=%2Fimages%2FAcharya_Niraj_Kumar_Solo.jpg&w=96&q=75",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      }
+    ],
+    "pageErrors": [],
+    "networkFailures": [
+      {
+        "url": "http://localhost:3000/contact?_rsc=kigj2",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://localhost:3000/verify?_rsc=kigj2",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://localhost:3000/api/courses?slug=what-is-astrology",
+        "failure": "net::ERR_INSUFFICIENT_RESOURCES"
+      },
+      {
+        "url": "http://localhost:3000/api/content?collection=popup&key=course_promo_popup",
+        "failure": "net::ERR_INSUFFICIENT_RESOURCES"
+      },
+      {
+        "url": "http://localhost:3000/_next/image?url=%2Fimages%2Flogo-icon.png&w=32&q=75",
+        "failure": "net::ERR_INSUFFICIENT_RESOURCES"
+      },
+      {
+        "url": "http://localhost:3000/_next/image?url=%2Fimages%2FAcharya_Niraj_Kumar_Solo.jpg&w=96&q=75",
+        "failure": "net::ERR_INSUFFICIENT_RESOURCES"
+      }
+    ],
+    "screenshotPath": "C:\\Users\\TANUSH YADAV\\Desktop\\viar\\public\\screenshots\\reproduce-2__logged_out___hindi.png"
+  },
+  {
+    "name": "3. Student Persona - English",
+    "status": 200,
+    "hasClientException": false,
+    "consoleErrors": [
+      {
+        "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "location": {
+          "url": "http://localhost:3000/api/users/sync",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: the server responded with a status of 400 ()",
+        "location": {
+          "url": "https://clerk.viar.in/v1/client?__clerk_api_version=2025-11-10&_clerk_js_version=5.128.0",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: the server responded with a status of 400 ()",
+        "location": {
+          "url": "https://clerk.viar.in/v1/environment?__clerk_api_version=2025-11-10&_clerk_js_version=5.128.0",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "location": {
+          "url": "http://localhost:3000/api/courses?slug=what-is-astrology",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "location": {
+          "url": "http://localhost:3000/api/content?collection=popup&key=course_promo_popup",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      }
+    ],
+    "pageErrors": [],
+    "networkFailures": [
+      {
+        "url": "http://localhost:3000/api/courses?slug=what-is-astrology",
+        "failure": "net::ERR_INSUFFICIENT_RESOURCES"
+      },
+      {
+        "url": "http://localhost:3000/api/content?collection=popup&key=course_promo_popup",
+        "failure": "net::ERR_INSUFFICIENT_RESOURCES"
+      }
+    ],
+    "screenshotPath": "C:\\Users\\TANUSH YADAV\\Desktop\\viar\\public\\screenshots\\reproduce-3__student_persona___english.png"
+  },
+  {
+    "name": "4. Student Persona - Hindi",
+    "status": 200,
+    "hasClientException": false,
+    "consoleErrors": [
+      {
+        "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "location": {
+          "url": "http://localhost:3000/api/users/sync",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: the server responded with a status of 400 ()",
+        "location": {
+          "url": "https://clerk.viar.in/v1/client?__clerk_api_version=2025-11-10&_clerk_js_version=5.128.0",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: the server responded with a status of 400 ()",
+        "location": {
+          "url": "https://clerk.viar.in/v1/environment?__clerk_api_version=2025-11-10&_clerk_js_version=5.128.0",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "location": {
+          "url": "http://localhost:3000/api/courses?slug=what-is-astrology",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      },
+      {
+        "text": "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "location": {
+          "url": "http://localhost:3000/api/content?collection=popup&key=course_promo_popup",
+          "line": 0,
+          "column": 0,
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      }
+    ],
+    "pageErrors": [],
+    "networkFailures": [
+      {
+        "url": "http://localhost:3000/api/courses?slug=what-is-astrology",
+        "failure": "net::ERR_INSUFFICIENT_RESOURCES"
+      },
+      {
+        "url": "http://localhost:3000/api/content?collection=popup&key=course_promo_popup",
+        "failure": "net::ERR_INSUFFICIENT_RESOURCES"
+      }
+    ],
+    "screenshotPath": "C:\\Users\\TANUSH YADAV\\Desktop\\viar\\public\\screenshots\\reproduce-4__student_persona___hindi.png"
+  }
+]

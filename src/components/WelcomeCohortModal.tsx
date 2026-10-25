@@ -119,7 +119,7 @@ export default function WelcomeCohortModal({
       ViarStore.getCourseBySlug(flagshipSlug) ||
       ViarStore.getCourseBySlug('what-is-astrology') ||
       ViarStore.getCourses()[0];
-    const flagshipCohort = flagship ? ViarStore.getCohorts(flagship.id)[0] : null;
+    const flagshipCohort = flagship ? (Array.isArray(ViarStore.getCohorts(flagship.id)) ? ViarStore.getCohorts(flagship.id)[0] : null) : null;
 
     if (flagship) {
       setCourse(flagship);
@@ -191,7 +191,7 @@ export default function WelcomeCohortModal({
 
   if (!isOpen || !course) return null;
 
-  const targetCohort = cohort || ViarStore.getCohorts()[0];
+  const targetCohort = cohort || (Array.isArray(ViarStore.getCohorts()) ? ViarStore.getCohorts()[0] : null);
   const priceFormatted = `₹${(course.priceInr || 5100).toLocaleString('en-IN')}`;
   const originalPriceFormatted = `₹${(course.originalPriceInr || 11000).toLocaleString('en-IN')}`;
 

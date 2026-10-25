@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import type { Course, CourseModule } from '@/lib/types';
+import { toCoursePublicDTO } from '@/lib/courses/dto';
 import CourseDetailClient from '@/components/CourseDetailClient';
 
 export const revalidate = 60;
@@ -22,36 +22,7 @@ async function getCourse(slug: string) {
       include: { cohorts: true },
     });
     if (dbCourse) {
-      return {
-        id: dbCourse.id,
-        slug: dbCourse.slug,
-        title: dbCourse.title,
-        tagline: dbCourse.description?.slice(0, 100) || 'Practical Vedic astrology masterclass.',
-        subtitle: `${dbCourse.totalClasses} Video Modules • Self-Paced • Graded Quiz & Certificate`,
-        description: dbCourse.description,
-        level: (dbCourse.category as Course['level']) || 'Beginner',
-        durationWeeks: dbCourse.durationWeeks,
-        totalClasses: dbCourse.totalClasses,
-        classesPerWeek: dbCourse.classesPerWeek,
-        priceInr: dbCourse.priceInr,
-        originalPriceInr: dbCourse.originalPriceInr,
-        isPublished: dbCourse.status === 'PUBLISHED',
-        isComingSoon: dbCourse.status === 'COMING_SOON',
-        badge: 'Masterclass',
-        instructor: {
-          name: dbCourse.instructorName || 'Acharya Niraj Kumar',
-          title: 'Founder, Aapka Astro & Master Astrologer',
-          bio: dbCourse.instructorBio || 'Acharya Niraj Kumar brings together deep traditional Vedic learning rooted in Baidyanath Dham (Deoghar) and corporate leadership experience. Over 20 years of practice, trusted by students and clients across India and abroad.',
-          experienceYears: 20,
-          avatarUrl: '/images/Acharya_Niraj_Kumar_Headshot.jpg',
-          aapkaAstroUrl: 'https://aapkaastro.com',
-        },
-        highlights: ['On-Demand HD Video Modules', 'Verifiable Certificate'],
-        prerequisites: ['Open to beginners'],
-        whatYouWillLearn: ['Foundational celestial mechanics', 'Practical chart interpretation'],
-        modules: Array.isArray(dbCourse.syllabusJson) ? (dbCourse.syllabusJson as unknown as CourseModule[]) : [],
-        faqs: [],
-      };
+      return toCoursePublicDTO(dbCourse);
     }
   } catch (err) {
     console.warn('DB lookup failed for course metadata:', err);

@@ -1,28 +1,16 @@
+import 'server-only';
 import { prisma } from '../prisma.ts';
+import type { MediaAssetItem } from './mediaTypes.ts';
+import {
+  MAX_IMAGE_SIZE_BYTES,
+  ALLOWED_MIME_TYPES,
+  SEED_STATIC_ASSETS,
+} from './mediaTypes.ts';
 
-export interface MediaAssetItem {
-  id: string;
-  filename: string;
-  url: string;
-  altTextEn: string;
-  altTextHi?: string | null;
-  mimeType: string;
-  sizeBytes: number;
-  width?: number | null;
-  height?: number | null;
-  createdById?: string | null;
-  createdAt: string | Date;
-  updatedAt: string | Date;
-  inUse?: boolean;
-  locations?: string[];
-}
+export type { MediaAssetItem };
+export { MAX_IMAGE_SIZE_BYTES, ALLOWED_MIME_TYPES, SEED_STATIC_ASSETS };
 
-export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB strict limit
-export const ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-]);
+
 
 /**
  * Checks whether Cloudflare R2 object storage is fully configured.
@@ -107,63 +95,6 @@ export async function checkMediaAssetUsage(urlOrFilename: string): Promise<{ inU
 /**
  * Initial static gallery assets seeded into the Media Library for easy selection
  */
-export const SEED_STATIC_ASSETS: MediaAssetItem[] = [
-  {
-    id: 'media-acharya-headshot',
-    filename: 'Acharya_Niraj_Kumar_Headshot.jpg',
-    url: '/images/Acharya_Niraj_Kumar_Headshot.jpg',
-    altTextEn: 'Acharya Niraj Kumar Master Astrologer Headshot',
-    altTextHi: 'आचार्य नीरज कुमार मुख्य ज्योतिषी चित्र',
-    mimeType: 'image/jpeg',
-    sizeBytes: 245000,
-    createdAt: new Date('2026-01-01'),
-    updatedAt: new Date('2026-01-01'),
-  },
-  {
-    id: 'media-acharya-solo',
-    filename: 'Acharya_Niraj_Kumar_Solo.jpg',
-    url: '/images/Acharya_Niraj_Kumar_Solo.jpg',
-    altTextEn: 'Acharya Niraj Kumar Vedic Jyotish Consultant',
-    altTextHi: 'आचार्य नीरज कुमार वैदिक ज्योतिष परामर्शदाता',
-    mimeType: 'image/jpeg',
-    sizeBytes: 310000,
-    createdAt: new Date('2026-01-01'),
-    updatedAt: new Date('2026-01-01'),
-  },
-  {
-    id: 'media-logo-icon',
-    filename: 'logo-icon.png',
-    url: '/images/logo-icon.png',
-    altTextEn: 'VIAR Institute Golden Emblem Logo',
-    altTextHi: 'विहंगम संस्थान स्वर्ण प्रतीक चिन्ह',
-    mimeType: 'image/png',
-    sizeBytes: 45000,
-    createdAt: new Date('2026-01-01'),
-    updatedAt: new Date('2026-01-01'),
-  },
-  {
-    id: 'media-gallery-award',
-    filename: 'Shivjyoti_Best_Astrologer_Award.jpg',
-    url: '/images/gallery/Shivjyoti_Best_Astrologer_Award.jpg',
-    altTextEn: 'Shivjyoti Best Astrologer Felicitation Award',
-    altTextHi: 'शिवज्योति सर्वश्रेष्ठ ज्योतिषी सम्मान पुरस्कार',
-    mimeType: 'image/jpeg',
-    sizeBytes: 380000,
-    createdAt: new Date('2026-01-01'),
-    updatedAt: new Date('2026-01-01'),
-  },
-  {
-    id: 'media-gallery-cert',
-    filename: 'Jyotish_Acharya_Certificate.png',
-    url: '/images/gallery/Jyotish_Acharya_Certificate.png',
-    altTextEn: 'Jyotish Acharya Academic Credential Certificate',
-    altTextHi: 'ज्योतिष आचार्य शैक्षणिक प्रमाणपत्र',
-    mimeType: 'image/png',
-    sizeBytes: 520000,
-    createdAt: new Date('2026-01-01'),
-    updatedAt: new Date('2026-01-01'),
-  },
-];
 
 /**
  * Lists media assets from DB merged with default seed assets.

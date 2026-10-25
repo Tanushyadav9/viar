@@ -2,30 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
+import { toCoursePublicDTO } from '@/lib/courses/dto';
 
 function formatCourseResponse(course: Record<string, unknown> | null) {
   if (!course) return null;
-  return {
-    ...course,
-    instructor: (course.instructor as Record<string, unknown>) || {
-      name: (course.instructorName as string) || 'Acharya Niraj Kumar',
-      title: 'Founder, Aapka Astro & Master Astrologer',
-      bio:
-        (course.instructorBio as string) ||
-        'Acharya Niraj Kumar brings together deep traditional Vedic learning rooted in Baidyanath Dham (Deoghar) and corporate leadership experience. Over 20 years of practice, trusted by students and clients across India and abroad.',
-      experienceYears: 20,
-      avatarUrl: '/images/Acharya_Niraj_Kumar_Desk.jpg',
-      aapkaAstroUrl: 'https://aapkaastro.com',
-    },
-    highlights: (course.highlights as string[]) || [
-      '23 On-Demand HD Video Lessons + 2 Bonus Workshops',
-      '100% Self-Paced Permanent Lifetime Access',
-      'Official Verifiable VIAR Certificate of Completion',
-    ],
-    priceInr: (course.priceInr as number) ?? 5100,
-    originalPriceInr: (course.originalPriceInr as number) ?? 11000,
-    modules: Array.isArray(course.syllabusJson) ? course.syllabusJson : (course.modules || []),
-  };
+  return toCoursePublicDTO(course);
 }
 
 export async function GET(req: NextRequest) {

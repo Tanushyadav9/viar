@@ -1,3 +1,4 @@
+import 'server-only';
 import crypto from 'crypto';
 
 const TOKEN_SECRET = process.env.SESSION_SECRET || process.env.JWT_SECRET || 'viar-secure-media-secret-key-2026';

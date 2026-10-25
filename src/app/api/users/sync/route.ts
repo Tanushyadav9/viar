@@ -76,8 +76,8 @@ export async function GET() {
     const auth = await getServerAuthUser();
     if (!auth.isAuthenticated || !auth.userId) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized', user: null },
-        { status: 401 }
+        { success: true, error: null, user: null, isAuthenticated: false },
+        { status: 200 }
       );
     }
 

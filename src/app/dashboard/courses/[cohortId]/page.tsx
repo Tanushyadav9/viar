@@ -104,10 +104,10 @@ export default function CohortClassByClassPage() {
           setCourse(crs);
           setIsEnrolled(Boolean(data.isUserEnrolled));
 
-          if (crs.cohorts && crs.cohorts.length > 0) {
+          if (Array.isArray(crs.cohorts) && crs.cohorts.length > 0) {
             setCohort(crs.cohorts[0]);
           } else {
-            const fallbackCohort = ViarStore.getCohortById(cohortId) || ViarStore.getCohorts()[0];
+            const fallbackCohort = ViarStore.getCohortById(cohortId) || (Array.isArray(ViarStore.getCohorts()) ? ViarStore.getCohorts()[0] : null);
             if (fallbackCohort) setCohort(fallbackCohort);
           }
 

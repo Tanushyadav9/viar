@@ -15,7 +15,7 @@ import {
   RefreshCw,
   Info,
 } from 'lucide-react';
-import { MediaAssetItem, SEED_STATIC_ASSETS } from '@/lib/content/mediaService';
+import { MediaAssetItem, SEED_STATIC_ASSETS } from '@/lib/content/mediaTypes';
 
 interface MediaLibraryProps {
   isOwner: boolean;
