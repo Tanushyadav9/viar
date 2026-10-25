@@ -85,7 +85,7 @@ const COLLECTIONS: CollectionOption[] = [
   {
     id: 'announcements',
     label: '9. Blog & Announcements',
-    description: 'Academy notice board, batch admissions announcements & updates.',
+    description: 'Academy notice board, admissions announcements & updates.',
   },
 ];
 
@@ -1099,7 +1099,7 @@ export default function ContentStudio({
                         type="text"
                         value={String(formMetadata.linkUrl || formMetadata.url || '')}
                         onChange={(e) => setFormMetadata({ ...formMetadata, linkUrl: e.target.value, url: e.target.value })}
-                        placeholder="/checkout/cohort-wia-batch-1"
+                        placeholder="/checkout"
                         className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
                       />
                     </div>

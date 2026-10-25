@@ -507,7 +507,7 @@ export default function CohortClassByClassPage() {
                         <div className="space-y-0.5">
                           <span className="text-xs font-bold text-emerald-300 block">Live Meeting Room Access</span>
                           <span className="text-[10px] text-slate-400">
-                            Meeting links are shareable by nature. Please keep this link confidential to your cohort.
+                            Meeting links are shareable by nature. Please keep this link confidential to your enrolled class.
                           </span>
                         </div>
                         {activeClass.joinUrl ? (
@@ -771,7 +771,7 @@ export default function CohortClassByClassPage() {
                           </span>
                         </h4>
                         <p className="text-[11px] text-slate-400">
-                          Ask questions on Class {activeClass.classNumber} concepts. Acharya Niraj Kumar and cohort peers reply here.
+                          Ask questions on Class {activeClass.classNumber} concepts. Acharya Niraj Kumar and fellow scholars reply here.
                         </p>
                       </div>
                     </div>

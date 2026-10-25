@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!cohort) {
-      return NextResponse.json({ success: false, error: 'No active cohort found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'No active course found' }, { status: 404 });
     }
 
     targetCourse = cohort.course;

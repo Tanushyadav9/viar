@@ -56,7 +56,7 @@ export default function PricingPolicyPage() {
               Transparent One-Time Tuition Model
             </h2>
             <p>
-              Vihangam Institute of Astrology and Research operates on a straightforward, transparent <strong>one-time tuition fee per course/cohort</strong>.
+              Vihangam Institute of Astrology and Research operates on a straightforward, transparent <strong>one-time tuition fee per course</strong>.
             </p>
             <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-200 text-xs space-y-1">
               <div className="font-bold text-white flex items-center gap-2">
@@ -64,7 +64,7 @@ export default function PricingPolicyPage() {
                 <span>Zero Hidden Subscriptions or Auto-Debits</span>
               </div>
               <p className="text-slate-300">
-                We do not enforce recurring monthly membership fees, surprise automated renewals, or hidden technology charges. When you enroll in a cohort, the tuition paid at checkout covers your entire enrollment through graduation.
+                We do not enforce recurring monthly membership fees, surprise automated renewals, or hidden technology charges. When you enroll in a course, the tuition paid at checkout covers your entire enrollment through completion.
               </p>
             </div>
           </section>
@@ -75,7 +75,7 @@ export default function PricingPolicyPage() {
               <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs">2</span>
               What Is Included in Your Tuition
             </h2>
-            <p>Every cohort enrollment includes complete, unrestricted access to:</p>
+            <p>Every course enrollment includes complete, unrestricted access to:</p>
             <ul className="space-y-2 text-xs sm:text-sm text-slate-300">
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
@@ -132,7 +132,7 @@ export default function PricingPolicyPage() {
                 <span>Price Adjustment Policy</span>
               </div>
               <p className="text-slate-400">
-                Any tuition figures or estimated pricing displayed on preview pages prior to batch scheduling are indicative only. Vihangam Institute of Astrology and Research reserves the right to calibrate tuition rates prior to enrollment launch based on expanded session counts, guest masterclasses, and specialized course materials. Once a student completes enrollment at a given rate, their tuition is permanently locked.
+                Any tuition figures or estimated pricing displayed on preview pages prior to enrollment launch are indicative only. Vihangam Institute of Astrology and Research reserves the right to calibrate tuition rates prior to enrollment launch based on expanded session counts, guest masterclasses, and specialized course materials. Once a student completes enrollment at a given rate, their tuition is permanently locked.
               </p>
             </div>
           </section>

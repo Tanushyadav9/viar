@@ -57,7 +57,6 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   'content',
   'media',
   'courses',
-  'cohorts',
   'students',
   'quizzes',
   'analytics',

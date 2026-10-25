@@ -29,7 +29,7 @@ export default function CourseNotFound() {
         </p>
 
         <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed mb-3">
-          The course address you requested could not be located in our current catalog. It may have been archived, renamed, or is scheduled for a future cohort.
+          The course address you requested could not be located in our current catalog. It may have been archived, renamed, or is scheduled for a future launch.
         </p>
         <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed mb-8">
           आपके द्वारा खोजा गया पाठ्यक्रम वर्तमान कैटलॉग में नहीं मिला। यह भविष्य के सत्र के लिए निर्धारित हो सकता है अथवा इसका लिंक परिवर्तित हो गया है।

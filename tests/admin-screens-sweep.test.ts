@@ -33,7 +33,6 @@ test('Admin Screens Sweep & Null-Safety Verification', async (t) => {
     { key: 'content', name: 'Content Studio' },
     { key: 'media', name: 'Media Library' },
     { key: 'courses', name: 'Courses' },
-    { key: 'cohorts', name: 'Schedule' },
     { key: 'students', name: 'Students' },
     { key: 'quizzes', name: 'Quizzes and Certificates' },
     { key: 'analytics', name: 'Analytics' },
@@ -43,7 +42,9 @@ test('Admin Screens Sweep & Null-Safety Verification', async (t) => {
   ];
 
   await t.test('1. All 11 Admin screen keys are accounted for in permissions metadata and route structure', () => {
-    assert.equal(all11Screens.length, 11);
+    assert.equal(all11Screens.length, 10);
+    // Explicitly assert that 'cohorts' is NOT present in ADMIN_SECTIONS
+    assert.ok(!(ADMIN_SECTIONS as readonly string[]).includes('cohorts'), "'cohorts' must be removed from ADMIN_SECTIONS");
     for (const screen of all11Screens) {
       if (['knowledge', 'diagnostics'].includes(screen.key)) {
         const pagePath = path.resolve(process.cwd(), `src/app/admin/${screen.key}/page.tsx`);

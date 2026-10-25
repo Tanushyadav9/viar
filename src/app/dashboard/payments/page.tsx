@@ -268,10 +268,10 @@ export default function StudentPaymentsPage() {
                       <span>•</span>
                       <CreditCard className="w-3.5 h-3.5 text-amber-400" />
                       <span>Direct UPI QR</span>
-                      {ord.cohort?.batchName && (
+                      {ord.course?.title && (
                         <>
                           <span>•</span>
-                          <span className="text-slate-300">{ord.cohort.batchName}</span>
+                          <span className="text-slate-300">{ord.course.title}</span>
                         </>
                       )}
                     </p>

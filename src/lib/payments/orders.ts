@@ -209,7 +209,7 @@ export async function createOrGetActiveOrder(params: {
     const error = new Error('You already have an active enrollment in this course.');
     (error as unknown as { code: string; status: number; redirectUrl: string }).code = 'ALREADY_ENROLLED';
     (error as unknown as { status: number }).status = 409;
-    (error as unknown as { redirectUrl: string }).redirectUrl = `/dashboard/courses/${activeEnrollment?.cohortId || params.cohortId || 'cohort-wia-batch-1'}`;
+    (error as unknown as { redirectUrl: string }).redirectUrl = `/dashboard/courses/${activeEnrollment?.cohortId || params.cohortId || 'what-is-astrology'}`;
     throw error;
   }
 

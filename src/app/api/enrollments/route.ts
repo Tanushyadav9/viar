@@ -257,7 +257,7 @@ export async function POST(req: NextRequest) {
 
       if (!cohort) {
         return NextResponse.json(
-          { success: false, error: 'No active cohort found for enrollment' },
+          { success: false, error: 'No active course found for enrollment' },
           { status: 404 }
         );
       }

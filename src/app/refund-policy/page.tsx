@@ -132,7 +132,7 @@ export default function RefundPolicyPage() {
             <p>
               {isHi
                 ? '7 दिन बीत जाने अथवा 3 से अधिक मॉड्यूल देखने/अध्ययन सामग्री डाउनलोड कर लेने के उपरांत कोई मौद्रिक धनवापसी देय नहीं होगी। व्यक्तिगत आकस्मिक स्थिति में छात्र आगामी बैच में स्थानांतरण हेतु आवेदन कर सकते हैं।'
-                : 'Once the 7-day window has elapsed or more than three modules/downloadable materials have been accessed, monetary refunds cannot be issued. In verified medical or family emergencies, a student may petition for a one-time enrollment transfer to a future cohort.'}
+                : 'Once the 7-day window has elapsed or more than three modules/downloadable materials have been accessed, monetary refunds cannot be issued. In verified medical or family emergencies, a student may petition for a one-time enrollment transfer or extended access.'}
             </p>
           </section>
 

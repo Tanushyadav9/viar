@@ -8,7 +8,6 @@ import {
   Edit,
   Plus,
   Users,
-  CheckCircle2,
   DollarSign,
   Award,
   BookOpen,
@@ -41,10 +40,8 @@ import {
 } from '@/components/common/AsyncStateView';
 import ContentStudio from '@/components/admin/ContentStudio';
 import MediaLibrary from '@/components/admin/MediaLibrary';
-import { ViarStore } from '@/lib/store';
 import {
   ScheduledClass,
-  Cohort,
   Course,
   Enrollment,
   Certificate,
@@ -62,8 +59,7 @@ import {
   ADMIN_SECTIONS_META,
   VIAR_SECTIONS,
 } from '@/lib/auth/permissions';
-import { formatInTimezone, getUserLocalTimezone } from '@/lib/timezones';
-import { formatCourseStatus, formatClassStatus, formatOrderStatus } from '@/lib/utils/formatters';
+import { formatCourseStatus, formatOrderStatus } from '@/lib/utils/formatters';
 
 interface AdminStats {
   totalStudents: number;
@@ -71,7 +67,6 @@ interface AdminStats {
     completedClasses: number;
   upcomingClasses: number;
   certificatesIssued: number;
-  activeCohorts: number;
 }
 
 export type OrderStatusType =
@@ -195,23 +190,10 @@ export default function AdminPortalClient({
   const [recentActivities, setRecentActivities] = useState<RecentActivityItem[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [classes, setClasses] = useState<ScheduledClass[]>([]);
-  const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [enrollments, setEnrollments] = useState<AdminEnrollmentItem[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [selectedCohortId, setSelectedCohortId] = useState<string>('cohort-wia-batch-1');
-  const [userTz, setUserTz] = useState<string>('Asia/Kolkata');
-
   // Editing Class Modal/Form State
-  const [editingClass, setEditingClass] = useState<ScheduledClass | null>(null);
-  const [editJoinUrl, setEditJoinUrl] = useState('');
-  const [editMeetingId, setEditMeetingId] = useState('');
-  const [editPasscode, setEditPasscode] = useState('');
-  const [editPlatform, setEditPlatform] = useState<'ZOOM' | 'GOOGLE_MEET'>('ZOOM');
-  const [editStatus, setEditStatus] = useState<'UPCOMING' | 'LIVE' | 'COMPLETED'>('UPCOMING');
-  const [editVideoUrl, setEditVideoUrl] = useState('');
-  const [editNotes, setEditNotes] = useState('');
-
   // Manual Enrollment Form Modal
   const [isManualEnrollOpen, setIsManualEnrollOpen] = useState(false);
   const [manualName, setManualName] = useState('');
@@ -583,24 +565,12 @@ export default function AdminPortalClient({
       // courses fetch fallback
     }
 
-    // 2. Fetch live cohorts from PostgreSQL
-    let loadedCohorts: Cohort[] = [];
-    try {
-      const cohRes = await fetch('/api/cohorts');
-      const cohData = await cohRes.json();
-      if (cohData.success && Array.isArray(cohData.cohorts)) {
-        loadedCohorts = cohData.cohorts;
-        setCohorts(cohData.cohorts);
-      }
-    } catch {
-      // cohorts fetch fallback
-    }
+   
 
     // 3. Fetch live class sessions from PostgreSQL
     let loadedClasses: ScheduledClass[] = [];
     try {
-      const targetCohort = selectedCohortId || 'cohort-wia-batch-1';
-      const sessRes = await fetch(`/api/sessions?cohortId=${encodeURIComponent(targetCohort)}`);
+      const sessRes = await fetch('/api/sessions?cohortId=course-what-is-astrology');
       const sessData = await sessRes.json();
       if (sessData.success && Array.isArray(sessData.sessions)) {
         loadedClasses = sessData.sessions.map((s: {
@@ -751,7 +721,6 @@ export default function AdminPortalClient({
       completedClasses: loadedClasses.filter((c) => c.status === 'COMPLETED').length,
       upcomingClasses: loadedClasses.filter((c) => c.status !== 'COMPLETED').length,
       certificatesIssued: liveCertificatesIssued,
-      activeCohorts: loadedCohorts.filter((c) => c.status !== 'COMPLETED').length,
     });
 
     if (!serverAuth) {
@@ -776,23 +745,15 @@ export default function AdminPortalClient({
     }
     loadOrders();
     loadPaymentSettings();
-  }, [selectedCohortId, loadOrders, loadPaymentSettings, serverAuth]);
+  }, [loadOrders, loadPaymentSettings, serverAuth]);
 
   useEffect(() => {
     loadAdminData();
-    setUserTz(ViarStore.getTimezone() || getUserLocalTimezone());
-
-    const handleTzChange = () => {
-      setUserTz(ViarStore.getTimezone());
-    };
     const handleRoleChange = () => {
       loadAdminData();
     };
-
-    window.addEventListener('timezone-changed', handleTzChange);
     window.addEventListener('user-role-changed', handleRoleChange);
     return () => {
-      window.removeEventListener('timezone-changed', handleTzChange);
       window.removeEventListener('user-role-changed', handleRoleChange);
     };
   }, [loadAdminData]);
@@ -809,76 +770,6 @@ export default function AdminPortalClient({
       setActiveTab(allowedSections[0]);
     }
   }, [isOwner, allowedSections, activeTab]);
-
-  const handleOpenEditClass = (cls: ScheduledClass) => {
-    setEditingClass(cls);
-    setEditJoinUrl(cls.joinUrl);
-    setEditMeetingId(cls.meetingId || '');
-    setEditPasscode(cls.passcode || '');
-    setEditPlatform(cls.meetingPlatform);
-    setEditStatus(cls.status);
-    setEditVideoUrl(cls.recording?.videoUrl || '');
-    setEditNotes(cls.recording?.notesMarkdown || '');
-  };
-
-  const handleSaveClass = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingClass) return;
-
-    const updates: Partial<ScheduledClass> = {
-      joinUrl: editJoinUrl,
-      meetingId: editMeetingId,
-      passcode: editPasscode,
-      meetingPlatform: editPlatform,
-      status: editStatus,
-    };
-
-    if (editVideoUrl) {
-      updates.recording = {
-        id: editingClass.recording?.id || `rec-${editingClass.id}`,
-        videoUrl: editVideoUrl,
-        provider: 'YOUTUBE',
-        durationMinutes: editingClass.durationMinutes,
-        recordedDate: new Date().toISOString().split('T')[0],
-        notesMarkdown: editNotes,
-        keyTakeaways: editingClass.recording?.keyTakeaways || [
-          'Detailed chart breakdown discussed in session',
-          'Review notes and practice on sample Kundalis',
-        ],
-        resources: editingClass.recording?.resources || [],
-      };
-      if (editStatus === 'UPCOMING' || editStatus === 'LIVE') {
-        updates.status = 'COMPLETED';
-      }
-    }
-
-    try {
-      await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cohortId: editingClass.cohortId || selectedCohortId,
-          sessionId: editingClass.id,
-          sessionNumber: editingClass.classNumber,
-          title: editingClass.title,
-          description: editingClass.description,
-          scheduledAt: editingClass.scheduledStartTime,
-          durationMinutes: editingClass.durationMinutes,
-          meetingPlatform: editPlatform,
-          status: updates.status || editStatus,
-          joinUrl: editJoinUrl,
-          meetingId: editMeetingId,
-          passcode: editPasscode,
-          recordingUrl: editVideoUrl || undefined,
-          notes: editNotes || undefined,
-        }),
-      });
-    } catch (err) {
-      console.warn('Session update API error:', err);
-    }
-    setEditingClass(null);
-    await loadAdminData();
-  };
 
   const handleManualEnroll = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -900,7 +791,7 @@ export default function AdminPortalClient({
           studentName: manualName.trim(),
           studentEmail: manualEmail.trim().toLowerCase(),
           courseId: 'what-is-astrology',
-          cohortId: selectedCohortId || 'cohort-wia-batch-1',
+          
           amountPaid: 0,
           currency: 'INR',
           reason: manualReason.trim(),
@@ -937,7 +828,7 @@ export default function AdminPortalClient({
       slug,
       title: newCourseTitle,
       tagline: newCourseTagline || 'Advanced Vedic Jyotish Masterclass',
-      subtitle: `${newCourseClasses} Classes • ${newCourseWeeks}-Week Live Cohort`,
+      subtitle: `${newCourseClasses} Classes • ${newCourseWeeks}-Week Curriculum`,
       description: 'Comprehensive curriculum expanding the multi-course catalog of Viar.in academy.',
       level: 'Advanced',
       durationWeeks: parseInt(newCourseWeeks) || 8,
@@ -1425,150 +1316,6 @@ export default function AdminPortalClient({
           />
         )}
 
-        {/* TAB: COHORTS & SCHEDULE */}
-        {isCurrentTabAllowed && activeTab === 'cohorts' && (
-          <div className="space-y-8">
-            {/* Non-technical Help Panel */}
-            <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
-              <div className="flex items-start gap-2.5">
-                <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-slate-300">
-                  <strong className="text-amber-300">💡 How to manage class sessions:</strong> Select your cohort batch below to view all scheduled classes. Click &quot;Edit Class&quot; to change Zoom or Google Meet links, meeting passcodes, or add lecture recordings once a class concludes.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-              <div>
-                <h3 className="text-lg font-bold text-white">Cohorts, Live Class Schedule & Links</h3>
-                <p className="text-xs text-slate-400">
-                  Update meeting links or record links. Students see these instantly in their dashboards.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Cohort:</span>
-                <select
-                  value={selectedCohortId}
-                  onChange={(e) => setSelectedCohortId(e.target.value)}
-                  className="bg-white/5 border border-white/10 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none"
-                >
-                  {cohorts.map((c) => (
-                    <option key={c.id} value={c.id} className="bg-[#0f172a]">
-                      {c.batchName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {classes.map((cls) => (
-                <div
-                  key={cls.id}
-                  className="cosmic-card p-4 sm:p-5 rounded-2xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-black px-2 py-0.5 rounded bg-white/10 text-amber-300">
-                        Class {cls.classNumber}
-                      </span>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                          cls.status === 'LIVE'
-                            ? 'bg-amber-500 text-black'
-                            : cls.status === 'COMPLETED'
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : 'bg-white/5 text-slate-400'
-                        }`}
-                      >
-                        {formatClassStatus(cls.status)}
-                      </span>
-                      <span className="text-xs text-slate-400">Module {cls.moduleNumber}</span>
-                    </div>
-
-                    <h3 className="text-sm sm:text-base font-bold text-white mb-1">
-                      {cls.title}
-                    </h3>
-
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                      <span>{formatInTimezone(cls.scheduledStartTime, userTz, 'short')}</span>
-                      <span>•</span>
-                      <span>Platform: <strong className="text-white">{cls.meetingPlatform}</strong></span>
-                      {cls.passcode && <span>• Passcode: <span className="font-mono text-amber-300">{cls.passcode}</span></span>}
-                      {cls.recording && (
-                        <span className="text-emerald-400 flex items-center gap-1 font-medium">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Recording Attached
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => handleOpenEditClass(cls)}
-                      className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 flex items-center gap-1.5 transition"
-                    >
-                      <Edit className="w-3.5 h-3.5" />
-                      <span>Edit Link & Recording</span>
-                    </button>
-                    <a
-                      href={cls.joinUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
-                      title="Test Join Link"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Attached Lecture Recordings Section */}
-            <div className="pt-6 border-t border-white/10 space-y-4">
-              <div>
-                <h3 className="text-base font-bold text-white">Lecture Recordings Vault</h3>
-                <p className="text-xs text-slate-400">
-                  Manage Cloudflare Stream, Vimeo, or YouTube replay URLs for Cohort {selectedCohortId}.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {classes.map((cls) => (
-                  <div key={cls.id} className="cosmic-card p-5 rounded-2xl border border-white/10 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-300">Class {cls.classNumber}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${cls.recording ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
-                        {cls.recording ? 'REPLAY READY' : 'PENDING UPLOAD'}
-                      </span>
-                    </div>
-                    <h4 className="font-bold text-white text-sm">{cls.title}</h4>
-                    {cls.recording ? (
-                      <div className="space-y-2 text-xs text-slate-400">
-                        <p className="truncate font-mono bg-white/5 p-2 rounded-lg text-slate-300">
-                          {cls.recording.videoUrl}
-                        </p>
-                        <p className="line-clamp-2 text-slate-400">{cls.recording.notesMarkdown || 'No study notes attached.'}</p>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-500 italic">No recording uploaded yet for this session.</p>
-                    )}
-                    <button
-                      onClick={() => handleOpenEditClass(cls)}
-                      className="w-full mt-2 gold-button py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"
-                    >
-                      <Edit className="w-3.5 h-3.5" />
-                      <span>{cls.recording ? 'Update Video Link & Notes' : 'Attach Recording'}</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* TAB: COURSES */}
         {isCurrentTabAllowed && activeTab === 'courses' && (
           <div className="space-y-6">
@@ -1586,7 +1333,7 @@ export default function AdminPortalClient({
               <div>
                 <h3 className="text-lg font-bold text-white">Multi-Course Catalog Engine</h3>
                 <p className="text-xs text-slate-400">
-                  The platform is built to support infinite courses and cohorts without changing codebase.
+                  The platform is built to support infinite courses without changing codebase.
                 </p>
               </div>
 
@@ -1795,7 +1542,7 @@ export default function AdminPortalClient({
                   <thead className="bg-white/5 text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/10 font-bold">
                     <tr>
                       <th className="px-6 py-4">Student</th>
-                      <th className="px-6 py-4">Course / Cohort</th>
+                      <th className="px-6 py-4">Course</th>
                       <th className="px-6 py-4">Enrolled At</th>
                       <th className="px-6 py-4">Payment Method</th>
                       <th className="px-6 py-4">Amount Paid</th>
@@ -1833,7 +1580,7 @@ export default function AdminPortalClient({
                             </td>
                             <td className="px-6 py-4">
                               <p className="text-white font-medium">{enr.courseTitle || 'The Ultimate Vedic Astrology Course'}</p>
-                              <p className="text-[10px] text-amber-400">{enr.cohortBatchName || 'Self-Paced Access'}</p>
+                              <p className="text-[10px] text-amber-400">Self-Paced Access</p>
                             </td>
                             <td className="px-6 py-4 text-slate-400">
                               {dateStr}
@@ -2097,7 +1844,7 @@ export default function AdminPortalClient({
                   <thead className="bg-white/5 text-[11px] uppercase tracking-wider text-slate-400 border-b border-white/10 font-bold">
                     <tr>
                       <th className="px-5 py-3.5">Student & Contact</th>
-                      <th className="px-5 py-3.5">Course & Cohort</th>
+                      <th className="px-5 py-3.5">Course</th>
                       <th className="px-5 py-3.5">Amount</th>
                       <th className="px-5 py-3.5">Order Ref & UTR</th>
                       <th className="px-5 py-3.5">Timeline</th>
@@ -2402,7 +2149,7 @@ export default function AdminPortalClient({
               <div className="flex items-start gap-2.5">
                 <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <p className="text-xs text-slate-300">
-                  <strong className="text-amber-300">💡 How to view analytics:</strong> Monitor student engagement across batches, video watch progress, and certification pass rates in real time.
+                  <strong className="text-amber-300">💡 How to view analytics:</strong> Monitor student engagement video watch progress, and certification pass rates in real time.
                 </p>
               </div>
             </div>
@@ -2820,146 +2567,13 @@ export default function AdminPortalClient({
           </div>
         )}
 
-        {/* EDIT CLASS MODAL */}
-        {editingClass && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#0f172a] border border-purple-500/40 rounded-2xl p-6 sm:p-8 max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-              
-              <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-purple-300">
-                    Edit Class {editingClass.classNumber} Details
-                  </span>
-                  <h3 className="text-lg font-bold text-white mt-0.5">{editingClass.title}</h3>
-                </div>
-                <button
-                  onClick={() => setEditingClass(null)}
-                  className="text-slate-400 hover:text-white text-sm"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <form onSubmit={handleSaveClass} className="space-y-4 text-xs">
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Meeting Platform</label>
-                    <select
-                      value={editPlatform}
-                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditPlatform(e.target.value as 'ZOOM' | 'GOOGLE_MEET')}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
-                    >
-                      <option value="ZOOM" className="bg-[#0f172a]">Zoom</option>
-                      <option value="GOOGLE_MEET" className="bg-[#0f172a]">Google Meet</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Status</label>
-                    <select
-                      value={editStatus}
-                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditStatus(e.target.value as 'UPCOMING' | 'LIVE' | 'COMPLETED')}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
-                    >
-                      <option value="UPCOMING" className="bg-[#0f172a]">Upcoming</option>
-                      <option value="LIVE" className="bg-[#0f172a]">Live Now</option>
-                      <option value="COMPLETED" className="bg-[#0f172a]">Completed</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Live Join Link (Zoom / Meet URL)</label>
-                  <input
-                    type="url"
-                    required
-                    value={editJoinUrl}
-                    onChange={(e) => setEditJoinUrl(e.target.value)}
-                    placeholder="https://zoom.us/j/... or https://meet.google.com/..."
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Meeting ID</label>
-                    <input
-                      type="text"
-                      value={editMeetingId}
-                      onChange={(e) => setEditMeetingId(e.target.value)}
-                      placeholder="981 4238 5102"
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 mb-1 font-semibold">Meeting Passcode</label>
-                    <input
-                      type="text"
-                      value={editPasscode}
-                      onChange={(e) => setEditPasscode(e.target.value)}
-                      placeholder="VIAR2026"
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-white/10">
-                  <label className="block text-slate-300 mb-1 font-semibold">
-                    Video Recording Embed URL (YouTube, Vimeo, Bunny, or Direct MP4)
-                  </label>
-                  <input
-                    type="url"
-                    value={editVideoUrl}
-                    onChange={(e) => setEditVideoUrl(e.target.value)}
-                    placeholder="https://www.youtube.com/embed/... or https://player.vimeo.com/video/..."
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white mb-2"
-                  />
-                  <p className="text-[11px] text-slate-400">
-                    Adding a recording URL automatically makes the recording playable on student dashboards.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Study Notes (Markdown)</label>
-                  <textarea
-                    rows={4}
-                    value={editNotes}
-                    onChange={(e) => setEditNotes(e.target.value)}
-                    placeholder="Key principles, chart examples, and formulas discussed in this lecture..."
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white"
-                  ></textarea>
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setEditingClass(null)}
-                    className="px-4 py-2 rounded-xl text-slate-300 bg-white/5 hover:bg-white/10"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="gold-button px-5 py-2 rounded-xl font-bold flex items-center gap-1.5"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Save Changes</span>
-                  </button>
-                </div>
-
-              </form>
-            </div>
-          </div>
-        )}
-
         {/* MANUAL ENROLL MODAL */}
         {isManualEnrollOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-[#0f172a] border border-amber-500/40 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
               <h3 className="text-lg font-bold text-white mb-1">Manual Student Enrollment</h3>
               <p className="text-xs text-slate-400 mb-6">
-                Grant offline or scholarship access to Cohort 01.
+                Grant offline or scholarship access to the course.
               </p>
 
               <form onSubmit={handleManualEnroll} className="space-y-4 text-xs">
@@ -3313,7 +2927,7 @@ export default function AdminPortalClient({
                   <span className="font-mono text-emerald-400 font-bold">{orderToApprove.studentPhone || orderToApprove.user?.phone || 'Not provided'}</span>
                 </div>
                 <div className="flex justify-between items-center text-slate-300">
-                  <span className="text-slate-400">Course / Cohort:</span>
+                  <span className="text-slate-400">Course:</span>
                   <span className="text-amber-300 font-medium">{orderToApprove.course?.title || 'What is Astrology'}</span>
                 </div>
                 <div className="flex justify-between items-center text-slate-300 pt-2 border-t border-white/10">

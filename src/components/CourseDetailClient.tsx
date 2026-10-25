@@ -410,7 +410,7 @@ export default function CourseDetailClient({ slug, initialStatus }: CourseDetail
                       <p className="text-xs text-slate-300">
                         {isHi
                           ? 'इस बैच में ऑनलाइन प्रवेश अभी बंद है। आगामी तिथियों हेतु आचार्य जी से व्हाट्सएप पर संपर्क करें।'
-                          : 'Online checkout is currently paused for this batch. Enquire directly on WhatsApp for upcoming admissions.'}
+                          : 'Online checkout is currently paused. Enquire directly on WhatsApp for upcoming admissions.'}
                       </p>
                     </div>
                     <a
@@ -824,7 +824,7 @@ export default function CourseDetailClient({ slug, initialStatus }: CourseDetail
                 {isHi ? 'छात्रों के अनुभव' : 'Student Experiences'}
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-white">
-                {isHi ? 'विश्वव्यापी छात्रों एवं अध्येताओं का विश्वास' : 'Trusted by Worldwide Scholars & Cohorts'}
+                {isHi ? 'विश्वव्यापी छात्रों एवं अध्येताओं का विश्वास' : 'Trusted by Worldwide Astrology Scholars'}
               </h2>
             </div>
 

@@ -53,7 +53,7 @@ export default async function SignupPage() {
             Create Student Account
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Join live cohorts, track syllabus progress, and earn authentic certifications.
+            Join courses, track syllabus progress, and earn authentic certifications.
           </p>
 
           <div className="mt-4 p-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-center gap-2 text-[11px] text-slate-300">

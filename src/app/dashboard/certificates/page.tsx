@@ -143,7 +143,7 @@ export default function StudentCertificatesPage() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/10 mb-8">
                   <div>
                     <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                      {cert.cohortBatchName}
+                      {cert.courseTitle || 'Vedic Astrology Masterclass'}
                     </span>
                     <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
                       {cert.courseTitle}

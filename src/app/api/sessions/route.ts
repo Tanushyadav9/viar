@@ -111,7 +111,7 @@ export async function PATCH(req: NextRequest) {
           sessionNumber: Number(body.sessionNumber) || 1,
           sessionTitle: body.sessionTitle || 'Class Recording',
           durationMinutes: Number(body.durationMinutes) || 90,
-          dashboardWatchUrl: `${env.appUrl}/dashboard/courses/cohort-wia-batch-1?tab=recordings`,
+          dashboardWatchUrl: `${env.appUrl}/dashboard/courses/what-is-astrology?tab=recordings`,
         }).catch((err) => console.error('[Sessions API] Recording email dispatch failed:', err));
       }
 
@@ -131,7 +131,7 @@ export async function PATCH(req: NextRequest) {
         sessionNumber: Number(body.sessionNumber) || 1,
         sessionTitle: body.sessionTitle || 'Class Recording',
         durationMinutes: Number(body.durationMinutes) || 90,
-        dashboardWatchUrl: `${env.appUrl}/dashboard/courses/cohort-wia-batch-1?tab=recordings`,
+        dashboardWatchUrl: `${env.appUrl}/dashboard/courses/what-is-astrology?tab=recordings`,
       }).catch((err) => console.error('[Sessions API] Fallback recording email dispatch failed:', err));
     }
 

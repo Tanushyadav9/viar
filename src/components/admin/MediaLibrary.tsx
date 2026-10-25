@@ -419,7 +419,7 @@ export default function MediaLibrary({ isOwner, userEmail }: MediaLibraryProps) 
                   type="text"
                   value={altTextEn}
                   onChange={(e) => setAltTextEn(e.target.value)}
-                  placeholder="e.g. Acharya Niraj Kumar instructing Vedic Astrology cohort"
+                  placeholder="e.g. Acharya Niraj Kumar instructing Vedic Astrology students"
                   className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
                   required
                 />

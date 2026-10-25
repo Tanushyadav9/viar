@@ -257,12 +257,12 @@ export default function CoursesPage() {
             <BookOpen className="w-6 h-6 text-amber-400 shrink-0" />
             <div>
               <p className="text-sm font-semibold text-white">
-                {isHi ? 'क्या आप किसी विशेष ज्योतिष सत्र का सुझाव देना चाहते हैं?' : 'Want to suggest a specialized Jyotish cohort?'}
+                {isHi ? 'क्या आप किसी विशेष ज्योतिष सत्र का सुझाव देना चाहते हैं?' : 'Want to suggest a specialized Jyotish course topic?'}
               </p>
               <p className="text-xs text-slate-400">
                 {isHi
                   ? 'हमारी सूची में शीघ्र ही मुहूर्त, चिकित्सा ज्योतिष और जैमिनी सूत्रों पर विशेष कक्षाएं शामिल की जा रही हैं।'
-                  : 'Our catalog expands with specialized cohorts on Muhurta, Medical Astrology, and Jaimini Sutras.'}
+                  : 'Our catalog expands with specialized masterclasses on Muhurta, Medical Astrology, and Jaimini Sutras.'}
               </p>
             </div>
           </div>
@@ -294,7 +294,7 @@ export default function CoursesPage() {
             </div>
 
             <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400">
-              {isHi ? 'प्रथम बैच पूर्व-सूचना' : 'Early Cohort Notification'}
+              {isHi ? 'प्रथम बैच पूर्व-सूचना' : 'New Course Notification'}
             </span>
             <h3 className="text-xl font-bold text-white mt-1 mb-2">
               {isHi && COURSE_HINDI_MAP[notifyCourse.id]?.title ? COURSE_HINDI_MAP[notifyCourse.id].title : notifyCourse.title}
@@ -302,7 +302,7 @@ export default function CoursesPage() {
             <p className="text-xs text-slate-300 mb-6">
               {isHi
                 ? 'बैच 01 का पंजीकरण शुरू होते ही प्राथमिकता सूचना और विशेष अर्ली-बर्ड छूट प्राप्त करने के लिए अपना ईमेल दर्ज करें।'
-                : 'Enter your email to receive priority notification and early-bird registration access the moment Batch 01 opens.'}
+                : 'Enter your email to receive priority notification and registration access as new courses launch.'}
             </p>
 
             {notifyError && (

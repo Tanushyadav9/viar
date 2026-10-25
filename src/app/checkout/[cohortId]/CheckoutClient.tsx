@@ -175,7 +175,7 @@ export default function CheckoutClient({ cohortId: propCohortId, initialStatus, 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           courseId: course.id,
-          cohortId: 'cohort-wia-batch-1',
+          cohortId: 'what-is-astrology',
           studentName: fullName.trim() || undefined,
           studentEmail: email.trim() || undefined,
           studentPhone: cleanPhone,
@@ -309,7 +309,7 @@ export default function CheckoutClient({ cohortId: propCohortId, initialStatus, 
             <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
               {language === 'hi'
                 ? 'इस पाठ्यक्रम के लिए ऑनलाइन चेकआउट एवं नया पंजीकरण वर्तमान में बंद है। आगामी बैच की तिथियों व सीट उपलब्धता हेतु आचार्य जी से व्हाट्सएप पर संपर्क करें।'
-                : 'Online registration and automated checkout are currently paused for this course. Please contact Acharya Niraj Kumar directly on WhatsApp to enquire about upcoming admissions and batch schedules.'}
+                : 'Online registration and automated checkout are currently paused for this course. Please contact Acharya Niraj Kumar directly on WhatsApp to enquire about upcoming admissions.'}
             </p>
           </div>
 
