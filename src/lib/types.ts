@@ -9,6 +9,7 @@ export type StaffAccessLevel = 'VIEW' | 'MANAGE';
 export type ViarSection =
   | 'courses'
   | 'cohorts'
+  | 'sessions'
   | 'students'
   | 'quizzes'
   | 'analytics'

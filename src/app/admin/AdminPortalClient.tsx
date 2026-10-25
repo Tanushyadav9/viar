@@ -40,6 +40,7 @@ import {
 } from '@/components/common/AsyncStateView';
 import ContentStudio from '@/components/admin/ContentStudio';
 import MediaLibrary from '@/components/admin/MediaLibrary';
+import SessionsManager from '@/components/admin/SessionsManager';
 import {
   ScheduledClass,
   Course,
@@ -1229,6 +1230,7 @@ export default function AdminPortalClient({
                 {sec === 'content' && <FileText className="w-4 h-4 text-indigo-400" />}
                 {sec === 'media' && <ImageIcon className="w-4 h-4 text-sky-400" />}
                 {sec === 'courses' && <BookOpen className="w-4 h-4" />}
+                {sec === 'sessions' && <Video className="w-4 h-4 text-amber-400" />}
                 {sec === 'cohorts' && <Calendar className="w-4 h-4" />}
                 {sec === 'students' && <Users className="w-4 h-4" />}
                 {sec === 'quizzes' && <Award className="w-4 h-4" />}
@@ -1495,6 +1497,11 @@ export default function AdminPortalClient({
               })}
             </div>
           </div>
+        )}
+
+        {/* TAB: SESSIONS (1-on-1 Personal Live Classes) */}
+        {isCurrentTabAllowed && activeTab === 'sessions' && (
+          <SessionsManager />
         )}
 
         {/* TAB: STUDENTS / ROSTER */}

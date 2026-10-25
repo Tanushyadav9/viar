@@ -113,6 +113,7 @@ model User {
   payments         Payment[]
   orders           Order[]
   staffPermissions StaffPermission[]
+  oneOnOneSessions OneOnOneSession[]
 
   @@index([role])
   @@index([isOwner])
@@ -172,6 +173,7 @@ model Course {
   payments           Payment[]
   orders             Order[]
   invitations        CourseInvitation[]
+  oneOnOneSessions   OneOnOneSession[]
 
   @@index([slug])
   @@index([status])
@@ -322,6 +324,39 @@ model ClassSession {
   @@index([scheduledAt])
   @@index([status])
   @@map("class_sessions")
+}
+
+// ------------------------------------------------------------------------------
+// 4B. ONE-ON-ONE PERSONAL SESSIONS
+// ------------------------------------------------------------------------------
+
+model OneOnOneSession {
+  id              String        @id @default(cuid())
+  studentId       String        @map("student_id")
+  student         User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId        String?       @map("course_id")
+  course          Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  title           String
+  description     String?       @db.Text
+  scheduledAt     DateTime      @map("scheduled_at")
+  durationMinutes Int           @default(60) @map("duration_minutes")
+  meetingPlatform String        @default("GOOGLE_MEET") @map("meeting_platform")
+  meetingLink     String?       @map("meeting_link")
+  meetingId       String?       @map("meeting_id")
+  passcode        String?
+  notes           String?       @db.Text
+  taughtRecord    String?       @db.Text @map("taught_record")
+  homework        String?       @db.Text
+  recordingUrl    String?       @map("recording_url")
+  status          String        @default("SCHEDULED")
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@index([studentId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("one_on_one_sessions")
 }
 
 // ------------------------------------------------------------------------------

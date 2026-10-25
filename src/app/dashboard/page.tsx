@@ -22,6 +22,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import StudentPersonalSessions from '@/components/student/StudentPersonalSessions';
 import { ViarStore } from '@/lib/store';
 import {
   Course,
@@ -47,10 +48,10 @@ function StudentDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams?.get('error');
-  const initialTab = (searchParams?.get('tab') as 'schedule' | 'recordings' | 'exam' | 'certificate') || 'schedule';
+  const initialTab = (searchParams?.get('tab') as 'schedule' | 'sessions' | 'recordings' | 'exam' | 'certificate') || 'schedule';
   const justEnrolled = searchParams?.get('enrolled') === 'true';
 
-  const [activeTab, setActiveTab] = useState<'schedule' | 'recordings' | 'exam' | 'certificate'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'schedule' | 'sessions' | 'recordings' | 'exam' | 'certificate'>(initialTab);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
   const [cohort, setCohort] = useState<Cohort | null>(null);
@@ -547,6 +548,11 @@ function StudentDashboardContent() {
             <span>My Certificate</span>
           </button>
         </div>
+
+        {/* TAB: 1-ON-1 SESSIONS */}
+        {activeTab === 'sessions' && (
+          <StudentPersonalSessions />
+        )}
 
         {/* TAB 1: SCHEDULE */}
         {activeTab === 'schedule' && (

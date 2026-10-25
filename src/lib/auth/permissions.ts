@@ -47,6 +47,7 @@ export const VIAR_SECTIONS: readonly ViarSection[] = [
   'media',
   'courses',
   'cohorts',
+  'sessions',
   'students',
   'quizzes',
   'analytics',
@@ -57,6 +58,7 @@ export const ADMIN_SECTIONS: readonly AdminSection[] = [
   'content',
   'media',
   'courses',
+  'sessions',
   'students',
   'quizzes',
   'analytics',
@@ -88,6 +90,12 @@ export const ADMIN_SECTIONS_META: Record<AdminSection, AdminSectionMeta> = {
     title: 'Cohorts, Schedule & Live Class Links',
     shortTitle: 'Cohorts & Schedule',
     description: 'Manage cohort start/end dates, Zoom/Google Meet links, and lecture recordings.',
+  },
+  sessions: {
+    key: 'sessions',
+    title: '1-on-1 Personal Live Classes',
+    shortTitle: 'Sessions',
+    description: 'Schedule personal live classes for individual students, set meeting links, pre-class notes, and record what was taught.',
   },
   students: {
     key: 'students',
