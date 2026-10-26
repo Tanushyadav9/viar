@@ -2,7 +2,7 @@
 import { formatClassStatus } from '@/lib/utils/formatters';
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   CheckCircle2,
@@ -16,7 +16,13 @@ import { ScheduledClass, Cohort } from '@/lib/types';
 import { formatInTimezone } from '@/lib/timezones';
 
 export default function InstructorSessionsPage() {
+  const router = useRouter();
   const params = useParams();
+
+  useEffect(() => {
+    // 1-on-1 mentorship model: Group cohorts retired, redirect to Sessions console
+    router.replace('/admin?tab=sessions');
+  }, [router]);
   const courseId = (params?.id as string) || 'course-what-is-astrology';
   const cohortId = (params?.cohortId as string) || 'cohort-wia-batch-1';
 

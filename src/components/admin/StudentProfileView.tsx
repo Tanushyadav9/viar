@@ -168,7 +168,7 @@ export default function StudentProfileView({
         )}
       </div>
 
-      {/* 2. Scholar Profile Card */}
+      {/* 2. Student Profile Card */}
       <div className="cosmic-card p-6 rounded-2xl border border-white/10 bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
@@ -276,7 +276,7 @@ export default function StudentProfileView({
 
           {quizResults.length === 0 ? (
             <p className="text-xs text-slate-500 italic py-2">
-              No quiz attempts recorded yet. Scholar is currently reviewing video lessons.
+              No quiz attempts recorded yet. Student is currently reviewing video lessons.
             </p>
           ) : (
             <div className="space-y-2">
@@ -312,7 +312,7 @@ export default function StudentProfileView({
         </div>
       </div>
 
-      {/* 4. 1-on-1 Sessions for this Scholar */}
+      {/* 4. 1-on-1 Sessions for this Student */}
       <div className="cosmic-card rounded-2xl border border-white/10 overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.02]">
           <div className="flex items-center gap-2">

@@ -107,14 +107,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Public contact email MUST NOT be the Owner login address
+    // Public contact email: must be a valid email format
     if (normalizedCollection === 'site_settings' && String(key).toLowerCase() === 'contact_email') {
       const emailValue = (contentEn || contentHi || '').trim().toLowerCase();
-      if (emailValue === 'aapkaastro1606@gmail.com') {
+      if (emailValue && !emailValue.includes('@')) {
         return NextResponse.json(
           {
             success: false,
-            error: 'The public contact email cannot be the private Owner login email (aapkaastro1606@gmail.com). Please use a dedicated public inquiry address such as contact@viar.in or admissions@viar.in.',
+            error: 'Please enter a valid contact email address.',
           },
           { status: 400 }
         );

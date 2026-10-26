@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { SCHEDULED_CLASSES_FLAGSHIP } from '@/lib/data';
-import type { ScheduledClass } from '@/lib/types';
 import { getServerAuthUser, isAuthorizedForSection, canAccessArea } from '@/lib/auth/serverAuth';
 import { verifyUserCourseAccess } from '@/lib/auth/course-access';
 import { emailService } from '@/lib/email';
@@ -43,19 +41,11 @@ export async function GET(req: NextRequest) {
       if (dbSessions && dbSessions.length > 0) {
         return NextResponse.json({ success: true, sessions: dbSessions });
       }
+      return NextResponse.json({ success: true, sessions: [] });
     } catch (dbError) {
       console.warn('Database query for sessions skipped:', (dbError as Error).message);
+      return NextResponse.json({ success: true, sessions: [] });
     }
-
-    // Fallback: look up in SCHEDULED_CLASSES_FLAGSHIP
-    const foundSessions: ScheduledClass[] = SCHEDULED_CLASSES_FLAGSHIP.filter(
-      (cls) => cls.cohortId === cohortId
-    );
-
-    return NextResponse.json({
-      success: true,
-      sessions: foundSessions.length > 0 ? foundSessions : SCHEDULED_CLASSES_FLAGSHIP,
-    });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: (error as Error).message },

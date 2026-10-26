@@ -61,6 +61,23 @@ import {
   VIAR_SECTIONS,
 } from '@/lib/auth/permissions';
 import { formatCourseStatus, formatOrderStatus } from '@/lib/utils/formatters';
+import { INITIAL_FINAL_TEST } from '@/lib/data';
+
+function getRealVideoLessonsCount(course: Course): number {
+  if (!course.modules || course.modules.length === 0) return 0;
+  let count = 0;
+  for (const mod of course.modules) {
+    if (!mod.lessons) continue;
+    for (const les of mod.lessons) {
+      const lessonObj = les as unknown as { videoProviderId?: string; externalVideoUrl?: string; videoUrl?: string };
+      const vid = lessonObj.videoProviderId || lessonObj.externalVideoUrl || lessonObj.videoUrl;
+      if (vid && typeof vid === 'string' && vid.trim() && !vid.includes('dQw4w9WgXcQ')) {
+        count++;
+      }
+    }
+  }
+  return count;
+}
 
 interface AdminStats {
   totalStudents: number;
@@ -291,6 +308,84 @@ export default function AdminPortalClient({
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsNotice, setSettingsNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const loadRecentActivities = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/activity?limit=10');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.logs) && data.logs.length > 0) {
+          const acts: RecentActivityItem[] = data.logs.map((log: {
+            id: string;
+            action: string;
+            userEmail?: string;
+            userName?: string;
+            reason?: string;
+            details?: Record<string, unknown>;
+            createdAt: string;
+          }) => {
+            let title = 'System Activity';
+            let description = log.reason || '';
+
+            if (log.action === 'ORDER_APPROVED') {
+              title = `Enrollment Approved (${log.details?.orderReference || 'Order'})`;
+              description = `₹${Number(log.details?.amountPaid || 5100).toLocaleString('en-IN')} • Student Access Activated`;
+            } else if (log.action === 'PAYMENT_CLAIMED') {
+              title = `UPI Payment Claimed (${log.details?.orderReference || 'Order'})`;
+              description = `₹${Number(log.details?.amount || 5100).toLocaleString('en-IN')} • UTR: ${log.details?.utr || 'Pending'}`;
+            } else if (log.action === 'ORDER_REJECTED') {
+              title = `Order Rejected (${log.details?.orderReference || 'Order'})`;
+              description = log.reason || 'Payment verification failed';
+            } else if (log.action === 'ORDER_REFUNDED') {
+              title = `Order Refunded (${log.details?.orderReference || 'Order'})`;
+              description = log.reason || 'Tuition refunded';
+            } else if (log.action === 'ENROLLMENT_GRANTED' || log.action === 'MANUAL_ENROLLMENT') {
+              title = 'Direct Student Enrollment';
+              description = `Course access granted to ${log.userEmail || 'student'}`;
+            } else if (log.action === 'CONTENT_UPDATED') {
+              title = 'Site Content Updated';
+              description = log.reason || 'Website text published';
+            } else {
+              title = log.action.replace(/_/g, ' ');
+            }
+
+            return {
+              id: log.id,
+              type: log.action.includes('ORDER') || log.action.includes('PAYMENT') ? 'payment' : 'enrollment',
+              title,
+              description,
+              timestamp: log.createdAt,
+              author: log.userEmail || log.userName || undefined,
+            };
+          });
+          setRecentActivities(acts);
+          return;
+        }
+      }
+    } catch {
+      // fallback
+    }
+
+    try {
+      const ordersRes = await fetch('/api/admin/orders');
+      if (ordersRes.ok) {
+        const oData = await ordersRes.json();
+        if (oData.success && Array.isArray(oData.orders) && oData.orders.length > 0) {
+          const acts: RecentActivityItem[] = oData.orders.slice(0, 6).map((o: AdminOrder) => ({
+            id: o.id,
+            type: 'payment',
+            title: o.status === 'APPROVED' ? `Enrollment Approved (${o.orderReference})` : `Payment Received (${o.orderReference})`,
+            description: `₹${(o.amount || 5100).toLocaleString('en-IN')} INR • ${o.studentName || o.studentEmail || 'Student'}`,
+            timestamp: o.reviewedAt || o.claimedAt || o.createdAt,
+            author: o.reviewedBy || undefined,
+          }));
+          setRecentActivities(acts);
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }, []);
+
   const loadOrders = React.useCallback(async (statusOverride?: string, queryOverride?: string) => {
     setIsLoadingOrders(true);
     setOrdersStatus('loading');
@@ -327,17 +422,6 @@ export default function AdminPortalClient({
         setOrdersStatus(loadedOrders.length === 0 ? 'empty' : 'success');
         if (data.countsByStatus) {
           setOrderCounts(data.countsByStatus);
-        }
-        if (data.orders && data.orders.length > 0) {
-          const acts: RecentActivityItem[] = data.orders.slice(0, 6).map((o: AdminOrder) => ({
-            id: o.id,
-            type: 'payment',
-            title: o.status === 'APPROVED' ? `Enrollment Approved (${o.orderReference})` : `UPI Payment Claimed (${o.orderReference})`,
-            description: `₹${o.amount.toLocaleString()} ${o.currency} • ${o.studentName || o.studentEmail || 'Student'} (UTR: ${o.utr || 'Pending'})`,
-            timestamp: o.claimedAt || o.createdAt,
-            author: o.reviewedBy || undefined,
-          }));
-          setRecentActivities(acts);
         }
       } else {
         setOrdersStatus('error');
@@ -747,7 +831,8 @@ export default function AdminPortalClient({
     }
     loadOrders();
     loadPaymentSettings();
-  }, [loadOrders, loadPaymentSettings, serverAuth]);
+    loadRecentActivities();
+  }, [loadOrders, loadPaymentSettings, loadRecentActivities, serverAuth]);
 
   useEffect(() => {
     loadAdminData();
@@ -893,7 +978,20 @@ export default function AdminPortalClient({
   };
 
   const handleToggleAcceptingEnrollments = async (crs: Course) => {
-    const newVal = crs.acceptingEnrollments === false ? true : false;
+    const isCurrentlyAccepting = crs.acceptingEnrollments !== false;
+    const newVal = !isCurrentlyAccepting;
+
+    // Strict Readiness Check: Cannot turn ON if 0 real videos uploaded
+    if (newVal === true) {
+      const realVideos = getRealVideoLessonsCount(crs);
+      if (realVideos === 0) {
+        alert(
+          'Cannot Open Enrolments:\n\nCourse content is not ready yet. 0 out of 23 module videos have been uploaded.\n\nTo protect your students, online checkout cannot be activated until real course videos are uploaded to the lessons.'
+        );
+        return;
+      }
+    }
+
     try {
       await fetch(`/api/courses/${crs.slug}`, {
         method: 'PATCH',
@@ -1086,7 +1184,7 @@ export default function AdminPortalClient({
             </h1>
             <p className="text-xs text-slate-400 mt-1">
               {isOwner
-                ? 'Manage courses, 1-on-1 personal classes, enrolled students, payments, and team access.'
+                ? 'Manage 23 course modules, 1-on-1 personal classes, enrolled students, payments, and team access.'
                 : `Section-restricted console. You currently have access to: ${allowedSections.map((s) => ADMIN_SECTIONS_META[s]?.shortTitle).join(', ') || 'None'}.`}
             </p>
           </div>
@@ -1112,20 +1210,13 @@ export default function AdminPortalClient({
               </Link>
             )}
 
-            <Link
-              href="/instructor"
-              className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-amber-500/20"
-            >
-              <span>Course &amp; Curriculum Management &rarr;</span>
-            </Link>
-
             {hasSectionPermission(currentUser, 'students') && (
               <button
                 onClick={() => setIsManualEnrollOpen(true)}
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-white border border-white/10 transition flex items-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5 text-amber-400" />
-                <span>Enroll Student</span>
+                <span>Add Student by Email</span>
               </button>
             )}
 
@@ -1150,7 +1241,7 @@ export default function AdminPortalClient({
                 {stats.totalStudents > 0 ? stats.totalStudents : <span className="text-lg font-bold text-slate-400">No students yet</span>}
               </p>
               <p className="text-[11px] text-slate-400 mt-1">
-                {stats.totalStudents > 0 ? `${stats.totalStudents} enrolled scholar${stats.totalStudents === 1 ? '' : 's'}` : 'Self-paced admissions open'}
+                {stats.totalStudents > 0 ? `${stats.totalStudents} enrolled student${stats.totalStudents === 1 ? '' : 's'}` : 'Admissions currently paused'}
               </p>
             </div>
 
@@ -1162,7 +1253,7 @@ export default function AdminPortalClient({
               <p className="text-2xl sm:text-3xl font-black text-white">
                 {stats.totalRevenueInr > 0 ? `₹${stats.totalRevenueInr.toLocaleString('en-IN')}` : <span className="text-lg font-bold text-slate-400">No revenue yet</span>}
               </p>
-              <p className="text-[11px] text-emerald-400 mt-1">Direct UPI QR • Zero gateway deductions</p>
+              <p className="text-[11px] text-emerald-400 mt-1">Direct UPI QR • 0% Transaction Fees</p>
             </div>
 
             <div className="cosmic-card p-5 rounded-2xl border border-white/10">
@@ -1333,9 +1424,9 @@ export default function AdminPortalClient({
 
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-bold text-white">Multi-Course Catalog Engine</h3>
+                <h3 className="text-lg font-bold text-white">Course Catalog &amp; Syllabus</h3>
                 <p className="text-xs text-slate-400">
-                  The platform is built to support infinite courses without changing codebase.
+                  Manage your 23-module curriculum, video uploads, tuition fees, and 1-on-1 mentorship settings.
                 </p>
               </div>
 
@@ -1344,7 +1435,7 @@ export default function AdminPortalClient({
                 className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add New Course to Catalog</span>
+                <span>Add New Course</span>
               </button>
             </div>
 
@@ -1352,13 +1443,8 @@ export default function AdminPortalClient({
               {courses.map((crs) => {
                 const courseStatus = crs.status || (crs.isPublished ? 'PUBLISHED' : 'DRAFT');
                 const isAccepting = crs.acceptingEnrollments !== false;
-                const publishedLessonsCount = crs.modules?.reduce((acc, m) => {
-                  if (m.lessons && m.lessons.length > 0) {
-                    return acc + m.lessons.filter((l) => l.isPublished !== false).length;
-                  }
-                  return acc + (m.isPublished !== false ? 1 : 0);
-                }, 0) || crs.totalClasses || 0;
-                const totalModulesCount = crs.modules?.length || crs.totalClasses || 0;
+                const realVideoCount = getRealVideoLessonsCount(crs);
+                const totalModulesCount = crs.modules?.length || 23;
 
                 return (
                   <div key={crs.id} className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4 flex flex-col justify-between">
@@ -1381,25 +1467,37 @@ export default function AdminPortalClient({
                           </span>
                         </div>
                         <span className="text-xs text-slate-400">
-                          {crs.durationWeeks} Weeks • {crs.totalClasses} Classes
+                          23 Modules • 1-on-1 Mentorship
                         </span>
                       </div>
 
                       <div>
                         <h4 className="text-base font-bold text-white">{crs.title}</h4>
                         {crs.tagline && <p className="text-xs text-amber-300/80 mt-0.5 font-medium">{crs.tagline}</p>}
-                        <p className="text-xs text-slate-400 mt-1 line-clamp-2">{crs.description}</p>
+                        <p className="text-xs text-slate-400 mt-1 line-clamp-2">
+                          {crs.description?.replace(/completely self-paced with lifetime access/gi, '23 comprehensive video modules with personal 1-on-1 mentorship')}
+                        </p>
                       </div>
 
-                      {/* Visible Published Lesson Count — "Never advertise 23 modules when fewer lessons are live" */}
-                      <div className="p-3 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between text-xs">
+                      {/* Visible Real Video Lesson Count — Never advertise 23 modules when 0 videos are uploaded */}
+                      <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                        realVideoCount === 0
+                          ? 'bg-amber-500/10 border-amber-500/20 text-amber-200'
+                          : 'bg-white/5 border-white/5 text-slate-300'
+                      }`}>
                         <div className="flex items-center gap-2">
                           <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
-                          <span className="text-slate-300 font-medium">
-                            <strong className="text-white">{publishedLessonsCount}</strong> Published Lessons Live ({totalModulesCount} Modules)
+                          <span className="font-medium">
+                            <strong className="text-white">{realVideoCount}</strong> Video Lessons Ready ({totalModulesCount} Modules in Preparation)
                           </span>
                         </div>
-                        <span className="text-[10px] text-slate-500 font-mono">Dynamic Count</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          realVideoCount === 0
+                            ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
+                            : 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/30'
+                        }`}>
+                          {realVideoCount === 0 ? 'Awaiting Videos' : 'Content Ready'}
+                        </span>
                       </div>
 
                       {/* Accepting Enrolments Switch */}
@@ -1447,10 +1545,10 @@ export default function AdminPortalClient({
                           <button
                             type="button"
                             onClick={() => handleOpenEditCourse(crs)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-white flex items-center gap-1 border border-white/10"
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 flex items-center gap-1 transition"
                           >
-                            <Edit className="w-3 h-3 text-amber-400" />
-                            <span>Edit</span>
+                            <Edit className="w-3.5 h-3.5" />
+                            <span>Edit Course</span>
                           </button>
 
                           {courseStatus === 'PUBLISHED' ? (
@@ -1521,8 +1619,8 @@ export default function AdminPortalClient({
           ) : (
           <div className="space-y-6">
             <AdminHelpBox
-              titleEn="Students & Scholars Management"
-              titleHi="विद्यार्थी एवं अध्येता प्रबंधन"
+              titleEn="Student Roster &amp; Enrollments"
+              titleHi="विद्यार्थी एवं प्रवेश प्रबंधन"
               descriptionEn="View registered students, inspect course completion progress, or manually grant course access. When granting access manually, an audit reason is strictly recorded."
               descriptionHi="पंजीकृत विद्यार्थियों की सूची देखें, पाठ्यक्रम पूर्णता प्रगति जांचें या मैन्युअल रूप से कोर्स एक्सेस दें। मैन्युअल प्रवेश देते समय ऑडिट कारण अनिवार्य रूप से दर्ज किया जाता है।"
               tipsEn={[
@@ -1597,7 +1695,7 @@ export default function AdminPortalClient({
                             key={enr.id}
                             onClick={() => setSelectedStudentId(enr.studentId || enr.id)}
                             className="hover:bg-white/[0.05] transition cursor-pointer group"
-                            title="Click to view scholar profile & 1-on-1 sessions"
+                            title="Click to view student profile &amp; 1-on-1 sessions"
                           >
                             <td className="px-6 py-4">
                               <p className="font-bold text-white">{enr.studentName || 'Student'}</p>
@@ -2145,37 +2243,134 @@ export default function AdminPortalClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {certificates.map((cert) => (
-                    <tr key={cert.id} className="hover:bg-white/[0.02] transition">
-                      <td className="px-6 py-4">
-                        <span className="font-mono font-bold text-amber-300 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
-                          {cert.verificationCode}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="font-bold text-white">{cert.studentName}</p>
-                        <p className="text-[10px] text-slate-400">{cert.studentEmail}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-emerald-500/20 text-emerald-300">
-                          {cert.scorePercentage}% • {cert.grade}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-slate-400">{cert.issueDate}</td>
-                      <td className="px-6 py-4">
-                        <Link
-                          href={`/verify/${cert.verificationCode}`}
-                          target="_blank"
-                          className="text-amber-400 hover:underline flex items-center gap-1"
-                        >
-                          <span>Verify</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </Link>
+                  {certificates.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                        <Award className="w-8 h-8 text-amber-400/40 mx-auto mb-2" />
+                        <p className="font-bold text-white text-sm mb-1">No Certificates Issued Yet</p>
+                        <p className="text-xs text-slate-400 max-w-md mx-auto">
+                          Certificates are automatically awarded when an enrolled student completes all curriculum modules and scores 70% or higher on the final certification exam.
+                        </p>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    certificates.map((cert) => (
+                      <tr key={cert.id} className="hover:bg-white/[0.02] transition">
+                        <td className="px-6 py-4">
+                          <span className="font-mono font-bold text-amber-300 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
+                            {cert.verificationCode}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="font-bold text-white">{cert.studentName}</p>
+                          <p className="text-[10px] text-slate-400">{cert.studentEmail}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-emerald-500/20 text-emerald-300">
+                            {cert.scorePercentage}% • {cert.grade}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-slate-400">{cert.issueDate}</td>
+                        <td className="px-6 py-4">
+                          <Link
+                            href={`/verify/${cert.verificationCode}`}
+                            target="_blank"
+                            className="text-amber-400 hover:underline flex items-center gap-1"
+                          >
+                            <span>Verify</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
+            </div>
+
+            {/* 20-Question Graded Certification Exam Bank */}
+            <div className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Award className="w-5 h-5 text-amber-400" />
+                    <h3 className="text-lg font-bold text-white">Final Graded Certification Exam</h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      20 Official Questions
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Graded 20-question comprehensive exam. Passing standard: 70% (14/20 correct) to unlock graduation certificate.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-center">
+                    <span className="text-[10px] text-slate-400 block uppercase">Questions</span>
+                    <span className="font-black text-white text-sm">20 MCQs</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-center">
+                    <span className="text-[10px] text-slate-400 block uppercase">Passing Score</span>
+                    <span className="font-black text-emerald-400 text-sm">70% (14 correct)</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-center">
+                    <span className="text-[10px] text-slate-400 block uppercase">Time Limit</span>
+                    <span className="font-black text-amber-300 text-sm">45 Minutes</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Questions List preview */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    Exam Questions &amp; Topics
+                  </h4>
+                  <span className="text-[11px] text-slate-400">
+                    {INITIAL_FINAL_TEST.questions.length} Questions Configured
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                  {INITIAL_FINAL_TEST.questions.map((q, idx) => (
+                    <div key={q.id || idx} className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition text-xs space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2">
+                          <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-bold flex items-center justify-center shrink-0 text-[10px]">
+                            {idx + 1}
+                          </span>
+                          <span className="font-medium text-white">{q.question}</span>
+                        </div>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 text-slate-300 shrink-0 border border-white/10">
+                          {q.topic}
+                        </span>
+                      </div>
+                      <div className="pl-7 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-slate-400">
+                        {q.options.map((opt, optIdx) => (
+                          <div
+                            key={optIdx}
+                            className={`p-1.5 rounded ${
+                              optIdx === q.correctOptionIndex
+                                ? 'bg-emerald-500/10 text-emerald-300 font-semibold border border-emerald-500/30'
+                                : 'bg-black/20 text-slate-400'
+                            }`}
+                          >
+                            <span className="opacity-70 mr-1">{String.fromCharCode(65 + optIdx)}.</span>
+                            <span>{opt}</span>
+                            {optIdx === q.correctOptionIndex && (
+                              <span className="ml-1 text-[10px] text-emerald-400 font-bold">✓ (Correct)</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {q.explanation && (
+                        <p className="pl-7 text-[10px] text-slate-500 italic">
+                          💡 Explanation: {q.explanation}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -2202,8 +2397,8 @@ export default function AdminPortalClient({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Course Delivery</span>
-                  <p className="text-2xl font-black text-amber-300 mt-1">Self-Paced</p>
-                  <p className="text-[10px] text-emerald-400 mt-1">23 on-demand modules published</p>
+                  <p className="text-2xl font-black text-amber-300 mt-1">Self-Paced + 1-on-1</p>
+                  <p className="text-[10px] text-amber-300 mt-1">23 video modules in preparation</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Course Completion Rate</span>
@@ -2223,46 +2418,47 @@ export default function AdminPortalClient({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <h4 className="font-bold text-white text-sm mb-2">Curriculum Sessions & Progress</h4>
-                  <div className="space-y-2 text-xs">
+                  <h4 className="font-bold text-white text-sm mb-2">Curriculum Readiness &amp; Progress</h4>
+                  <div className="space-y-3 text-xs">
                     <div>
                       <div className="flex justify-between text-slate-400 mb-1">
-                        <span>Modules 1–8: Foundations & Astronomy</span>
-                        <span className="text-white font-bold">{classes.filter((c) => c.classNumber <= 8 && c.status === 'COMPLETED').length} / 8 completed</span>
+                        <span>Course Modules (23 Total Modules)</span>
+                        <span className="text-white font-bold">23 modules structured</span>
                       </div>
                       <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-amber-400 h-full rounded-full" style={{ width: `${Math.round((classes.filter((c) => c.classNumber <= 8 && c.status === 'COMPLETED').length / 8) * 100)}%` }} />
+                        <div className="bg-amber-400 h-full rounded-full" style={{ width: '100%' }} />
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between text-slate-400 mb-1">
-                        <span>Modules 9–16: 12 Rashis & Chart Casting</span>
-                        <span className="text-white font-bold">{classes.filter((c) => c.classNumber > 8 && c.classNumber <= 16 && c.status === 'COMPLETED').length} / 8 completed</span>
+                        <span>Video Upload Status</span>
+                        <span className="text-amber-300 font-bold">0 / 23 videos uploaded</span>
                       </div>
                       <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-amber-400 h-full rounded-full" style={{ width: `${Math.round((classes.filter((c) => c.classNumber > 8 && c.classNumber <= 16 && c.status === 'COMPLETED').length / 8) * 100)}%` }} />
+                        <div className="bg-amber-400 h-full rounded-full" style={{ width: '0%' }} />
                       </div>
+                      <p className="text-[10px] text-slate-500 mt-1">Upload lecture recordings in course builder to mark modules ready.</p>
                     </div>
                     <div>
                       <div className="flex justify-between text-slate-400 mb-1">
-                        <span>Modules 17–23: Predictions & Certification</span>
-                        <span className="text-white font-bold">{classes.filter((c) => c.classNumber > 16 && c.status === 'COMPLETED').length} / 7 completed</span>
+                        <span>1-on-1 Mentorship Model</span>
+                        <span className="text-emerald-300 font-bold">Active &amp; Ready</span>
                       </div>
-                      <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-amber-400 h-full rounded-full" style={{ width: `${Math.round((classes.filter((c) => c.classNumber > 16 && c.status === 'COMPLETED').length / 7) * 100)}%` }} />
-                      </div>
+                      <p className="text-[10px] text-slate-500">Personal classes scheduled individually per student.</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <h4 className="font-bold text-white text-sm mb-2">Student Reviews & Trust Indicators</h4>
-                  <p className="text-xs text-slate-400 mb-3">Direct UPI verification active • Online certificate verification enabled</p>
+                  <h4 className="font-bold text-white text-sm mb-2">Student Reviews &amp; Feedback</h4>
+                  <p className="text-xs text-slate-400 mb-3">
+                    No student reviews submitted yet. Student testimonials will appear here once the first batch of students completes the course.
+                  </p>
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded bg-amber-400/20 text-amber-300 text-xs font-bold">
-                      ✓ System Active
+                    <span className="px-2.5 py-1 rounded bg-white/5 text-slate-400 text-xs font-semibold">
+                      0 Reviews Recorded
                     </span>
-                    <span className="text-xs text-slate-400">{certificates.length} Authentic Certificate{certificates.length === 1 ? "" : "s"} Issued</span>
+                    <span className="text-xs text-slate-500">{certificates.length} Certificate{certificates.length === 1 ? '' : 's'} Issued</span>
                   </div>
                 </div>
               </div>

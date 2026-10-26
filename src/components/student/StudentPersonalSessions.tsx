@@ -326,7 +326,7 @@ export default function StudentPersonalSessions() {
         <div className="space-y-1.5">
           <h3 className="text-lg font-bold text-white">1-on-1 Personal Mentorship Area</h3>
           <p className="text-xs text-slate-300 leading-relaxed">
-            Personal live classes with Acharya Niraj Kumar are exclusive to actively enrolled scholars of{' '}
+            Personal live classes with Acharya Niraj Kumar are exclusive to actively enrolled students of{' '}
             <strong className="text-amber-300">The Ultimate Astrology Course: Foundations to Chart Mastery</strong>.
           </p>
           {accessReason && (

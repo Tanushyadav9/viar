@@ -26,9 +26,17 @@ export interface UnifiedAdminStats {
  */
 export async function getUnifiedAdminStats(): Promise<UnifiedAdminStats> {
   try {
-    // 1. Revenue strictly from APPROVED orders
+    const ownerEmail = (process.env.OWNER_EMAIL || 'aapkaastro1606@gmail.com').trim().toLowerCase();
+
+    // 1. Revenue strictly from real APPROVED customer orders (excluding owner & test purchases)
     const revenueAggregate = await prisma.order.aggregate({
-      where: { status: 'APPROVED' },
+      where: {
+        status: 'APPROVED',
+        AND: [
+          { notes: { not: { contains: '[TEST_PURCHASE]' } } },
+          { studentEmail: { not: ownerEmail } },
+        ],
+      },
       _sum: { amount: true },
       _count: { id: true },
     });
@@ -36,9 +44,19 @@ export async function getUnifiedAdminStats(): Promise<UnifiedAdminStats> {
     const totalRevenueInr = revenueAggregate._sum.amount || 0;
     const approvedOrdersCount = revenueAggregate._count.id;
 
-    // 2. Students strictly from ACTIVE enrollments
+    // 2. Students strictly from real non-test ACTIVE enrollments
     const distinctActiveStudents = await prisma.enrollment.findMany({
-      where: { status: 'ACTIVE' },
+      where: {
+        status: 'ACTIVE',
+        user: {
+          isOwner: false,
+          email: { not: ownerEmail },
+        },
+        OR: [
+          { order: null },
+          { order: { notes: { not: { contains: '[TEST_PURCHASE]' } } } },
+        ],
+      },
       select: { userId: true },
       distinct: ['userId'],
     });

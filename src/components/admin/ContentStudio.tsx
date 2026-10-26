@@ -306,11 +306,11 @@ export default function ContentStudio({
       }
     }
 
-    // Validation: Public contact email cannot be the Owner login address
+    // Validation: Contact email format
     if (editingItem.collection === 'site_settings' && editingItem.key === 'contact_email') {
       const emailVal = (formContentEn || formContentHi || '').trim().toLowerCase();
-      if (emailVal === 'aapkaastro1606@gmail.com') {
-        alert('The public contact email cannot be the private Owner login email (aapkaastro1606@gmail.com). Please provide an official inquiries address such as contact@viar.in or admissions@viar.in.');
+      if (emailVal && !emailVal.includes('@')) {
+        alert('Please enter a valid contact email address.');
         return;
       }
     }
@@ -1194,7 +1194,7 @@ export default function ContentStudio({
               {/* Public Contact Email Advisory */}
               {editingItem.collection === 'site_settings' && editingItem.key === 'contact_email' && (
                 <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-200 text-xs leading-relaxed">
-                  💡 <strong>Public Inquiry Policy:</strong> Must be a public inquiries address (e.g. <code>contact@viar.in</code> or <code>admissions@viar.in</code>). The Site Owner&apos;s private login address (<code>aapkaastro1606@gmail.com</code>) cannot be used as the public contact email.
+                  💡 <strong>Public Inquiry Email:</strong> This address is shown to visitors on the website contact page and footer for student inquiries.
                 </div>
               )}
 

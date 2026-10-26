@@ -424,26 +424,8 @@ export const INITIAL_COHORTS: Cohort[] = [
   },
 ];
 
-/* 23 Scheduled Class Sessions corresponding to the 23 curriculum modules */
-export const SCHEDULED_CLASSES_FLAGSHIP: ScheduledClass[] = ULTIMATE_ASTROLOGY_MODULES.map((mod, index) => {
-  const num = index + 1;
-  return {
-    id: `cls-${num}`,
-    cohortId: 'cohort-wia-batch-1',
-    classNumber: num,
-    sessionNumber: num,
-    moduleNumber: num,
-    title: mod.title,
-    subtitle: `Module ${num} • Scheduled Class Session`,
-    description: mod.description || '',
-    scheduledStartTime: '2026-11-01T10:00:00.000Z',
-    scheduledAt: '2026-11-01T10:00:00.000Z',
-    durationMinutes: mod.durationMinutes || 75,
-    meetingPlatform: 'ZOOM',
-    joinUrl: '',
-    status: 'UPCOMING',
-  };
-});
+/* Flagship classes (Empty: All live teaching is 1-on-1 personal sessions, not group classes) */
+export const SCHEDULED_CLASSES_FLAGSHIP: ScheduledClass[] = [];
 
 /* 20-Question Final Graded Quiz */
 export const INITIAL_FINAL_TEST: FinalTest = {

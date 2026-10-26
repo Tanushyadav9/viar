@@ -784,7 +784,7 @@ export default function SessionsManager({
                 <ShieldCheck className="w-4 h-4 text-amber-400" />
                 <span>Course Policy:</span>
                 <strong className="text-white">
-                  {courseSettings.sessionsIncludedPerStudent} 1-on-1 sessions included per enrolled scholar
+                  {courseSettings.sessionsIncludedPerStudent} 1-on-1 sessions included per enrolled student
                 </strong>
               </span>
               {courseSettings.maximumActiveStudents !== null && (
@@ -865,7 +865,7 @@ export default function SessionsManager({
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
                 <input
                   type="text"
-                  placeholder="Search topic or scholar..."
+                  placeholder="Search topic or student..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
@@ -880,7 +880,7 @@ export default function SessionsManager({
                   className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400 cursor-pointer"
                 >
                   <option value="ALL" className="bg-slate-900 text-white">
-                    Filter by Scholar: All ({students.length})
+                    Filter by Student: All ({students.length})
                   </option>
                   {students.map((st) => (
                     <option key={st.id} value={st.id} className="bg-slate-900 text-white">
@@ -1283,7 +1283,7 @@ export default function SessionsManager({
                 {r.preferredWindows && r.preferredWindows.length > 0 && (
                   <div className="space-y-1 text-xs">
                     <span className="text-[10px] uppercase font-bold text-amber-400 block">
-                      Preferred Time Windows (2-3 Slots Selected by Scholar):
+                      Preferred Time Windows (2-3 Slots Selected by Student):
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                       {r.preferredWindows.map((win, idx) => {
@@ -1397,7 +1397,7 @@ export default function SessionsManager({
                 {/* 1. Student Selector */}
                 <div>
                   <label className="text-slate-300 font-bold block mb-1.5">
-                    Select Scholar / Enrolled Student:
+                    Select Student / Enrolled Student:
                   </label>
                   <select
                     value={formStudentId}
@@ -1492,10 +1492,10 @@ export default function SessionsManager({
                     </span>
                     {scheduledTimePreview.studentTime ? (
                       <span className="text-sky-300 font-mono">
-                        Scholar Time ({studentTz}): {scheduledTimePreview.studentTime}
+                        Student Time ({studentTz}): {scheduledTimePreview.studentTime}
                       </span>
                     ) : (
-                      <span className="text-slate-400 italic">Scholar is in India Standard Time</span>
+                      <span className="text-slate-400 italic">Student is in India Standard Time</span>
                     )}
                   </div>
                 )}
@@ -1808,7 +1808,7 @@ export default function SessionsManager({
             </div>
 
             <p className="text-slate-300">
-              For scholar: <strong className="text-white">{activeRequestAction.request.studentName}</strong>
+              For student: <strong className="text-white">{activeRequestAction.request.studentName}</strong>
             </p>
 
             {activeRequestAction.type === 'PROPOSE' ? (
@@ -1824,7 +1824,7 @@ export default function SessionsManager({
                   />
                 </div>
                 <div>
-                  <label className="text-slate-300 font-bold block mb-1">Note for Scholar:</label>
+                  <label className="text-slate-300 font-bold block mb-1">Note for Student:</label>
                   <textarea
                     rows={2}
                     placeholder="e.g. Thursday works best for an in-depth chart reading."
@@ -1861,7 +1861,7 @@ export default function SessionsManager({
                 disabled={isSubmitting}
                 className="gold-button px-4 py-1.5 rounded-xl font-bold"
               >
-                {isSubmitting ? 'Sending...' : 'Confirm & Email Scholar'}
+                {isSubmitting ? 'Sending...' : 'Confirm & Email Student'}
               </button>
             </div>
           </div>
@@ -1999,7 +1999,7 @@ export default function SessionsManager({
                   <h3 className="text-lg font-bold text-white">1-on-1 Session Policies</h3>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
-                  Configure reschedule advance notice periods and optional per-scholar included session counts.
+                  Configure reschedule advance notice periods and optional per-student included session counts.
                 </p>
               </div>
               <button
@@ -2024,7 +2024,7 @@ export default function SessionsManager({
                     <span className="text-[10px] text-amber-400 font-normal">Default: 24 Hours</span>
                   </label>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Scholars must submit online reschedule requests at least this many hours in advance of the session. Within this window, they are directed to contact Acharya ji on WhatsApp.
+                    Students must submit online reschedule requests at least this many hours in advance of the session. Within this window, they are directed to contact Acharya ji on WhatsApp.
                   </p>
                   <div className="flex items-center gap-2 pt-1">
                     <input
@@ -2043,11 +2043,11 @@ export default function SessionsManager({
                 {/* 2. Optional Sessions Included */}
                 <div className="space-y-1 pt-3 border-t border-white/10">
                   <label className="font-bold text-white flex items-center justify-between">
-                    <span>Sessions Included Per Scholar</span>
+                    <span>Sessions Included Per Student</span>
                     <span className="text-[10px] text-slate-400 font-normal">Optional / Empty by default</span>
                   </label>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Leave blank to hide quota counters. If set, scholars and admins will see usage progress (e.g. &quot;2 of 5 sessions used&quot;).
+                    Leave blank to hide quota counters. If set, students and admins will see usage progress (e.g. &quot;2 of 5 sessions used&quot;).
                   </p>
                   <div className="flex items-center gap-2 pt-1">
                     <input
@@ -2068,16 +2068,16 @@ export default function SessionsManager({
                   </div>
                 </div>
 
-                {/* 3. Maximum Active Scholars Capacity */}
+                {/* 3. Maximum Active Students Capacity */}
                 <div className="space-y-1 pt-3 border-t border-white/10">
                   <label className="font-bold text-white flex items-center justify-between">
-                    <span>Maximum Active Scholars Capacity</span>
+                    <span>Maximum Active Students Capacity</span>
                     <span className="text-[10px] text-slate-400 font-normal">
-                      {settingsMaxStudents === '' ? 'Currently: Unlimited' : `Cap: ${settingsMaxStudents} Scholars`}
+                      {settingsMaxStudents === '' ? 'Currently: Unlimited' : `Cap: ${settingsMaxStudents} Students`}
                     </span>
                   </label>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Set a real limit on concurrent active 1-on-1 scholars to prevent overload. Leave empty for no hard limit.
+                    Set a real limit on concurrent active 1-on-1 students to prevent overload. Leave empty for no hard limit.
                   </p>
                   <div className="flex items-center gap-2 pt-1">
                     <input

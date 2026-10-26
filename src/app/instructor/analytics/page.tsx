@@ -85,7 +85,7 @@ export default function InstructorAnalyticsPage() {
               {(stats.totalRevenueInr && stats.totalRevenueInr > 0) ? `₹${stats.totalRevenueInr.toLocaleString('en-IN')}` : <span className="text-lg font-bold text-slate-400">No revenue yet</span>}
             </span>
             <p className="text-[11px] text-emerald-400 mt-2">
-              Direct UPI • Zero gateway deductions
+              Direct UPI QR • 0% Transaction Fees
             </p>
           </div>
 

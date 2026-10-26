@@ -244,6 +244,9 @@ export async function checkWorkingHours(data: {
 export async function createStudentSessionWithValidation(data: {
   enrollmentId?: string;
   studentId: string;
+  studentName?: string;
+  studentEmail?: string;
+  studentPhone?: string;
   courseId?: string;
   moduleId?: string | null;
   lessonId?: string | null;
@@ -310,6 +313,9 @@ export async function createStudentSessionWithValidation(data: {
     const s = await createStudentSession({
       enrollmentId: data.enrollmentId || `enr_${data.studentId}`,
       studentId: data.studentId,
+      studentName: data.studentName,
+      studentEmail: data.studentEmail,
+      studentPhone: data.studentPhone,
       courseId: data.courseId || 'course-what-is-astrology',
       moduleId: data.moduleId,
       lessonId: data.lessonId,
@@ -338,6 +344,9 @@ export async function createStudentSessionWithValidation(data: {
 export async function createStudentSession(data: {
   enrollmentId: string;
   studentId: string;
+  studentName?: string;
+  studentEmail?: string;
+  studentPhone?: string;
   courseId: string;
   moduleId?: string | null;
   lessonId?: string | null;

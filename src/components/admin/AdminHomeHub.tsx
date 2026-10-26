@@ -9,14 +9,15 @@ import {
   DollarSign,
   HelpCircle,
   FileText,
-  Settings,
-  Calendar,
   Clock,
   CheckCircle2,
   AlertCircle,
   ArrowRight,
   Eye,
   ShieldCheck,
+  Video,
+  Award,
+  BarChart3,
 } from 'lucide-react';
 import { AdminSection } from '@/lib/types';
 import AdminHelpBox from './AdminHelpBox';
@@ -52,24 +53,27 @@ export default function AdminHomeHub({
   liveClassesTodayCount = 0,
   recentActivities = [],
 }: AdminHomeHubProps) {
-  // Flagship Course ID for direct course editor access
-  const flagshipCourseId = 'course-what-is-astrology';
-
-  // 6 Plain Tiles as explicitly specified
+  // Plain Tiles matching Admin Navigation Tabs 1:1
   const PLAIN_TILES = [
     {
-      id: 'tile-course',
-      title: 'Course',
-      helpText: 'Edit modules, video lessons, notes, and enrolment status for the astrology course.',
+      id: 'tile-courses',
+      title: 'Courses',
+      helpText: 'View curriculum, 23 video modules, course pricing, and enrolment settings.',
       icon: <BookOpen className="w-6 h-6 text-purple-400" />,
-      action: () => {
-        window.location.href = `/instructor/courses/${flagshipCourseId}/builder`;
-      },
+      action: () => onSelectSection('courses'),
+    },
+    {
+      id: 'tile-sessions',
+      title: 'Sessions',
+      badge: liveClassesTodayCount > 0 ? `${liveClassesTodayCount} Scheduled` : undefined,
+      helpText: 'Schedule 1-on-1 personal classes, set meeting links, and manage calendar.',
+      icon: <Video className="w-6 h-6 text-amber-400" />,
+      action: () => onSelectSection('sessions'),
     },
     {
       id: 'tile-students',
       title: 'Students',
-      helpText: 'View enrolled scholars, course completion progress, or manually grant access.',
+      helpText: 'View enrolled students, learning progress, or grant access directly by email.',
       icon: <Users className="w-6 h-6 text-amber-400" />,
       action: () => onSelectSection('students'),
     },
@@ -77,34 +81,48 @@ export default function AdminHomeHub({
       id: 'tile-payments',
       title: 'Payments',
       badge: pendingOrdersCount > 0 ? `${pendingOrdersCount} Waiting` : undefined,
-      helpText: 'Check student UPI transaction references (UTR) and approve access.',
+      helpText: 'Check student UPI transaction references (UTR) and approve course access.',
       icon: <DollarSign className="w-6 h-6 text-emerald-400" />,
       action: () => onSelectSection('payments'),
     },
     {
-      id: 'tile-questions',
-      title: 'Questions',
-      badge: pendingQuestionsCount > 0 ? `${pendingQuestionsCount} Waiting` : undefined,
-      helpText: 'Review questions asked by visitors and train the AI assistant with verified answers.',
-      icon: <HelpCircle className="w-6 h-6 text-sky-400" />,
-      action: () => {
-        window.location.href = '/admin/knowledge';
-      },
-    },
-    {
       id: 'tile-content',
-      title: 'Site content',
-      helpText: 'Change website headlines, promotional banners, instructor bio, and FAQs.',
+      title: 'Content Studio',
+      helpText: 'Update website text, announcement banner, instructor bio, and FAQs.',
       icon: <FileText className="w-6 h-6 text-indigo-400" />,
       action: () => onSelectSection('content'),
     },
     {
-      id: 'tile-settings',
-      title: 'Settings',
-      helpText: 'Manage receiving UPI IDs, admissions WhatsApp helpline, and team permissions.',
-      icon: <Settings className="w-6 h-6 text-slate-300" />,
-      action: () => onSelectSection('staff'),
+      id: 'tile-quizzes',
+      title: 'Quizzes & Certificates',
+      helpText: 'Inspect final 20-question certification exam and issued authentic certificates.',
+      icon: <Award className="w-6 h-6 text-sky-400" />,
+      action: () => onSelectSection('quizzes'),
     },
+    {
+      id: 'tile-analytics',
+      title: 'Analytics',
+      helpText: 'Track student course completion rates, video watch progress, and quiz scores.',
+      icon: <BarChart3 className="w-6 h-6 text-emerald-400" />,
+      action: () => onSelectSection('analytics'),
+    },
+    {
+      id: 'tile-knowledge',
+      title: 'AI Knowledge',
+      badge: pendingQuestionsCount > 0 ? `${pendingQuestionsCount} Waiting` : undefined,
+      helpText: 'Review visitor inquiries and manage verified answers for the AI assistant.',
+      icon: <HelpCircle className="w-6 h-6 text-amber-300" />,
+      action: () => {
+        window.location.href = '/admin/knowledge';
+      },
+    },
+    ...(isOwner ? [{
+      id: 'tile-staff',
+      title: 'Team Access',
+      helpText: 'Assign staff permissions and delegate admin section access to employees.',
+      icon: <ShieldCheck className="w-6 h-6 text-amber-400" />,
+      action: () => onSelectSection('staff'),
+    }] : []),
   ];
 
   return (
@@ -225,7 +243,7 @@ export default function AdminHomeHub({
             </div>
             <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
               <span className={(pendingStudentsCount || pendingOrdersCount) > 0 ? 'text-amber-300 font-bold' : 'text-emerald-400'}>
-                {(pendingStudentsCount || pendingOrdersCount) > 0 ? 'Awaiting activation' : 'All scholars active'}
+                {(pendingStudentsCount || pendingOrdersCount) > 0 ? 'Awaiting activation' : 'All students active'}
               </span>
               <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
             </div>
@@ -259,24 +277,25 @@ export default function AdminHomeHub({
             </div>
           </div>
 
-          {/* Card 4: Live classes today or tomorrow */}
+          {/* Card 4: 1-on-1 Sessions today or tomorrow */}
           <div
-            className="p-4 rounded-2xl border border-white/10 bg-white/[0.03] flex flex-col justify-between"
+            onClick={() => onSelectSection('sessions')}
+            className="p-4 rounded-2xl border border-white/10 bg-white/[0.03] flex flex-col justify-between cursor-pointer hover:border-amber-500/30 transition"
           >
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-slate-400">Live classes (Today / Tomorrow)</span>
-                <Calendar className="w-4 h-4 text-purple-400" />
+                <span className="text-xs font-semibold text-slate-400">1-on-1 Sessions (Today / Tomorrow)</span>
+                <Video className="w-4 h-4 text-amber-400" />
               </div>
               <div className="text-2xl font-black text-white">
                 {liveClassesTodayCount}
               </div>
             </div>
             <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">
-                100% Self-Paced (On-demand video)
+              <span className={liveClassesTodayCount > 0 ? 'text-amber-300 font-bold' : 'text-slate-400'}>
+                {liveClassesTodayCount > 0 ? `${liveClassesTodayCount} personal class${liveClassesTodayCount === 1 ? '' : 'es'} scheduled` : 'No sessions scheduled today'}
               </span>
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
             </div>
           </div>
 
@@ -290,7 +309,7 @@ export default function AdminHomeHub({
             <span>Manage Institute</span>
           </h2>
           <span className="text-xs text-slate-400">
-            6 straightforward sections
+            Unified administrative tiles
           </span>
         </div>
 
