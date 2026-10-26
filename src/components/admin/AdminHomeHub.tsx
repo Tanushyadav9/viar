@@ -16,8 +16,6 @@ import {
   Eye,
   ShieldCheck,
   Video,
-  Award,
-  BarChart3,
 } from 'lucide-react';
 import { AdminSection } from '@/lib/types';
 import AdminHelpBox from './AdminHelpBox';
@@ -53,12 +51,12 @@ export default function AdminHomeHub({
   liveClassesTodayCount = 0,
   recentActivities = [],
 }: AdminHomeHubProps) {
-  // Plain Tiles matching Admin Navigation Tabs 1:1
+  // Plain Tiles matching Admin Navigation Tabs 1:1 (One Navigation System)
   const PLAIN_TILES = [
     {
       id: 'tile-courses',
-      title: 'Courses',
-      helpText: 'View curriculum, 23 video modules, course pricing, and enrolment settings.',
+      title: 'Course',
+      helpText: 'View curriculum, 23 video modules, exam readiness, and tuition pricing.',
       icon: <BookOpen className="w-6 h-6 text-purple-400" />,
       action: () => onSelectSection('courses'),
     },
@@ -73,7 +71,7 @@ export default function AdminHomeHub({
     {
       id: 'tile-students',
       title: 'Students',
-      helpText: 'View enrolled students, learning progress, or grant access directly by email.',
+      helpText: 'View enrolled students, learning progress, mark test students, or grant access.',
       icon: <Users className="w-6 h-6 text-amber-400" />,
       action: () => onSelectSection('students'),
     },
@@ -86,29 +84,8 @@ export default function AdminHomeHub({
       action: () => onSelectSection('payments'),
     },
     {
-      id: 'tile-content',
-      title: 'Content Studio',
-      helpText: 'Update website text, announcement banner, instructor bio, and FAQs.',
-      icon: <FileText className="w-6 h-6 text-indigo-400" />,
-      action: () => onSelectSection('content'),
-    },
-    {
-      id: 'tile-quizzes',
-      title: 'Quizzes & Certificates',
-      helpText: 'Inspect final 20-question certification exam and issued authentic certificates.',
-      icon: <Award className="w-6 h-6 text-sky-400" />,
-      action: () => onSelectSection('quizzes'),
-    },
-    {
-      id: 'tile-analytics',
-      title: 'Analytics',
-      helpText: 'Track student course completion rates, video watch progress, and quiz scores.',
-      icon: <BarChart3 className="w-6 h-6 text-emerald-400" />,
-      action: () => onSelectSection('analytics'),
-    },
-    {
       id: 'tile-knowledge',
-      title: 'AI Knowledge',
+      title: 'Questions',
       badge: pendingQuestionsCount > 0 ? `${pendingQuestionsCount} Waiting` : undefined,
       helpText: 'Review visitor inquiries and manage verified answers for the AI assistant.',
       icon: <HelpCircle className="w-6 h-6 text-amber-300" />,
@@ -116,10 +93,17 @@ export default function AdminHomeHub({
         window.location.href = '/admin/knowledge';
       },
     },
+    {
+      id: 'tile-content',
+      title: 'Site content',
+      helpText: 'Update website text, announcement banner, instructor bio, FAQs, and media library.',
+      icon: <FileText className="w-6 h-6 text-indigo-400" />,
+      action: () => onSelectSection('content'),
+    },
     ...(isOwner ? [{
       id: 'tile-staff',
-      title: 'Team Access',
-      helpText: 'Assign staff permissions and delegate admin section access to employees.',
+      title: 'Settings',
+      helpText: 'Tuition payment settings, manage & remove test data, and assign staff permissions.',
       icon: <ShieldCheck className="w-6 h-6 text-amber-400" />,
       action: () => onSelectSection('staff'),
     }] : []),

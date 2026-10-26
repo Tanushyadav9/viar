@@ -2,6 +2,7 @@ import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
+import { validateLessonPublishReadiness } from '@/lib/curriculum-validation';
 
 export async function GET(
   req: NextRequest,
@@ -154,12 +155,19 @@ export async function GET(
         lessons: m.lessons
           .filter((l) => {
             if (isStaff && mode !== 'student') return true;
-            // Non-staff only see PUBLISHED lessons
-            return l.status === 'PUBLISHED';
+            // Non-staff only see PUBLISHED lessons that actually have valid content
+            const readiness = validateLessonPublishReadiness(l);
+            return l.status === 'PUBLISHED' && readiness.canPublish;
           })
           .map((l) => {
+            const readiness = validateLessonPublishReadiness(l);
+            const draftReason = !readiness.canPublish ? readiness.draftReason : null;
+
             if (canViewPrivateMeetingLinks) {
-              return l;
+              return {
+                ...l,
+                draftReason,
+              };
             }
             // Outline only for unapproved visitors: videos, notes, meeting links, recordings, and quizzes stripped on the server
             return {
@@ -302,6 +310,20 @@ export async function POST(
         return NextResponse.json({ success: false, error: 'moduleId is required to create a lesson' }, { status: 400 });
       }
 
+      const lessonTypeToUse = (lessonType || type || 'VIDEO');
+      const readiness = validateLessonPublishReadiness({
+        type: lessonTypeToUse,
+        videoProviderId: videoProviderId || null,
+        externalVideoUrl: externalVideoUrl || null,
+        documentKey: documentKey || null,
+        documentUrl: documentUrl || null,
+        notesMarkdown: notesMarkdown || null,
+        liveScheduledAt: liveScheduledAt || null,
+      });
+
+      const effectiveStatus = (status === 'PUBLISHED' && !readiness.canPublish) ? 'DRAFT' : (status || 'PUBLISHED');
+      const draftReason = (!readiness.canPublish) ? readiness.draftReason : null;
+
       const existingLessons = await prisma.lesson.count({ where: { moduleId } });
       const newLesson = await prisma.lesson.create({
         data: {
@@ -311,8 +333,8 @@ export async function POST(
           description: description || '',
           descriptionHi: descriptionHi || null,
           order: order !== undefined ? Number(order) : existingLessons + 1,
-          type: (lessonType || type || 'VIDEO'),
-          status: status || 'PUBLISHED',
+          type: lessonTypeToUse,
+          status: effectiveStatus,
           isFreePreview: Boolean(isFreePreview),
           videoProviderId: videoProviderId || null,
           videoDuration: videoDuration ? Number(videoDuration) : null,
@@ -336,12 +358,14 @@ export async function POST(
         data: {
           userId: auth.userId || null,
           userEmail: auth.email || null,
-          action: 'LESSON_CREATED',
+          action: effectiveStatus === 'PUBLISHED' ? 'LESSON_PUBLISHED' : 'LESSON_CREATED',
           entityType: 'LESSON',
           entityId: newLesson.id,
           courseId: course.id,
-          reason: `Created lesson "${newLesson.title}" (${newLesson.type})`,
-          details: { title: newLesson.title, type: newLesson.type, isFreePreview: newLesson.isFreePreview },
+          reason: draftReason
+            ? `Created lesson "${newLesson.title}" (${newLesson.type}) as DRAFT (${draftReason})`
+            : `Created lesson "${newLesson.title}" (${newLesson.type})`,
+          details: { title: newLesson.title, type: newLesson.type, isFreePreview: newLesson.isFreePreview, draftReason },
         },
       });
 
@@ -458,16 +482,77 @@ export async function PATCH(
       if (recordingUrl !== undefined) updateData.recordingUrl = recordingUrl;
       if (recordingStreamId !== undefined) updateData.recordingStreamId = recordingStreamId;
 
+      const existingLesson = await prisma.lesson.findUnique({ where: { id } });
+      if (!existingLesson) {
+        return NextResponse.json({ success: false, error: 'Lesson not found' }, { status: 404 });
+      }
+
+      // Check publish readiness
+      const targetStatus = (status !== undefined ? status : existingLesson.status) || 'PUBLISHED';
+      const mergedForCheck = {
+        type: (lessonType || type || existingLesson.type) as string,
+        videoProviderId: videoProviderId !== undefined ? videoProviderId : existingLesson.videoProviderId,
+        externalVideoUrl: externalVideoUrl !== undefined ? externalVideoUrl : existingLesson.externalVideoUrl,
+        documentKey: documentKey !== undefined ? documentKey : existingLesson.documentKey,
+        documentUrl: documentUrl !== undefined ? documentUrl : existingLesson.documentUrl,
+        notesMarkdown: notesMarkdown !== undefined ? notesMarkdown : existingLesson.notesMarkdown,
+        liveScheduledAt: liveScheduledAt !== undefined ? liveScheduledAt : existingLesson.liveScheduledAt,
+      };
+
+      const readiness = validateLessonPublishReadiness(mergedForCheck);
+      let draftReason: string | null = null;
+      if (targetStatus === 'PUBLISHED' && !readiness.canPublish) {
+        updateData.status = 'DRAFT';
+        draftReason = readiness.draftReason || 'Missing required content to publish';
+      }
+
       const updated = await prisma.lesson.update({
         where: { id },
         data: updateData,
+      });
+
+      // Audit Log for Lesson status / updates
+      let auditAction = 'LESSON_UPDATED';
+      let auditReason = `Updated lesson "${updated.title}"`;
+      if (existingLesson.status !== updated.status) {
+        if (updated.status === 'PUBLISHED') {
+          auditAction = 'LESSON_PUBLISHED';
+          auditReason = `Published lesson "${updated.title}"`;
+        } else {
+          auditAction = 'LESSON_UNPUBLISHED';
+          auditReason = draftReason
+            ? `Lesson "${updated.title}" kept as Draft (${draftReason})`
+            : `Unpublished lesson "${updated.title}"`;
+        }
+      }
+
+      await prisma.activityLog.create({
+        data: {
+          userId: auth.userId || null,
+          userEmail: auth.email || null,
+          action: auditAction,
+          entityType: 'LESSON',
+          entityId: updated.id,
+          reason: auditReason,
+          details: {
+            title: updated.title,
+            previousStatus: existingLesson.status,
+            newStatus: updated.status,
+            draftReason,
+          },
+        },
       });
 
       try {
       revalidatePath('/courses');
       revalidatePath(`/courses/${params.slug}`);
     } catch {}
-    return NextResponse.json({ success: true, lesson: updated });
+    return NextResponse.json({
+      success: true,
+      lesson: updated,
+      draftReason,
+      warning: draftReason || undefined,
+    });
     }
 
     return NextResponse.json({ success: false, error: 'Invalid itemType. Must be MODULE or LESSON.' }, { status: 400 });

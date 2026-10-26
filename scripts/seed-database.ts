@@ -172,7 +172,7 @@ async function seed() {
       },
     });
 
-    // Lesson 1: On-Demand Video Lesson
+    // Lesson 1: On-Demand Video Lesson (Default DRAFT until real client video uploaded)
     const videoLessonId = `lesson-${mod.moduleNumber}-vid`;
     const isFreePreview = mod.moduleNumber === 1; // Module 1 is Free Preview for prospective students
     await prisma.lesson.upsert({
@@ -181,10 +181,11 @@ async function seed() {
         moduleId: dbModule.id,
         order: 1,
         type: 'VIDEO',
+        status: 'DRAFT', // Remains DRAFT until real video lecture uploaded
         title: `${mod.title} — Video Lecture`,
         description: `Complete HD lecture session covering: ${mod.keyTopics?.join(', ') || mod.description || 'Core concepts'}.`,
         isFreePreview,
-        videoProviderId: session?.recording?.videoUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        videoProviderId: null,
         videoDuration: (mod.durationMinutes || 75) * 60,
       },
       create: {
@@ -192,10 +193,11 @@ async function seed() {
         moduleId: dbModule.id,
         order: 1,
         type: 'VIDEO',
+        status: 'DRAFT', // Remains DRAFT until real video lecture uploaded
         title: `${mod.title} — Video Lecture`,
         description: `Complete HD lecture session covering: ${mod.keyTopics?.join(', ') || mod.description || 'Core concepts'}.`,
         isFreePreview,
-        videoProviderId: session?.recording?.videoUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        videoProviderId: null,
         videoDuration: (mod.durationMinutes || 75) * 60,
       },
     });
@@ -229,42 +231,8 @@ async function seed() {
   }
   console.log(`✓ Seeded ${ULTIMATE_ASTROLOGY_MODULES.length} modules and 46 lessons`);
 
-  // 5. Upsert 23 Class Sessions (for backward compatibility with cohort schedule)
-  for (const session of SCHEDULED_CLASSES_FLAGSHIP) {
-    const sNumber = session.sessionNumber ?? 1;
-    await prisma.classSession.upsert({
-      where: {
-        cohortId_sessionNumber: {
-          cohortId: cohort.id,
-          sessionNumber: sNumber,
-        },
-      },
-      update: {
-        title: session.title,
-        description: session.description,
-        scheduledAt: new Date(session.scheduledAt || '2026-01-01T00:00:00.000Z'),
-        durationMinutes: session.durationMinutes || 75,
-        status: session.status || 'UPCOMING',
-        recordingUrl: session.recording?.videoUrl || null,
-        recordingUploadedAt: session.recording?.videoUrl ? new Date() : null,
-        notesMarkdown: session.recording?.notesMarkdown || null,
-      },
-      create: {
-        id: session.id,
-        cohortId: cohort.id,
-        sessionNumber: sNumber,
-        title: session.title,
-        description: session.description,
-        scheduledAt: new Date(session.scheduledAt || '2026-01-01T00:00:00.000Z'),
-        durationMinutes: session.durationMinutes || 75,
-        status: session.status || 'UPCOMING',
-        recordingUrl: session.recording?.videoUrl || null,
-        recordingUploadedAt: session.recording?.videoUrl ? new Date() : null,
-        notesMarkdown: session.recording?.notesMarkdown || null,
-      },
-    });
-  }
-  console.log(`✓ Synced ${SCHEDULED_CLASSES_FLAGSHIP.length} class sessions`);
+  // 5. Legacy Class Sessions generation disabled: course is 100% on-demand modules + 1-on-1 personal mentorship
+  console.log('✓ Class sessions generation retired (mentorship model active)');
 
   // 6. Upsert Course Final Exam Quiz, Relational Questions, and Options
   const finalQuiz = await prisma.quiz.upsert({

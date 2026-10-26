@@ -581,7 +581,11 @@ function StudentDashboardContent() {
             <div className="grid grid-cols-1 gap-3">
               {classes.map((cls) => {
                 const isCompleted = cls.status === 'COMPLETED';
-                const isLive = cls.status === 'LIVE';
+                const startTimeMs = cls.scheduledStartTime ? new Date(cls.scheduledStartTime).getTime() : 0;
+                const durationMs = (cls.durationMinutes || 60) * 60 * 1000;
+                const nowMs = Date.now();
+                const isWithinRealWindow = startTimeMs > 86400000 && nowMs >= startTimeMs && nowMs <= startTimeMs + durationMs;
+                const isLive = cls.status === 'LIVE' && isWithinRealWindow;
 
                 return (
                   <div

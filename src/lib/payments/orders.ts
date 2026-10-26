@@ -131,27 +131,7 @@ export async function createOrGetActiveOrder(params: {
     throw new Error('Course not found.');
   }
 
-  if (course.acceptingEnrollments === false) {
-    throw new Error('This course is not currently accepting new online enrollments. Please enquire on WhatsApp.');
-  }
-
-  const lockedAmount = course.priceInr || 5100;
-
-  // 2. Load payment settings
-  const settings = await getPaymentSettings();
-
-  // 3. Update student phone on User record if missing
-  try {
-    await prisma.user.update({
-      where: { id: params.userId },
-      data: {
-        phone: cleanPhone,
-        name: params.studentName || undefined,
-      },
-    });
-  } catch {}
-
-  // 4. Check for existing orders for this user and course
+  // 1A. Check if student already has an active enrollment or approved order FIRST (409 takes precedence over 400)
   const existingOrders = await prisma.order.findMany({
     where: {
       userId: params.userId,
@@ -212,6 +192,26 @@ export async function createOrGetActiveOrder(params: {
     (error as unknown as { redirectUrl: string }).redirectUrl = `/dashboard/courses/${activeEnrollment?.cohortId || params.cohortId || 'what-is-astrology'}`;
     throw error;
   }
+
+  if (course.acceptingEnrollments === false) {
+    throw new Error('This course is not currently accepting new online enrollments. Please enquire on WhatsApp.');
+  }
+
+  const lockedAmount = course.priceInr || 5100;
+
+  // 2. Load payment settings
+  const settings = await getPaymentSettings();
+
+  // 3. Update student phone on User record if missing
+  try {
+    await prisma.user.update({
+      where: { id: params.userId },
+      data: {
+        phone: cleanPhone,
+        name: params.studentName || undefined,
+      },
+    });
+  } catch {}
 
   const now = new Date();
 

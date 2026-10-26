@@ -1026,7 +1026,7 @@ export async function getOwnerWorkingHours(): Promise<OwnerWorkingHoursRecord[]>
     const delegate = (prisma as unknown as { ownerWorkingHours?: { findMany: (args: unknown) => Promise<WorkingHoursRow[]> } }).ownerWorkingHours;
     if (delegate) {
       const rows = await delegate.findMany({ orderBy: { dayOfWeek: 'asc' } });
-      if (rows && rows.length > 0) {
+      if (rows && rows.length === 7) {
         return rows.map((r) => ({
           id: r.id,
           dayOfWeek: r.dayOfWeek,
@@ -1037,6 +1037,22 @@ export async function getOwnerWorkingHours(): Promise<OwnerWorkingHoursRecord[]>
           slotDurationMinutes: r.slotDurationMinutes,
           isEnabled: r.isEnabled,
         }));
+      } else if (rows && rows.length > 0) {
+        initializeDefaults();
+        const map = new Map<number, OwnerWorkingHoursRecord>(_memoryWorkingHours);
+        for (const r of rows) {
+          map.set(r.dayOfWeek, {
+            id: r.id,
+            dayOfWeek: r.dayOfWeek,
+            dayName: DAY_NAMES[r.dayOfWeek] || `Day ${r.dayOfWeek}`,
+            startTime: r.startTime,
+            endTime: r.endTime,
+            timezone: r.timezone || 'Asia/Kolkata',
+            slotDurationMinutes: r.slotDurationMinutes,
+            isEnabled: r.isEnabled,
+          });
+        }
+        return Array.from(map.values()).sort((a, b) => a.dayOfWeek - b.dayOfWeek);
       }
     }
   } catch {}

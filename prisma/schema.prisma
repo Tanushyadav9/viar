@@ -144,7 +144,7 @@ model Course {
   thumbnailUrl       String?        @map("thumbnail_url")
   status             CourseStatus   @default(PUBLISHED)
   isComingSoon       Boolean        @default(false) @map("is_coming_soon")
-  acceptingEnrollments Boolean      @default(true) @map("accepting_enrollments")
+  acceptingEnrollments Boolean      @default(false) @map("accepting_enrollments")
   displayOrder       Int            @default(0) @map("display_order")
   passingScore       Int            @default(70) @map("passing_score")
   certificateEnabled Boolean        @default(true) @map("certificate_enabled")

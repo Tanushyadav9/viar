@@ -145,6 +145,19 @@ export async function POST(req: NextRequest) {
         auth.email || 'system',
         changeSummary || `Status set to ${newStatus}`
       );
+
+      await prisma.activityLog.create({
+        data: {
+          userId: auth.userId || null,
+          userEmail: auth.email || null,
+          action: 'CONTENT_STATUS_CHANGED',
+          entityType: 'CONTENT_ITEM',
+          entityId: `${collection}:${key}`,
+          reason: `Content item "${key}" (${collection}) status updated to ${newStatus}`,
+          details: { collection, key, newStatus },
+        },
+      });
+
       return NextResponse.json({
         success: true,
         item: updated,
@@ -164,6 +177,18 @@ export async function POST(req: NextRequest) {
       sortOrder: typeof sortOrder === 'number' ? sortOrder : 0,
       changeSummary: changeSummary ? String(changeSummary) : (id ? 'Updated via Admin Studio' : 'Created via Admin Studio'),
     }, auth.email || 'site_owner');
+
+    await prisma.activityLog.create({
+      data: {
+        userId: auth.userId || null,
+        userEmail: auth.email || null,
+        action: 'CONTENT_EDITED',
+        entityType: 'CONTENT_ITEM',
+        entityId: saved.id || `${normalizedCollection}:${key}`,
+        reason: changeSummary ? String(changeSummary) : `Edited content item "${key}" in ${normalizedCollection}`,
+        details: { collection: normalizedCollection, key, status: saved.status },
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -228,6 +253,18 @@ export async function DELETE(req: NextRequest) {
 
     await prisma.contentItem.delete({
       where: { id },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        userId: auth.userId || null,
+        userEmail: auth.email || null,
+        action: 'CONTENT_DELETED',
+        entityType: 'CONTENT_ITEM',
+        entityId: id,
+        reason: `Permanently deleted content item "${item.titleEn || item.key}" from ${item.collection}`,
+        details: { id, collection: item.collection, key: item.key },
+      },
     });
 
     return NextResponse.json({

@@ -17,7 +17,6 @@ import {
   Lock,
   Trash2,
   Sparkles,
-  BarChart3,
   Check,
   X,
   Activity,
@@ -29,9 +28,13 @@ import {
   FileText,
   Image as ImageIcon,
   HelpCircle,
+  ShieldAlert,
+  ArrowRight,
 } from 'lucide-react';
 import AdminHomeHub, { RecentActivityItem } from '@/components/admin/AdminHomeHub';
 import AdminHelpBox from '@/components/admin/AdminHelpBox';
+import EnrolmentReadinessModal from '@/components/admin/EnrolmentReadinessModal';
+import TestDataModal from '@/components/admin/TestDataModal';
 import {
   AsyncStateView,
   type AsyncStateStatus,
@@ -82,9 +85,11 @@ function getRealVideoLessonsCount(course: Course): number {
 interface AdminStats {
   totalStudents: number;
   totalRevenueInr: number;
-    completedClasses: number;
+  completedClasses: number;
   upcomingClasses: number;
   certificatesIssued: number;
+  examPassRate?: number | null;
+  totalExamAttempts?: number;
 }
 
 export type OrderStatusType =
@@ -121,6 +126,8 @@ export interface AdminOrder {
   user?: { id: string; name?: string | null; email: string; phone?: string | null } | null;
   enrollment?: { id: string; status: string; enrolledAt: string | Date } | null;
   isAlreadyEnrolled?: boolean;
+  isTest?: boolean;
+  notes?: string | null;
 }
 
 export interface AdminEnrollmentItem {
@@ -146,6 +153,7 @@ export interface AdminEnrollmentItem {
   totalLessonsCount?: number;
   quizResult?: string | null;
   certificateStatus?: string | null;
+  isTest?: boolean;
 }
 
 export interface PaymentSettingsState {
@@ -154,6 +162,10 @@ export interface PaymentSettingsState {
   qrImageUrl: string;
   whatsappNumber: string;
   orderExpiryDays: number;
+  accountName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  bankName?: string;
   isDefaultFallback?: boolean;
 }
 
@@ -212,6 +224,12 @@ export default function AdminPortalClient({
   const [enrollments, setEnrollments] = useState<AdminEnrollmentItem[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [courseSubTab, setCourseSubTab] = useState<'curriculum' | 'quizzes'>('curriculum');
+  const [contentSubTab, setContentSubTab] = useState<'content' | 'media'>('content');
+  const [settingsSubTab, setSettingsSubTab] = useState<'payment' | 'test_data' | 'staff'>('payment');
+  const [isEnrolmentModalOpen, setIsEnrolmentModalOpen] = useState(false);
+  const [isTestDataModalOpen, setIsTestDataModalOpen] = useState(false);
+  const [courseForEnrolmentModal, setCourseForEnrolmentModal] = useState<Course | null>(null);
   // Editing Class Modal/Form State
   // Manual Enrollment Form Modal
   const [isManualEnrollOpen, setIsManualEnrollOpen] = useState(false);
@@ -786,6 +804,8 @@ export default function AdminPortalClient({
       .reduce((acc, curr) => acc + (curr.paymentAmount || 0), 0);
     let liveTotalStudents = loadedEnrollments.length;
     let liveCertificatesIssued = loadedCertificates.length;
+    let liveExamPassRate: number | null = null;
+    let liveTotalExamAttempts = 0;
 
     try {
       const statsRes = await fetch('/api/admin/stats');
@@ -795,6 +815,8 @@ export default function AdminPortalClient({
           liveRevenueInr = statsData.stats.totalRevenueInr;
           liveTotalStudents = statsData.stats.totalStudents;
           liveCertificatesIssued = statsData.stats.certificatesIssued;
+          liveExamPassRate = statsData.stats.examPassRate ?? null;
+          liveTotalExamAttempts = statsData.stats.totalExamAttempts ?? 0;
         }
       }
     } catch {
@@ -807,6 +829,8 @@ export default function AdminPortalClient({
       completedClasses: loadedClasses.filter((c) => c.status === 'COMPLETED').length,
       upcomingClasses: loadedClasses.filter((c) => c.status !== 'COMPLETED').length,
       certificatesIssued: liveCertificatesIssued,
+      examPassRate: liveExamPassRate,
+      totalExamAttempts: liveTotalExamAttempts,
     });
 
     if (!serverAuth) {
@@ -979,29 +1003,41 @@ export default function AdminPortalClient({
 
   const handleToggleAcceptingEnrollments = async (crs: Course) => {
     const isCurrentlyAccepting = crs.acceptingEnrollments !== false;
-    const newVal = !isCurrentlyAccepting;
 
-    // Strict Readiness Check: Cannot turn ON if 0 real videos uploaded
-    if (newVal === true) {
-      const realVideos = getRealVideoLessonsCount(crs);
-      if (realVideos === 0) {
-        alert(
-          'Cannot Open Enrolments:\n\nCourse content is not ready yet. 0 out of 23 module videos have been uploaded.\n\nTo protect your students, online checkout cannot be activated until real course videos are uploaded to the lessons.'
-        );
-        return;
+    if (isCurrentlyAccepting) {
+      // 1-click pause / turn off enrolments
+      try {
+        await fetch(`/api/courses/${crs.slug}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ acceptingEnrollments: false }),
+        });
+      } catch {
+        // mutation fallback
       }
+      await loadAdminData();
+    } else {
+      // Show Enrolment Readiness Checklist Modal before turning ON
+      setCourseForEnrolmentModal(crs);
+      setIsEnrolmentModalOpen(true);
     }
+  };
 
+  const handleConfirmEnableEnrolments = async () => {
+    if (!courseForEnrolmentModal) return;
     try {
-      await fetch(`/api/courses/${crs.slug}`, {
+      const res = await fetch(`/api/courses/${courseForEnrolmentModal.slug}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ acceptingEnrollments: newVal }),
+        body: JSON.stringify({ acceptingEnrollments: true }),
       });
-    } catch {
-      // mutation fallback
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to update enrolment status.');
+      }
+    } finally {
+      await loadAdminData();
     }
-    await loadAdminData();
   };
 
   const handleUpdateCourseStatus = async (crs: Course, newStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED') => {
@@ -1184,22 +1220,12 @@ export default function AdminPortalClient({
             </h1>
             <p className="text-xs text-slate-400 mt-1">
               {isOwner
-                ? 'Manage 23 course modules, 1-on-1 personal classes, enrolled students, payments, and team access.'
+                ? 'Manage 23 course modules, 1-on-1 personal classes, enrolled students, payments, and site content.'
                 : `Section-restricted console. You currently have access to: ${allowedSections.map((s) => ADMIN_SECTIONS_META[s]?.shortTitle).join(', ') || 'None'}.`}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {isOwner && (
-              <Link
-                href="/admin/knowledge"
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition flex items-center gap-1.5"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>AI Knowledge</span>
-              </Link>
-            )}
-
             {isOwner && (
               <Link
                 href="/admin/diagnostics"
@@ -1280,64 +1306,136 @@ export default function AdminPortalClient({
           </div>
         )}
 
-        {/* Tab Navigation with Dynamic Permission Locks */}
+        {/* Tab Navigation: Unified 8-Section Navigation */}
         <div className="flex border-b border-white/10 mb-8 overflow-x-auto gap-1">
-          {/* Admin Home Hub Tab */}
+          {/* 1. Home */}
           <button
             onClick={() => setActiveTab('home')}
-            className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 ${
+            className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 cursor-pointer ${
               activeTab === 'home'
                 ? 'border-amber-400 text-amber-300'
                 : 'border-transparent text-slate-400 hover:text-white'
             }`}
           >
             <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>Admin Home</span>
+            <span>Home</span>
           </button>
 
-          {ADMIN_SECTIONS.map((sec) => {
-            // Hide staff tab from non-owners completely
-            if (sec === 'staff' && !isOwner) return null;
+          {/* 2. Course */}
+          {(isOwner || allowedSections.includes('courses')) && (
+            <button
+              onClick={() => {
+                setActiveTab('courses');
+                setCourseSubTab('curriculum');
+              }}
+              className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 cursor-pointer ${
+                activeTab === 'courses' || activeTab === 'quizzes'
+                  ? 'border-amber-400 text-amber-300'
+                  : 'border-transparent text-slate-400 hover:text-white'
+              }`}
+            >
+              <BookOpen className="w-4 h-4 text-amber-400" />
+              <span>Course</span>
+            </button>
+          )}
 
-            // Staff see ONLY the sections granted in /admin/team
-            if (!isOwner && !allowedSections.includes(sec)) return null;
+          {/* 3. Students */}
+          {(isOwner || allowedSections.includes('students')) && (
+            <button
+              onClick={() => setActiveTab('students')}
+              className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 cursor-pointer ${
+                activeTab === 'students'
+                  ? 'border-blue-400 text-blue-300'
+                  : 'border-transparent text-slate-400 hover:text-white'
+              }`}
+            >
+              <Users className="w-4 h-4 text-blue-400" />
+              <span>Students</span>
+            </button>
+          )}
 
-            const isAllowed = isOwner || allowedSections.includes(sec);
-            const meta = ADMIN_SECTIONS_META[sec];
-            const isActive = activeTab === sec;
+          {/* 4. Payments */}
+          {(isOwner || allowedSections.includes('payments')) && (
+            <button
+              onClick={() => setActiveTab('payments')}
+              className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 cursor-pointer ${
+                activeTab === 'payments'
+                  ? 'border-emerald-400 text-emerald-300'
+                  : 'border-transparent text-slate-400 hover:text-white'
+              }`}
+            >
+              <DollarSign className="w-4 h-4 text-emerald-400" />
+              <span>Payments</span>
+              {orders.filter((o) => o.status === 'PAYMENT_CLAIMED').length > 0 && (
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              )}
+            </button>
+          )}
 
-            return (
-              <button
-                key={sec}
-                onClick={() => setActiveTab(sec)}
-                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 ${
-                  isActive
-                    ? 'border-purple-400 text-purple-300'
-                    : isAllowed
-                    ? 'border-transparent text-slate-400 hover:text-white'
-                    : 'border-transparent text-slate-500 hover:text-slate-400 opacity-60'
-                }`}
-              >
-                {!isAllowed && <Lock className="w-3 h-3 text-amber-400/70" />}
-                {sec === 'content' && <FileText className="w-4 h-4 text-indigo-400" />}
-                {sec === 'media' && <ImageIcon className="w-4 h-4 text-sky-400" />}
-                {sec === 'courses' && <BookOpen className="w-4 h-4" />}
-                {sec === 'sessions' && <Video className="w-4 h-4 text-amber-400" />}
-                {sec === 'students' && <Users className="w-4 h-4" />}
-                {sec === 'quizzes' && <Award className="w-4 h-4" />}
-                {sec === 'analytics' && <BarChart3 className="w-4 h-4" />}
-                {sec === 'payments' && <DollarSign className="w-4 h-4" />}
-                {sec === 'staff' && <ShieldCheck className="w-4 h-4 text-amber-400" />}
+          {/* 5. Sessions */}
+          {(isOwner || allowedSections.includes('sessions')) && (
+            <button
+              onClick={() => setActiveTab('sessions')}
+              className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 cursor-pointer ${
+                activeTab === 'sessions'
+                  ? 'border-amber-400 text-amber-300'
+                  : 'border-transparent text-slate-400 hover:text-white'
+              }`}
+            >
+              <Video className="w-4 h-4 text-amber-400" />
+              <span>Sessions</span>
+            </button>
+          )}
 
-                <span>{meta.shortTitle}</span>
-                {sec === 'staff' && (
-                  <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 font-extrabold">
-                    Owner
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          {/* 6. Questions */}
+          <Link
+            href="/admin/knowledge"
+            className="px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-white transition shrink-0 flex items-center gap-2"
+          >
+            <HelpCircle className="w-4 h-4 text-amber-300" />
+            <span>Questions</span>
+          </Link>
+
+          {/* 7. Site content */}
+          {(isOwner || allowedSections.includes('content') || allowedSections.includes('media')) && (
+            <button
+              onClick={() => {
+                setActiveTab('content');
+                setContentSubTab('content');
+              }}
+              className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 cursor-pointer ${
+                activeTab === 'content' || activeTab === 'media'
+                  ? 'border-indigo-400 text-indigo-300'
+                  : 'border-transparent text-slate-400 hover:text-white'
+              }`}
+            >
+              <FileText className="w-4 h-4 text-indigo-400" />
+              <span>Site content</span>
+            </button>
+          )}
+
+          {/* 8. Settings */}
+          {(isOwner || allowedSections.includes('staff')) && (
+            <button
+              onClick={() => {
+                setActiveTab('staff');
+                setSettingsSubTab('payment');
+              }}
+              className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 cursor-pointer ${
+                activeTab === 'staff'
+                  ? 'border-amber-400 text-amber-300'
+                  : 'border-transparent text-slate-400 hover:text-white'
+              }`}
+            >
+              <Settings className="w-4 h-4 text-slate-300" />
+              <span>Settings</span>
+              {isOwner && (
+                <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 font-extrabold">
+                  Owner
+                </span>
+              )}
+            </button>
+          )}
         </div>
 
         {/* ACCESS RESTRICTED STATE (When staff lacks permission for a clicked section) */}
@@ -1391,27 +1489,83 @@ export default function AdminPortalClient({
           />
         )}
 
-        {/* TAB: CONTENT STUDIO */}
-        {isCurrentTabAllowed && activeTab === 'content' && (
-          <ContentStudio
-            isOwner={isOwner}
-            userEmail={currentUser?.email || ''}
-            initialCollection={selectedContentCollection}
-            onActivityLogged={loadAdminData}
-          />
-        )}
+        {/* TAB: SITE CONTENT (Content Studio & Media Library) */}
+        {isCurrentTabAllowed && (activeTab === 'content' || activeTab === 'media') && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('content');
+                  setContentSubTab('content');
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  contentSubTab === 'content' && activeTab !== 'media'
+                    ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20'
+                    : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Content Studio</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('content');
+                  setContentSubTab('media');
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  contentSubTab === 'media' || activeTab === 'media'
+                    ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20'
+                    : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                }`}
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span>Media Library</span>
+              </button>
+            </div>
 
-        {/* TAB: MEDIA LIBRARY */}
-        {isCurrentTabAllowed && activeTab === 'media' && (
-          <MediaLibrary
-            isOwner={isOwner}
-            userEmail={currentUser?.email || ''}
-          />
+            {contentSubTab === 'media' || activeTab === 'media' ? (
+              <MediaLibrary
+                isOwner={isOwner}
+                userEmail={currentUser?.email || ''}
+              />
+            ) : (
+              <ContentStudio
+                isOwner={isOwner}
+                userEmail={currentUser?.email || ''}
+                initialCollection={selectedContentCollection}
+                onActivityLogged={loadAdminData}
+              />
+            )}
+          </div>
         )}
 
         {/* TAB: COURSES */}
-        {isCurrentTabAllowed && activeTab === 'courses' && (
+        {isCurrentTabAllowed && activeTab === 'courses' && courseSubTab === 'curriculum' && (
           <div className="space-y-6">
+            {/* Course Sub-tab Switcher */}
+            <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+              <button
+                type="button"
+                onClick={() => setCourseSubTab('curriculum')}
+                className="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Curriculum & Lessons</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCourseSubTab('quizzes')}
+                className="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer bg-white/5 text-slate-300 hover:bg-white/10"
+              >
+                <Award className="w-3.5 h-3.5" />
+                <span>Quizzes & Certificates</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-black/30">
+                  {INITIAL_FINAL_TEST.questions.length} Qs
+                </span>
+              </button>
+            </div>
             {/* Non-technical Help Panel */}
             <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
               <div className="flex items-start gap-2.5">
@@ -1521,6 +1675,27 @@ export default function AdminPortalClient({
                         >
                           <span className={`w-2 h-2 rounded-full ${isAccepting ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                           <span>{isAccepting ? 'Accepting' : 'Paused (WhatsApp)'}</span>
+                        </button>
+                      </div>
+
+                      {/* Exam Readiness & Certification Overview Card (Target: 20 Questions) */}
+                      <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-between text-xs">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5 font-bold text-white">
+                            <Award className="w-4 h-4 text-purple-400" />
+                            <span>Certification Exam Readiness</span>
+                          </div>
+                          <p className="text-[11px] text-purple-200">
+                            <strong>{INITIAL_FINAL_TEST.questions.length}</strong> of 20 exam questions active in question bank.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCourseSubTab('quizzes')}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 transition flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Manage Exam</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -1698,7 +1873,14 @@ export default function AdminPortalClient({
                             title="Click to view student profile &amp; 1-on-1 sessions"
                           >
                             <td className="px-6 py-4">
-                              <p className="font-bold text-white">{enr.studentName || 'Student'}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-bold text-white">{enr.studentName || 'Student'}</p>
+                                {(enr.isTest || enr.studentName?.startsWith('[TEST]')) && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                    Test
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[11px] text-slate-400">{enr.studentEmail || 'No email provided'}</p>
                               {enr.studentPhone && <p className="text-[10px] font-mono text-slate-500">{enr.studentPhone}</p>}
                             </td>
@@ -1845,9 +2027,12 @@ export default function AdminPortalClient({
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Total Verified Tuition</span>
                   <p className="text-2xl font-black text-amber-300 mt-1">
-                    ₹{orders.filter(o => o.status === 'APPROVED').reduce((acc, o) => acc + (o.amount || 0), 0).toLocaleString('en-IN') || (stats?.totalRevenueInr || 0).toLocaleString('en-IN')}
+                    ₹{orders
+                      .filter(o => o.status === 'APPROVED' && !o.isTest && !o.studentName?.startsWith('[TEST]') && !o.user?.name?.startsWith('[TEST]') && !o.notes?.includes('[TEST_PURCHASE]'))
+                      .reduce((acc, o) => acc + (o.amount || 0), 0)
+                      .toLocaleString('en-IN') || (stats?.totalRevenueInr || 0).toLocaleString('en-IN')}
                   </p>
-                  <p className="text-[10px] text-emerald-400 mt-1">Direct bank credit • Zero gateway fees</p>
+                  <p className="text-[10px] text-emerald-400 mt-1">Direct bank credit</p>
                 </div>
 
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
@@ -2035,7 +2220,14 @@ export default function AdminPortalClient({
                             
                             {/* Student & Contact */}
                             <td className="px-5 py-3.5">
-                              <p className="font-bold text-white">{ord.studentName || ord.user?.name || 'Student'}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-bold text-white">{ord.studentName || ord.user?.name || 'Student'}</p>
+                                {(ord.isTest || ord.studentName?.startsWith('[TEST]') || ord.user?.name?.startsWith('[TEST]') || ord.notes?.includes('[TEST_PURCHASE]')) && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                    Test
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[10px] text-slate-400 font-mono">{ord.studentEmail || ord.user?.email}</p>
                               {phone ? (
                                 <p className="text-[10px] text-emerald-400 font-mono flex items-center gap-1 mt-0.5">
@@ -2209,9 +2401,34 @@ export default function AdminPortalClient({
           </div>
         )}
 
-        {/* TAB: QUIZZES & CERTIFICATES */}
-        {isCurrentTabAllowed && activeTab === 'quizzes' && (
+        {/* TAB: QUIZZES & CERTIFICATES (under Course) */}
+        {isCurrentTabAllowed && (activeTab === 'quizzes' || (activeTab === 'courses' && courseSubTab === 'quizzes')) && (
           <div className="space-y-6">
+            {/* Course Sub-tab Switcher */}
+            <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('courses');
+                  setCourseSubTab('curriculum');
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer bg-white/5 text-slate-300 hover:bg-white/10"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Curriculum & Lessons</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCourseSubTab('quizzes')}
+                className="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20"
+              >
+                <Award className="w-3.5 h-3.5" />
+                <span>Quizzes & Certificates</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-black/30">
+                  {INITIAL_FINAL_TEST.questions.length} Qs
+                </span>
+              </button>
+            </div>
             {/* Non-technical Help Panel */}
             <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
               <div className="flex items-start gap-2.5">
@@ -2391,7 +2608,7 @@ export default function AdminPortalClient({
             <div className="cosmic-card p-6 rounded-2xl border border-white/10">
               <h3 className="text-lg font-bold text-white mb-1">Analytics &amp; Learning Progress</h3>
               <p className="text-xs text-slate-400 mb-6">
-                Real-time tracking of student completion, 1-on-1 session attendance, and quiz pass rates.
+                Database-driven tracking of student completion, 1-on-1 mentorship, and exam pass rates.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -2403,20 +2620,22 @@ export default function AdminPortalClient({
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Course Completion Rate</span>
                   <p className="text-2xl font-black text-emerald-300 mt-1">
-                    {stats && stats.totalStudents > 0 ? `${Math.round(((stats.certificatesIssued || 0) / stats.totalStudents) * 100)}%` : <span className="text-base text-slate-400 font-bold">No students yet</span>}
+                    {stats && stats.totalStudents > 0 ? `${Math.round(((stats.certificatesIssued || 0) / stats.totalStudents) * 100)}%` : <span className="text-base text-slate-400 font-bold">No data yet</span>}
                   </p>
-                  <p className="text-[10px] text-slate-400 mt-1">{stats?.certificatesIssued || 0} certified of {stats?.totalStudents || 0} enrolled</p>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {stats?.totalStudents ? `${stats?.certificatesIssued || 0} certified of ${stats.totalStudents} enrolled` : 'No data yet'}
+                  </p>
                 </div>
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Verifiable Certificates</span>
                   <p className="text-2xl font-black text-purple-300 mt-1">
-                    {(stats?.certificatesIssued || 0) > 0 ? stats?.certificatesIssued : <span className="text-base text-slate-400 font-bold">No certificates yet</span>}
+                    {(stats?.certificatesIssued || 0) > 0 ? stats?.certificatesIssued : <span className="text-base text-slate-400 font-bold">No data yet</span>}
                   </p>
                   <p className="text-[10px] text-slate-400 mt-1">Issued upon 70%+ score on final exam</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <h4 className="font-bold text-white text-sm mb-2">Curriculum Readiness &amp; Progress</h4>
                   <div className="space-y-3 text-xs">
@@ -2450,94 +2669,282 @@ export default function AdminPortalClient({
                 </div>
 
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <h4 className="font-bold text-white text-sm mb-2">Student Reviews &amp; Feedback</h4>
-                  <p className="text-xs text-slate-400 mb-3">
-                    No student reviews submitted yet. Student testimonials will appear here once the first batch of students completes the course.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded bg-white/5 text-slate-400 text-xs font-semibold">
-                      0 Reviews Recorded
-                    </span>
-                    <span className="text-xs text-slate-500">{certificates.length} Certificate{certificates.length === 1 ? '' : 's'} Issued</span>
+                  <h4 className="font-bold text-white text-sm mb-2">Exam Performance &amp; Pass Rate</h4>
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <div className="flex justify-between text-slate-400 mb-1">
+                        <span>Exam Pass Rate</span>
+                        <span className="text-white font-bold">
+                          {stats?.examPassRate !== null && stats?.examPassRate !== undefined ? `${stats.examPassRate}%` : 'No data yet'}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-slate-400 mb-1">
+                        <span>Total Exam Attempts</span>
+                        <span className="text-white font-bold">{stats?.totalExamAttempts ? stats.totalExamAttempts : 'No data yet'}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-slate-400 mb-1">
+                        <span>Official Certificates Awarded</span>
+                        <span className="text-purple-300 font-bold">{certificates.length > 0 ? certificates.length : 'No data yet'}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Real Modules Progress List */}
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                <h4 className="font-bold text-white text-sm">Real Module Video Progress (Database Driven)</h4>
+                {courses[0]?.modules && courses[0].modules.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                    {courses[0].modules.map((m, idx) => {
+                      const videoLessons = m.lessons?.filter((l) => {
+                        const obj = l as unknown as { videoProviderId?: string };
+                        return Boolean(obj.videoProviderId && !obj.videoProviderId.includes('dQw4w9WgXcQ'));
+                      }) || [];
+                      const totalL = m.lessons?.length || 0;
+                      return (
+                        <div key={m.id || idx} className="p-2.5 rounded-lg bg-white/[0.03] border border-white/5 flex items-center justify-between text-xs">
+                          <div className="truncate mr-2">
+                            <p className="font-semibold text-white truncate text-[11px]">{m.title || `Module ${idx + 1}`}</p>
+                            <p className="text-[10px] text-slate-400">{videoLessons.length} of {totalL} videos</p>
+                          </div>
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold shrink-0 ${
+                            videoLessons.length > 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
+                          }`}>
+                            {videoLessons.length > 0 ? 'Ready' : 'Draft'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400">No data yet</p>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB: STAFF ROLES & PERMISSIONS (OWNER ONLY) */}
-        {isCurrentTabAllowed && activeTab === 'staff' && isOwner && (
+        {/* TAB: SETTINGS (Payment Settings, Test Data, Staff Roles) */}
+        {isCurrentTabAllowed && activeTab === 'staff' && (
           <div className="space-y-6">
-            {/* Non-technical Help Panel */}
-            <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
-              <div className="flex items-start gap-2.5">
-                <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-slate-300">
-                  <strong className="text-amber-300">💡 How to assign staff permissions:</strong> Only you (Site Owner) can see this screen. Click &quot;Add Staff Member&quot; to delegate access to specific tiles. Staff can never modify payment settings or legal pages.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold text-white">Staff Roles & Delegated Permissions</h3>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                    Owner Exclusive
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Grant team members access to specific admin sections. Free Postgres-backed RBAC with zero Clerk add-on fees.
-                </p>
-              </div>
-
+            {/* Settings Sub-tab Switcher */}
+            <div className="flex items-center gap-2 border-b border-white/10 pb-3">
               <button
-                onClick={() => setIsAddStaffOpen(true)}
-                className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 self-start"
+                type="button"
+                onClick={() => setSettingsSubTab('payment')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  settingsSubTab === 'payment'
+                    ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
+                    : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                }`}
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Staff Member</span>
+                <DollarSign className="w-3.5 h-3.5" />
+                <span>Payment & Tuition Settings</span>
               </button>
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={() => setSettingsSubTab('test_data')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                    settingsSubTab === 'test_data'
+                      ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
+                      : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                  }`}
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Test Data Management</span>
+                </button>
+              )}
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={() => setSettingsSubTab('staff')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                    settingsSubTab === 'staff'
+                      ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20'
+                      : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Staff Roles & Delegations</span>
+                </button>
+              )}
             </div>
 
-            {/* Architectural & Cost Callout */}
-            <div className="cosmic-card p-5 rounded-2xl border border-amber-500/30 bg-amber-950/10 space-y-2">
-              <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>Zero-Cost RBAC Architecture vs Paid Clerk Organizations</span>
-              </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Clerk charges an expensive monthly subscription plus add-on fees for custom organization roles. We built this permission system inside your existing free Neon PostgreSQL database (<code className="text-amber-300">StaffPermission</code> table) and verified it in application code.
-              </p>
-              <div className="pt-2 border-t border-amber-500/20 flex flex-wrap gap-4 text-[11px] text-slate-400">
-                <span>• <strong>Isolated Scope:</strong> Permissions here apply strictly to Viar.in. Staff have zero access to Aapka Astro or sister systems.</span>
-                <span>• <strong>Owner Anchor:</strong> Anchored to <code className="text-amber-200">{primaryOwnerEmail}</code>. Cannot be overridden by employees.</span>
-                <span>• <strong>Audit Trail:</strong> Soft-revocations preserve full historical timestamps without permanent row deletion.</span>
-              </div>
-            </div>
+            {/* SUBTAB: PAYMENT & TUITION SETTINGS */}
+            {settingsSubTab === 'payment' && (
+              <div className="space-y-6">
+                <div className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-6">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">Direct UPI & Bank Transfer Settings</h3>
+                      <p className="text-xs text-slate-400">
+                        Students transfer directly to your bank account. No intermediate payment gateway.
+                      </p>
+                    </div>
+                    {isOwner && (
+                      <button
+                        type="button"
+                        onClick={() => setIsPaymentSettingsOpen(true)}
+                        className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Settings className="w-3.5 h-3.5" />
+                        <span>Edit Payment Details</span>
+                      </button>
+                    )}
+                  </div>
 
-            {/* Owner Anchor Card */}
-            <div className="cosmic-card p-5 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/20 to-purple-950/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-bold text-white text-sm">Acharya Niraj Kumar</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                    Supreme Owner Anchor
-                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                      <span className="text-[11px] text-slate-400 font-semibold block uppercase">UPI ID</span>
+                      <p className="text-sm font-bold font-mono text-amber-300 mt-1">{paymentSettings.upiId || '9310709233m@pnb'}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                      <span className="text-[11px] text-slate-400 font-semibold block uppercase">Beneficiary Account Name</span>
+                      <p className="text-sm font-bold text-white mt-1">{paymentSettings.accountName || 'Aapka Astro / Acharya Niraj Kumar'}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                      <span className="text-[11px] text-slate-400 font-semibold block uppercase">Account Number</span>
+                      <p className="text-sm font-bold font-mono text-white mt-1">{paymentSettings.accountNumber || '0614000100223746'}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                      <span className="text-[11px] text-slate-400 font-semibold block uppercase">IFSC Code</span>
+                      <p className="text-sm font-bold font-mono text-white mt-1">{paymentSettings.ifscCode || 'PUNB0061400'}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                      <span className="text-[11px] text-slate-400 font-semibold block uppercase">Bank Name</span>
+                      <p className="text-sm font-bold text-white mt-1">{paymentSettings.bankName || 'Punjab National Bank'}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                      <span className="text-[11px] text-slate-400 font-semibold block uppercase">Unpaid Order Expiry</span>
+                      <p className="text-sm font-bold text-white mt-1">{paymentSettings.orderExpiryDays || 3} days</p>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-300 font-mono">{primaryOwnerEmail}</p>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Permanent full access to all admin sections. Sole authorized account that can delegate staff roles.
-                </p>
               </div>
-              <div className="shrink-0">
-                <span className="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5" />
-                  <span>All Sections Unlocked</span>
-                </span>
+            )}
+
+            {/* SUBTAB: TEST DATA MANAGEMENT */}
+            {settingsSubTab === 'test_data' && isOwner && (
+              <div className="space-y-6">
+                <div className="cosmic-card p-6 rounded-2xl border border-white/10 space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        <ShieldAlert className="w-5 h-5 text-amber-400" />
+                        <span>Isolated Test Data & Revenue Protection</span>
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-1 max-w-xl">
+                        Test purchases and test students are completely isolated and excluded from live tuition figures, student counts, and completion analytics.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsTestDataModalOpen(true)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Inspect & Remove Test Data</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2">
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                      <span className="text-slate-400 block text-[11px] uppercase font-semibold">Flagged Test Orders</span>
+                      <p className="text-xl font-black text-amber-300 mt-1">
+                        {orders.filter((o) => o.isTest || o.studentName?.startsWith('[TEST]') || o.user?.name?.startsWith('[TEST]') || o.notes?.includes('[TEST_PURCHASE]')).length}
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-1">Completely excluded from live tuition sums.</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                      <span className="text-slate-400 block text-[11px] uppercase font-semibold">Flagged Test Students</span>
+                      <p className="text-xl font-black text-amber-300 mt-1">
+                        {enrollments.filter((e) => e.isTest || e.studentName?.startsWith('[TEST]')).length}
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-1">Excluded from student headcount and completion rates.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* SUBTAB: STAFF DELEGATIONS */}
+            {settingsSubTab === 'staff' && isOwner && (
+              <div className="space-y-6">
+                {/* Non-technical Help Panel */}
+                <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
+                  <div className="flex items-start gap-2.5">
+                    <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-slate-300">
+                      <strong className="text-amber-300">💡 How to assign staff permissions:</strong> Only you (Site Owner) can see this screen. Click &quot;Add Staff Member&quot; to delegate access to specific sections. Staff can never modify payment settings or legal pages.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-white">Staff Roles & Delegated Permissions</h3>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                        Owner Exclusive
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Grant team members access to specific admin sections. Managed directly in database.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setIsAddStaffOpen(true)}
+                    className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 self-start"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Staff Member</span>
+                  </button>
+                </div>
+
+                {/* Team Access Callout */}
+                <div className="cosmic-card p-5 rounded-2xl border border-amber-500/30 bg-amber-950/10 space-y-2">
+                  <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <span>Team Permissions & Access Control</span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Permissions here apply strictly to Viar.in. Delegations grant access only to the selected sections and cannot modify bank settings.
+                  </p>
+                  <div className="pt-2 border-t border-amber-500/20 flex flex-wrap gap-4 text-[11px] text-slate-400">
+                    <span>• <strong>Isolated Scope:</strong> Permissions apply only to Viar.in.</span>
+                    <span>• <strong>Owner Anchor:</strong> Anchored to <code className="text-amber-200">{primaryOwnerEmail}</code>.</span>
+                    <span>• <strong>Audit Trail:</strong> Revocations preserve historical records.</span>
+                  </div>
+                </div>
+
+                {/* Owner Anchor Card */}
+                <div className="cosmic-card p-5 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/20 to-purple-950/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-white text-sm">Acharya Niraj Kumar</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                        Primary Account Owner
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 font-mono">{primaryOwnerEmail}</p>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Permanent full access to all admin sections. Sole authorized account that can delegate staff roles.
+                    </p>
+                  </div>
+                  <div className="shrink-0">
+                    <span className="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>All Sections Unlocked</span>
+                    </span>
+                  </div>
+                </div>
 
             {/* Staff Permissions Table */}
             <div className="cosmic-card rounded-2xl border border-white/10 overflow-hidden">
@@ -2692,8 +3099,40 @@ export default function AdminPortalClient({
                 </table>
               </div>
             </div>
+              </div>
+            )}
           </div>
         )}
+
+        {/* ENROLMENT READINESS MODAL */}
+        {courseForEnrolmentModal && (
+          <EnrolmentReadinessModal
+            isOpen={isEnrolmentModalOpen}
+            onClose={() => {
+              setIsEnrolmentModalOpen(false);
+              setCourseForEnrolmentModal(null);
+            }}
+            onConfirm={handleConfirmEnableEnrolments}
+            course={courseForEnrolmentModal}
+            realVideosCount={getRealVideoLessonsCount(courseForEnrolmentModal)}
+            totalLessonsCount={courseForEnrolmentModal.modules?.reduce((acc, m) => acc + (m.lessons?.length || 0), 0) || 46}
+            examQuestionCount={INITIAL_FINAL_TEST.questions.length}
+            priceSet={Boolean(courseForEnrolmentModal.priceInr && courseForEnrolmentModal.priceInr > 0)}
+            upiSet={Boolean(paymentSettings.upiId && paymentSettings.upiId.trim())}
+            contactSet={true}
+            studentTestDone={true}
+          />
+        )}
+
+        {/* TEST DATA REMOVAL & DRY RUN MODAL */}
+        <TestDataModal
+          isOpen={isTestDataModalOpen}
+          onClose={() => setIsTestDataModalOpen(false)}
+          onSuccess={async () => {
+            await loadAdminData();
+            await loadOrders();
+          }}
+        />
 
         {/* ADD STAFF MEMBER MODAL */}
         {isAddStaffOpen && (

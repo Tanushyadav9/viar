@@ -35,8 +35,9 @@ export function formatInTimezone(
   formatType: 'full' | 'short' | 'timeOnly' | 'dateOnly' = 'full'
 ): string {
   try {
+    if (!isoDateString) return 'Not scheduled';
     const date = new Date(isoDateString);
-    if (isNaN(date.getTime())) return isoDateString;
+    if (isNaN(date.getTime()) || date.getTime() <= 86400000) return 'Not scheduled';
 
     const tz = targetTimezone || 'Asia/Kolkata';
 
@@ -201,7 +202,9 @@ export function generateGoogleCalendarUrl(
 
 export function formatSessionIST(isoString: string): string {
   try {
+    if (!isoString) return 'Not scheduled';
     const d = new Date(isoString);
+    if (isNaN(d.getTime()) || d.getTime() <= 86400000) return 'Not scheduled';
     return d.toLocaleString('en-IN', {
       weekday: 'short',
       day: 'numeric',

@@ -72,7 +72,8 @@ export const BUILTIN_CONTENT_DEFAULTS: Record<string, BuiltinContentItem[]> = {
         'आचार्य नीरज कुमार जी के साथ वैदिक ज्योतिष पाठ्यक्रम एवं 1-on-1 व्यक्तिगत मार्गदर्शन',
       metadata: {
         url: '/courses/what-is-astrology',
-        active: true,
+        active: false, // Default OFF until client approves wording that does not promise "instant" or "lifetime"
+        needsConfirmation: true,
         type: 'announcement_bar',
       },
       sortOrder: 35,
@@ -82,9 +83,9 @@ export const BUILTIN_CONTENT_DEFAULTS: Record<string, BuiltinContentItem[]> = {
       key: 'campus_location',
       titleEn: 'Academy Campus Location',
       titleHi: 'संस्थान का पता एवं स्थान',
-      contentEn: 'Noida, Uttar Pradesh, India • Online Institute',
-      contentHi: 'नोएडा, उत्तर प्रदेश, भारत • ऑनलाइन संस्थान',
-      metadata: { icon: 'MapPin', type: 'address' },
+      contentEn: 'Online Institute • Noida, Uttar Pradesh, India',
+      contentHi: 'ऑनलाइन संस्थान • नोएडा, उत्तर प्रदेश, भारत',
+      metadata: { icon: 'MapPin', type: 'address', needsConfirmation: true },
       sortOrder: 4,
     },
     {
@@ -148,15 +149,16 @@ export const BUILTIN_CONTENT_DEFAULTS: Record<string, BuiltinContentItem[]> = {
     {
       collection: 'hero',
       key: 'announcement_bar',
-      titleEn: 'Self-Paced Masterclass Open',
-      titleHi: 'सेल्फ-पेस्ड मास्टरक्लास खुला है',
+      titleEn: 'Course & 1-on-1 Mentorship',
+      titleHi: 'पाठ्यक्रम एवं व्यक्तिगत मार्गदर्शन',
       contentEn:
-        'The Ultimate Astrology Course (23 Video Modules + 2 Bonus Workshops). Instant Lifetime Access! Enroll Today →',
+        'Vedic Astrology Course & 1-on-1 Mentorship with Acharya Niraj Kumar',
       contentHi:
-        'सम्पूर्ण वैदिक ज्योतिष कोर्स (23 वीडियो मॉड्यूल + 2 बोनस कार्यशालाएं)। आजीवन पहुंच! आज ही प्रवेश लें →',
+        'आचार्य नीरज कुमार जी के साथ वैदिक ज्योतिष पाठ्यक्रम एवं 1-on-1 व्यक्तिगत मार्गदर्शन',
       metadata: {
         url: '/courses/what-is-astrology',
-        active: true,
+        active: false,
+        needsConfirmation: true,
       },
       sortOrder: 2,
     },

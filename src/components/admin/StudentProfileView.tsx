@@ -149,23 +149,68 @@ export default function StudentProfileView({
           <span>Back to Students Roster / छात्र सूची</span>
         </button>
 
-        {isOwner && (
-          <button
-            onClick={() =>
-              onScheduleSession({
-                id: student.id,
-                name: student.name,
-                email: student.email,
-                phone: student.phone,
-                timezone: studentTz,
-              })
-            }
-            className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Schedule a session / व्यक्तिगत सत्र तय करें</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isOwner && (
+            <button
+              onClick={async () => {
+                const isCurrentlyTest = student.name.startsWith('[TEST]');
+                const confirmMsg = isCurrentlyTest
+                  ? `Remove test tag from ${student.name}? Their orders and stats will be included in live figures.`
+                  : `Mark ${student.name} as a test student? Their enrollments, orders, and stats will be completely excluded from live revenue and student counts.`;
+                if (!window.confirm(confirmMsg)) return;
+
+                try {
+                  const res = await fetch('/api/admin/test-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ studentId: student.id, isTest: !isCurrentlyTest }),
+                  });
+                  const json = await res.json();
+                  if (json.success) {
+                    alert(json.message);
+                    setData((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            student: {
+                              ...prev.student,
+                              name: json.user.name,
+                            },
+                          }
+                        : null
+                    );
+                  } else {
+                    alert(json.error || 'Failed to update test status');
+                  }
+                } catch {
+                  alert('Network error updating test status');
+                }
+              }}
+              className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition flex items-center gap-1.5"
+              title="Toggle test status"
+            >
+              <span>{student.name.startsWith('[TEST]') ? 'Unmark as test' : 'Mark as test'}</span>
+            </button>
+          )}
+
+          {isOwner && (
+            <button
+              onClick={() =>
+                onScheduleSession({
+                  id: student.id,
+                  name: student.name,
+                  email: student.email,
+                  phone: student.phone,
+                  timezone: studentTz,
+                })
+              }
+              className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Schedule a session / व्यक्तिगत सत्र तय करें</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 2. Student Profile Card */}
@@ -178,6 +223,11 @@ export default function StudentProfileView({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-xl font-bold text-white">{student.name}</h2>
+                {student.name.startsWith('[TEST]') && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    Test Student
+                  </span>
+                )}
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   {enrollment?.status || 'ACTIVE'}
                 </span>

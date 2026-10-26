@@ -1009,3 +1009,91 @@ The administrative interface provides a unified modal dialog accessible via **Ad
 - **Meeting Platform Selector**: Three distinct visual cards for Google Meet, Zoom, and WhatsApp Call with auto-populated meeting link templates.
 
 All changes are validated and committed atomically through `POST /api/admin/sessions/settings` and reflected in both the course settings and the one-on-one scheduling engines.
+
+---
+
+## 19. Live Admin Overhaul & Launch Readiness (Items A through J)
+
+### 19.1 Launch Readiness Checklist & Safe Activation Gate (Item A)
+- **Default State**: Course enrollment defaults to `false` in database (`Course.acceptingEnrollments = false`).
+- **Checklist Requirements**: Turning on enrolments displays a 5-point launch readiness checklist:
+  1. Lessons with real content (truthful count: `46 lessons, 0 with a video`).
+  2. Certification exam has 20 questions active.
+  3. Tuition price and payment UPI settings verified.
+  4. Public contact information and email confirmed.
+  5. Student checkout & portal flow tested.
+- **Safety Gate**: If any prerequisite is incomplete, enabling enrolments requires typing `"CONFIRM"` in a dedicated confirmation input. Disabling/pausing enrolments is 1-click and immediate without modal prompts.
+- **Enrolled Student Gating**: Checked before enrollment closure check to ensure enrolled scholars accessing checkout receive `409 ALREADY_ENROLLED` with direct dashboard links.
+
+### 19.2 Content-Gated Lesson Publishing Engine (Item B)
+- **Validation**: Enforced via `src/lib/curriculum-validation.ts` (`validateLessonPublishReadiness`).
+- **Gating Rules**:
+  - `VIDEO`: Requires valid video stream ID or URL (placeholder Rick Astley `dQw4w9WgXcQ` rejected).
+  - `NOTES`: Requires markdown notes or attached document file.
+  - `LIVE` / `SESSION`: Requires valid future timestamp (`> 86400000`).
+- **Feedback**: Lessons lacking content remain in `DRAFT` status with actionable explanations (e.g., *"A video lesson needs a video before it can be published"*).
+
+### 19.3 Complete Retirement of Fake Group Classes (Item C)
+- **Seed Cleanup**: Generation of 23 synthetic cohort classes (`cls-1` through `cls-23`) removed from `scripts/seed-database.ts`.
+- **Database Sanitization**:
+  - Full backup captured to `prisma/backups/fake_class_sessions_backup_20261026.json`.
+  - All 23 fake class sessions deleted from PostgreSQL `class_sessions` table (`class_sessions.count() === 0`).
+  - Table schema and foreign keys preserved.
+- **Timezone & Epoch Guard**: `formatInTimezone` and `formatSessionIST` in `src/lib/timezones.ts` guard against null/undefined or epoch timestamps (`<= 86400000`), rendering `"Not scheduled"`.
+- **Live Now Accuracy**: "LIVE NOW" badges render strictly when `now >= startTime && now <= endTime`.
+
+### 19.4 Test Data Management & Revenue Isolation (Item D)
+- **Data Tagging**: Admin actions to "Mark as test" and "Unmark as test" for any student or order via `POST /api/admin/test-data`.
+- **Financial Metrics Isolation**: All test orders (tagged `[TEST]` or `[TEST_PURCHASE]`) and test students are completely excluded from total revenue, student count, and analytics.
+- **Visual Badging**: Amber `Test` badge rendered on student roster and orders table.
+- **Dry-Run Purge**: "Remove test data" action opens dry-run modal inventory (`TestDataModal.tsx`) requiring typing `"DELETE_TEST_DATA"` before records are deleted.
+- **Initial Test Isolation**: Owner test purchase `cmvnno4ne00013ea6b0qx33ah` tagged as test in PostgreSQL.
+
+### 19.5 Real Dynamic Analytics & Plain Metrics (Item E)
+- **Database-Driven Computation**:
+  - Real module titles and actual video completion counts computed directly from database.
+  - Completion rate computed from verified certificates.
+  - Exam pass rate computed from actual `QuizAttempt` records.
+- **De-jargonization & Cleanup**:
+  - Removed synthetic groupings ("Modules 1–8: Foundations & Astronomy", etc.).
+  - Removed "Student Reviews & Trust Indicators" marketing block.
+  - Removed "live lecture attendance", "batches", "financial telemetry", and "Zero gateway deductions".
+  - Empty states render `"No data yet"`.
+
+### 19.6 Comprehensive Audit Trail Wiring (Item F)
+- **Operational Activity Logging**: Recorded in `ActivityLog` table and displayed on Admin Portal:
+  1. `ORDER_APPROVED` & `ORDER_REJECTED` (with payment reference and reason).
+  2. `STUDENT_ENROLLED` & `ENROLLMENT_REVOKED` (with student email and justification).
+  3. `LESSON_PUBLISHED` & `LESSON_UNPUBLISHED` (with content readiness status).
+  4. `PAYMENT_SETTINGS_UPDATED` (with changed UPI or contact parameters).
+  5. `CONTENT_EDITED` (with section, key, and updated values).
+  6. `ENROLLMENTS_ENABLED` & `ENROLLMENTS_DISABLED` (with launch gate status).
+- **Test Suite**: Verified via `tests/audit-trail-all-actions.test.ts`.
+
+### 19.7 Content Studio Corrections & Draft Verification (Item G)
+- **Approval Badging**: Unconfirmed draft items flagged with amber `"Needs confirmation"` badge.
+- **Announcement Bar**: Defaulted to `active: false` with `needsConfirmation: true` until client approves copy that avoids unconfirmed lifetime/instant claims.
+- **Campus Location**: Clarified as online institute with Noida office pending client approval.
+- **Verified Social Media**: Confirmed real links:
+  - YouTube: `https://www.youtube.com/@aapkaastro7900`
+  - Instagram: `https://www.instagram.com/aapkaastrologer`
+  - Facebook: `https://www.facebook.com/aapkaastro`
+- **Public Email Verification**: Public contact email set with `[Send Test Email]` button (`POST /api/admin/content/test-email`) for owner inbox verification.
+
+### 19.8 Unified One-Navigation Architecture (Item H)
+- **Standardized Navigation**: Exact 1:1 match across header, navigation tabs, and admin dashboard tiles:
+  `Home` • `Course` • `Students` • `Payments` • `Sessions` • `Questions` • `Site content` • `Settings`.
+- **Organized Subtabs**:
+  - `Course` subtabs: `Curriculum & Lessons` and `Quizzes & Certificates`.
+  - `Site content` subtabs: `Content Studio` and `Media Library`.
+  - `Settings` subtabs: `Payment & Tuition Settings`, `Test Data Management`, and `Staff Roles & Delegations`.
+- **Removed Redundancies**: Faint purple buttons replaced with high-contrast UI; duplicate header triggers unified.
+
+### 19.9 Certification Exam Readiness (Item I)
+- **Question Counter**: Course management card displays real exam readiness metric: `20 of 20 exam questions active` with 1-click shortcut to Question Manager.
+- **Certificates Empty State**: Empty state message ("No certificates issued yet...") rendered cleanly when no certificates exist.
+
+### 19.10 Plain Language & Mobile 390px Viewport Compliance (Item J)
+- **Language Cleanliness**: Replaced developer jargon ("scholar", "cryptographic", "Zero gateway deductions", "Catalog Engine", "Supreme Owner Anchor").
+- **Accurate Scope**: Header updated to: *"Manage 23 course modules, 1-on-1 personal classes, enrolled students, payments, and site content."*
+- **Mobile Responsive**: Tab bar and modals tested and fully usable at 390px viewport width with smooth horizontal scrolling.

@@ -316,18 +316,32 @@ export async function PATCH(
     });
 
     // 5. Record Activity Log
+    let actionName = 'COURSE_UPDATED';
+    let actionReason = 'Course details modified';
+
+    if (body.status !== undefined && body.status !== existing.status) {
+      actionName = `COURSE_STATUS_${body.status}`;
+      actionReason = `Status changed from ${existing.status} to ${body.status}`;
+    } else if (body.acceptingEnrollments !== undefined && body.acceptingEnrollments !== existing.acceptingEnrollments) {
+      actionName = body.acceptingEnrollments ? 'ENROLLMENTS_ENABLED' : 'ENROLLMENTS_DISABLED';
+      actionReason = body.acceptingEnrollments
+        ? 'Enrolments opened after launch readiness confirmation'
+        : 'Enrolments paused by owner';
+    }
+
     await prisma.activityLog.create({
       data: {
         userId: auth.userId || null,
         userEmail: auth.userEmail || null,
-        action: body.status !== undefined && body.status !== existing.status ? `COURSE_STATUS_${body.status}` : 'COURSE_UPDATED',
+        action: actionName,
         entityType: 'COURSE',
         entityId: updated.id,
         courseId: updated.id,
-        reason: body.status !== undefined && body.status !== existing.status ? `Status changed from ${existing.status} to ${body.status}` : 'Course details modified',
+        reason: actionReason,
         details: {
           updatedFields: Object.keys(dataToUpdate),
           title: updated.title,
+          acceptingEnrollments: updated.acceptingEnrollments,
         },
       },
     });

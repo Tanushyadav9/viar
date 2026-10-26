@@ -35,6 +35,7 @@ export async function getUnifiedAdminStats(): Promise<UnifiedAdminStats> {
         AND: [
           { notes: { not: { contains: '[TEST_PURCHASE]' } } },
           { studentEmail: { not: ownerEmail } },
+          { studentName: { not: { startsWith: '[TEST]' } } },
         ],
       },
       _sum: { amount: true },
@@ -51,6 +52,7 @@ export async function getUnifiedAdminStats(): Promise<UnifiedAdminStats> {
         user: {
           isOwner: false,
           email: { not: ownerEmail },
+          name: { not: { startsWith: '[TEST]' } },
         },
         OR: [
           { order: null },

@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   Loader2,
   RefreshCw,
+  Mail,
 } from 'lucide-react';
 import type { FormattedContent } from '@/lib/content/contentTypes';
 import { renderSafeContent } from '@/lib/content/sanitizer';
@@ -139,6 +140,33 @@ export default function ContentStudio({
   // Delete Confirmation Modal
   const [itemToDelete, setItemToDelete] = useState<FormattedContent | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+
+  const handleSendTestEmail = async () => {
+    const emailToTest = (formContentEn || formContentHi || '').trim();
+    if (!emailToTest || !emailToTest.includes('@')) {
+      alert('Please enter a valid email address first.');
+      return;
+    }
+    setIsSendingTestEmail(true);
+    try {
+      const res = await fetch('/api/admin/content/test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailToTest }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || 'Test email dispatched! Please check your mailbox.');
+      } else {
+        alert(`Failed to send test email: ${data.error}`);
+      }
+    } catch (err) {
+      alert(`Network error sending test email: ${(err as Error).message}`);
+    } finally {
+      setIsSendingTestEmail(false);
+    }
+  };
 
   const fetchCollectionItems = async (collection: string) => {
     setErrorMessage(null);
@@ -598,6 +626,12 @@ export default function ContentStudio({
                         {isPendingLawyer && (
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
                             ⚠️ Pending Lawyer Review
+                          </span>
+                        )}
+
+                        {(Boolean(itemMeta.needsConfirmation) || item.key === 'announcement_bar' || isDraft) && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            Needs confirmation
                           </span>
                         )}
 
@@ -1191,10 +1225,26 @@ export default function ContentStudio({
                 </div>
               )}
 
-              {/* Public Contact Email Advisory */}
+              {/* Public Contact Email Advisory & Test Email Button */}
               {editingItem.collection === 'site_settings' && editingItem.key === 'contact_email' && (
-                <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-200 text-xs leading-relaxed">
-                  💡 <strong>Public Inquiry Email:</strong> This address is shown to visitors on the website contact page and footer for student inquiries.
+                <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs space-y-3">
+                  <div className="text-blue-200 leading-relaxed">
+                    💡 <strong>Public Inquiry Email:</strong> This address is shown to visitors on the website contact page and footer for student inquiries.
+                  </div>
+                  <div className="flex items-center justify-between gap-3 pt-2 border-t border-blue-500/20">
+                    <span className="text-[11px] text-slate-400">
+                      Verify this mailbox can receive incoming student messages:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleSendTestEmail}
+                      disabled={isSendingTestEmail}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>{isSendingTestEmail ? 'Sending...' : 'Send Test Email'}</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
