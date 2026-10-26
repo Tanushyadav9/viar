@@ -972,3 +972,40 @@ A comprehensive audit of all API routes, server actions, background tasks, and b
 3. **Database Defaults Initialization**:
    - The only automatic database insertion in the entire application runtime is in `src/lib/payments/settings.ts` (`getPaymentSettings()`), which checks for the `PaymentSettings` row with `id: 'default'`. If absent, it creates the single configuration row with the institute's default UPI ID (`9310709233m@pnb`) and payee name (*Vihangam Institute of Astrology and Research*).
    - **Conclusion**: There is **zero automatic mock data seeding** on empty databases. All domain records in PostgreSQL require deliberate administrative action, client checkout, or explicit staging seed script execution.
+
+
+---
+
+## 18. Decisions the Client Must Make (1-on-1 Personal Mentorship Policies)
+
+### 18.1 Overview & Zero-Assumption Policy
+In accordance with the client's transition from group cohorts to personalized 1-on-1 mentorship, six core operating parameters govern scheduling, capacity, and live teaching delivery. Rather than hardcoding assumptions or enforcing synthetic defaults, the platform establishes these parameters as **fully editable, database-backed administrative settings**. 
+
+Each parameter is recorded below as **`⏳ PENDING CLIENT DECISION`** until confirmed by the institute owner. The system safely handles null, unconfigured, or default states without disrupting ongoing mentorship operations or displaying false quotas.
+
+---
+
+### 18.2 Matrix of Client Decisions
+
+| # | Policy Parameter | Allowed Options & Formats | System Fallback Behavior (If Unset) | Database Storage & API Contract | Decision Status |
+| :- | :--- | :--- | :--- | :--- | :--- |
+| **1** | **Sessions Included Per Student** | Fixed number (`1, 2, 3, 5, 8, 10, 12...`) or `Unlimited` (`null`) | If `null`, no quota bar or counter is shown. Student can request mentorship sessions freely based on course needs. | `Course.sessions_included_per_student` (`Int?`) via `/api/admin/sessions/settings` | **`⏳ PENDING CLIENT DECISION`** |
+| **2** | **Usual Session Length** | Duration in minutes (`30`, `45`, `60`, `90`, `120`) | Defaults to `60` minutes in the schedule modal, fully editable per individual session booking. | `Course.default_session_duration_minutes` (`Int?`) via `/api/admin/sessions/settings` | **`⏳ PENDING CLIENT DECISION`** |
+| **3** | **Reschedule Notice Period** | Minimum advance notice in hours (`12`, `24`, `48`, `72`) | Defaults to `24` hours. Student reschedule requests submitted with less notice require explicit owner approval. | `Course.minimum_reschedule_notice_hours` (`Int?`) via `/api/admin/sessions/settings` | **`⏳ PENDING CLIENT DECISION`** |
+| **4** | **Weekly Working Hours** | Operating schedule per day (Monday–Sunday) with `startTime` & `endTime` in Asia/Kolkata (IST), plus day toggle | Defaults to Monday–Saturday 10:00 AM – 7:00 PM IST (Sunday closed). Scheduling outside these hours displays a clash warning requiring owner confirmation. | `OwnerWorkingHours` table (`day_of_week`, `start_time`, `end_time`, `is_enabled`, `slot_duration_minutes`) | **`⏳ PENDING CLIENT DECISION`** |
+| **5** | **Maximum Active Students** | Real numeric capacity limit (e.g. `10, 15, 25, 50`) or `Unlimited` (`null`) | If `null`, no enrollment ceiling is enforced. No fake seat countdowns or artificial scarcity counters are ever shown. | `Course.maximum_active_students` (`Int?`) via `/api/admin/sessions/settings` | **`⏳ PENDING CLIENT DECISION`** |
+| **6** | **Live Meeting Platform** | `GOOGLE_MEET`, `ZOOM`, or `WHATSAPP_CALL` | Defaults to `GOOGLE_MEET`. Can be switched per session or changed globally with one click in the owner settings modal. | `Course.default_meeting_platform` (`String?`) via `/api/admin/sessions/settings` | **`⏳ PENDING CLIENT DECISION`** |
+
+---
+
+### 18.3 Administrative Settings Interface & Persistence Architecture
+
+The administrative interface provides a unified modal dialog accessible via **Admin Portal → Sessions → Session Settings**:
+- **Sessions Included Controls**: Quick-select pill buttons (`3 Sessions`, `5 Sessions`, `8 Sessions`, `12 Sessions`) alongside a custom numeric input and a `"Set Unlimited (Blank)"` action to clear any quotas.
+- **Duration Selector**: 30m, 45m, 60m, 90m, 120m quick-selection pills and custom duration input.
+- **Notice Period Selector**: 12h, 24h, 48h, 72h quick-selection pills and custom advance notice input.
+- **Weekly Schedule Manager**: 7-day interactive day-by-day toggle with `HH:MM` time inputs in Asia/Kolkata timezone (IST), automatically synced with `OwnerWorkingHours` records in PostgreSQL.
+- **Active Capacity Controls**: Numeric concurrent student cap input with a `"Clear Limit (Unlimited)"` button.
+- **Meeting Platform Selector**: Three distinct visual cards for Google Meet, Zoom, and WhatsApp Call with auto-populated meeting link templates.
+
+All changes are validated and committed atomically through `POST /api/admin/sessions/settings` and reflected in both the course settings and the one-on-one scheduling engines.

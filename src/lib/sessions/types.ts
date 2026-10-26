@@ -136,7 +136,10 @@ export interface SessionHistoryLogRecord {
 }
 
 export interface CourseSessionSettings {
-  sessionsIncludedPerStudent?: number | null; // Count of sessions included, empty/null by default
-  maximumActiveStudents?: number | null;      // Real maximum chosen by Owner, empty/null by default
-  minimumRescheduleNoticeHours?: number | null; // Owner-configurable notice period (default 24h)
+  sessionsIncludedPerStudent?: number | null; // Decision 1: Count of 1-on-1 sessions included (null = unlimited or pending client decision)
+  defaultSessionDurationMinutes?: number | null; // Decision 2: Usual session length in minutes (e.g. 60, 45, 90)
+  minimumRescheduleNoticeHours?: number | null; // Decision 3: Reschedule notice period in hours (e.g. 24)
+  maximumActiveStudents?: number | null; // Decision 5: Real maximum active students concurrent limit (null = unlimited or pending client decision)
+  defaultMeetingPlatform?: SessionMeetingPlatform | string | null; // Decision 6: Google Meet, Zoom, or WhatsApp call
+  workingHours?: OwnerWorkingHoursRecord[]; // Decision 4: Weekly working hours across Monday to Sunday
 }

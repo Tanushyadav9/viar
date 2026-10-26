@@ -182,9 +182,11 @@ model Course {
   sessionRequests    SessionRequest[]
 
   // Optional 1-on-1 personal mentorship settings (empty by default, shown only when Owner sets them)
-  sessionsIncludedPerStudent   Int?             @map("sessions_included_per_student")
-  maximumActiveStudents        Int?             @map("maximum_active_students")
-  minimumRescheduleNoticeHours Int?             @default(24) @map("minimum_reschedule_notice_hours")
+  sessionsIncludedPerStudent    Int?             @map("sessions_included_per_student")
+  maximumActiveStudents         Int?             @map("maximum_active_students")
+  minimumRescheduleNoticeHours  Int?             @default(24) @map("minimum_reschedule_notice_hours")
+  defaultSessionDurationMinutes Int?             @default(60) @map("default_session_duration_minutes")
+  defaultMeetingPlatform        String?          @default("GOOGLE_MEET") @map("default_meeting_platform")
 
   @@index([slug])
   @@index([status])

@@ -1275,21 +1275,35 @@ export async function listSessionHistoryLogs(sessionId?: string): Promise<Sessio
 // ------------------------------------------------------------------------------
 
 export async function getCourseSessionSettings(courseId: string): Promise<CourseSessionSettings> {
+  const workingHours = await getOwnerWorkingHours();
+
   try {
-    const course = await prisma.course.findUnique({
+    interface CourseSettingsRow {
+      sessionsIncludedPerStudent?: number | null;
+      maximumActiveStudents?: number | null;
+      minimumRescheduleNoticeHours?: number | null;
+      defaultSessionDurationMinutes?: number | null;
+      defaultMeetingPlatform?: string | null;
+    }
+    const course = (await prisma.course.findUnique({
       where: { id: courseId },
       select: {
         sessionsIncludedPerStudent: true,
         maximumActiveStudents: true,
         minimumRescheduleNoticeHours: true,
+        defaultSessionDurationMinutes: true,
+        defaultMeetingPlatform: true,
       },
-    });
+    })) as CourseSettingsRow | null;
 
     if (course) {
       return {
         sessionsIncludedPerStudent: course.sessionsIncludedPerStudent ?? null,
         maximumActiveStudents: course.maximumActiveStudents ?? null,
         minimumRescheduleNoticeHours: course.minimumRescheduleNoticeHours ?? 24,
+        defaultSessionDurationMinutes: course.defaultSessionDurationMinutes ?? 60,
+        defaultMeetingPlatform: course.defaultMeetingPlatform ?? 'GOOGLE_MEET',
+        workingHours,
       };
     }
   } catch {}
@@ -1299,6 +1313,9 @@ export async function getCourseSessionSettings(courseId: string): Promise<Course
     sessionsIncludedPerStudent: mem?.sessionsIncludedPerStudent ?? null,
     maximumActiveStudents: mem?.maximumActiveStudents ?? null,
     minimumRescheduleNoticeHours: mem?.minimumRescheduleNoticeHours ?? 24,
+    defaultSessionDurationMinutes: mem?.defaultSessionDurationMinutes ?? 60,
+    defaultMeetingPlatform: mem?.defaultMeetingPlatform ?? 'GOOGLE_MEET',
+    workingHours,
   };
 }
 
@@ -1307,20 +1324,47 @@ export async function updateCourseSessionSettings(
   settings: CourseSessionSettings
 ): Promise<CourseSessionSettings> {
   try {
+    const dataToUpdate: Record<string, unknown> = {};
+    if (settings.sessionsIncludedPerStudent !== undefined) {
+      dataToUpdate.sessionsIncludedPerStudent = settings.sessionsIncludedPerStudent;
+    }
+    if (settings.maximumActiveStudents !== undefined) {
+      dataToUpdate.maximumActiveStudents = settings.maximumActiveStudents;
+    }
+    if (settings.minimumRescheduleNoticeHours !== undefined) {
+      dataToUpdate.minimumRescheduleNoticeHours = settings.minimumRescheduleNoticeHours;
+    }
+    if (settings.defaultSessionDurationMinutes !== undefined) {
+      dataToUpdate.defaultSessionDurationMinutes = settings.defaultSessionDurationMinutes;
+    }
+    if (settings.defaultMeetingPlatform !== undefined) {
+      dataToUpdate.defaultMeetingPlatform = settings.defaultMeetingPlatform;
+    }
+
     await prisma.course.update({
       where: { id: courseId },
-      data: {
-        sessionsIncludedPerStudent: settings.sessionsIncludedPerStudent !== undefined ? settings.sessionsIncludedPerStudent : undefined,
-        maximumActiveStudents: settings.maximumActiveStudents !== undefined ? settings.maximumActiveStudents : undefined,
-        minimumRescheduleNoticeHours: settings.minimumRescheduleNoticeHours !== undefined ? settings.minimumRescheduleNoticeHours : undefined,
-      },
+      data: dataToUpdate,
     });
   } catch {}
 
-  const merged = {
+  // Update working hours if provided
+  if (Array.isArray(settings.workingHours)) {
+    for (const day of settings.workingHours) {
+      if (typeof day.dayOfWeek === 'number') {
+        await updateOwnerWorkingHours(day.dayOfWeek, day);
+      }
+    }
+  }
+
+  const updatedWorkingHours = await getOwnerWorkingHours();
+
+  const merged: CourseSessionSettings = {
     minimumRescheduleNoticeHours: 24,
+    defaultSessionDurationMinutes: 60,
+    defaultMeetingPlatform: 'GOOGLE_MEET',
     ...(_memoryCourseSettings.get(courseId) || {}),
     ...settings,
+    workingHours: updatedWorkingHours,
   };
   _memoryCourseSettings.set(courseId, merged);
   return merged;

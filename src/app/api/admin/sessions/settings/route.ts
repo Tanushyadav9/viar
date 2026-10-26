@@ -60,6 +60,17 @@ export async function POST(req: NextRequest) {
             ? null
             : Number(body.minimumRescheduleNoticeHours)
           : undefined,
+      defaultSessionDurationMinutes:
+        body.defaultSessionDurationMinutes !== undefined
+          ? body.defaultSessionDurationMinutes === '' || body.defaultSessionDurationMinutes === null
+            ? 60
+            : Number(body.defaultSessionDurationMinutes)
+          : undefined,
+      defaultMeetingPlatform:
+        body.defaultMeetingPlatform !== undefined
+          ? body.defaultMeetingPlatform || 'GOOGLE_MEET'
+          : undefined,
+      workingHours: Array.isArray(body.workingHours) ? body.workingHours : undefined,
     });
 
     return NextResponse.json({

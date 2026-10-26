@@ -155,6 +155,23 @@ export default function SessionsManager({
   const [settingsNoticeHours, setSettingsNoticeHours] = useState(24);
   const [settingsIncludedCount, setSettingsIncludedCount] = useState<number | ''>('');
   const [settingsMaxStudents, setSettingsMaxStudents] = useState<number | ''>('');
+  const [settingsSessionLength, setSettingsSessionLength] = useState<number>(60);
+  const [settingsMeetingPlatform, setSettingsMeetingPlatform] = useState<string>('GOOGLE_MEET');
+  const [settingsWorkingHours, setSettingsWorkingHours] = useState<Array<{
+    dayOfWeek: number;
+    dayName: string;
+    startTime: string;
+    endTime: string;
+    isEnabled: boolean;
+  }>>([
+    { dayOfWeek: 0, dayName: 'Sunday', startTime: '10:00', endTime: '19:00', isEnabled: false },
+    { dayOfWeek: 1, dayName: 'Monday', startTime: '10:00', endTime: '19:00', isEnabled: true },
+    { dayOfWeek: 2, dayName: 'Tuesday', startTime: '10:00', endTime: '19:00', isEnabled: true },
+    { dayOfWeek: 3, dayName: 'Wednesday', startTime: '10:00', endTime: '19:00', isEnabled: true },
+    { dayOfWeek: 4, dayName: 'Thursday', startTime: '10:00', endTime: '19:00', isEnabled: true },
+    { dayOfWeek: 5, dayName: 'Friday', startTime: '10:00', endTime: '19:00', isEnabled: true },
+    { dayOfWeek: 6, dayName: 'Saturday', startTime: '10:00', endTime: '19:00', isEnabled: true },
+  ]);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsSaveSuccess, setSettingsSaveSuccess] = useState(false);
 
@@ -177,6 +194,23 @@ export default function SessionsManager({
           setSettingsNoticeHours(data.courseSettings.minimumRescheduleNoticeHours ?? 24);
           setSettingsIncludedCount(data.courseSettings.sessionsIncludedPerStudent ?? '');
           setSettingsMaxStudents(data.courseSettings.maximumActiveStudents ?? '');
+          setSettingsSessionLength(data.courseSettings.defaultSessionDurationMinutes ?? 60);
+          setSettingsMeetingPlatform(data.courseSettings.defaultMeetingPlatform ?? 'GOOGLE_MEET');
+          if (Array.isArray(data.courseSettings.workingHours) && data.courseSettings.workingHours.length > 0) {
+            setSettingsWorkingHours(data.courseSettings.workingHours.map((wh: {
+              dayOfWeek: number;
+              dayName?: string;
+              startTime: string;
+              endTime: string;
+              isEnabled: boolean;
+            }) => ({
+              dayOfWeek: wh.dayOfWeek,
+              dayName: wh.dayName || ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][wh.dayOfWeek],
+              startTime: wh.startTime,
+              endTime: wh.endTime,
+              isEnabled: wh.isEnabled,
+            })));
+          }
         }
         if (data.students?.length > 0 && !formStudentId) {
           setFormStudentId(data.students[0].id);
@@ -277,7 +311,15 @@ export default function SessionsManager({
     setFormTopicMode('MODULE');
     setFormSelectedModule(FLAGSHIP_23_MODULES[0]);
     setFormCustomTitle('');
-    setFormLink('https://meet.google.com/new');
+    setFormDuration(courseSettings.defaultSessionDurationMinutes || 60);
+    setFormPlatform(courseSettings.defaultMeetingPlatform || 'GOOGLE_MEET');
+    setFormLink(
+      (courseSettings.defaultMeetingPlatform || 'GOOGLE_MEET') === 'WHATSAPP_CALL'
+        ? 'WhatsApp Video Call'
+        : (courseSettings.defaultMeetingPlatform || 'GOOGLE_MEET') === 'ZOOM'
+        ? 'https://zoom.us/j/your-meeting-id'
+        : 'https://meet.google.com/new'
+    );
     setFormSharedNotes('Please have your birth chart ready. Revise basic planetary significators.');
     setFormPrivateNotes('');
     setFormRepeatWeekly(false);
@@ -619,6 +661,9 @@ export default function SessionsManager({
           sessionsIncludedPerStudent: settingsIncludedCount === '' ? null : Number(settingsIncludedCount),
           maximumActiveStudents: settingsMaxStudents === '' ? null : Number(settingsMaxStudents),
           minimumRescheduleNoticeHours: Number(settingsNoticeHours) || 24,
+          defaultSessionDurationMinutes: Number(settingsSessionLength) || 60,
+          defaultMeetingPlatform: settingsMeetingPlatform || 'GOOGLE_MEET',
+          workingHours: settingsWorkingHours,
         }),
       });
       if (res.ok) {
@@ -1946,7 +1991,7 @@ export default function SessionsManager({
       {/* ------------------------------------------------------------------------ */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-lg rounded-3xl bg-slate-900 border border-white/10 p-6 sm:p-7 shadow-2xl space-y-5 my-8">
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-slate-900 border border-white/10 p-6 sm:p-7 shadow-2xl space-y-5 my-8">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -2023,20 +2068,176 @@ export default function SessionsManager({
                   </div>
                 </div>
 
-                {/* 3. Optional Max Students */}
+                {/* 3. Maximum Active Scholars Capacity */}
                 <div className="space-y-1 pt-3 border-t border-white/10">
                   <label className="font-bold text-white flex items-center justify-between">
                     <span>Maximum Active Scholars Capacity</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Optional</span>
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      {settingsMaxStudents === '' ? 'Currently: Unlimited' : `Cap: ${settingsMaxStudents} Scholars`}
+                    </span>
                   </label>
-                  <input
-                    type="number"
-                    min={1}
-                    placeholder="e.g. 25 (or leave empty)"
-                    value={settingsMaxStudents}
-                    onChange={(e) => setSettingsMaxStudents(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-48 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                  />
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Set a real limit on concurrent active 1-on-1 scholars to prevent overload. Leave empty for no hard limit.
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="number"
+                      min={1}
+                      max={500}
+                      placeholder="e.g. 25 (or leave empty)"
+                      value={settingsMaxStudents}
+                      onChange={(e) => setSettingsMaxStudents(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-48 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSettingsMaxStudents('')}
+                      className="text-[11px] text-slate-400 hover:text-white"
+                    >
+                      Clear Limit
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. Usual Session Length */}
+                <div className="space-y-2 pt-3 border-t border-white/10">
+                  <label className="font-bold text-white flex items-center justify-between">
+                    <span>Usual Session Length</span>
+                    <span className="text-[10px] text-amber-400 font-normal">{settingsSessionLength} Minutes Default</span>
+                  </label>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Standard duration pre-filled when scheduling new 1-on-1 classes.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {[30, 45, 60, 90, 120].map((mins) => (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => setSettingsSessionLength(mins)}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
+                          settingsSessionLength === mins
+                            ? 'bg-amber-400 text-slate-950 border-amber-400 font-bold'
+                            : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300'
+                        }`}
+                      >
+                        {mins} Mins
+                      </button>
+                    ))}
+                    <div className="flex items-center gap-1.5 ml-2">
+                      <input
+                        type="number"
+                        min={15}
+                        max={240}
+                        step={5}
+                        value={settingsSessionLength}
+                        onChange={(e) => setSettingsSessionLength(Number(e.target.value))}
+                        className="w-24 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                      />
+                      <span className="text-slate-400 text-xs">minutes</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Default Meeting Platform */}
+                <div className="space-y-2 pt-3 border-t border-white/10">
+                  <label className="font-bold text-white flex items-center justify-between">
+                    <span>Default Live Meeting Platform</span>
+                    <span className="text-[10px] text-amber-400 font-normal">
+                      {settingsMeetingPlatform === 'GOOGLE_MEET' ? 'Google Meet' : settingsMeetingPlatform === 'ZOOM' ? 'Zoom' : 'WhatsApp Call'}
+                    </span>
+                  </label>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Preferred platform pre-selected when creating live sessions.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                    {[
+                      { id: 'GOOGLE_MEET', title: 'Google Meet', desc: 'Web link, 0 install' },
+                      { id: 'ZOOM', title: 'Zoom', desc: 'Meeting ID & passcode' },
+                      { id: 'WHATSAPP_CALL', title: 'WhatsApp Call', desc: 'Direct phone video call' },
+                    ].map((plat) => (
+                      <button
+                        key={plat.id}
+                        type="button"
+                        onClick={() => setSettingsMeetingPlatform(plat.id)}
+                        className={`p-2.5 rounded-xl border text-left transition ${
+                          settingsMeetingPlatform === plat.id
+                            ? 'bg-amber-500/10 border-amber-500/50 text-white'
+                            : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full mb-0.5">
+                          <span className="font-bold text-xs">{plat.title}</span>
+                          {settingsMeetingPlatform === plat.id && (
+                            <Check className="w-3.5 h-3.5 text-amber-400" />
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-400 block">{plat.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 6. Weekly Working Hours (Asia/Kolkata) */}
+                <div className="space-y-2 pt-3 border-t border-white/10">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-white flex items-center gap-1.5">
+                      <span>Weekly Working Hours (Asia/Kolkata)</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400">IST Timezone</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Available teaching days & time slots for clash detection and booking warnings.
+                  </p>
+                  <div className="space-y-1.5 pt-1 bg-black/30 p-2.5 rounded-2xl border border-white/5">
+                    {settingsWorkingHours.map((day, idx) => (
+                      <div key={day.dayOfWeek} className="flex items-center justify-between gap-2 py-1 border-b border-white/5 last:border-0 text-xs">
+                        <label className="flex items-center gap-2 cursor-pointer w-28">
+                          <input
+                            type="checkbox"
+                            checked={day.isEnabled}
+                            onChange={(e) => {
+                              const updated = [...settingsWorkingHours];
+                              updated[idx] = { ...updated[idx], isEnabled: e.target.checked };
+                              setSettingsWorkingHours(updated);
+                            }}
+                            className="rounded border-white/20 text-amber-400 focus:ring-amber-400"
+                          />
+                          <span className={day.isEnabled ? 'text-white font-semibold' : 'text-slate-500 line-through'}>
+                            {day.dayName}
+                          </span>
+                        </label>
+
+                        {day.isEnabled ? (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="time"
+                              value={day.startTime}
+                              onChange={(e) => {
+                                const updated = [...settingsWorkingHours];
+                                updated[idx] = { ...updated[idx], startTime: e.target.value };
+                                setSettingsWorkingHours(updated);
+                              }}
+                              className="px-2 py-0.5 rounded-lg bg-white/10 border border-white/10 text-white font-mono text-xs"
+                            />
+                            <span className="text-slate-500 text-[10px]">to</span>
+                            <input
+                              type="time"
+                              value={day.endTime}
+                              onChange={(e) => {
+                                const updated = [...settingsWorkingHours];
+                                updated[idx] = { ...updated[idx], endTime: e.target.value };
+                                setSettingsWorkingHours(updated);
+                              }}
+                              className="px-2 py-0.5 rounded-lg bg-white/10 border border-white/10 text-white font-mono text-xs"
+                            />
+                            <span className="text-[10px] text-slate-400">IST</span>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-500 italic">Day Off (No Classes)</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-white/10">
