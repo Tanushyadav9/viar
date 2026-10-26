@@ -40,7 +40,11 @@ describe('Seed Guard & Production Protection — Comprehensive Specification', (
 
         assert.strictEqual(exitCode, 1, 'Must exit with code 1 upon production target');
       } finally {
-        process.env.DATABASE_URL = originalDbUrl;
+        if (originalDbUrl !== undefined) {
+          process.env.DATABASE_URL = originalDbUrl;
+        } else {
+          delete process.env.DATABASE_URL;
+        }
         process.exit = originalExit;
       }
     });
@@ -68,7 +72,11 @@ describe('Seed Guard & Production Protection — Comprehensive Specification', (
 
         assert.strictEqual(exitCode, 1, 'Must exit with code 1 if explicit staging flag missing');
       } finally {
-        process.env.DATABASE_URL = originalDbUrl;
+        if (originalDbUrl !== undefined) {
+          process.env.DATABASE_URL = originalDbUrl;
+        } else {
+          delete process.env.DATABASE_URL;
+        }
         if (originalFlag !== undefined) process.env.ALLOW_STAGING_SCRIPTS = originalFlag;
         process.exit = originalExit;
       }

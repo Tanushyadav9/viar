@@ -56,7 +56,7 @@ export default function AdminHomeHub({
     {
       id: 'tile-courses',
       title: 'Course',
-      helpText: 'View curriculum, 23 video modules, exam readiness, and tuition pricing.',
+      helpText: 'View curriculum modules, lessons, exam readiness, and tuition pricing.',
       icon: <BookOpen className="w-6 h-6 text-purple-400" />,
       action: () => onSelectSection('courses'),
     },
@@ -293,7 +293,7 @@ export default function AdminHomeHub({
             <span>Manage Institute</span>
           </h2>
           <span className="text-xs text-slate-400">
-            Unified administrative tiles
+            Main sections
           </span>
         </div>
 
@@ -340,7 +340,7 @@ export default function AdminHomeHub({
             <Clock className="w-5 h-5 text-amber-400" />
             <h2 className="text-lg font-bold text-white">Recent Activity &amp; Audit Trail</h2>
           </div>
-          <span className="text-xs text-slate-400">Live tamper-proof log</span>
+          <span className="text-xs text-slate-400">Recent actions log</span>
         </div>
 
         {recentActivities && recentActivities.length > 0 ? (

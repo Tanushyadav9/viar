@@ -252,11 +252,40 @@ export default function CohortClassByClassPage() {
     return () => clearInterval(interval);
   }, []);
 
+  const hasClassContent = (cls: ScheduledClass | null): boolean => {
+    if (!cls) return false;
+    const lType = (cls.lessonType || 'VIDEO').toUpperCase();
+    if (lType === 'VIDEO') {
+      const vid = cls.recording?.videoUrl || cls.recordingUrl || cls.externalVideoUrl;
+      return Boolean(vid && typeof vid === 'string' && vid.trim() && !vid.includes('dQw4w9WgXcQ'));
+    }
+    if (lType === 'DOCUMENT') {
+      return Boolean(
+        (cls.documentKey && cls.documentKey.trim()) ||
+        (cls.documentDownloadUrl && cls.documentDownloadUrl.trim()) ||
+        (cls.notesMarkdown && cls.notesMarkdown.trim())
+      );
+    }
+    if (lType === 'LIVE_SESSION') {
+      return Boolean(
+        cls.scheduledStartTime &&
+        !isNaN(new Date(cls.scheduledStartTime).getTime()) &&
+        new Date(cls.scheduledStartTime).getTime() > 86400000
+      );
+    }
+    return false;
+  };
+
   const handleToggleWatched = (classId: string) => {
     const updated = new Set(watchedSet);
     const willBeWatched = !updated.has(classId);
 
+    // Guard: A lesson with no content must NOT be completable
     if (willBeWatched) {
+      const targetClass = classes.find((c) => c.id === classId);
+      if (targetClass && !hasClassContent(targetClass)) {
+        return;
+      }
       updated.add(classId);
     } else {
       updated.delete(classId);
@@ -273,7 +302,20 @@ export default function CohortClassByClassPage() {
         completed: willBeWatched,
         watched: willBeWatched,
       }),
-    }).catch((err) => console.warn('Progress API sync failed:', err));
+    })
+      .then((res) => {
+        if (!res.ok) {
+          // If rejected by backend, revert local state
+          const reverted = new Set(watchedSet);
+          if (willBeWatched) {
+            reverted.delete(classId);
+          } else {
+            reverted.add(classId);
+          }
+          setWatchedSet(reverted);
+        }
+      })
+      .catch((err) => console.warn('Progress API sync failed:', err));
   };
 
   const totalClasses = classes.length;
@@ -440,19 +482,35 @@ export default function CohortClassByClassPage() {
                   </div>
 
                   {/* Watched Checkbox */}
-                  <label className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-amber-400/40 cursor-pointer transition select-none">
-                    <input
-                      type="checkbox"
-                      checked={watchedSet.has(activeClass.id) || activeClass.status === 'COMPLETED'}
-                      onChange={() => handleToggleWatched(activeClass.id)}
-                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 accent-amber-500 cursor-pointer"
-                    />
-                    <span className="text-xs font-semibold text-slate-200">
-                      {watchedSet.has(activeClass.id) || activeClass.status === 'COMPLETED'
-                        ? 'Completed / Watched'
-                        : 'Mark as Watched'}
-                    </span>
-                  </label>
+                  {(() => {
+                    const hasContent = hasClassContent(activeClass);
+                    const isCompleted = watchedSet.has(activeClass.id) || activeClass.status === 'COMPLETED';
+                    return (
+                      <label
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 transition select-none ${
+                          !hasContent ? 'opacity-50 cursor-not-allowed' : 'hover:border-amber-400/40 cursor-pointer'
+                        }`}
+                        title={!hasContent ? 'A lesson with no content cannot be marked complete.' : undefined}
+                      >
+                        <input
+                          type="checkbox"
+                          disabled={!hasContent}
+                          checked={isCompleted}
+                          onChange={() => handleToggleWatched(activeClass.id)}
+                          className={`w-4 h-4 rounded text-amber-500 focus:ring-amber-400 accent-amber-500 ${
+                            !hasContent ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
+                          }`}
+                        />
+                        <span className="text-xs font-semibold text-slate-200">
+                          {!hasContent
+                            ? 'Content pending (Draft)'
+                            : isCompleted
+                            ? 'Completed / Watched'
+                            : 'Mark as Watched'}
+                        </span>
+                      </label>
+                    );
+                  })()}
                 </div>
 
                 {/* Lesson Type Header & Details */}
@@ -703,29 +761,30 @@ export default function CohortClassByClassPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="p-8 rounded-2xl bg-gradient-to-b from-[#101726] to-[#0a0f1a] border border-amber-500/20 text-center space-y-4">
-                        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center mx-auto">
-                          <Play className="w-7 h-7 fill-current" />
+                      <div className="p-8 rounded-2xl bg-gradient-to-b from-[#101726] to-[#0a0f1a] border border-white/10 text-center space-y-4">
+                        <div className="w-14 h-14 rounded-2xl bg-white/5 text-slate-400 border border-white/10 flex items-center justify-center mx-auto">
+                          <Video className="w-7 h-7 text-amber-400/80" />
                         </div>
                         <div>
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
-                            Recorded Video Lesson
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400/80">
+                            Video Lecture in Preparation
                           </span>
                           <h3 className="text-xl font-bold text-white mt-1">
                             {activeClass.title}
                           </h3>
                           <p className="text-xs text-slate-400 mt-2 max-w-md mx-auto">
-                            This video lesson is available for instant streaming. Mark as watched once completed to count toward your certificate eligibility.
+                            The video recording for this lecture has not been uploaded yet. Lessons without content cannot be marked complete.
                           </p>
                         </div>
                         <div className="pt-2">
                           <button
                             type="button"
-                            onClick={() => handleToggleWatched(activeClass.id)}
-                            className="gold-button px-6 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-2"
+                            disabled
+                            className="px-6 py-2.5 rounded-xl text-xs font-semibold bg-white/5 text-slate-500 border border-white/10 cursor-not-allowed inline-flex items-center gap-2"
+                            title="Cannot mark complete: lesson has no video or content."
                           >
-                            <CheckCircle2 className="w-4 h-4" />
-                            <span>{watchedSet.has(activeClass.id) ? 'Completed ✓' : 'Mark Module as Watched'}</span>
+                            <Lock className="w-4 h-4" />
+                            <span>Mark Complete (Content Pending)</span>
                           </button>
                         </div>
                       </div>
@@ -883,7 +942,7 @@ export default function CohortClassByClassPage() {
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-amber-400" />
-                <span>23-Module Video Curriculum</span>
+                <span>{classes.length || 23}-Lesson Curriculum</span>
               </h3>
               <span className="text-[11px] text-amber-300 font-semibold">
                 {watchedSet.size} / {classes.length} completed
@@ -894,6 +953,7 @@ export default function CohortClassByClassPage() {
               {classes.map((cls) => {
                 const isSelected = activeClass?.id === cls.id;
                 const isWatched = watchedSet.has(cls.id) || cls.status === 'COMPLETED';
+                const hasContent = hasClassContent(cls);
 
                 return (
                   <div
@@ -914,12 +974,18 @@ export default function CohortClassByClassPage() {
                       ) : (
                         <button
                           type="button"
+                          disabled={!hasContent}
+                          title={!hasContent ? 'Content pending: cannot mark complete' : undefined}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleToggleWatched(cls.id);
+                            if (hasContent) {
+                              handleToggleWatched(cls.id);
+                            }
                           }}
                           className={`w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 transition ${
-                            isWatched
+                            !hasContent
+                              ? 'border-white/5 bg-white/[0.02] text-slate-600 cursor-not-allowed opacity-40'
+                              : isWatched
                               ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
                               : 'border-white/20 hover:border-amber-400'
                           }`}

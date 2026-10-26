@@ -57,7 +57,27 @@ export async function GET(
         include: {
           enrollments: {
             include: {
-              course: { select: { id: true, title: true, sessionsIncludedPerStudent: true } },
+              course: {
+                select: {
+                  id: true,
+                  title: true,
+                  sessionsIncludedPerStudent: true,
+                  modules: {
+                    include: {
+                      lessons: {
+                        select: {
+                          id: true,
+                          videoProviderId: true,
+                          externalVideoUrl: true,
+                          notesMarkdown: true,
+                          documentKey: true,
+                          documentUrl: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
             take: 1,
           },
@@ -94,7 +114,7 @@ export async function GET(
             courseTitle: enr.course?.title || 'The Ultimate Astrology Course: Foundations to Chart Mastery',
             enrolledAt: enr.enrolledAt,
             status: enr.status,
-            amountPaid: 5100,
+            amountPaid: enr.amountPaid !== undefined && enr.amountPaid !== null ? enr.amountPaid : 0,
           };
         }
 
@@ -112,41 +132,24 @@ export async function GET(
       }
     } catch {}
 
-    // Fallback student details if DB is empty / offline
     if (!userRecord) {
-      userRecord = {
-        id: studentId,
-        name: studentId.includes('002') ? 'Priya Patel' : studentId.includes('003') ? 'Amit Verma' : 'Rohan Sharma',
-        email: studentId.includes('002') ? 'priya.patel@example.com' : studentId.includes('003') ? 'amit.verma@example.com' : 'rohan.sharma@example.com',
-        phone: '+91 98101 23456',
-        timezone: 'Asia/Kolkata',
-        role: 'STUDENT',
-        createdAt: new Date('2026-09-15T10:00:00Z'),
-      };
-      enrollmentRecord = {
-        id: `enr_${studentId}`,
-        courseId: 'course-what-is-astrology',
-        courseTitle: 'The Ultimate Astrology Course: Foundations to Chart Mastery',
-        enrolledAt: new Date('2026-09-15T10:00:00Z').toISOString(),
-        status: 'ACTIVE',
-        amountPaid: 5100,
-      };
-      completedLessonsCount = 14;
-      quizAttempts = [
-        {
-          id: `qa_${studentId}_1`,
-          quizTitle: 'Final Certification Assessment (20 Questions)',
-          score: 18,
-          totalQuestions: 20,
-          scorePercentage: 90,
-          passed: true,
-          attemptedAt: new Date('2026-10-10T14:30:00Z').toISOString(),
-        },
-      ];
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
 
-    const totalLessons = 23;
-    const progressPercentage = Math.min(100, Math.round((completedLessonsCount / totalLessons) * 100));
+    const associatedCourse = userRecord ? (await prisma.course.findFirst({
+      where: { OR: [{ id: enrollmentRecord?.courseId || 'course-what-is-astrology' }, { slug: 'wia-foundations' }] },
+      include: {
+        modules: {
+          include: { lessons: true },
+        },
+      },
+    }).catch(() => null)) : null;
+
+    const allCourseLessons = associatedCourse?.modules?.flatMap((m) => m.lessons) || [];
+    const totalLessons = allCourseLessons.length > 0 ? allCourseLessons.length : 23;
+    const modulesCount = associatedCourse?.modules?.length || 8;
+    const totalVideos = allCourseLessons.filter((l) => Boolean((l.videoProviderId && l.videoProviderId.trim()) || (l.externalVideoUrl && l.externalVideoUrl.trim()))).length;
+    const progressPercentage = Math.min(100, Math.round((completedLessonsCount / Math.max(1, totalLessons)) * 100));
 
     // 2. Fetch all sessions for this student
     const studentSessions = await listStudentSessions({ studentId });
@@ -166,6 +169,8 @@ export async function GET(
         completedLessons: completedLessonsCount,
         totalLessons,
         percentage: progressPercentage,
+        totalVideos,
+        modulesCount,
       },
       quizResults: quizAttempts,
       sessions: {

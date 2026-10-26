@@ -32,7 +32,7 @@ export const ABOUT_INSTITUTE_KNOWLEDGE = {
     whatsappUrl: 'https://wa.me/919311215564',
     phone: '+91 93112 15564',
     phoneTel: 'tel:+919311215564',
-    email: 'aapkaastro1606@gmail.com',
-    location: 'New Delhi, India',
+    email: '',
+    location: 'Online Institute (Noida, Uttar Pradesh, India)',
   },
 };

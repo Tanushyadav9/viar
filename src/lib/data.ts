@@ -15,7 +15,7 @@ export const PLACEHOLDER_SOCIAL_LINKS = {
   whatsapp: 'https://wa.me/919311215564',
   aapkaAstro: 'https://aapkaastro.com',
   phone: '+91 93112 15564',
-  email: 'aapkaastro1606@gmail.com',
+  email: '', // Separate public email awaiting client confirmation
 };
 
 /* Real and cohort-verified student & client testimonials */
@@ -44,9 +44,9 @@ export const PLACEHOLDER_TESTIMONIALS: Testimonial[] = [
     location: 'London, United Kingdom',
     role: 'Mindfulness Coach',
     rating: 5,
-    highlight: '100% self-paced flexibility with zero timezone stress',
+    highlight: 'Structured curriculum flexibility with personal mentorship',
     isInternational: true,
-    content: 'Living in the UK with a packed client schedule, finding a course without rigid Zoom timings was critical. The 23 high-definition on-demand video modules allowed me to learn late evenings at my own pace. Having downloadable lesson notes and practical chart breakdowns made the entire learning experience seamless.',
+    content: 'Living in the UK with a packed client schedule, finding a course with structured modules and flexible 1-on-1 mentorship was critical. Having downloadable lesson notes, direct guidance, and practical chart breakdowns made the entire learning experience seamless.',
   },
   {
     id: 'test-3',
@@ -55,7 +55,7 @@ export const PLACEHOLDER_TESTIMONIALS: Testimonial[] = [
     role: 'Psychologist',
     rating: 5,
     highlight: 'Transformed my understanding of human archetypes',
-    content: 'The modules on planetary psychology, houses, and bhavas gave me profound insight into client behavior patterns. Being able to rewatch the video lessons and test my knowledge with practical chart labs before the final certification exam was invaluable.',
+    content: 'The modules on planetary psychology, houses, and bhavas gave me profound insight into client behavior patterns. Being able to review the lessons and test my knowledge with practical chart labs before the final certification exam was invaluable.',
   },
   {
     id: 'test-4',
@@ -321,9 +321,9 @@ export const INITIAL_COURSES: Course[] = [
     id: 'course-what-is-astrology',
     slug: 'what-is-astrology',
     title: 'The Ultimate Astrology Course: Foundations to Chart Mastery',
-    tagline: 'Learn the sacred science of Vedic Astrology from first principles to real chart readings — completely self-paced with lifetime access.',
-    subtitle: '23 On-Demand Video Modules • 2 Bonus Practical Masterclasses • Self-Paced Lifetime Access • Graded Exam & Verifiable Certificate',
-    description: 'A comprehensive 23-module self-paced masterclass covering the nature of planets, 12 signs, 12 houses, planetary dignities, combustion, retrograde motion, dashas, nakshatras, gemstones, rudraksha, and practical chart interpretation with real case studies.',
+    tagline: 'Learn the sacred science of Vedic Astrology from first principles to real chart readings with recorded curriculum modules and 1-on-1 personal mentorship.',
+    subtitle: 'Comprehensive Curriculum Modules • Personal 1-on-1 Mentorship • Graded Exam & Verifiable Certificate',
+    description: 'A comprehensive curriculum covering the nature of planets, 12 signs, 12 houses, planetary dignities, combustion, retrograde motion, dashas, nakshatras, gemstones, rudraksha, and practical chart interpretation with real case studies and personal 1-on-1 mentorship.',
     level: 'All Levels',
     deliveryMode: 'SELF_PACED',
     hasLifetimeAccess: true,
@@ -355,9 +355,9 @@ export const INITIAL_COURSES: Course[] = [
       ],
     },
     highlights: [
-      '23 comprehensive on-demand video modules covering the complete science of Vedic Astrology',
+      'Comprehensive structured modules covering the complete science of Vedic Astrology',
       '2 bonus real-world chart reading masterclasses: Career analysis and Marriage timing',
-      '100% self-paced: watch anytime, from any device, at your own speed with lifetime access',
+      'Recorded curriculum modules and direct 1-on-1 personal mentorship sessions',
       'Downloadable high-resolution chart templates, planetary tables, and study cheatsheets',
       'Final graded assessment and official verifiable Certificate of Completion from Vihangam Institute of Astrology and Research',
       'Direct academic Q&A discussions and doubt resolution with Acharya Niraj Kumar',
@@ -378,12 +378,12 @@ export const INITIAL_COURSES: Course[] = [
     modules: ULTIMATE_ASTROLOGY_MODULES,
     faqs: [
       {
-        question: 'Is this course completely self-paced?',
-        answer: 'Yes! All 23 video modules and the 2 bonus chart workshops are available immediately upon enrollment. You have lifetime access, meaning you can watch, pause, re-watch, and progress through the curriculum entirely on your own schedule with zero time pressure.',
+        question: 'How is this course delivered?',
+        answer: 'The curriculum is organized into comprehensive structured modules, downloadable study guides, and 1-on-1 personal mentorship sessions with Acharya Niraj Kumar. You can learn at your own pace and schedule 1-on-1 sessions when you are ready.',
       },
       {
         question: 'Do I get a certificate upon completion?',
-        answer: 'Yes. After completing the video modules, you can take the comprehensive final certification assessment. Scoring 70% or higher generates your official digital Certificate of Completion from the Vihangam Institute of Astrology and Research (VIAR), complete with a unique verifiable code at viar.in/verify.',
+        answer: 'Yes. After completing the curriculum modules, you can take the comprehensive final certification assessment. Scoring 70% or higher generates your official digital Certificate of Completion from the Vihangam Institute of Astrology and Research (VIAR), complete with a unique verifiable code at viar.in/verify.',
       },
       {
         question: 'Who is the instructor?',
@@ -395,23 +395,23 @@ export const INITIAL_COURSES: Course[] = [
       },
       {
         question: 'Is the tuition a one-time payment?',
-        answer: 'Yes, strictly a one-time tuition fee of ₹5,100 (or $69 USD) with lifetime access to all 23 video lessons, downloadable study guides, future module updates, and certification. There are no recurring fees.',
+        answer: 'Yes, strictly a one-time tuition fee of ₹5,100 (or $69 USD) for complete curriculum access, downloadable study guides, 1-on-1 mentorship, and certification. There are no recurring fees.',
       },
     ],
   },
 
 ];
 
-/* Self-Paced Masterclass Container */
+/* Mentorship and Course Cohort Container */
 export const INITIAL_COHORTS: Cohort[] = [
   {
     id: 'cohort-wia-batch-1',
     courseId: 'course-what-is-astrology',
     batchNumber: 1,
-    batchName: 'Self-Paced Masterclass — Lifetime Access',
+    batchName: 'Foundation Batch — Recorded Modules & Mentorship',
     startDate: '2026-01-01T00:00:00.000Z',
     endDate: '2030-12-31T23:59:59.000Z',
-    scheduleDescription: 'Completely self-paced video modules. Watch anytime on-demand with lifetime access.',
+    scheduleDescription: 'Structured modules and personal 1-on-1 mentorship sessions. Progress at your own pace.',
     scheduleTimeUtc: {
       dayOfWeek: [0, 1, 2, 3, 4, 5, 6],
       hoursUtc: 0,

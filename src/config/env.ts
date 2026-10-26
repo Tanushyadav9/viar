@@ -73,8 +73,7 @@ function getEnvVar(key: string, fallback: string = ''): string {
   return process.env[key] || fallback;
 }
 
-const DEFAULT_NEON_DB_URL =
-  'postgresql://neondb_owner:npg_GU0YIPlXe3ia@ep-orange-poetry-b4cupwem.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require';
+// Production DB URL must never be hardcoded into source code
 
 export const env: AppEnvConfig = {
   nodeEnv: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
@@ -82,8 +81,8 @@ export const env: AppEnvConfig = {
   siteUrl: getEnvVar('NEXT_PUBLIC_SITE_URL', getEnvVar('NEXT_PUBLIC_APP_URL', 'https://viar.in')),
 
   database: {
-    url: getEnvVar('DATABASE_URL', getEnvVar('DIRECT_URL', DEFAULT_NEON_DB_URL)),
-    directUrl: getEnvVar('DIRECT_URL', getEnvVar('DATABASE_URL', DEFAULT_NEON_DB_URL)),
+    url: getEnvVar('DATABASE_URL', getEnvVar('DIRECT_URL', '')),
+    directUrl: getEnvVar('DIRECT_URL', getEnvVar('DATABASE_URL', '')),
   },
 
   redis: {

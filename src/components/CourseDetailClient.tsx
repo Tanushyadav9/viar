@@ -150,7 +150,7 @@ export default function CourseDetailClient({ slug, initialStatus }: CourseDetail
             </a>
           </div>
           <div className="border-t border-slate-800 pt-4 text-xs text-slate-400">
-            Admissions Desk: <a href="tel:+919311215564" className="text-amber-400 hover:underline">+91 93112 15564</a> • <a href="mailto:aapkaastro1606@gmail.com" className="text-amber-400 hover:underline">aapkaastro1606@gmail.com</a>
+            Admissions Desk: <a href="tel:+919311215564" className="text-amber-400 hover:underline">+91 93112 15564</a> (WhatsApp & Phone)
           </div>
         </div>
       </div>

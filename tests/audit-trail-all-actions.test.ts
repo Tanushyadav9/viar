@@ -143,8 +143,8 @@ describe('Audit Trail: All 6 Operational Actions Verified', () => {
       action: 'CONTENT_EDITED',
       entityType: 'CONTENT_ITEM',
       entityId: 'site_settings:contact_email',
-      reason: 'Updated public contact email to aapkaastro1606@gmail.com',
-      details: { collection: 'site_settings', key: 'contact_email', email: 'aapkaastro1606@gmail.com' },
+      reason: 'Updated public contact email to contact@viar.in',
+      details: { collection: 'site_settings', key: 'contact_email', email: 'contact@viar.in' },
     });
     assert.strictEqual(contentLog.action, 'CONTENT_EDITED');
     assert.strictEqual(contentLog.entityType, 'CONTENT_ITEM');

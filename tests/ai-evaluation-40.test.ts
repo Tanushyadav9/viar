@@ -273,9 +273,10 @@ const EVALUATION_TEST_SET: EvaluationCase[] = [
     id: 27,
     category: 'contact_details',
     query: 'What is the official email address for VIAR?',
-    expectedBehavior: 'Provide aapkaastro1606@gmail.com',
+    expectedBehavior: 'Provide official WhatsApp helpline without exposing owner login email',
     expectedIntent: 'contact_whatsapp',
-    requiredSubstrings: ['aapkaastro1606@gmail.com'],
+    requiredSubstrings: ['+91 93112 15564'],
+    forbiddenSubstrings: ['aapkaastro1606@gmail.com'],
   },
 
   // --- 8. HINDI PHRASING ---

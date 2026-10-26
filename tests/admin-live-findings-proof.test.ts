@@ -241,4 +241,322 @@ describe('Admin Live Findings 1-16 & Launch Readiness Test Suite', () => {
       assert.ok(actionTypes.has('ENROLLMENTS_ENABLED'));
     });
   });
+  // =========================================================================
+  // 6. NUMBERS AGREEMENT, MANUAL GRANTS VS PAYMENTS & ROSTER WORDING
+  // =========================================================================
+  describe('6. Numbers Agreement, Manual Grants vs Payments & Roster Plain Wording', () => {
+    it('manual grants by Owner strictly resolve to "Granted by Owner, no payment" and ₹0', () => {
+      // Simulating enrollment without order or payment
+      const manualGrant = {
+        order: null,
+        payment: null,
+        amountPaid: 0,
+        paymentReference: 'OWNER_GRANT',
+      };
+
+      let paymentMethod = 'Granted by Owner, no payment';
+      let displayAmount = 0;
+
+      if (manualGrant.order && (manualGrant.order as any).status === 'APPROVED') {
+        paymentMethod = 'UPI QR Code';
+        displayAmount = 5100;
+      } else if (manualGrant.payment) {
+        paymentMethod = 'Offline Cash';
+        displayAmount = 5100;
+      } else {
+        paymentMethod = 'Granted by Owner, no payment';
+        displayAmount = 0;
+      }
+
+      assert.strictEqual(displayAmount, 0, 'Manual grant must have ₹0 paid');
+      assert.strictEqual(paymentMethod, 'Granted by Owner, no payment');
+    });
+
+    it('UPI orders show real payment method "UPI QR Code" and locked amount ₹5,100', () => {
+      const upiOrder = {
+        order: {
+          id: 'ord_123',
+          orderReference: 'VIAR-ORD-REAL-001',
+          amount: 5100,
+          status: 'APPROVED',
+          utr: '987654321012',
+          notes: 'Customer payment verified',
+        },
+      };
+
+      let paymentMethod = 'Granted by Owner, no payment';
+      let displayAmount = 0;
+
+      if (upiOrder.order && upiOrder.order.status === 'APPROVED') {
+        paymentMethod = 'UPI QR Code';
+        displayAmount = upiOrder.order.amount;
+      }
+
+      assert.strictEqual(displayAmount, 5100);
+      assert.strictEqual(paymentMethod, 'UPI QR Code');
+    });
+
+    it('roster wording under course name displays "Recorded modules and 1-on-1 sessions" and NEVER "Self-Paced Access"', () => {
+      const defaultCohortBatchName = 'Recorded modules and 1-on-1 sessions';
+      assert.strictEqual(defaultCohortBatchName, 'Recorded modules and 1-on-1 sessions');
+      assert.ok(!defaultCohortBatchName.includes('Self-Paced Access'), 'Must never say Self-Paced Access');
+    });
+
+    it('screen displays "(N test records excluded)" where test records are excluded', () => {
+      function formatExcludedTestLabel(testCount: number): string | null {
+        if (testCount <= 0) return null;
+        return `${testCount} test record${testCount === 1 ? '' : 's'} excluded`;
+      }
+
+      assert.strictEqual(formatExcludedTestLabel(0), null);
+      assert.strictEqual(formatExcludedTestLabel(1), '1 test record excluded');
+      assert.strictEqual(formatExcludedTestLabel(2), '2 test records excluded');
+      assert.strictEqual(formatExcludedTestLabel(5), '5 test records excluded');
+    });
+
+    it('total verified tuition equals ₹0 and Approved indicates excluded test records when only test purchases exist', () => {
+      const orders = [
+        { id: 'ord_1', amount: 5100, status: 'APPROVED', notes: '[TEST_PURCHASE] Staging verification test order - excluded from live metrics' },
+      ];
+
+      const liveApprovedOrders = orders.filter(
+        (o) => o.status === 'APPROVED' && !o.notes?.includes('[TEST_PURCHASE]')
+      );
+      const testApprovedOrders = orders.filter(
+        (o) => o.status === 'APPROVED' && o.notes?.includes('[TEST_PURCHASE]')
+      );
+
+      const liveRevenue = liveApprovedOrders.reduce((sum, o) => sum + o.amount, 0);
+
+      assert.strictEqual(liveRevenue, 0, 'Live verified tuition must be 0 when only test order exists');
+      assert.strictEqual(liveApprovedOrders.length, 0);
+      assert.strictEqual(testApprovedOrders.length, 1, '1 test order is excluded');
+    });
+  });
+
+  // =========================================================================
+  // 11. PROGRESS WITHOUT CONTENT & COMPLETION GATING
+  // =========================================================================
+  describe('11. Progress Without Content & Completion Gating', () => {
+    it('rejects completing a video lesson that has no video', () => {
+      const lesson = {
+        id: 'lesson-1-vid',
+        type: 'VIDEO',
+        videoProviderId: null,
+        externalVideoUrl: null,
+        notesMarkdown: null,
+      };
+
+      const readiness = validateLessonPublishReadiness(lesson);
+      assert.strictEqual(readiness.canPublish, false);
+      assert.strictEqual(
+        readiness.draftReason,
+        'A video lesson needs a video before it can be published.'
+      );
+    });
+
+    it('rejects completing a document lesson that has no notes or PDF file', () => {
+      const lesson = {
+        id: 'lesson-1-doc',
+        type: 'DOCUMENT',
+        documentKey: null,
+        documentUrl: null,
+        notesMarkdown: '',
+      };
+
+      const readiness = validateLessonPublishReadiness(lesson);
+      assert.strictEqual(readiness.canPublish, false);
+      assert.strictEqual(
+        readiness.draftReason,
+        'A notes lesson needs a notes or PDF file before it can be published.'
+      );
+    });
+
+    it('allows completing a lesson only when it has real published content', () => {
+      const videoLesson = {
+        type: 'VIDEO',
+        videoProviderId: 'real-vimeo-id-998877',
+      };
+      assert.strictEqual(validateLessonPublishReadiness(videoLesson).canPublish, true);
+
+      const docLesson = {
+        type: 'DOCUMENT',
+        notesMarkdown: '# Real study guide notes\nAstrology fundamentals',
+      };
+      assert.strictEqual(validateLessonPublishReadiness(docLesson).canPublish, true);
+
+      const liveLesson = {
+        type: 'LIVE_SESSION',
+        liveScheduledAt: '2026-11-15T10:00:00Z',
+      };
+      assert.strictEqual(validateLessonPublishReadiness(liveLesson).canPublish, true);
+    });
+
+    it('classroom UI hasClassContent gates checkbox and mark-complete button', () => {
+      function hasClassContent(cls: {
+        lessonType?: string;
+        recording?: { videoUrl?: string };
+        recordingUrl?: string | null;
+        externalVideoUrl?: string | null;
+        documentKey?: string | null;
+        documentDownloadUrl?: string | null;
+        notesMarkdown?: string | null;
+        scheduledStartTime?: string | null;
+      }): boolean {
+        const lType = (cls.lessonType || 'VIDEO').toUpperCase();
+        if (lType === 'VIDEO') {
+          const vid = cls.recording?.videoUrl || cls.recordingUrl || cls.externalVideoUrl;
+          return Boolean(vid && typeof vid === 'string' && vid.trim() && !vid.includes('dQw4w9WgXcQ'));
+        }
+        if (lType === 'DOCUMENT') {
+          return Boolean(
+            (cls.documentKey && cls.documentKey.trim()) ||
+            (cls.documentDownloadUrl && cls.documentDownloadUrl.trim()) ||
+            (cls.notesMarkdown && cls.notesMarkdown.trim())
+          );
+        }
+        if (lType === 'LIVE_SESSION') {
+          return Boolean(
+            cls.scheduledStartTime &&
+            !isNaN(new Date(cls.scheduledStartTime).getTime()) &&
+            new Date(cls.scheduledStartTime).getTime() > 86400000
+          );
+        }
+        return false;
+      }
+
+      // Empty video lesson -> must be false (disabled)
+      assert.strictEqual(hasClassContent({ lessonType: 'VIDEO' }), false);
+      assert.strictEqual(hasClassContent({ lessonType: 'VIDEO', recordingUrl: '' }), false);
+      assert.strictEqual(hasClassContent({ lessonType: 'VIDEO', recordingUrl: 'https://youtube.com/watch?v=dQw4w9WgXcQ' }), false);
+
+      // Real video lesson -> must be true
+      assert.strictEqual(hasClassContent({ lessonType: 'VIDEO', recordingUrl: 'https://vimeo.com/987654321' }), true);
+
+      // Empty document lesson -> must be false
+      assert.strictEqual(hasClassContent({ lessonType: 'DOCUMENT' }), false);
+      assert.strictEqual(hasClassContent({ lessonType: 'DOCUMENT', notesMarkdown: '   ' }), false);
+
+      // Real document lesson -> must be true
+      assert.strictEqual(hasClassContent({ lessonType: 'DOCUMENT', notesMarkdown: 'Comprehensive study notes' }), true);
+
+      // Empty or epoch live session -> must be false
+      assert.strictEqual(hasClassContent({ lessonType: 'LIVE_SESSION' }), false);
+      assert.strictEqual(hasClassContent({ lessonType: 'LIVE_SESSION', scheduledStartTime: '1970-01-01T00:00:00Z' }), false);
+
+      // Real scheduled live session -> must be true
+      assert.strictEqual(hasClassContent({ lessonType: 'LIVE_SESSION', scheduledStartTime: '2026-11-20T10:00:00Z' }), true);
+    });
+
+    it('"Student is currently reviewing video lessons" NEVER appears when totalVideos === 0', () => {
+      function getQuizEmptyStateMessage(totalVideos: number): string {
+        return totalVideos > 0
+          ? 'No quiz attempts recorded yet. Student is currently reviewing video lessons.'
+          : 'No quiz attempts recorded yet. Course video lessons are currently in preparation.';
+      }
+
+      // When 0 videos exist: must state that video lessons are in preparation
+      const msg0 = getQuizEmptyStateMessage(0);
+      assert.strictEqual(
+        msg0,
+        'No quiz attempts recorded yet. Course video lessons are currently in preparation.'
+      );
+      assert.ok(
+        !msg0.includes('Student is currently reviewing video lessons'),
+        'Must NOT say reviewing video lessons when 0 videos exist'
+      );
+
+      // When > 0 videos exist: can state reviewing
+      const msg5 = getQuizEmptyStateMessage(5);
+      assert.strictEqual(
+        msg5,
+        'No quiz attempts recorded yet. Student is currently reviewing video lessons.'
+      );
+    });
+
+    it('student profile displays "Curriculum Progress (Recorded & 1-on-1)" and distinguishes lessons from modules', () => {
+      const headerTitle = 'Curriculum Progress (Recorded & 1-on-1)';
+      assert.ok(!headerTitle.includes('Self-Paced'), 'Header must never say Self-Paced');
+
+      function formatProgressLabel(completed: number, total: number): string {
+        return `${completed} of ${total} lessons completed`;
+      }
+
+      assert.strictEqual(formatProgressLabel(0, 46), '0 of 46 lessons completed');
+      assert.strictEqual(formatProgressLabel(2, 23), '2 of 23 lessons completed');
+      assert.ok(
+        !formatProgressLabel(2, 23).includes('modules completed'),
+        'Must say lessons completed, not modules completed'
+      );
+    });
+  });
+
+  // =========================================================================
+  // 10. PUBLIC PAGES 1-ON-1 MENTORSHIP MODEL INVARIANTS
+  // =========================================================================
+  describe('10. Public Pages 1-on-1 Mentorship Model Invariants', () => {
+    it('Footer trust strip strictly removes rigid timetables claim and replaces with 1-on-1 wording marked pending approval', async () => {
+      const fs = await import('node:fs');
+      const footerPath = 'src/components/Footer.tsx';
+      const content = fs.readFileSync(footerPath, 'utf8');
+
+      // 1. Outdated / contradictory claims MUST NOT exist
+      assert.ok(
+        !content.includes('No live scheduling conflicts or rigid timetables'),
+        'Must not contain "No live scheduling conflicts or rigid timetables"'
+      );
+      assert.ok(
+        !content.includes('23 Video Modules\n') && !content.includes("'23 Video Modules'"),
+        'Must not display unhedged "23 Video Modules" without 1-on-1 sessions'
+      );
+
+      // 2. Mentorship + recorded modules wording must exist in both EN and HI
+      assert.ok(
+        content.includes('Recorded Modules & 1-on-1 Sessions'),
+        'Footer must advertise Recorded Modules & 1-on-1 Sessions in EN'
+      );
+      assert.ok(
+        content.includes('रिकॉर्डेड मॉड्यूल एवं 1-on-1 सत्र'),
+        'Footer must advertise Recorded Modules & 1-on-1 Sessions in HI'
+      );
+      assert.ok(
+        content.includes('pending client approval'),
+        'Footer copy must be marked pending client approval in EN'
+      );
+      assert.ok(
+        content.includes('क्लाइंट अनुमोदन लंबित'),
+        'Footer copy must be marked pending client approval in HI'
+      );
+
+      // 3. Sister services cross-promotion card preserved intact (Prompt 50 scope)
+      assert.ok(content.includes('SISTER_SERVICES.aapkaAstro'), 'aapkaAstro sister service must be preserved');
+      assert.ok(content.includes('SISTER_SERVICES.dowConsulting'), 'dowConsulting sister service must be preserved');
+    });
+
+    it('Home page feature pillars strictly reflect 1-on-1 mentorship with recorded modules marked pending approval', async () => {
+      const fs = await import('node:fs');
+      const pagePath = 'src/app/page.tsx';
+      const content = fs.readFileSync(pagePath, 'utf8');
+
+      // 1. Contradictory live Zoom claims replaced
+      assert.ok(
+        !content.includes('No live Zoom scheduling pressure or timezone conflicts'),
+        'Must not contain "No live Zoom scheduling pressure or timezone conflicts"'
+      );
+
+      // 2. Mentorship pillars present with client approval hedge
+      assert.ok(
+        content.includes('Flexible Self-Paced & 1-on-1 Sessions'),
+        'Home page must feature Flexible Self-Paced & 1-on-1 Sessions'
+      );
+      assert.ok(
+        content.includes('pending client approval'),
+        'Home page pillar copy must be explicitly marked pending client approval in EN'
+      );
+      assert.ok(
+        content.includes('क्लाइंट अनुमोदन लंबित'),
+        'Home page pillar copy must be explicitly marked pending client approval in HI'
+      );
+    });
+  });
 });

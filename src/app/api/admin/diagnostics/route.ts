@@ -430,9 +430,69 @@ export async function GET(req: NextRequest) {
       { script: 'scripts/capture-all-proof-screenshots.mjs', target: 'Headless Chrome against Next.js app', purpose: 'Captures proof screenshots for audit' },
     ];
 
+    // 11. Demo / Test Data Contamination Detection
+    let demoDataContamination: {
+      hasDemoData: boolean;
+      exampleEmailCount: number;
+      testOrderCount: number;
+      clientCrashCount: number;
+      details: string[];
+    } = {
+      hasDemoData: false,
+      exampleEmailCount: 0,
+      testOrderCount: 0,
+      clientCrashCount: 0,
+      details: [],
+    };
+
+    if (dbReachable) {
+      try {
+        const exampleLeads = await prisma.notifyMeLead.count({
+          where: { email: { contains: 'example.com' } },
+        });
+        const exampleActivity = await prisma.activityLog.count({
+          where: {
+            OR: [
+              { userEmail: { contains: 'example.com' } },
+              { reason: { contains: 'Simulated' } },
+              { action: { contains: 'CRASH' } },
+            ],
+          },
+        });
+        const testOrders = await prisma.order.count({
+          where: {
+            OR: [
+              { notes: { contains: 'TEST' } },
+              { orderReference: { contains: 'TEST' } },
+              { orderReference: { contains: 'WALKTHROUGH' } },
+              { studentEmail: { contains: 'example.com' } },
+            ],
+          },
+        });
+
+        const totalDemoRows = exampleLeads + exampleActivity + testOrders;
+        if (totalDemoRows > 0) {
+          demoDataContamination = {
+            hasDemoData: true,
+            exampleEmailCount: exampleLeads,
+            testOrderCount: testOrders,
+            clientCrashCount: exampleActivity,
+            details: [
+              ...(exampleLeads > 0 ? [`${exampleLeads} contact inquiry leads containing @example.com`] : []),
+              ...(exampleActivity > 0 ? [`${exampleActivity} activity/crash log entries with simulated/test markers`] : []),
+              ...(testOrders > 0 ? [`${testOrders} test orders in database`] : []),
+            ],
+          };
+        }
+      } catch (err) {
+        console.warn('Diagnostics demo data scan error:', err);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
+      demoDataContamination,
       host: {
         raw: rawHost,
         classification: hostClassification,

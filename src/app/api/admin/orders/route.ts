@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const [orders, counts, approvedRevenueAgg] = await Promise.all([
+    const [orders, counts] = await Promise.all([
       prisma.order.findMany({
         where: whereClause,
         include: {
@@ -54,11 +54,7 @@ export async function GET(req: NextRequest) {
       prisma.order.groupBy({
         by: ['status'],
         _count: { id: true },
-      }),
-      prisma.order.aggregate({
-        where: { status: 'APPROVED' },
-        _sum: { amount: true },
-      }),
+      })
     ]);
 
     const countsByStatus: Record<string, number> = {
@@ -90,16 +86,41 @@ export async function GET(req: NextRequest) {
 
     const activeKeySet = new Set(activeEnrollments.map((e) => e.userId + ":" + e.courseId));
 
-    const enrichedOrders = orders.map((order) => ({
-      ...order,
-      isAlreadyEnrolled: activeKeySet.has(order.userId + ":" + order.courseId) && order.status !== "APPROVED",
-    }));
+    const enrichedOrders = orders.map((order) => {
+      const isTest = Boolean(
+        order.notes?.includes('[TEST_PURCHASE]') ||
+        order.studentName?.startsWith('[TEST]') ||
+        order.studentEmail?.includes('example.com') ||
+        order.user?.name?.startsWith('[TEST]') ||
+        order.user?.email?.includes('example.com')
+      );
+      return {
+        ...order,
+        isTest,
+        paymentMethod: 'UPI QR Code',
+        isAlreadyEnrolled: activeKeySet.has(order.userId + ":" + order.courseId) && order.status !== "APPROVED",
+      };
+    });
+
+    const approvedLiveCount = enrichedOrders.filter((o) => o.status === 'APPROVED' && !o.isTest).length;
+    const approvedTestCount = enrichedOrders.filter((o) => o.status === 'APPROVED' && o.isTest).length;
+    const testOrdersCount = enrichedOrders.filter((o) => o.isTest).length;
+    const liveApprovedRevenue = enrichedOrders
+      .filter((o) => o.status === 'APPROVED' && !o.isTest)
+      .reduce((sum, o) => sum + (o.amount || 0), 0);
 
     return NextResponse.json({
       success: true,
       orders: enrichedOrders,
-      countsByStatus,
-      totalApprovedRevenueInr: approvedRevenueAgg._sum.amount || 0,
+      countsByStatus: {
+        ...countsByStatus,
+        APPROVED_LIVE: approvedLiveCount,
+        APPROVED_TEST: approvedTestCount,
+      },
+      approvedLiveCount,
+      approvedTestCount,
+      testOrdersCount,
+      totalApprovedRevenueInr: liveApprovedRevenue,
     });
   } catch (err) {
     return NextResponse.json(

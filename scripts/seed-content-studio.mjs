@@ -35,7 +35,8 @@ const BUILTIN_CONTENT_ITEMS = [
     contentHi: 'प्रवेश, बैच नामांकन सहायता एवं संस्थान संबंधी पूछताछ हेतु हमारी सहायता टीम से संपर्क करें।',
     metadata: {
       phone: '+91 93112 15564',
-      email: 'aapkaastro1606@gmail.com',
+      email: '', // Separate public email awaiting client confirmation. Never use Owner login address.
+      emailNeedsConfirmation: true,
       whatsapp: '919311215564',
       whatsappLink: 'https://wa.me/919311215564',
       addressEn: 'Vihangam Institute of Astrology and Research, New Delhi / NCR, India',

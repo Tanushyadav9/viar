@@ -153,14 +153,14 @@ const DEFAULT_INSTRUCTOR: CourseInstructorDTO = {
 
 const DEFAULT_FAQS: CourseFaqDTO[] = [
   {
-    question: 'Is this course completely self-paced?',
+    question: 'How is this course delivered?',
     answer:
-      'Yes! All 23 video modules and the 2 bonus chart workshops are available immediately upon enrollment. You have lifetime access, meaning you can watch, pause, re-watch, and progress through the curriculum entirely on your own schedule with zero time pressure.',
+      'The curriculum is organized into comprehensive structured modules, downloadable study guides, and 1-on-1 personal mentorship sessions with Acharya Niraj Kumar. You can learn at your own pace and schedule 1-on-1 sessions when you are ready.',
   },
   {
     question: 'Do I get a certificate upon completion?',
     answer:
-      'Yes. After completing the video modules, you can take the comprehensive final certification assessment. Scoring 70% or higher generates your official digital Certificate of Completion from the Vihangam Institute of Astrology and Research (VIAR), complete with a unique verifiable code at viar.in/verify.',
+      'Yes. After completing the curriculum modules, you can take the comprehensive final certification assessment. Scoring 70% or higher generates your official digital Certificate of Completion from the Vihangam Institute of Astrology and Research (VIAR), complete with a unique verifiable code at viar.in/verify.',
   },
   {
     question: 'Who is the instructor?',
@@ -170,9 +170,9 @@ const DEFAULT_FAQS: CourseFaqDTO[] = [
 ];
 
 const DEFAULT_HIGHLIGHTS: string[] = [
-  '23 comprehensive on-demand video modules covering the complete science of Vedic Astrology',
+  'Comprehensive structured modules covering the complete science of Vedic Astrology',
   '2 bonus real-world chart reading masterclasses: Career analysis and Marriage timing',
-  '100% self-paced: watch anytime, from any device, at your own speed with lifetime access',
+  'Recorded curriculum modules and direct 1-on-1 personal mentorship sessions',
   'Downloadable high-resolution chart templates, planetary tables, and study cheatsheets',
   'Final graded assessment and official verifiable Certificate of Completion from Vihangam Institute of Astrology and Research',
 ];

@@ -165,7 +165,7 @@ export async function sendSessionRequestStatusEmail(data: {
       <p style="color: #ffffff;">Namaste <strong>${data.studentName} ji</strong>,</p>
       ${messageContent}
       <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-top: 24px; font-size: 12px; color: #64748b; text-align: center;">
-        <p>Helpline: +91 93112 15564 | Email: aapkaastro1606@gmail.com</p>
+        <p>Helpline: +91 93112 15564 (WhatsApp) | Vihangam Institute of Astrology and Research (VIAR)</p>
       </div>
     </div>
   `;

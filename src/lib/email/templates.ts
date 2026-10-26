@@ -52,7 +52,7 @@ function emailWrapper(contentHtml: string, previewText: string = ''): string {
       <div class="footer">
         <p style="margin: 0 0 8px 0;"><strong>Vihangam Institute of Astrology and Research (VIAR)</strong> • In Academic Lineage with <a href="https://aapkaastro.com" target="_blank">AapkaAstro.com</a></p>
         <p style="margin: 0 0 8px 0;">Founded &amp; Taught by Acharya Niraj Kumar</p>
-        <p style="margin: 0;">Helpline: +91 93112 15564 | Email: <a href="mailto:aapkaastro1606@gmail.com">aapkaastro1606@gmail.com</a></p>
+        <p style="margin: 0;">Helpline: +91 93112 15564 (WhatsApp & Phone) | Vihangam Institute of Astrology and Research (VIAR)</p>
         <p style="margin: 8px 0 0 0; font-size: 11px; color: #475569;">© ${new Date().getFullYear()} Viar.in. All rights reserved.</p>
       </div>
     </div>
@@ -126,7 +126,7 @@ You can access your classroom, video lessons, and study materials at ${dashboard
 
 Warm regards,
 VIAR Admissions Desk
-aapkaastro1606@gmail.com
+Helpline: +91 93112 15564 (WhatsApp)
   `.trim();
 
   return { subject, html, text };
@@ -206,7 +206,7 @@ Thank you for your payment. Here are your transaction details:
 Purchase History: ${dashboardUrl}
 
 VIAR Admissions Desk
-aapkaastro1606@gmail.com
+Helpline: +91 93112 15564 (WhatsApp)
   `.trim();
 
   return { subject, html, text };
@@ -392,7 +392,7 @@ CERTIFICATE DETAILS:
 • Public Verification URL: ${data.verifyUrl}
 
 Acharya Niraj Kumar & Vihangam Institute (VIAR)
-aapkaastro1606@gmail.com
+Helpline: +91 93112 15564
   `.trim();
 
   return { subject, html, text };
@@ -534,7 +534,7 @@ Access Portal: ${dashboardUrl}
 Note: No passwords are sent over email/WhatsApp. Sign in with your existing account.
 
 Acharya Niraj Kumar & Vihangam Institute (VIAR)
-aapkaastro1606@gmail.com | +91 93112 15564
++91 93112 15564 (WhatsApp)
   `.trim();
 
   return { subject, html, text };
@@ -583,7 +583,7 @@ Reason: ${data.rejectionReason}
 If the amount was debited from your bank, please message Acharya Niraj Kumar on WhatsApp at ${supportPhone} with your Order Reference (${data.orderReference}) and bank statement screenshot.
 
 VIAR Admissions Desk
-aapkaastro1606@gmail.com | ${supportPhone}
+Helpline: +91 93112 15564 (WhatsApp) | ${supportPhone}
   `.trim();
 
   return { subject, html, text };

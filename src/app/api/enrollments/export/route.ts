@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
         enr.user.email || '',
         enr.user.phone || '',
         associatedCourse?.title || '',
-        'Self-Paced Access',
+        'Recorded modules and 1-on-1 sessions',
         enr.enrolledAt.toISOString().split('T')[0],
         enr.amountPaid.toString(),
         enr.currency,

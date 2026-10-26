@@ -10,7 +10,8 @@ export async function GET(req: NextRequest) {
     if (!auth.isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized: login required' }, { status: 401 });
     }
-    if (!auth.isOwner) {
+    const isOwnerUser = auth.isOwner || auth.role === 'OWNER';
+    if (!isOwnerUser) {
       return NextResponse.json({ error: 'Forbidden: only the Owner can access the private calendar feed' }, { status: 403 });
     }
 
@@ -35,7 +36,8 @@ export async function POST(req: NextRequest) {
     if (!auth.isAuthenticated) {
       return NextResponse.json({ error: 'Unauthorized: login required' }, { status: 401 });
     }
-    if (!auth.isOwner) {
+    const isOwnerUser = auth.isOwner || auth.role === 'OWNER';
+    if (!isOwnerUser) {
       return NextResponse.json({ error: 'Forbidden: only the Owner can regenerate the private calendar feed token' }, { status: 403 });
     }
 

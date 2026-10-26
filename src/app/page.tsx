@@ -232,17 +232,17 @@ export default function HomePage() {
                   <Video className="w-6 h-6" />
                 </div>
                 <h4 className="text-xl font-bold text-white mb-3">
-                  {isHi ? '23 ऑन-डिमांड वीडियो मॉड्यूल' : '23 On-Demand Video Modules'}
+                  {isHi ? 'रिकॉर्डेड मॉड्यूल एवं 1-on-1 सत्र' : 'Recorded Modules & 1-on-1 Sessions'}
                 </h4>
                 <p className="text-sm text-slate-300 leading-relaxed">
                   {isHi
-                    ? 'आचार्य नीरज कुमार द्वारा पढ़ाया गया आधारशिला से उन्नत स्तर तक का संपूर्ण पाठ्यक्रम। आजीवन पहुंच, डाउनलोड करने योग्य कुंडली टेम्पलेट और अध्ययन नोट्स के साथ जब चाहें देखें, रोकें और दोहराएं।'
-                    : 'Complete foundational-to-advanced curriculum taught by Acharya Niraj Kumar. Pause, rewind, and re-watch anytime with lifetime access, downloadable chart templates, and study cheatsheets.'}
+                    ? 'आचार्य नीरज कुमार द्वारा पढ़ाया गया संरचित पाठ्यक्रम, व्यक्तिगत 1-on-1 मार्गदर्शन सत्रों के साथ (क्लाइंट अनुमोदन लंबित)।'
+                    : 'Foundational-to-advanced structured curriculum taught by Acharya Niraj Kumar, paired with personal 1-on-1 mentorship sessions (pending client approval).'}
                 </p>
               </div>
               <div className="mt-6 pt-6 border-t border-white/10 text-xs font-semibold text-amber-300 flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>{isHi ? 'सभी मोबाइल और लैपटॉप उपकरणों पर आजीवन असीमित पहुंच' : 'Lifetime access on all mobile & desktop devices'}</span>
+                <span>{isHi ? 'रिकॉर्डेड पाठ्यक्रम और व्यक्तिगत 1-on-1 मार्गदर्शन' : 'Recorded modules and personal 1-on-1 mentorship'}</span>
               </div>
             </div>
 
@@ -253,17 +253,17 @@ export default function HomePage() {
                   <Clock className="w-6 h-6" />
                 </div>
                 <h4 className="text-xl font-bold text-white mb-3">
-                  {isHi ? '100% अपनी गति से सीखें • कोई समय-सीमा का तनाव नहीं' : '100% Self-Paced • Zero Schedule Stress'}
+                  {isHi ? 'लचीला अध्ययन एवं व्यक्तिगत मार्गदर्शन' : 'Flexible Self-Paced & 1-on-1 Sessions'}
                 </h4>
                 <p className="text-sm text-slate-300 leading-relaxed">
                   {isHi
-                    ? 'ज़ूम कक्षाओं के समय का कोई दबाव या टाइमज़ोन का टकराव नहीं। अपनी व्यक्तिगत और व्यावसायिक जीवनशैली के अनुसार गति तय करें, साथ ही सक्रिय शंका-समाधान की सुविधा।'
-                    : 'No live Zoom scheduling pressure or timezone conflicts. Progress at whatever pace fits your personal and professional lifestyle, with active academic discussion support.'}
+                    ? 'अपनी गति से रिकॉर्डेड व्याख्यान देखें, और आपसी सुविधानुसार व्यक्तिगत 1-on-1 सत्र निर्धारित करें (क्लाइंट अनुमोदन लंबित)।'
+                    : 'Study recorded lessons at your own pace, with personal 1-on-1 sessions scheduled at mutually convenient times (pending client approval).'}
                 </p>
               </div>
               <div className="mt-6 pt-6 border-t border-white/10 text-xs font-semibold text-amber-300 flex items-center gap-1.5">
                 <Globe className="w-4 h-4 text-amber-400" />
-                <span>{isHi ? 'विश्व में कहीं से भी अपनी गति से अध्ययन करें' : 'Learn at your own pace from anywhere in the world'}</span>
+                <span>{isHi ? 'विश्व में कहीं से भी अध्ययन और व्यक्तिगत मार्गदर्शन' : 'Learn from anywhere with personal 1-on-1 mentorship'}</span>
               </div>
             </div>
 
@@ -328,8 +328,8 @@ export default function HomePage() {
                 </h3>
                 <p className="text-lg text-amber-300/90 font-medium mb-6">
                   {isHi
-                    ? '23 ऑन-डिमांड वीडियो मॉड्यूल • 2 बोनस केस स्टडी कार्यशालाएं • संपूर्ण सेल्फ-पेस्ड पहुंच • मूल्यांकन परीक्षा एवं प्रमाणपत्र'
-                    : '23 On-Demand Video Modules • 2 Bonus Chart Workshops • Complete Self-Paced Access • Graded Exam & Certificate'}
+                    ? '23 ऑन-डिमांड वीडियो मॉड्यूल • 2 बोनस केस स्टडी कार्यशालाएं • रिकॉर्डेड मॉड्यूल एवं 1-ऑन-1 सत्र • मूल्यांकन परीक्षा एवं प्रमाणपत्र'
+                    : '23 On-Demand Video Modules • 2 Bonus Chart Workshops • Recorded Modules & 1-on-1 Sessions • Graded Exam & Certificate'}
                 </p>
                 <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-8">
                   {isHi

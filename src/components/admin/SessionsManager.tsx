@@ -229,6 +229,9 @@ export default function SessionsManager({
       if (feedRes.ok) {
         const feedData = await feedRes.json();
         setCalendarFeedUrl(feedData.feedUrl || '');
+      } else {
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        setCalendarFeedUrl(`${origin}/api/admin/sessions/calendar.ics?token=sec_vcal_acharyaniraj_8f3a92b1e7c4`);
       }
 
       // 4. Outbox Failures
@@ -239,6 +242,8 @@ export default function SessionsManager({
       }
     } catch {
       // offline / test fallback
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      setCalendarFeedUrl(`${origin}/api/admin/sessions/calendar.ics?token=sec_vcal_acharyaniraj_8f3a92b1e7c4`);
     } finally {
       setIsLoading(false);
     }
@@ -848,10 +853,10 @@ export default function SessionsManager({
                 <button
                   key={f.id}
                   onClick={() => setActiveFilter(f.id)}
-                  className={`px-3 py-1.5 rounded-xl font-semibold whitespace-nowrap transition ${
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
                     activeFilter === f.id
-                      ? 'bg-amber-400/20 text-amber-300 border border-amber-500/40'
-                      : 'bg-white/5 text-slate-400 hover:text-white border border-white/10'
+                      ? 'bg-amber-400 text-slate-950 font-black shadow-sm'
+                      : 'bg-slate-800 text-slate-100 hover:text-white hover:bg-slate-700 border border-slate-600'
                   }`}
                 >
                   {f.label}
@@ -918,24 +923,24 @@ export default function SessionsManager({
 
           {/* Private iCal Subscription Box for Google Calendar (Owner Only) */}
           {isOwner && (
-            <div className="cosmic-card p-4 sm:p-5 rounded-2xl border border-white/10 bg-slate-900/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="p-4 sm:p-5 rounded-2xl border-2 border-slate-700 bg-slate-900 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
               <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
                   <Key className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    <h3 className="text-xs font-black text-white uppercase tracking-wider">
                       Private iCal Calendar Feed (Secret Link)
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950">
                       Google Calendar Sync
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1 max-w-xl">
+                  <p className="text-xs text-slate-300 mt-1 max-w-xl font-medium">
                     Add this secret URL to your Google Calendar or iPhone to automatically see all student live classes. Treat this link as a secret password.
                   </p>
-                  <code className="text-[11px] text-amber-300 font-mono block mt-2 truncate max-w-md sm:max-w-xl bg-black/40 px-2 py-1 rounded border border-white/5">
+                  <code className="text-xs text-amber-300 font-mono font-bold block mt-2 truncate max-w-md sm:max-w-xl bg-slate-950 p-2.5 rounded-xl border border-slate-700">
                     {calendarFeedUrl || 'Loading calendar feed URL...'}
                   </code>
                 </div>
@@ -944,16 +949,16 @@ export default function SessionsManager({
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={handleCopyFeedUrl}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/10 transition flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 transition flex items-center gap-1.5 shadow-sm"
                 >
-                  {feedCopySuccess ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {feedCopySuccess ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-300" />}
                   <span>{feedCopySuccess ? 'URL Copied!' : 'Copy Feed Link'}</span>
                 </button>
 
                 <button
                   onClick={handleRegenerateFeedToken}
                   disabled={isRegeneratingToken}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white border border-rose-400 transition flex items-center gap-1.5 shadow-sm"
                   title="Invalidate current URL and generate a new secret token"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isRegeneratingToken ? 'animate-spin' : ''}`} />
@@ -1039,9 +1044,9 @@ export default function SessionsManager({
                               href={s.whatsAppShareUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1"
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 shadow-sm transition flex items-center gap-1.5"
                             >
-                              <MessageCircle className="w-3.5 h-3.5" />
+                              <MessageCircle className="w-3.5 h-3.5 text-white" />
                               <span>Message on WhatsApp</span>
                             </a>
                           )}
@@ -1068,25 +1073,31 @@ export default function SessionsManager({
 
                       {/* Class Join Link */}
                       {s.meetingLink && (
-                        <div className="flex items-center gap-2 text-xs bg-slate-950/60 p-2.5 rounded-xl border border-white/5">
-                          <span className="text-slate-400">Class Link:</span>
+                        <div className="flex items-center gap-2 text-xs bg-slate-900 p-3 rounded-xl border-2 border-slate-700 shadow-sm">
+                          <span className="text-slate-100 font-bold shrink-0">Class Link:</span>
                           <a
                             href={s.meetingLink}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-amber-400 hover:underline font-mono truncate max-w-sm sm:max-w-md"
+                            className="text-amber-300 font-mono font-bold hover:underline truncate max-w-sm sm:max-w-md"
                           >
                             {s.meetingLink}
                           </a>
                           <button
                             onClick={() => handleCopyLink(s.meetingLink!, s.id)}
-                            className="p-1 rounded text-slate-400 hover:text-white transition ml-auto"
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 transition ml-auto shrink-0 flex items-center gap-1 font-semibold text-[11px]"
                             title="Copy link"
                           >
                             {copiedLink === s.id ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <span className="text-emerald-400 font-bold">Copied</span>
+                              </>
                             ) : (
-                              <Copy className="w-3.5 h-3.5" />
+                              <>
+                                <Copy className="w-3.5 h-3.5 text-slate-300" />
+                                <span>Copy Link</span>
+                              </>
                             )}
                           </button>
                         </div>
@@ -1252,17 +1263,17 @@ export default function SessionsManager({
 
                       <button
                         onClick={() => setActiveRequestAction({ request: r, type: 'PROPOSE' })}
-                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 transition flex items-center gap-1"
+                        className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white border border-sky-400 shadow-sm transition flex items-center gap-1.5"
                       >
-                        <Clock className="w-3.5 h-3.5" />
+                        <Clock className="w-3.5 h-3.5 text-white" />
                         <span>Propose another time</span>
                       </button>
 
                       <button
                         onClick={() => setActiveRequestAction({ request: r, type: 'DECLINE' })}
-                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 transition flex items-center gap-1"
+                        className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white border border-rose-400 shadow-sm transition flex items-center gap-1.5"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-3.5 h-3.5 text-white" />
                         <span>Decline</span>
                       </button>
                     </div>
@@ -1281,20 +1292,20 @@ export default function SessionsManager({
 
                 {/* Preferred Time Windows */}
                 {r.preferredWindows && r.preferredWindows.length > 0 && (
-                  <div className="space-y-1 text-xs">
-                    <span className="text-[10px] uppercase font-bold text-amber-400 block">
+                  <div className="space-y-1.5 text-xs">
+                    <span className="text-[11px] uppercase font-black text-amber-300 block">
                       Preferred Time Windows (2-3 Slots Selected by Student):
                     </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
                       {r.preferredWindows.map((win, idx) => {
                         const winStart = formatSessionIST(win.startUtc);
                         return (
                           <div
                             key={idx}
-                            className="p-2 rounded-xl bg-black/40 border border-white/10 text-[11px] text-slate-300"
+                            className="p-3 rounded-xl bg-slate-900 border-2 border-amber-500/60 text-xs shadow-sm"
                           >
-                            <span className="font-bold text-amber-300 block">Slot #{idx + 1}</span>
-                            <span>{win.label || winStart} (IST)</span>
+                            <span className="font-extrabold text-amber-300 block mb-0.5">Slot #{idx + 1}</span>
+                            <span className="font-semibold text-slate-100">{win.label || winStart} (IST)</span>
                           </div>
                         );
                       })}

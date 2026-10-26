@@ -26,7 +26,6 @@ export type {
 // In-Memory Fallback Stores (active during testing or if DB is offline)
 // ------------------------------------------------------------------------------
 
-const _memorySessions: Map<string, OneOnOneSessionRecord> = new Map();
 const _memoryStudentSessions: Map<string, StudentSessionRecord> = new Map();
 const _memorySessionRequests: Map<string, SessionRequestRecord> = new Map();
 const _memoryWorkingHours: Map<number, OwnerWorkingHoursRecord> = new Map();
@@ -37,11 +36,7 @@ const _memoryCourseSettings: Map<string, CourseSessionSettings> = new Map();
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function initializeDefaults() {
-  if (_memorySessions.size > 0 && _memoryWorkingHours.size > 0) return;
-
-  const now = new Date();
-  const tomorrow = new Date(now.getTime() + 24 * 3600 * 1000);
-  tomorrow.setHours(16, 0, 0, 0);
+  if (_memoryWorkingHours.size > 0) return;
 
   // 1. Working Hours defaults: Monday to Saturday, 10:00 to 19:00 Asia/Kolkata
   for (let d = 0; d < 7; d++) {
@@ -57,95 +52,6 @@ function initializeDefaults() {
       isEnabled: isWorking,
     });
   }
-
-  // 2. Sample 1-on-1 Sessions
-  const s1: OneOnOneSessionRecord = {
-    id: 'sess_1on1_001',
-    studentId: 'usr_student_enrolled_001',
-    studentName: 'Rohan Sharma',
-    studentEmail: 'rohan.sharma@example.com',
-    studentPhone: '+91 98101 23456',
-    courseId: 'what-is-astrology',
-    courseTitle: 'Foundations of Vedic Astrology (Jyotish)',
-    title: 'Personal Lagna & Navamsha (D9) Chart Reading',
-    description: 'Detailed analysis of birth chart ascendant, planetary aspects, and Navamsha strength for marriage and career.',
-    scheduledAt: tomorrow.toISOString(),
-    durationMinutes: 60,
-    meetingPlatform: 'GOOGLE_MEET',
-    meetingLink: 'https://meet.google.com/jyotish-mentorship-01',
-    notes: 'Please keep your birth date, exact birth time, and birth city ready. Revise Module 4 on Planetary Strengths.',
-    taughtRecord: null,
-    homework: null,
-    recordingUrl: null,
-    status: 'SCHEDULED',
-    createdAt: new Date(now.getTime() - 2 * 24 * 3600 * 1000).toISOString(),
-    updatedAt: new Date(now.getTime() - 2 * 24 * 3600 * 1000).toISOString(),
-  };
-
-  _memorySessions.set(s1.id, s1);
-
-  // 3. Sample StudentSession record
-  const ss1: StudentSessionRecord = {
-    id: 'stud_sess_001',
-    enrollmentId: 'enr_001',
-    studentId: 'usr_student_enrolled_001',
-    studentName: 'Rohan Sharma',
-    studentEmail: 'rohan.sharma@example.com',
-    studentPhone: '+91 98101 23456',
-    courseId: 'what-is-astrology',
-    courseTitle: 'Foundations of Vedic Astrology (Jyotish)',
-    moduleId: 'mod_002',
-    moduleTitle: 'Module 2: The 12 Houses (Bhavas)',
-    lessonId: 'les_005',
-    lessonTitle: 'Lesson 5: Lagna & Navamsha Analysis',
-    title: 'Personal Lagna & Navamsha (D9) Chart Reading',
-    startTime: tomorrow.toISOString(),
-    duration: 60,
-    meetingLink: 'https://meet.google.com/jyotish-mentorship-01',
-    meetingPlatform: 'GOOGLE_MEET',
-    status: 'SCHEDULED',
-    privateNotes: 'Student seems eager to analyze marriage compatibility. Focus strictly on D9 placements.',
-    sharedNotes: 'Please keep your birth date, exact birth time, and birth city ready.',
-    homework: 'Revise Module 4 on Planetary Strengths.',
-    recordingUrl: null,
-    createdByUserId: 'usr_owner_001',
-    createdByName: 'Acharya Niraj Kumar',
-    createdAt: new Date(now.getTime() - 2 * 24 * 3600 * 1000).toISOString(),
-    updatedAt: new Date(now.getTime() - 2 * 24 * 3600 * 1000).toISOString(),
-  };
-
-  _memoryStudentSessions.set(ss1.id, ss1);
-
-  // 4. Sample Session Request
-  const req1: SessionRequestRecord = {
-    id: 'sreq_001',
-    enrollmentId: 'enr_001',
-    studentId: 'usr_student_enrolled_001',
-    studentName: 'Rohan Sharma',
-    studentEmail: 'rohan.sharma@example.com',
-    studentPhone: '+91 98101 23456',
-    courseId: 'what-is-astrology',
-    courseTitle: 'Foundations of Vedic Astrology (Jyotish)',
-    requestType: 'INITIAL',
-    message: 'Namaste Acharya ji, I have completed Modules 1 to 3 and would like to review my Navamsha chart.',
-    preferredWindows: [
-      {
-        startUtc: new Date(now.getTime() + 48 * 3600 * 1000).toISOString(),
-        endUtc: new Date(now.getTime() + 49 * 3600 * 1000).toISOString(),
-        label: 'Day after tomorrow 4:00 PM - 5:00 PM IST',
-      },
-      {
-        startUtc: new Date(now.getTime() + 72 * 3600 * 1000).toISOString(),
-        endUtc: new Date(now.getTime() + 73 * 3600 * 1000).toISOString(),
-        label: 'In 3 days 11:00 AM - 12:00 PM IST',
-      },
-    ],
-    status: 'PENDING',
-    createdAt: new Date(now.getTime() - 12 * 3600 * 1000).toISOString(),
-    updatedAt: new Date(now.getTime() - 12 * 3600 * 1000).toISOString(),
-  };
-
-  _memorySessionRequests.set(req1.id, req1);
 }
 
 initializeDefaults();
@@ -559,7 +465,7 @@ export async function listStudentSessions(options: {
         take: options.limit || 100,
       });
 
-      if (rows && Array.isArray(rows) && rows.length > 0) {
+      if (rows && Array.isArray(rows)) {
         return rows.map((s) => ({
           id: s.id,
           enrollmentId: s.enrollmentId,
@@ -932,7 +838,7 @@ export async function listSessionRequests(options: {
         orderBy: { createdAt: 'desc' },
       });
 
-      if (rows && rows.length > 0) {
+      if (rows && Array.isArray(rows)) {
         return rows.map((r) => ({
           id: r.id,
           enrollmentId: r.enrollmentId,

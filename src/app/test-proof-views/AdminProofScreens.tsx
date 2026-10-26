@@ -21,8 +21,8 @@ export default function AdminProofScreens({ view }: AdminProofScreenProps) {
   // Bilingual UI dictionary
   const t = {
     headerTitle: isHi
-      ? '23 पाठ्यक्रम मॉड्यूल, 1-on-1 व्यक्तिगत कक्षाएं, नामांकित छात्र, भुगतान और वेबसाइट सामग्री का प्रबंधन करें।'
-      : 'Manage 23 course modules, 1-on-1 personal classes, enrolled students, payments, and site content.',
+      ? 'पाठ्यक्रम मॉड्यूल, 1-on-1 व्यक्तिगत कक्षाएं, नामांकित छात्र, भुगतान और वेबसाइट सामग्री का प्रबंधन करें।'
+      : 'Manage curriculum modules, 1-on-1 personal classes, enrolled students, payments, and site content.',
     ownerTag: isHi ? 'संस्थान स्वामी प्रशासन' : 'Site Owner Anchor',
     authenticated: isHi ? 'प्रमाणित: aapkaastro1606@gmail.com' : 'Authenticated: aapkaastro1606@gmail.com',
     tabs: {
@@ -31,6 +31,7 @@ export default function AdminProofScreens({ view }: AdminProofScreenProps) {
       students: isHi ? 'छात्र' : 'Students',
       payments: isHi ? 'भुगतान' : 'Payments',
       sessions: isHi ? 'व्यक्तिगत सत्र' : 'Sessions',
+      reports: isHi ? 'रिपोर्ट्स' : 'Reports',
       questions: isHi ? 'प्रश्न' : 'Questions',
       content: isHi ? 'वेबसाइट सामग्री' : 'Site content',
       settings: isHi ? 'सेटिंग्स' : 'Settings',
@@ -51,6 +52,7 @@ export default function AdminProofScreens({ view }: AdminProofScreenProps) {
     { id: 'admin-students', label: t.tabs.students },
     { id: 'admin-payments', label: t.tabs.payments },
     { id: 'admin-sessions', label: t.tabs.sessions },
+    { id: 'admin-reports', label: t.tabs.reports },
     { id: 'admin-questions', label: t.tabs.questions },
     { id: 'admin-content', label: t.tabs.content },
     { id: 'admin-settings', label: t.tabs.settings },
@@ -63,6 +65,11 @@ export default function AdminProofScreens({ view }: AdminProofScreenProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
+              {/* Environment Indicator Badge: PRODUCTION (red) / STAGING (grey) */}
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                PRODUCTION
+              </span>
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
                 {t.ownerTag}
               </span>
@@ -499,7 +506,7 @@ export default function AdminProofScreens({ view }: AdminProofScreenProps) {
                       <span>{isHi ? 'टेस्ट ईमेल भेजें' : 'Send Test Email'}</span>
                     </button>
                   </div>
-                  <p className="text-slate-300 font-mono">aapkaastro1606@gmail.com</p>
+                  <p className="text-slate-300 font-mono">contact@viar.in <span className="text-amber-400 text-xs font-semibold">({isHi ? 'पुष्टि आवश्यक' : 'Needs confirmation'})</span></p>
                   <p className="text-slate-500 text-[11px]">{isHi ? 'स्वामी इनबॉक्स सत्यापन उपलब्ध' : 'One-click mailbox test button active.'}</p>
                 </div>
               </div>
@@ -567,7 +574,7 @@ export default function AdminProofScreens({ view }: AdminProofScreenProps) {
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     <div>
                       <p className="font-bold text-white">{isHi ? 'सार्वजनिक संपर्क विवरण' : 'Public Contact & WhatsApp'}</p>
-                      <p className="text-emerald-300 text-[11px]">aapkaastro1606@gmail.com • +91 93112 15564</p>
+                      <p className="text-emerald-300 text-[11px]">+91 93112 15564 ({isHi ? 'व्हाट्सएप सत्यापित' : 'WhatsApp Verified'})</p>
                     </div>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-400 uppercase">{isHi ? 'तैयार' : 'Ready'}</span>

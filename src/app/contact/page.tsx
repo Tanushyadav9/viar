@@ -251,8 +251,6 @@ export default function ContactPage() {
                 {isHi
                   ? 'शीर्ष कॉर्पोरेट पूछताछ, व्यावसायिक मुहूर्त अथवा वास्तु ऑडिट हेतु सीधे संपर्क करें: '
                   : 'For executive corporate inquiries, strategic launch Muhurta, or commercial Vastu audits, contact directly via '}
-                <a href="mailto:aapkaastro1606@gmail.com" className="text-sky-300 underline font-semibold">aapkaastro1606@gmail.com</a>
-                {' '}{isHi ? 'अथवा व्हाट्सएप' : 'or WhatsApp'}{' '}
                 <a href="https://wa.me/919311215564" target="_blank" rel="noopener noreferrer" className="text-emerald-300 underline font-semibold">+91 93112 15564</a>.
               </p>
               <div className="pt-2">

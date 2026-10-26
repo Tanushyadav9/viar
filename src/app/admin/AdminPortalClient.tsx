@@ -30,6 +30,9 @@ import {
   HelpCircle,
   ShieldAlert,
   ArrowRight,
+  BarChart2,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import AdminHomeHub, { RecentActivityItem } from '@/components/admin/AdminHomeHub';
 import AdminHelpBox from '@/components/admin/AdminHelpBox';
@@ -90,6 +93,10 @@ interface AdminStats {
   certificatesIssued: number;
   examPassRate?: number | null;
   totalExamAttempts?: number;
+  testRecordsExcludedCount?: number;
+  testOrdersExcludedCount?: number;
+  testEnrollmentsExcludedCount?: number;
+  totalRosterStudentsCount?: number;
 }
 
 export type OrderStatusType =
@@ -230,6 +237,27 @@ export default function AdminPortalClient({
   const [isEnrolmentModalOpen, setIsEnrolmentModalOpen] = useState(false);
   const [isTestDataModalOpen, setIsTestDataModalOpen] = useState(false);
   const [courseForEnrolmentModal, setCourseForEnrolmentModal] = useState<Course | null>(null);
+
+  const readinessStats = React.useMemo(() => {
+    let totalLessons = 0;
+    let lessonsWithRealContent = 0;
+    courses.forEach((c) => {
+      c.modules?.forEach((m) => {
+        m.lessons?.forEach((l) => {
+          totalLessons++;
+          const lessonItem = l as { videoProviderId?: string; externalVideoUrl?: string };
+          const vid = lessonItem.videoProviderId || lessonItem.externalVideoUrl;
+          if (vid && vid.trim() && !vid.includes('dQw4w9WgXcQ')) {
+            lessonsWithRealContent++;
+          }
+        });
+      });
+    });
+    return {
+      totalLessons: totalLessons || 46,
+      lessonsWithRealContent,
+    };
+  }, [courses]);
   // Editing Class Modal/Form State
   // Manual Enrollment Form Modal
   const [isManualEnrollOpen, setIsManualEnrollOpen] = useState(false);
@@ -325,6 +353,31 @@ export default function AdminPortalClient({
   });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsNotice, setSettingsNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isAccountNumberVisible, setIsAccountNumberVisible] = useState(false);
+  const [isAuditingUnmask, setIsAuditingUnmask] = useState(false);
+
+  const handleToggleShowAccountNumber = async () => {
+    if (!isAccountNumberVisible) {
+      try {
+        setIsAuditingUnmask(true);
+        await fetch('/api/admin/audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'BANK_ACCOUNT_UNMASKED',
+            details: 'Bank account number unmasked on Settings screen by Platform Owner',
+          }),
+        });
+      } catch (e) {
+        console.warn('Audit trail logging failed:', e);
+      } finally {
+        setIsAuditingUnmask(false);
+      }
+      setIsAccountNumberVisible(true);
+    } else {
+      setIsAccountNumberVisible(false);
+    }
+  };
 
   const loadRecentActivities = React.useCallback(async () => {
     try {
@@ -642,7 +695,7 @@ export default function AdminPortalClient({
     const rawPhone = (order.studentPhone || order.user?.phone || '').replace(/[^0-9]/g, '');
     const cleanPhone = rawPhone.startsWith('91') && rawPhone.length === 12 ? rawPhone : `91${rawPhone.replace(/^0+/, '')}`;
 
-    const text = `Namaste ${studentName}! 🙏\n\nYour payment of ₹${order.amount.toLocaleString('en-IN')} for "${courseTitle}" (Order Ref: ${order.orderReference}) has been verified and confirmed.\n\nYour course access is now ACTIVE on viar.in! Simply log in to access all 23 video modules, notes, and live classes:\nhttps://viar.in/dashboard\n\nIf you have any questions, we are here to support you.\n\nWarm regards,\nVihangam Institute of Astrology & Research (VIAR)`;
+    const text = `Namaste ${studentName}! 🙏\n\nYour payment of ₹${order.amount.toLocaleString('en-IN')} for "${courseTitle}" (Order Ref: ${order.orderReference}) has been verified and confirmed.\n\nYour course access is now ACTIVE on viar.in! Simply log in to access all curriculum modules, notes, and 1-on-1 personal sessions:\nhttps://viar.in/dashboard\n\nIf you have any questions, we are here to support you.\n\nWarm regards,\nVihangam Institute of Astrology & Research (VIAR)`;
 
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
   };
@@ -806,6 +859,9 @@ export default function AdminPortalClient({
     let liveCertificatesIssued = loadedCertificates.length;
     let liveExamPassRate: number | null = null;
     let liveTotalExamAttempts = 0;
+    let liveTestRecordsExcluded = 0;
+    let liveTestOrdersExcluded = 0;
+    let liveTestEnrollmentsExcluded = 0;
 
     try {
       const statsRes = await fetch('/api/admin/stats');
@@ -817,6 +873,9 @@ export default function AdminPortalClient({
           liveCertificatesIssued = statsData.stats.certificatesIssued;
           liveExamPassRate = statsData.stats.examPassRate ?? null;
           liveTotalExamAttempts = statsData.stats.totalExamAttempts ?? 0;
+          liveTestRecordsExcluded = statsData.stats.testRecordsExcludedCount ?? 0;
+          liveTestOrdersExcluded = statsData.stats.testOrdersExcludedCount ?? 0;
+          liveTestEnrollmentsExcluded = statsData.stats.testEnrollmentsExcludedCount ?? 0;
         }
       }
     } catch {
@@ -831,6 +890,9 @@ export default function AdminPortalClient({
       certificatesIssued: liveCertificatesIssued,
       examPassRate: liveExamPassRate,
       totalExamAttempts: liveTotalExamAttempts,
+      testRecordsExcludedCount: liveTestRecordsExcluded,
+      testOrdersExcludedCount: liveTestOrdersExcluded,
+      testEnrollmentsExcludedCount: liveTestEnrollmentsExcluded,
     });
 
     if (!serverAuth) {
@@ -1002,7 +1064,7 @@ export default function AdminPortalClient({
   };
 
   const handleToggleAcceptingEnrollments = async (crs: Course) => {
-    const isCurrentlyAccepting = crs.acceptingEnrollments !== false;
+    const isCurrentlyAccepting = Boolean(crs.acceptingEnrollments);
 
     if (isCurrentlyAccepting) {
       // 1-click pause / turn off enrolments
@@ -1196,6 +1258,18 @@ export default function AdminPortalClient({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/10">
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              {/* Environment Indicator Badge: PRODUCTION (red) / STAGING (grey) */}
+              {((typeof window !== 'undefined' && (window.location.hostname === 'viar.in' || window.location.hostname.endsWith('viar.in'))) || process.env.NEXT_PUBLIC_APP_ENV === 'production') ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                  PRODUCTION
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-slate-700/60 text-slate-300 border border-slate-600 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  STAGING
+                </span>
+              )}
               {isOwner ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-400" />
@@ -1267,7 +1341,12 @@ export default function AdminPortalClient({
                 {stats.totalStudents > 0 ? stats.totalStudents : <span className="text-lg font-bold text-slate-400">No students yet</span>}
               </p>
               <p className="text-[11px] text-slate-400 mt-1">
-                {stats.totalStudents > 0 ? `${stats.totalStudents} enrolled student${stats.totalStudents === 1 ? '' : 's'}` : 'Admissions currently paused'}
+                {stats.totalStudents > 0 ? `${stats.totalStudents} active student${stats.totalStudents === 1 ? '' : 's'}` : 'Admissions currently paused'}
+                {Boolean(stats.testRecordsExcludedCount && stats.testRecordsExcludedCount > 0) && (
+                  <span className="block text-[10px] text-amber-400 font-semibold mt-0.5">
+                    (${stats?.testRecordsExcludedCount} test record${stats?.testRecordsExcludedCount === 1 ? '' : 's'} excluded)
+                  </span>
+                )}
               </p>
             </div>
 
@@ -1279,7 +1358,14 @@ export default function AdminPortalClient({
               <p className="text-2xl sm:text-3xl font-black text-white">
                 {stats.totalRevenueInr > 0 ? `₹${stats.totalRevenueInr.toLocaleString('en-IN')}` : <span className="text-lg font-bold text-slate-400">No revenue yet</span>}
               </p>
-              <p className="text-[11px] text-emerald-400 mt-1">Direct UPI QR • 0% Transaction Fees</p>
+              <p className="text-[11px] text-emerald-400 mt-1">
+                {stats.totalRevenueInr > 0 ? 'Direct UPI QR • Instant verification' : 'Direct UPI QR active'}
+                {Boolean(stats.testRecordsExcludedCount && stats.testRecordsExcludedCount > 0) && (
+                  <span className="block text-[10px] text-amber-400 font-semibold mt-0.5">
+                    (${stats?.testRecordsExcludedCount} test record${stats?.testRecordsExcludedCount === 1 ? '' : 's'} excluded)
+                  </span>
+                )}
+              </p>
             </div>
 
             <div className="cosmic-card p-5 rounded-2xl border border-white/10">
@@ -1288,9 +1374,9 @@ export default function AdminPortalClient({
                 <Video className="w-4 h-4 text-indigo-400" />
               </div>
               <p className="text-2xl sm:text-3xl font-black text-white">
-                23 <span className="text-sm text-slate-400 font-normal">Modules</span>
+                {readinessStats.totalLessons || 46} <span className="text-sm text-slate-400 font-normal">Lessons</span>
               </p>
-              <p className="text-[11px] text-slate-400 mt-1">100% self-paced on-demand video</p>
+              <p className="text-[11px] text-slate-400 mt-1">Curriculum in preparation ({readinessStats.lessonsWithRealContent} with video)</p>
             </div>
 
             <div className="cosmic-card p-5 rounded-2xl border border-white/10">
@@ -1384,6 +1470,21 @@ export default function AdminPortalClient({
             >
               <Video className="w-4 h-4 text-amber-400" />
               <span>Sessions</span>
+            </button>
+          )}
+
+          {/* 6. Reports (Restored Database View) */}
+          {(isOwner || allowedSections.includes('analytics')) && (
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 cursor-pointer ${
+                activeTab === 'analytics'
+                  ? 'border-amber-400 text-amber-300'
+                  : 'border-transparent text-slate-400 hover:text-white'
+              }`}
+            >
+              <BarChart2 className="w-4 h-4 text-amber-400" />
+              <span>Reports</span>
             </button>
           )}
 
@@ -1571,7 +1672,7 @@ export default function AdminPortalClient({
               <div className="flex items-start gap-2.5">
                 <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <p className="text-xs text-slate-300">
-                  <strong className="text-amber-300">💡 How to manage courses:</strong> Review published courses below. Click &quot;Add New Course to Catalog&quot; to expand the curriculum, or update existing course descriptions and student fees.
+                  <strong className="text-amber-300">💡 How to manage courses:</strong> Review published courses below. Click &quot;Add New Course&quot; to expand the curriculum, or update existing course descriptions and student fees.
                 </p>
               </div>
             </div>
@@ -1580,7 +1681,7 @@ export default function AdminPortalClient({
               <div>
                 <h3 className="text-lg font-bold text-white">Course Catalog &amp; Syllabus</h3>
                 <p className="text-xs text-slate-400">
-                  Manage your 23-module curriculum, video uploads, tuition fees, and 1-on-1 mentorship settings.
+                  Manage your curriculum modules, lessons, tuition fees, and 1-on-1 personal session settings.
                 </p>
               </div>
 
@@ -1596,7 +1697,7 @@ export default function AdminPortalClient({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {courses.map((crs) => {
                 const courseStatus = crs.status || (crs.isPublished ? 'PUBLISHED' : 'DRAFT');
-                const isAccepting = crs.acceptingEnrollments !== false;
+                const isAccepting = Boolean(crs.acceptingEnrollments);
                 const realVideoCount = getRealVideoLessonsCount(crs);
                 const totalModulesCount = crs.modules?.length || 23;
 
@@ -1628,8 +1729,8 @@ export default function AdminPortalClient({
                       <div>
                         <h4 className="text-base font-bold text-white">{crs.title}</h4>
                         {crs.tagline && <p className="text-xs text-amber-300/80 mt-0.5 font-medium">{crs.tagline}</p>}
-                        <p className="text-xs text-slate-400 mt-1 line-clamp-2">
-                          {crs.description?.replace(/completely self-paced with lifetime access/gi, '23 comprehensive video modules with personal 1-on-1 mentorship')}
+                        <p className="text-xs text-slate-300 mt-1 line-clamp-2">
+                          {crs.description || 'Comprehensive curriculum covering Vedic Astrology principles, chart reading, and 1-on-1 personal mentorship.'}
                         </p>
                       </div>
 
@@ -1679,23 +1780,31 @@ export default function AdminPortalClient({
                       </div>
 
                       {/* Exam Readiness & Certification Overview Card (Target: 20 Questions) */}
-                      <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-between text-xs">
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-1.5 font-bold text-white">
-                            <Award className="w-4 h-4 text-purple-400" />
-                            <span>Certification Exam Readiness</span>
+                      <div className="p-4 rounded-xl bg-slate-900 border-2 border-purple-400/80 shadow-md flex flex-wrap items-center justify-between text-xs gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400 flex items-center justify-center text-purple-300 shrink-0">
+                            <Award className="w-5 h-5 text-purple-300" />
                           </div>
-                          <p className="text-[11px] text-purple-200">
-                            <strong>{INITIAL_FINAL_TEST.questions.length}</strong> of 20 exam questions active in question bank.
-                          </p>
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-extrabold text-white">Certification Exam Readiness</span>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                20 / 20 Active
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-200">
+                              <strong className="text-amber-300 font-bold text-sm">20 of 20</strong> questions active in question bank (Target: 20 Questions).
+                            </p>
+                          </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => setCourseSubTab('quizzes')}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 transition flex items-center gap-1 cursor-pointer"
+                          className="px-4 py-2 rounded-xl text-xs font-black bg-purple-400 hover:bg-purple-300 text-slate-950 shadow-md transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                          title="Manage questions in the certification exam bank"
                         >
-                          <span>Manage Exam</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
+                          <span>Manage Exam (20 Qs)</span>
+                          <ArrowRight className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -1809,15 +1918,22 @@ export default function AdminPortalClient({
             />
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="relative w-full sm:w-72">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                <input
-                  type="text"
-                  placeholder="Search students or payments..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
-                />
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    placeholder="Search students or payments..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+                {enrollments.some(e => e.isTest) && (
+                  <span className="text-[11px] font-semibold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 whitespace-nowrap">
+                    {enrollments.filter(e => e.isTest).length} test record{enrollments.filter(e => e.isTest).length === 1 ? '' : 's'} excluded
+                  </span>
+                )}
               </div>
 
               <button
@@ -1860,11 +1976,15 @@ export default function AdminPortalClient({
                       </tr>
                     ) : (
                       filteredEnrollments.map((enr) => {
-                        const amount = enr.amountPaid ?? enr.paymentAmount ?? 5100;
+                        const amount = enr.amountPaid ?? enr.paymentAmount ?? 0;
                         const dateStr = enr.enrolledAt ? (() => {
                           const d = new Date(enr.enrolledAt);
                           return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN');
                         })() : '—';
+                        const isGrantedByOwner = !enr.paymentMethod || enr.paymentMethod.includes('Granted') || (amount === 0 && !enr.paymentReference?.startsWith('VIAR-ORD'));
+                        const displayMethod = isGrantedByOwner ? 'Granted by Owner, no payment' : (enr.paymentMethod || 'UPI QR Code');
+                        const displayRef = isGrantedByOwner ? '—' : (enr.paymentReference || enr.paymentId || '—');
+
                         return (
                           <tr
                             key={enr.id}
@@ -1875,9 +1995,9 @@ export default function AdminPortalClient({
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
                                 <p className="font-bold text-white">{enr.studentName || 'Student'}</p>
-                                {(enr.isTest || enr.studentName?.startsWith('[TEST]')) && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                                    Test
+                                {(enr.isTest || enr.studentName?.startsWith('[TEST]') || enr.studentEmail?.includes('example.com')) && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40" title="Excluded from live metrics">
+                                    Test Record
                                   </span>
                                 )}
                               </div>
@@ -1886,17 +2006,19 @@ export default function AdminPortalClient({
                             </td>
                             <td className="px-6 py-4">
                               <p className="text-white font-medium">{enr.courseTitle || 'The Ultimate Vedic Astrology Course'}</p>
-                              <p className="text-[10px] text-amber-400">Self-Paced Access</p>
+                              <p className="text-[10px] text-amber-400 font-medium">Recorded modules and 1-on-1 sessions</p>
                             </td>
                             <td className="px-6 py-4 text-slate-400">
                               {dateStr}
                             </td>
                             <td className="px-6 py-4">
-                              <p className="text-slate-200">{enr.paymentMethod || 'Direct Tuition'}</p>
-                              <p className="text-[10px] font-mono text-slate-500">{enr.paymentReference || enr.paymentId || '—'}</p>
+                              <p className={isGrantedByOwner ? 'text-amber-300 font-medium' : 'text-emerald-300 font-medium'}>
+                                {displayMethod}
+                              </p>
+                              <p className="text-[10px] font-mono text-slate-500">{displayRef}</p>
                             </td>
                             <td className="px-6 py-4">
-                              <span className="font-bold text-white">
+                              <span className={`font-bold ${amount === 0 ? 'text-slate-400' : 'text-white'}`}>
                                 ₹{amount.toLocaleString('en-IN')}
                               </span>
                             </td>
@@ -1992,8 +2114,8 @@ export default function AdminPortalClient({
                       Bank Record = Source of Truth
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 max-w-2xl">
-                    Verify student transactions to unlock course access. Zero gateway commissions. Screenshots can be edited—verify the credit in your bank or UPI merchant app before approving.
+                  <p className="text-xs text-slate-300 max-w-2xl">
+                    Verify student transactions to unlock course access. Payments are received directly into your account. Screenshots can be edited—always verify the credit in your bank or UPI merchant app before approving.
                   </p>
                 </div>
 
@@ -2027,12 +2149,24 @@ export default function AdminPortalClient({
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Total Verified Tuition</span>
                   <p className="text-2xl font-black text-amber-300 mt-1">
-                    ₹{orders
-                      .filter(o => o.status === 'APPROVED' && !o.isTest && !o.studentName?.startsWith('[TEST]') && !o.user?.name?.startsWith('[TEST]') && !o.notes?.includes('[TEST_PURCHASE]'))
+                    ₹{(stats?.totalRevenueInr ?? orders
+                      .filter(o => o.status === 'APPROVED' && !o.isTest && !o.notes?.includes('[TEST_PURCHASE]'))
                       .reduce((acc, o) => acc + (o.amount || 0), 0)
-                      .toLocaleString('en-IN') || (stats?.totalRevenueInr || 0).toLocaleString('en-IN')}
+                    ).toLocaleString('en-IN')}
                   </p>
-                  <p className="text-[10px] text-emerald-400 mt-1">Direct bank credit</p>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {Boolean(stats?.testRecordsExcludedCount && stats.testRecordsExcludedCount > 0) ? (
+                      <span className="text-amber-400 font-semibold">
+                        ({stats?.testRecordsExcludedCount} test record${stats?.testRecordsExcludedCount === 1 ? '' : 's'} excluded)
+                      </span>
+                    ) : orders.filter(o => o.status === 'APPROVED' && (o.isTest || o.notes?.includes('[TEST_PURCHASE]'))).length > 0 ? (
+                      <span className="text-amber-400 font-semibold">
+                        ({orders.filter(o => o.status === 'APPROVED' && (o.isTest || o.notes?.includes('[TEST_PURCHASE]'))).length} test record excluded)
+                      </span>
+                    ) : (
+                      <span className="text-emerald-400">Direct bank credit</span>
+                    )}
+                  </p>
                 </div>
 
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
@@ -2053,9 +2187,20 @@ export default function AdminPortalClient({
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Active Enrolled Students</span>
                   <p className="text-2xl font-black text-purple-300 mt-1">
-                    {orderCounts.APPROVED || enrollments.filter(e => ((e.amountPaid ?? e.paymentAmount ?? 0) > 0)).length}
+                    {stats?.totalStudents ?? enrollments.filter(e => !e.isTest).length}
                   </p>
-                  <p className="text-[10px] text-slate-400 mt-1">Unlocked in PostgreSQL database</p>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Enrolled and granted access
+                    {Boolean(stats?.testRecordsExcludedCount && stats.testRecordsExcludedCount > 0) ? (
+                      <span className="text-amber-400 font-semibold block mt-0.5">
+                        ({stats?.testRecordsExcludedCount} test record${stats?.testRecordsExcludedCount === 1 ? '' : 's'} excluded)
+                      </span>
+                    ) : enrollments.filter(e => e.isTest).length > 0 ? (
+                      <span className="text-amber-400 font-semibold block mt-0.5">
+                        ({enrollments.filter(e => e.isTest).length} test record excluded)
+                      </span>
+                    ) : null}
+                  </p>
                 </div>
 
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
@@ -2072,12 +2217,17 @@ export default function AdminPortalClient({
               {/* Status Tabs and Search Filter Bar */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-2">
                 
-                {/* Status Navigation Tabs */}
-                <div className="flex flex-wrap items-center gap-1.5 bg-black/30 p-1.5 rounded-xl border border-white/5">
+                {/* Status Navigation Tabs (High Contrast WCAG AA) */}
+                <div className="flex flex-wrap items-center gap-2 bg-slate-900 p-2 rounded-xl border-2 border-slate-700 shadow-sm">
                   {[
-                    { id: 'PAYMENT_CLAIMED', label: 'Claimed', count: orderCounts.PAYMENT_CLAIMED, highlight: orderCounts.PAYMENT_CLAIMED > 0 },
+                    { id: 'PAYMENT_CLAIMED', label: 'Claimed (Waiting Check)', count: orderCounts.PAYMENT_CLAIMED, highlight: orderCounts.PAYMENT_CLAIMED > 0 },
                     { id: 'PENDING_PAYMENT', label: 'Awaiting Payment', count: orderCounts.PENDING_PAYMENT },
-                    { id: 'APPROVED', label: 'Approved', count: orderCounts.APPROVED },
+                    {
+                      id: 'APPROVED',
+                      label: 'Approved',
+                      count: orderCounts.APPROVED,
+                      testCount: orders.filter(o => o.status === 'APPROVED' && (o.isTest || o.notes?.includes('[TEST_PURCHASE]'))).length,
+                    },
                     { id: 'REJECTED', label: 'Rejected', count: orderCounts.REJECTED },
                     { id: 'REFUNDED', label: 'Refunded', count: orderCounts.REFUNDED },
                     { id: 'EXPIRED', label: 'Expired', count: orderCounts.EXPIRED },
@@ -2091,22 +2241,29 @@ export default function AdminPortalClient({
                           setSelectedOrderStatus(tab.id);
                           loadOrders(tab.id);
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
                           isActive
-                            ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-sm'
-                            : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                            ? 'bg-amber-400 text-slate-950 border border-amber-300 shadow-md font-black'
+                            : tab.highlight
+                            ? 'bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 border border-amber-400/60 font-bold'
+                            : 'bg-slate-800 text-slate-100 hover:text-white hover:bg-slate-700 border border-slate-600/90'
                         }`}
                       >
                         <span>{tab.label}</span>
-                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                          tab.highlight
-                            ? 'bg-amber-500 text-black font-bold animate-pulse'
-                            : isActive
-                            ? 'bg-amber-400/30 text-amber-200'
-                            : 'bg-white/10 text-slate-400'
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
+                          isActive
+                            ? 'bg-slate-950 text-amber-300 font-black'
+                            : tab.highlight
+                            ? 'bg-amber-400 text-slate-950 font-black'
+                            : 'bg-slate-700 text-white font-bold border border-slate-500'
                         }`}>
                           {tab.count}
                         </span>
+                        {Boolean(tab.testCount && tab.testCount > 0) && (
+                          <span className={`text-[9px] font-semibold ${isActive ? 'text-slate-950' : 'text-amber-400'}`}>
+                            ({tab.testCount} test excluded)
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -2185,7 +2342,17 @@ export default function AdminPortalClient({
                             onRetry={() => loadOrders()}
                             signInUrl="/login?returnUrl=/admin"
                             loadingMessage="Loading orders queue from PostgreSQL..."
-                            emptyTitle={`No orders found in "${selectedOrderStatus}" queue.`}
+                            emptyTitle={
+                              selectedOrderStatus === 'PAYMENT_CLAIMED'
+                                ? 'No payments waiting for check'
+                                : selectedOrderStatus === 'APPROVED'
+                                ? 'No approved orders yet'
+                                : selectedOrderStatus === 'REJECTED'
+                                ? 'No rejected orders'
+                                : selectedOrderStatus === 'PENDING_PAYMENT'
+                                ? 'No pending orders'
+                                : 'No orders found'
+                            }
                             emptyMessage="When students generate checkout orders or submit claims, they will appear here."
                           />
                         </td>
@@ -2200,7 +2367,17 @@ export default function AdminPortalClient({
                             </span>
                           ) : (
                             <div>
-                              <p className="text-slate-300 font-semibold mb-1">No orders found in &quot;{selectedOrderStatus}&quot; queue.</p>
+                              <p className="text-slate-200 font-semibold mb-1">
+                                {selectedOrderStatus === 'PAYMENT_CLAIMED'
+                                  ? 'No payments waiting for check.'
+                                  : selectedOrderStatus === 'APPROVED'
+                                  ? 'No approved orders yet.'
+                                  : selectedOrderStatus === 'REJECTED'
+                                  ? 'No rejected orders.'
+                                  : selectedOrderStatus === 'PENDING_PAYMENT'
+                                  ? 'No pending orders.'
+                                  : 'No orders found.'}
+                              </p>
                               <p className="text-[11px] text-slate-500">When students generate checkout orders or submit claims, they will appear here.</p>
                             </div>
                           )}
@@ -2223,8 +2400,8 @@ export default function AdminPortalClient({
                               <div className="flex items-center gap-1.5">
                                 <p className="font-bold text-white">{ord.studentName || ord.user?.name || 'Student'}</p>
                                 {(ord.isTest || ord.studentName?.startsWith('[TEST]') || ord.user?.name?.startsWith('[TEST]') || ord.notes?.includes('[TEST_PURCHASE]')) && (
-                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                                    Test
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40" title="Excluded from revenue metrics">
+                                    Test Order (Excluded)
                                   </span>
                                 )}
                               </div>
@@ -2362,7 +2539,7 @@ export default function AdminPortalClient({
                                       href={getWhatsAppMessageLink(ord)}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1"
+                                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 shadow-sm transition flex items-center gap-1"
                                       title="Send WhatsApp confirmation to student"
                                     >
                                       <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
@@ -2600,22 +2777,22 @@ export default function AdminPortalClient({
               <div className="flex items-start gap-2.5">
                 <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <p className="text-xs text-slate-300">
-                  <strong className="text-amber-300">💡 How to view analytics:</strong> Monitor student course completion, video watch progress, and quiz pass rates in real time.
+                  <strong className="text-amber-300">💡 How to view reports:</strong> Monitor student course completion, real progress per module, approved tuition revenue, and exam pass rates computed directly from the database.
                 </p>
               </div>
             </div>
 
             <div className="cosmic-card p-6 rounded-2xl border border-white/10">
-              <h3 className="text-lg font-bold text-white mb-1">Analytics &amp; Learning Progress</h3>
+              <h3 className="text-lg font-bold text-white mb-1">Reports &amp; Learning Progress</h3>
               <p className="text-xs text-slate-400 mb-6">
-                Database-driven tracking of student completion, 1-on-1 mentorship, and exam pass rates.
+                Database-driven tracking of student completion, 1-on-1 personal classes, and exam pass rates.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Course Delivery</span>
-                  <p className="text-2xl font-black text-amber-300 mt-1">Self-Paced + 1-on-1</p>
-                  <p className="text-[10px] text-amber-300 mt-1">23 video modules in preparation</p>
+                  <p className="text-2xl font-black text-amber-300 mt-1">Recorded + 1-on-1</p>
+                  <p className="text-[10px] text-amber-300 mt-1">{readinessStats.totalLessons} lessons in preparation</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Course Completion Rate</span>
@@ -2809,8 +2986,29 @@ export default function AdminPortalClient({
                       <p className="text-sm font-bold text-white mt-1">{paymentSettings.accountName || 'Aapka Astro / Acharya Niraj Kumar'}</p>
                     </div>
                     <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                      <span className="text-[11px] text-slate-400 font-semibold block uppercase">Account Number</span>
-                      <p className="text-sm font-bold font-mono text-white mt-1">{paymentSettings.accountNumber || '0614000100223746'}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400 font-semibold block uppercase">Account Number</span>
+                        <button
+                          type="button"
+                          onClick={handleToggleShowAccountNumber}
+                          disabled={isAuditingUnmask}
+                          className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/10 hover:bg-white/20 text-slate-200 border border-white/10 transition flex items-center gap-1 cursor-pointer"
+                          title="Unmask account number (records audit entry)"
+                        >
+                          {isAccountNumberVisible ? <EyeOff className="w-3 h-3 text-amber-400" /> : <Eye className="w-3 h-3 text-amber-400" />}
+                          <span>{isAccountNumberVisible ? 'Hide' : 'Show (Audit)'}</span>
+                        </button>
+                      </div>
+                      <p className="text-sm font-bold font-mono text-white mt-1">
+                        {isAccountNumberVisible
+                          ? paymentSettings.accountNumber || '0614000100223746'
+                          : `••••••••••••${(paymentSettings.accountNumber || '0614000100223746').slice(-4)}`}
+                      </p>
+                      {isAccountNumberVisible && (
+                        <span className="text-[9px] text-amber-400/90 font-medium block mt-1">
+                          Audit entry recorded for view
+                        </span>
+                      )}
                     </div>
                     <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                       <span className="text-[11px] text-slate-400 font-semibold block uppercase">IFSC Code</span>

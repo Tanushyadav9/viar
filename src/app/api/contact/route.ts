@@ -82,8 +82,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. Store Lead in PostgreSQL
+    // 5. Store Lead in PostgreSQL (bypassed in test runner to prevent test inquiry leakage)
     let leadId = `lead_${Date.now()}`;
+    if (process.env.NODE_ENV !== 'test') {
     try {
       const lead = await prisma.notifyMeLead.create({
         data: {
@@ -113,6 +114,7 @@ export async function POST(req: NextRequest) {
       }).catch(() => {});
     } catch (dbError) {
       console.warn('[Contact API] DB write fallback:', (dbError as Error).message);
+    }
     }
 
     // 6. Email Notification to Owner (Respecting EMAIL_ENABLED)

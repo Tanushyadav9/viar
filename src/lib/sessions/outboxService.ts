@@ -909,7 +909,7 @@ export async function sendSessionChangedEmail(data: {
       </div>
 
       <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-top: 20px; font-size: 12px; color: #64748b; text-align: center;">
-        <p>Helpline: +91 93112 15564 | Email: aapkaastro1606@gmail.com</p>
+        <p>Helpline: +91 93112 15564 (WhatsApp) | Vihangam Institute of Astrology and Research (VIAR)</p>
       </div>
     </div>
   `;

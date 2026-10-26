@@ -14,6 +14,8 @@ export interface BuiltinContentItem {
   titleHi: string;
   contentEn: string;
   contentHi: string;
+  status?: string;
+  needsConfirmation?: boolean;
   metadata?: Record<string, unknown>;
   sortOrder: number;
 }
@@ -51,13 +53,15 @@ export const BUILTIN_CONTENT_DEFAULTS: Record<string, BuiltinContentItem[]> = {
       key: 'contact_email',
       titleEn: 'Official Academy Email',
       titleHi: 'आधिकारिक संस्थान ईमेल',
-      contentEn: 'aapkaastro1606@gmail.com',
-      contentHi: 'aapkaastro1606@gmail.com',
+      contentEn: '', // Kept empty until client confirms a separate public mailbox
+      contentHi: '',
+      status: 'HIDDEN',
       metadata: {
-        mailto: 'mailto:aapkaastro1606@gmail.com',
+        mailto: '',
         icon: 'Mail',
         type: 'email',
-        note: 'Official confirmed inquiries email & admissions helpline',
+        needsConfirmation: true,
+        note: 'Hidden from public pages until separate public inquiries email is confirmed by client. Never uses Owner login email.',
       },
       sortOrder: 3,
     },
@@ -208,7 +212,7 @@ export const BUILTIN_CONTENT_DEFAULTS: Record<string, BuiltinContentItem[]> = {
       titleEn: 'What is your refund and satisfaction policy?',
       titleHi: 'आपकी रिफंड एवं संतुष्टि नीति क्या है?',
       contentEn:
-        'We stand behind our academic rigor with a 7-day review window. If you have watched 3 or fewer video modules within 7 calendar days of enrollment and feel the course is not right for you, simply email aapkaastro1606@gmail.com or WhatsApp +91 93112 15564. We will refund 100% of your tuition directly via UPI or bank transfer with zero deductions.',
+        'We stand behind our academic rigor with a 7-day review window. If you have watched 3 or fewer video modules within 7 calendar days of enrollment and feel the course is not right for you, simply message us via WhatsApp (+91 93112 15564) or submit the contact form on viar.in/contact. We will refund 100% of your tuition directly via UPI or bank transfer with zero deductions.',
       contentHi:
         'हम 7-दिवसीय संतुष्टि समीक्षा अवधि प्रदान करते हैं। यदि प्रवेश के 7 दिनों के भीतर और अधिकतम 3 मॉड्यूल देखने तक आपको लगता है कि यह पाठ्यक्रम आपके अनुरूप नहीं है, तो आप हमें ईमेल अथवा व्हाट्सएप पर सूचित करें। बिना किसी कटौती के 100% शुल्क सीधे यूपीआई द्वारा वापस कर दिया जाएगा।',
       metadata: { category: 'policy' },

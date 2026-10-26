@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ShieldCheck, Video, Award, Clock, ExternalLink, Phone, Mail } from 'lucide-react';
+import { ShieldCheck, Video, Award, Clock, ExternalLink, Phone } from 'lucide-react';
 import { SISTER_SERVICES } from '@/config/services';
 import { useLanguage } from '@/components/LanguageContext';
 import { COMMON_TIMEZONES, getUserLocalTimezone } from '@/lib/timezones';
@@ -101,12 +101,12 @@ export default function Footer() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-white">
-                {isHi ? '23 वीडियो मॉड्यूल' : '23 Video Modules'}
+                {isHi ? 'रिकॉर्डेड मॉड्यूल एवं 1-on-1 सत्र' : 'Recorded Modules & 1-on-1 Sessions'}
               </h4>
               <p className="text-xs text-slate-400 mt-0.5">
                 {isHi
-                  ? 'विस्तृत ऑन-डिमांड पाठ्यक्रम + 2 बोनस कुंडली विश्लेषण मास्टरक्लास आजीवन पहुंच के साथ।'
-                  : 'Comprehensive on-demand curriculum + 2 bonus chart reading masterclasses with lifetime access.'}
+                  ? 'संरचित रिकॉर्डेड पाठ्यक्रम और व्यक्तिगत 1-on-1 मार्गदर्शन सत्र (क्लाइंट अनुमोदन लंबित)।'
+                  : 'Structured recorded curriculum modules paired with personal 1-on-1 mentorship sessions (pending client approval).'}
               </p>
             </div>
           </div>
@@ -117,12 +117,12 @@ export default function Footer() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-white">
-                {isHi ? 'अपनी गति से सीखें' : 'Learn at Your Own Pace'}
+                {isHi ? 'लचीला एवं व्यक्तिगत अध्ययन' : 'Self-Paced & Personal Mentorship'}
               </h4>
               <p className="text-xs text-slate-400 mt-0.5">
                 {isHi
-                  ? 'विश्व में कहीं से भी 100% सेल्फ-पेस्ड। कोई समय-सारिणी या निश्चित समय का दबाव नहीं।'
-                  : '100% self-paced from anywhere in the world. No live scheduling conflicts or rigid timetables.'}
+                  ? 'अपनी गति से रिकॉर्डेड व्याख्यान देखें, और आपसी सुविधानुसार 1-on-1 सत्र निर्धारित करें (क्लाइंट अनुमोदन लंबित)।'
+                  : 'Study recorded lessons at your own pace, with personal 1-on-1 sessions scheduled by mutual convenience (pending client approval).'}
               </p>
             </div>
           </div>
@@ -285,7 +285,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/dashboard/courses/what-is-astrology" className="hover:text-amber-400 transition">
-                  {isHi ? '23 वीडियो मॉड्यूल एवं मास्टरक्लास' : '23 Video Modules & Masterclasses'}
+                  {isHi ? 'रिकॉर्डेड मॉड्यूल एवं 1-on-1 सत्र' : 'Recorded Modules & 1-on-1 Sessions'}
                 </Link>
               </li>
               <li>
@@ -322,15 +322,7 @@ export default function Footer() {
                   <span>+91 93112 15564 ({isHi ? 'व्हाट्सएप' : 'WhatsApp'})</span>
                 </a>
               </li>
-              <li>
-                <a
-                  href="mailto:aapkaastro1606@gmail.com"
-                  className="hover:text-amber-300 transition flex items-center gap-1.5"
-                >
-                  <Mail className="w-3.5 h-3.5 text-amber-400" />
-                  <span>aapkaastro1606@gmail.com</span>
-                </a>
-              </li>
+              {/* Public email row: Hidden until client confirms a dedicated public address */}
               <li>
                 <a
                   href="https://www.instagram.com/aapkaastrologer/"

@@ -40,6 +40,8 @@ interface StudentData {
     completedLessons: number;
     totalLessons: number;
     percentage: number;
+    totalVideos?: number;
+    modulesCount?: number;
   };
   quizResults: Array<{
     id: string;
@@ -296,7 +298,7 @@ export default function StudentProfileView({
             <div className="flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-purple-400" />
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                Self-Paced Curriculum Progress
+                Curriculum Progress (Recorded & 1-on-1)
               </h3>
             </div>
             <span className="text-xs font-bold text-purple-300">{progress.percentage}%</span>
@@ -310,8 +312,8 @@ export default function StudentProfileView({
           </div>
 
           <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-            <span>{progress.completedLessons} of {progress.totalLessons} modules completed</span>
-            <span>23-Module Flagship Syllabus</span>
+            <span>{progress.completedLessons} of {progress.totalLessons} lessons completed</span>
+            <span>{progress.modulesCount || 8} Modules Syllabus</span>
           </div>
         </div>
 
@@ -326,7 +328,9 @@ export default function StudentProfileView({
 
           {quizResults.length === 0 ? (
             <p className="text-xs text-slate-500 italic py-2">
-              No quiz attempts recorded yet. Student is currently reviewing video lessons.
+              {Boolean(progress.totalVideos && progress.totalVideos > 0)
+                ? 'No quiz attempts recorded yet. Student is currently reviewing video lessons.'
+                : 'No quiz attempts recorded yet. Course video lessons are currently in preparation.'}
             </p>
           ) : (
             <div className="space-y-2">

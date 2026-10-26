@@ -334,9 +334,13 @@ export default function ContentStudio({
       }
     }
 
-    // Validation: Contact email format
+    // Validation: Contact email format & owner privacy rule
     if (editingItem.collection === 'site_settings' && editingItem.key === 'contact_email') {
       const emailVal = (formContentEn || formContentHi || '').trim().toLowerCase();
+      if (emailVal && emailVal === 'aapkaastro1606@gmail.com') {
+        alert('Security Rule: The public contact email must NOT be the Owner login address (aapkaastro1606@gmail.com). Please supply a separate public email address (e.g. contact@viar.in) or leave it empty/hidden until confirmed.');
+        return;
+      }
       if (emailVal && !emailVal.includes('@')) {
         alert('Please enter a valid contact email address.');
         return;
@@ -629,7 +633,7 @@ export default function ContentStudio({
                           </span>
                         )}
 
-                        {(Boolean(itemMeta.needsConfirmation) || item.key === 'announcement_bar' || isDraft) && (
+                        {(Boolean(itemMeta.needsConfirmation) || item.key === 'announcement_bar' || item.key === 'contact_email' || isDraft) && (
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
                             Needs confirmation
                           </span>

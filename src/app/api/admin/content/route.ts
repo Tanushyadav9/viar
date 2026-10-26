@@ -107,9 +107,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Public contact email: must be a valid email format
+    // Public contact email: must be a valid email format AND MUST NOT BE THE OWNER LOGIN ADDRESS
     if (normalizedCollection === 'site_settings' && String(key).toLowerCase() === 'contact_email') {
       const emailValue = (contentEn || contentHi || '').trim().toLowerCase();
+      const ownerEmail = (process.env.OWNER_EMAIL || 'aapkaastro1606@gmail.com').trim().toLowerCase();
+      if (emailValue && emailValue === ownerEmail) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Security rule violation: The public contact email must NOT be the Owner login address (aapkaastro1606@gmail.com). Please supply a separate public contact email (e.g. contact@viar.in or admissions@viar.in) or leave it hidden until confirmed by the client.',
+          },
+          { status: 400 }
+        );
+      }
       if (emailValue && !emailValue.includes('@')) {
         return NextResponse.json(
           {

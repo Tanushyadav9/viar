@@ -53,8 +53,8 @@ export const VIAR_ACADEMY_FACTS = {
     whatsappUrl: 'https://wa.me/919311215564',
     phone: '+91 93112 15564',
     phoneTel: 'tel:+919311215564',
-    email: 'aapkaastro1606@gmail.com',
-    location: 'New Delhi, India',
+    email: '', // Separate public email awaiting client confirmation
+    location: 'Online Institute (Noida, Uttar Pradesh, India)',
   },
   paymentPolicy: {
     method: 'Direct UPI QR Code & Bank Transfer (Zero gateway commission fees)',
@@ -75,7 +75,7 @@ export const VIAR_ACADEMY_FACTS = {
     maxModulesAllowed: 3,
     status: 'Operational policy pending formal legal counsel review',
     terms:
-      'If within 7 calendar days of verified enrollment and having viewed no more than the first 3 video modules you find the teaching methodology unsuitable, you may request a 100% full tuition refund via WhatsApp (+91 93112 15564) or email (aapkaastro1606@gmail.com). Because payment was direct UPI, refunds are returned 100% in full without gateway deductions within 5-7 business days.',
+      'If within 7 calendar days of verified enrollment and having viewed no more than the first 3 video modules you find the teaching methodology unsuitable, you may request a 100% full tuition refund via WhatsApp (+91 93112 15564) via WhatsApp (+91 93112 15564) or the website contact desk. Because payment was direct UPI, refunds are returned 100% in full without gateway deductions within 5-7 business days.',
   },
   flagshipCourse: {
     id: 'course-what-is-astrology',

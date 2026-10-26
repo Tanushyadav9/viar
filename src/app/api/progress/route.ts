@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
 import { syncDatabaseUser } from '@/lib/auth/userSync';
+import { validateLessonPublishReadiness } from '@/lib/curriculum-validation';
+import { ViarStore } from '@/lib/store';
 
 export async function GET(req: NextRequest) {
   try {
@@ -52,25 +54,25 @@ export async function GET(req: NextRequest) {
         include: { classSession: true },
       });
 
-      // 3. Compute completion stats for course if courseId provided
+      // 3. Compute completion stats for course
       let totalLessons = 23;
       let completedLessonsCount = lessonProgress.filter((p) => p.completed).length;
 
-      if (courseId) {
-        const course = await prisma.course.findFirst({
-          where: { OR: [{ id: courseId }, { slug: courseId }] },
-          include: {
-            modules: {
-              include: { lessons: true },
-            },
+      const course = await prisma.course.findFirst({
+        where: courseId
+          ? { OR: [{ id: courseId }, { slug: courseId }] }
+          : { OR: [{ id: 'course-what-is-astrology' }, { slug: 'wia-foundations' }] },
+        include: {
+          modules: {
+            include: { lessons: true },
           },
-        });
+        },
+      });
 
-        if (course) {
-          totalLessons = course.modules.reduce((acc, m) => acc + m.lessons.length, 0) || course.totalClasses || 23;
-          const courseLessonIds = new Set(course.modules.flatMap((m) => m.lessons.map((l) => l.id)));
-          completedLessonsCount = lessonProgress.filter((p) => courseLessonIds.has(p.lessonId) && p.completed).length;
-        }
+      if (course) {
+        totalLessons = course.modules.reduce((acc, m) => acc + m.lessons.length, 0) || course.totalClasses || 23;
+        const courseLessonIds = new Set(course.modules.flatMap((m) => m.lessons.map((l) => l.id)));
+        completedLessonsCount = lessonProgress.filter((p) => courseLessonIds.has(p.lessonId) && p.completed).length;
       }
 
       const progressPercentage = Math.min(100, Math.round((completedLessonsCount / Math.max(1, totalLessons)) * 100));
@@ -160,6 +162,64 @@ export async function POST(req: NextRequest) {
 
     // Case A: LessonProgress (Relational Model)
     if (lessonId) {
+      if (isCompleted) {
+        let lesson = null;
+        try {
+          lesson = await prisma.lesson.findUnique({
+            where: { id: lessonId },
+            select: {
+              id: true,
+              type: true,
+              videoProviderId: true,
+              externalVideoUrl: true,
+              documentKey: true,
+              documentUrl: true,
+              notesMarkdown: true,
+              liveScheduledAt: true,
+            },
+          });
+        } catch (findErr) {
+          console.warn('Prisma lesson lookup warning:', (findErr as Error).message);
+        }
+
+        if (lesson) {
+          const readiness = validateLessonPublishReadiness(lesson);
+          if (!readiness.canPublish) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: readiness.draftReason || 'Cannot complete a lesson that has no content.',
+                draftReason: readiness.draftReason,
+              },
+              { status: 400 }
+            );
+          }
+        } else {
+          const fallbackClass = ViarStore.getClassById(lessonId);
+          if (fallbackClass) {
+            const readiness = validateLessonPublishReadiness({
+              type: fallbackClass.lessonType,
+              videoProviderId: fallbackClass.recording?.videoUrl || fallbackClass.externalVideoUrl,
+              externalVideoUrl: fallbackClass.externalVideoUrl,
+              documentKey: fallbackClass.documentKey,
+              documentUrl: fallbackClass.documentDownloadUrl,
+              notesMarkdown: fallbackClass.notesMarkdown || fallbackClass.recording?.notesMarkdown,
+              liveScheduledAt: fallbackClass.scheduledStartTime,
+            });
+            if (!readiness.canPublish) {
+              return NextResponse.json(
+                {
+                  success: false,
+                  error: readiness.draftReason || 'Cannot complete a lesson that has no content.',
+                  draftReason: readiness.draftReason,
+                },
+                { status: 400 }
+              );
+            }
+          }
+        }
+      }
+
       try {
         const lp = await prisma.lessonProgress.upsert({
           where: {
@@ -202,6 +262,59 @@ export async function POST(req: NextRequest) {
 
     // Case B: Legacy ClassSessionProgress
     if (classSessionId) {
+      if (watched !== false) {
+        let session = null;
+        try {
+          session = await prisma.classSession.findUnique({
+            where: { id: classSessionId },
+            select: {
+              id: true,
+              recordingUrl: true,
+              scheduledAt: true,
+            },
+          });
+        } catch (findErr) {
+          console.warn('Prisma classSession lookup warning:', (findErr as Error).message);
+        }
+
+        if (session) {
+          const hasRecording = Boolean(session.recordingUrl && session.recordingUrl.trim());
+          const hasValidDate = Boolean(
+            session.scheduledAt &&
+            !isNaN(new Date(session.scheduledAt).getTime()) &&
+            new Date(session.scheduledAt).getTime() > 86400000
+          );
+          if (!hasRecording && !hasValidDate) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: 'Cannot complete a session that has no recording or scheduled date.',
+              },
+              { status: 400 }
+            );
+          }
+        } else {
+          const fallbackClass = ViarStore.getClassById(classSessionId);
+          if (fallbackClass) {
+            const hasRec = Boolean(fallbackClass.recording?.videoUrl || fallbackClass.recordingUrl);
+            const hasDate = Boolean(
+              fallbackClass.scheduledStartTime &&
+              !isNaN(new Date(fallbackClass.scheduledStartTime).getTime()) &&
+              new Date(fallbackClass.scheduledStartTime).getTime() > 86400000
+            );
+            if (!hasRec && !hasDate) {
+              return NextResponse.json(
+                {
+                  success: false,
+                  error: 'Cannot complete a session that has no recording or scheduled date.',
+                },
+                { status: 400 }
+              );
+            }
+          }
+        }
+      }
+
       try {
         if (watched === false) {
           await prisma.sessionProgress.deleteMany({

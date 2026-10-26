@@ -151,7 +151,7 @@ export default function DisclaimerPage() {
             </p>
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-slate-300">
               <div className="font-semibold text-white">Vihangam Institute of Astrology and Research Academic Inquiries</div>
-              <div>Email: <a href="mailto:aapkaastro1606@gmail.com" className="text-amber-400 underline">aapkaastro1606@gmail.com</a></div>
+              <div>Academic Inquiries: <a href="/contact" className="text-amber-400 underline">viar.in/contact</a></div>
               <div>Website: <a href="https://viar.in" className="text-amber-400 underline">https://viar.in</a></div>
             </div>
           </section>

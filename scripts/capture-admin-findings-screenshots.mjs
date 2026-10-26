@@ -4,7 +4,7 @@ import fs from 'fs';
 import { chromium } from 'playwright';
 
 const PORT = 3010;
-const BASE_URL = `http://localhost:${PORT}`;
+const BASE_URL = `http://127.0.0.1:${PORT}`;
 const SCREENSHOT_DIR = path.resolve('public/screenshots');
 const ARTIFACT_DIR = 'C:\\Users\\TANUSH YADAV\\.gemini\\antigravity\\brain\\096bfe9f-b128-4fdd-964d-724a827165d5';
 
@@ -14,14 +14,14 @@ if (!fs.existsSync(SCREENSHOT_DIR)) {
 
 async function isPortAvailable(port) {
   try {
-    const res = await fetch(`http://localhost:${port}/api/payments/config`, { signal: AbortSignal.timeout(1500) });
+    const res = await fetch(`http://127.0.0.1:${port}/test-proof-views?view=admin-home-en`, { signal: AbortSignal.timeout(1500) });
     return res.status >= 200;
   } catch {
     return false;
   }
 }
 
-async function waitForServer(url, timeoutMs = 35000) {
+async function waitForServer(url, timeoutMs = 45000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
@@ -41,13 +41,13 @@ async function main() {
   if (!running) {
     console.log(`Starting Next.js on port ${PORT}...`);
     const nextBin = path.resolve('node_modules/next/dist/bin/next');
-    serverProcess = spawn(process.execPath, [nextBin, 'start', '-p', String(PORT)], {
+    serverProcess = spawn(process.execPath, [nextBin, 'dev', '-H', '127.0.0.1', '-p', String(PORT)], {
       cwd: process.cwd(),
       shell: false,
-      stdio: 'pipe',
+      stdio: 'inherit',
       env: { ...process.env, PORT: String(PORT) },
     });
-    await waitForServer(BASE_URL);
+    await waitForServer(`${BASE_URL}/test-proof-views?view=admin-home-en`);
   }
 
   const launchOptions = {

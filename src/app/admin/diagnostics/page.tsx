@@ -115,6 +115,13 @@ interface DiagnosticsData {
     description: string;
     present: boolean;
   }>;
+  demoDataContamination?: {
+    hasDemoData: boolean;
+    exampleEmailCount: number;
+    testOrderCount: number;
+    clientCrashCount: number;
+    details: string[];
+  };
   architectureAudit?: {
     dataStorageMatrix: Array<{ dataType: string; sourceOfTruth: string; browserStorage: string }>;
     ownerAssignmentPaths: Array<{ path: string; mechanism: string; enforcement: string; hardcodedFallbacks: string }>;
@@ -323,6 +330,42 @@ export default function AdminDiagnosticsPage() {
             </button>
           </div>
         </div>
+
+        {/* Demo / Test Data Contamination Warning Banner */}
+        {data?.demoDataContamination?.hasDemoData && (
+          <div className="bg-amber-500/15 border-2 border-amber-500/50 rounded-2xl p-5 text-amber-200 shadow-xl backdrop-blur">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h3 className="text-base font-bold text-amber-300">
+                    ⚠️ Demo &amp; Test Data Detected in Database
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                    CLEANUP REQUIRED
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                  The active database contains test submissions, simulated error traces, or test orders that do not represent real student tuition or real visitor inquiries:
+                </p>
+                <ul className="mt-2 text-xs font-mono text-amber-300/90 list-disc list-inside space-y-1">
+                  {data.demoDataContamination.details.map((detail, idx) => (
+                    <li key={idx}>{detail}</li>
+                  ))}
+                </ul>
+                <div className="mt-3 pt-3 border-t border-amber-500/20 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                  <span>Policy: Exclude all test purchases from revenue metrics and clean demo records in a transactional dry-run.</span>
+                  <Link
+                    href="/admin?tab=payments"
+                    className="text-amber-400 hover:text-amber-300 font-semibold underline underline-offset-2"
+                  >
+                    Open Payments &amp; Test Data Manager &rarr;
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Health Ping Feedback Banner */}
         {healthPingStatus && (

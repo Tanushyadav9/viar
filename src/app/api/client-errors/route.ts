@@ -25,27 +25,29 @@ export async function POST(req: NextRequest) {
       `Stack:\n${stack || 'No stack trace provided'}`
     );
 
-    // 2. Persist diagnostic trace to ActivityLog if database is available
-    try {
-      await prisma.activityLog.create({
-        data: {
-          action: 'CLIENT_CRASH_REPORTED',
-          entityType: 'CLIENT_ERROR',
-          entityId: String(digest || `err-${Date.now()}`),
-          reason: String(message || 'Unknown error').slice(0, 500),
-          details: {
-            name,
-            segment,
-            url,
-            digest,
-            userAgent,
-            timestamp,
-            stack: stack ? String(stack).slice(0, 2000) : null,
+    // 2. Persist diagnostic trace to ActivityLog if database is available and not running in test suite
+    if (process.env.NODE_ENV !== 'test') {
+      try {
+        await prisma.activityLog.create({
+          data: {
+            action: 'CLIENT_CRASH_REPORTED',
+            entityType: 'CLIENT_ERROR',
+            entityId: String(digest || `err-${Date.now()}`),
+            reason: String(message || 'Unknown error').slice(0, 500),
+            details: {
+              name,
+              segment,
+              url,
+              digest,
+              userAgent,
+              timestamp,
+              stack: stack ? String(stack).slice(0, 2000) : null,
+            },
           },
-        },
-      });
-    } catch {
-      // If DB write is temporarily degraded, server log above has already captured the report
+        });
+      } catch {
+        // If DB write is temporarily degraded, server log above has already captured the report
+      }
     }
 
     return NextResponse.json({ success: true, logged: true });

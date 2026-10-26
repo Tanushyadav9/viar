@@ -638,7 +638,7 @@ export function generateGroundedAssistantResponse(
   if (intent === 'contact_whatsapp') {
     if (language === 'hi') {
       return {
-        reply: `आप आचार्य नीरज कुमार जी एवं संस्थान से सीधे संपर्क कर सकते हैं:\n\n• व्हाट्सएप: +91 93112 15564\n• फोन कॉल: +91 93112 15564\n• ईमेल: aapkaastro1606@gmail.com\n• स्थान: नई दिल्ली, भारत\n\nनीचे दिए गए बटन पर क्लिक करके सीधे व्हाट्सएप पर चैट शुरू कर सकते हैं।`,
+        reply: `आप आचार्य नीरज कुमार जी एवं संस्थान से सीधे संपर्क कर सकते हैं:\n\n• व्हाट्सएप हेल्पलाइन: +91 93112 15564\n• फोन कॉल: +91 93112 15564\n• स्थान: ऑनलाइन संस्थान (नोएडा, उत्तर प्रदेश)\n\nनीचे दिए गए बटन पर क्लिक करके सीधे व्हाट्सएप पर चैट शुरू कर सकते हैं।`,
         language,
         intent,
         confidence: 'high',
@@ -647,7 +647,7 @@ export function generateGroundedAssistantResponse(
     }
     if (language === 'hinglish') {
       return {
-        reply: `Aap Acharya Niraj Kumar ji aur VIAR team se directly connect kar sakte hain:\n\n• WhatsApp: +91 93112 15564\n• Direct Call: +91 93112 15564\n• Email: aapkaastro1606@gmail.com\n• Location: New Delhi, India\n\nNeeche diye gaye buttons par click karke direct call ya WhatsApp kar sakte hain.`,
+        reply: `Aap Acharya Niraj Kumar ji aur VIAR team se directly connect kar sakte hain:\n\n• WhatsApp Helpline: +91 93112 15564\n• Direct Call: +91 93112 15564\n• Location: Online Institute (Noida, Uttar Pradesh)\n\nNeeche diye gaye buttons par click karke direct call ya WhatsApp kar sakte hain.`,
         language,
         intent,
         confidence: 'high',
@@ -655,7 +655,7 @@ export function generateGroundedAssistantResponse(
       };
     }
     return {
-      reply: `You can reach Acharya Niraj Kumar and the VIAR admissions desk directly:\n\n• WhatsApp: +91 93112 15564\n• Phone: +91 93112 15564\n• Email: aapkaastro1606@gmail.com\n• Campus Location: New Delhi, India\n\nFeel free to tap the buttons below for immediate direct communication.`,
+      reply: `You can reach Acharya Niraj Kumar and the VIAR admissions desk directly:\n\n• WhatsApp Helpline: +91 93112 15564\n• Phone: +91 93112 15564\n• Location: Online Institute (Noida, Uttar Pradesh, India)\n\nFeel free to tap the buttons below for immediate direct communication.`,
       language,
       intent,
       confidence: 'high',

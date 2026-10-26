@@ -121,6 +121,7 @@ export async function GET(req: NextRequest) {
             },
           },
           payment: true,
+          order: true,
         },
         orderBy: { enrolledAt: 'desc' },
       });
@@ -149,6 +150,39 @@ export async function GET(req: NextRequest) {
             certificateStatus = 'Eligible (Exam Passed)';
           }
 
+          const isTest = Boolean(
+            enr.order?.notes?.includes('[TEST_PURCHASE]') ||
+            enr.paymentReference?.includes('TEST') ||
+            enr.paymentReference?.includes('WALKTHROUGH') ||
+            enr.user?.name?.startsWith('[TEST]') ||
+            enr.user?.email?.includes('example.com')
+          );
+
+          let paymentMethod = 'Granted by Owner, no payment';
+          let displayAmount = 0;
+          let paymentReference = '—';
+
+          if (enr.order && enr.order.status === 'APPROVED') {
+            paymentMethod = 'UPI QR Code';
+            displayAmount = enr.order.amount || 5100;
+            paymentReference = enr.order.utr ? `UTR: ${enr.order.utr}` : enr.order.orderReference;
+          } else if (enr.payment && enr.payment.status === 'COMPLETED') {
+            paymentMethod = enr.payment.provider === 'UPI_QR' ? 'UPI QR Code' :
+                            enr.payment.provider === 'BANK_TRANSFER' ? 'Bank Transfer' :
+                            'Offline Payment';
+            displayAmount = enr.payment.amount || 0;
+            paymentReference = enr.payment.providerReference || '—';
+          } else if (enr.amountPaid > 0 && enr.paymentReference && !enr.paymentReference.startsWith('MANUAL') && !enr.paymentReference.startsWith('OWNER') && !enr.paymentReference.startsWith('VIAR-ORD-WALKTHROUGH')) {
+            paymentMethod = 'Offline Payment';
+            displayAmount = enr.amountPaid;
+            paymentReference = enr.paymentReference;
+          } else {
+            // Manual grant by Owner without an actual recorded payment
+            paymentMethod = 'Granted by Owner, no payment';
+            displayAmount = 0;
+            paymentReference = '—';
+          }
+
           return {
             id: enr.id,
             studentId: enr.userId,
@@ -158,15 +192,16 @@ export async function GET(req: NextRequest) {
             courseId: associatedCourse?.id || 'course-what-is-astrology',
             courseTitle: associatedCourse?.title || 'The Ultimate Vedic Astrology Course',
             cohortId: enr.cohortId || '',
-            cohortBatchName: enr.cohort?.batchName || 'Self-Paced Access',
+            cohortBatchName: enr.cohort?.batchName || 'Recorded modules and 1-on-1 sessions',
             enrolledAt: enr.enrolledAt ? enr.enrolledAt.toISOString() : new Date().toISOString(),
-            amountPaid: enr.amountPaid ?? 5100,
-            paymentAmount: enr.amountPaid ?? 5100,
+            amountPaid: displayAmount,
+            paymentAmount: displayAmount,
             currency: enr.currency || 'INR',
             paymentStatus: enr.status || 'ACTIVE',
-            paymentReference: enr.paymentReference || enr.payment?.providerReference || 'Direct Tuition',
-            paymentId: enr.paymentReference || enr.payment?.providerReference || enr.id,
-            paymentMethod: enr.payment?.provider ? `${enr.payment.provider}` : 'Offline / Manual Direct',
+            paymentReference,
+            paymentId: paymentReference !== '—' ? paymentReference : enr.id,
+            paymentMethod,
+            isTest,
             progressPercentage,
             completedLessonsCount,
             totalLessonsCount: totalLessonsInCourse,

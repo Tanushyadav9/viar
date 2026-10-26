@@ -5,6 +5,11 @@ export interface UnifiedAdminStats {
   approvedOrdersCount: number;
   totalStudents: number;
   totalActiveEnrollments: number;
+  totalRosterStudentsCount: number;
+  totalApprovedOrdersCount: number;
+  testOrdersExcludedCount: number;
+  testEnrollmentsExcludedCount: number;
+  testRecordsExcludedCount: number;
   completionRate: number;
   certificatesIssued: number;
   totalExamAttempts: number;
@@ -45,6 +50,12 @@ export async function getUnifiedAdminStats(): Promise<UnifiedAdminStats> {
     const totalRevenueInr = revenueAggregate._sum.amount || 0;
     const approvedOrdersCount = revenueAggregate._count.id;
 
+    // 1b. Test orders count excluded from live revenue
+    const totalApprovedOrdersCount = await prisma.order.count({
+      where: { status: 'APPROVED' },
+    });
+    const testOrdersExcludedCount = Math.max(0, totalApprovedOrdersCount - approvedOrdersCount);
+
     // 2. Students strictly from real non-test ACTIVE enrollments
     const distinctActiveStudents = await prisma.enrollment.findMany({
       where: {
@@ -63,6 +74,29 @@ export async function getUnifiedAdminStats(): Promise<UnifiedAdminStats> {
       distinct: ['userId'],
     });
     const totalStudents = distinctActiveStudents.length;
+
+    // 2b. Total roster students and test enrollments excluded
+    const allRosterEnrollments = await prisma.enrollment.findMany({
+      where: { status: 'ACTIVE' },
+      select: {
+        userId: true,
+        order: { select: { notes: true } },
+        user: { select: { isOwner: true, email: true, name: true } },
+      },
+      distinct: ['userId'],
+    });
+    const totalRosterStudentsCount = allRosterEnrollments.length;
+    const testEnrollmentsExcludedCount = allRosterEnrollments.filter((e) =>
+      Boolean(
+        e.user?.isOwner ||
+        (e.user?.email && e.user.email.toLowerCase() === ownerEmail) ||
+        (e.user?.name && e.user.name.startsWith('[TEST]')) ||
+        (e.order?.notes && e.order.notes.includes('[TEST_PURCHASE]'))
+      )
+    ).length;
+
+    const testRecordsExcludedCount = testOrdersExcludedCount + testEnrollmentsExcludedCount;
+
     const totalActiveEnrollments = await prisma.enrollment.count({
       where: { status: 'ACTIVE' },
     });
@@ -93,6 +127,11 @@ export async function getUnifiedAdminStats(): Promise<UnifiedAdminStats> {
       approvedOrdersCount,
       totalStudents,
       totalActiveEnrollments,
+      totalRosterStudentsCount,
+      totalApprovedOrdersCount,
+      testOrdersExcludedCount,
+      testEnrollmentsExcludedCount,
+      testRecordsExcludedCount,
       completionRate,
       certificatesIssued,
       totalExamAttempts,
@@ -108,6 +147,11 @@ export async function getUnifiedAdminStats(): Promise<UnifiedAdminStats> {
       approvedOrdersCount: 0,
       totalStudents: 0,
       totalActiveEnrollments: 0,
+      totalRosterStudentsCount: 0,
+      totalApprovedOrdersCount: 0,
+      testOrdersExcludedCount: 0,
+      testEnrollmentsExcludedCount: 0,
+      testRecordsExcludedCount: 0,
       completionRate: 0,
       certificatesIssued: 0,
       totalExamAttempts: 0,
