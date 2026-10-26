@@ -25,6 +25,7 @@ import {
   Check,
 } from 'lucide-react';
 import Link from 'next/link';
+import AdminProofScreens from './AdminProofScreens';
 
 type ViewMode =
   | 'error-light'
@@ -41,7 +42,27 @@ type ViewMode =
   | 'proof-7-completed-session'
   | 'proof-8-reminder-idempotence'
   | 'proof-9-calendar-feed'
-  | 'proof-10-join-button';
+  | 'proof-10-join-button'
+  | 'admin-home-en'
+  | 'admin-home-hi'
+  | 'admin-course-en'
+  | 'admin-course-hi'
+  | 'admin-students-en'
+  | 'admin-students-hi'
+  | 'admin-payments-en'
+  | 'admin-payments-hi'
+  | 'admin-sessions-en'
+  | 'admin-sessions-hi'
+  | 'admin-questions-en'
+  | 'admin-questions-hi'
+  | 'admin-content-en'
+  | 'admin-content-hi'
+  | 'admin-settings-en'
+  | 'admin-settings-hi'
+  | 'admin-readiness-modal-en'
+  | 'admin-readiness-modal-hi'
+  | 'admin-testdata-modal-en'
+  | 'admin-testdata-modal-hi';
 
 export default function TestProofViewsPage() {
   const [view, setView] = useState<ViewMode>('proof-1-owner-sessions');
@@ -1179,6 +1200,9 @@ export default function TestProofViewsPage() {
             </div>
           </div>
         </div>
+      )}
+      {view.startsWith('admin-') && (
+        <AdminProofScreens view={view} />
       )}
     </div>
   );

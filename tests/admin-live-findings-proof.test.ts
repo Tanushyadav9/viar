@@ -106,13 +106,13 @@ describe('Admin Live Findings 1-16 & Launch Readiness Test Suite', () => {
   // =========================================================================
   describe('3. Date Rendering & Epoch Guard', () => {
     it('renders "Not scheduled" for epoch timestamp 0 (1 Jan 1970 00:00:00 GMT)', () => {
-      const epochDate = new Date(0);
+      const epochDate = new Date(0).toISOString();
       const rendered = formatSessionIST(epochDate);
       assert.strictEqual(rendered, 'Not scheduled');
     });
 
     it('renders "Not scheduled" for timestamps <= 86400000 (Day 1 epoch range)', () => {
-      const epochDay1 = new Date(19800000); // 5:30 AM IST on Jan 1 1970
+      const epochDay1 = new Date(19800000).toISOString(); // 5:30 AM IST on Jan 1 1970
       const rendered = formatInTimezone(epochDay1, 'Asia/Kolkata');
       assert.strictEqual(rendered, 'Not scheduled');
     });
@@ -123,7 +123,7 @@ describe('Admin Live Findings 1-16 & Launch Readiness Test Suite', () => {
     });
 
     it('renders real formatted date string for valid scheduled date in 2026', () => {
-      const validDate = new Date('2026-10-28T15:00:00Z');
+      const validDate = new Date('2026-10-28T15:00:00Z').toISOString();
       const rendered = formatSessionIST(validDate);
       assert.match(rendered, /2026/);
       assert.match(rendered, /pm/i);
