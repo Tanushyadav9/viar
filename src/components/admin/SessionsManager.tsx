@@ -700,7 +700,7 @@ export default function SessionsManager({
               {isLoading && <span className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />}
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Full scheduling, calendar telemetry, and clash protection for individual scholars. Schedule separate weekly series, inspect student request inboxes, and export your private calendar feed.
+              Manage 1-on-1 personal classes, calendar sync, and clash protection for your students. Schedule weekly classes, answer student requests, and export your private calendar feed.
             </p>
           </div>
 
@@ -1881,7 +1881,7 @@ export default function SessionsManager({
                   <h3 className="text-lg font-bold text-white">Transactional Email Outbox</h3>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
-                  Automatic retry queue and delivery telemetry for scheduled sessions, schedule adjustments, cancellations, and 24h / 1h pre-class reminders.
+                  Automatic retry queue and delivery status for scheduled sessions, schedule adjustments, cancellations, and 24h / 1h pre-class reminders.
                 </p>
               </div>
               <button

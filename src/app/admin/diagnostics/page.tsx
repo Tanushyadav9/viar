@@ -23,6 +23,7 @@ import {
   ArrowLeft,
   Globe,
   UserCheck,
+  Video,
 } from 'lucide-react';
 import { isSiteOwner } from '@/lib/auth/permissions';
 import { User } from '@/lib/types';
@@ -75,6 +76,8 @@ interface DiagnosticsData {
     lessons: number;
     cohorts: number;
     classSessions: number;
+    studentSessions?: number;
+    sessionRequests?: number;
     enrollments: number;
     sessionProgress: number;
     quizzes: number;
@@ -157,7 +160,7 @@ export default function AdminDiagnosticsPage() {
     } catch (err: unknown) {
       setPageStatus('error');
       setErrorType('server');
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to load telemetry.');
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to load diagnostics.');
     } finally {
       setLoading(false);
     }
@@ -293,10 +296,10 @@ export default function AdminDiagnosticsPage() {
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
               <Activity className="w-7 h-7 text-amber-400 animate-pulse" />
-              <span>Infrastructure Diagnostics & Telemetry</span>
+              <span>Infrastructure Diagnostics &amp; System Health</span>
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Live telemetry: Clerk key modes, server sessions, Neon PostgreSQL connectivity, and applied migrations.
+              Live system status: Clerk key modes, server sessions, Neon PostgreSQL connectivity, and applied migrations.
             </p>
           </div>
 
@@ -316,7 +319,7 @@ export default function AdminDiagnosticsPage() {
               className="gold-button px-4 py-2 rounded-xl text-xs font-bold shadow-lg transition flex items-center gap-2"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              <span>Refresh Telemetry</span>
+              <span>Refresh Status</span>
             </button>
           </div>
         </div>
@@ -604,7 +607,7 @@ export default function AdminDiagnosticsPage() {
               { label: 'Courses', count: data?.tableCounts?.courses ?? 0, icon: BookOpen, key: 'courses' },
               { label: 'Modules', count: data?.tableCounts?.modules ?? 0, icon: Layers, key: 'modules' },
               { label: 'Lessons', count: data?.tableCounts?.lessons ?? 0, icon: BookOpen, key: 'lessons' },
-              { label: 'Cohorts', count: data?.tableCounts?.cohorts ?? 0, icon: Users, key: 'cohorts' },
+              { label: '1-on-1 Sessions', count: data?.tableCounts?.studentSessions ?? data?.tableCounts?.cohorts ?? 0, icon: Video, key: 'studentSessions' },
               { label: 'Classes', count: data?.tableCounts?.classSessions ?? 0, icon: Clock, key: 'classSessions' },
               { label: 'Enrollments', count: data?.tableCounts?.enrollments ?? 0, icon: Award, key: 'enrollments' },
               { label: 'Progress', count: data?.tableCounts?.sessionProgress ?? 0, icon: Activity, key: 'sessionProgress' },
@@ -635,7 +638,7 @@ export default function AdminDiagnosticsPage() {
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <Users className="w-5 h-5 text-amber-400" />
-                <span>Last 5 Registered Users (Telemetry)</span>
+                <span>Last 5 Registered Users</span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
                 Emails are strictly masked to preserve confidentiality (e.g. <code>a***6@gmail.com</code>).

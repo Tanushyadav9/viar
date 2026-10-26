@@ -111,7 +111,7 @@ export default function StudentProfileView({
     return (
       <div className="p-8 text-center text-slate-400">
         <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs">Loading scholar profile, enrollment telemetry & live sessions...</p>
+        <p className="text-xs">Loading student profile, enrollment details &amp; 1-on-1 personal classes...</p>
       </div>
     );
   }
@@ -238,7 +238,7 @@ export default function StudentProfileView({
         )}
       </div>
 
-      {/* 3. Academic Telemetry Grid: Progress & Quiz Results */}
+      {/* 3. Learning Progress & Quiz Results */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Module Progress */}
         <div className="cosmic-card p-5 rounded-2xl border border-white/10 space-y-3">

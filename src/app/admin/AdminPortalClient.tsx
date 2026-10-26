@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Video,
-  Calendar,
   Edit,
   Plus,
   Users,
@@ -1087,7 +1086,7 @@ export default function AdminPortalClient({
             </h1>
             <p className="text-xs text-slate-400 mt-1">
               {isOwner
-                ? 'Full administrative control over courses, 1-on-1 personal live sessions, student roster, financial telemetry, and staff delegations.'
+                ? 'Manage courses, 1-on-1 personal classes, enrolled students, payments, and team access.'
                 : `Section-restricted console. You currently have access to: ${allowedSections.map((s) => ADMIN_SECTIONS_META[s]?.shortTitle).join(', ') || 'None'}.`}
             </p>
           </div>
@@ -1233,7 +1232,6 @@ export default function AdminPortalClient({
                 {sec === 'media' && <ImageIcon className="w-4 h-4 text-sky-400" />}
                 {sec === 'courses' && <BookOpen className="w-4 h-4" />}
                 {sec === 'sessions' && <Video className="w-4 h-4 text-amber-400" />}
-                {sec === 'cohorts' && <Calendar className="w-4 h-4" />}
                 {sec === 'students' && <Users className="w-4 h-4" />}
                 {sec === 'quizzes' && <Award className="w-4 h-4" />}
                 {sec === 'analytics' && <BarChart3 className="w-4 h-4" />}
@@ -1529,7 +1527,7 @@ export default function AdminPortalClient({
               descriptionHi="पंजीकृत विद्यार्थियों की सूची देखें, पाठ्यक्रम पूर्णता प्रगति जांचें या मैन्युअल रूप से कोर्स एक्सेस दें। मैन्युअल प्रवेश देते समय ऑडिट कारण अनिवार्य रूप से दर्ज किया जाता है।"
               tipsEn={[
                 'Search by student name or email in the search bar.',
-                'Click "Add Student Manually" to grant immediate access for scholarship or offline bank transfer.',
+                'Click "Add Student by Email" to directly grant access for offline payment or scholarship.',
               ]}
               tipsHi={[
                 'सर्च बार में विद्यार्थी के नाम या ईमेल से खोजें।',
@@ -1554,7 +1552,7 @@ export default function AdminPortalClient({
                 className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 self-start"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add Student Manually</span>
+                <span>Add Student by Email</span>
               </button>
             </div>
 
@@ -1957,7 +1955,7 @@ export default function AdminPortalClient({
                                 {ord.course?.title || 'What is Astrology'}
                               </p>
                               <p className="text-[10px] text-amber-400">
-                                {ord.cohort?.batchName || 'Masterclass Cohort'}
+                                1-on-1 Mentorship &amp; Video Modules
                               </p>
                             </td>
 
@@ -2130,7 +2128,7 @@ export default function AdminPortalClient({
               <div>
                 <h3 className="text-lg font-bold text-white">Quizzes, Exams & Official Certificate Registry</h3>
                 <p className="text-xs text-slate-400">
-                  Issued certificates with cryptographic verification codes. Publicly verifiable at viar.in/verify.
+                  Issued certificates with unique verification codes. Publicly verifiable online at viar.in/verify.
                 </p>
               </div>
             </div>
@@ -2182,7 +2180,7 @@ export default function AdminPortalClient({
           </div>
         )}
 
-        {/* TAB: ANALYTICS & PLATFORM TELEMETRY */}
+        {/* TAB: ANALYTICS & LEARNING PROGRESS */}
         {isCurrentTabAllowed && activeTab === 'analytics' && (
           <div className="space-y-6">
             {/* Non-technical Help Panel */}
@@ -2190,15 +2188,15 @@ export default function AdminPortalClient({
               <div className="flex items-start gap-2.5">
                 <HelpCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <p className="text-xs text-slate-300">
-                  <strong className="text-amber-300">💡 How to view analytics:</strong> Monitor student engagement video watch progress, and certification pass rates in real time.
+                  <strong className="text-amber-300">💡 How to view analytics:</strong> Monitor student course completion, video watch progress, and quiz pass rates in real time.
                 </p>
               </div>
             </div>
 
             <div className="cosmic-card p-6 rounded-2xl border border-white/10">
-              <h3 className="text-lg font-bold text-white mb-1">Platform Telemetry & Academic Analytics</h3>
+              <h3 className="text-lg font-bold text-white mb-1">Analytics &amp; Learning Progress</h3>
               <p className="text-xs text-slate-400 mb-6">
-                Real-time tracking of student completion, live lecture attendance, and quiz pass rates.
+                Real-time tracking of student completion, 1-on-1 session attendance, and quiz pass rates.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -2259,12 +2257,12 @@ export default function AdminPortalClient({
 
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <h4 className="font-bold text-white text-sm mb-2">Student Reviews & Trust Indicators</h4>
-                  <p className="text-xs text-slate-400 mb-3">Direct UPI verification active • Cryptographic certificate validation</p>
+                  <p className="text-xs text-slate-400 mb-3">Direct UPI verification active • Online certificate verification enabled</p>
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-1 rounded bg-amber-400/20 text-amber-300 text-xs font-bold">
                       ✓ System Active
                     </span>
-                    <span className="text-xs text-slate-400">{certificates.length} Cryptographic Certificate{certificates.length === 1 ? "" : "s"} Issued</span>
+                    <span className="text-xs text-slate-400">{certificates.length} Authentic Certificate{certificates.length === 1 ? "" : "s"} Issued</span>
                   </div>
                 </div>
               </div>
@@ -2360,19 +2358,18 @@ export default function AdminPortalClient({
                     <tr>
                       <th className="px-6 py-4">Staff Member</th>
                       <th className="px-3 py-4 text-center">Access Level</th>
-                      <th className="px-3 py-4 text-center">Courses</th>
-                      <th className="px-3 py-4 text-center">Cohorts</th>
-                      <th className="px-3 py-4 text-center">Students</th>
-                      <th className="px-3 py-4 text-center">Quizzes</th>
-                      <th className="px-3 py-4 text-center">Analytics</th>
-                      <th className="px-3 py-4 text-center">Payments</th>
+                      {VIAR_SECTIONS.map((sec) => (
+                        <th key={sec} className="px-3 py-4 text-center">
+                          {ADMIN_SECTIONS_META[sec]?.shortTitle || sec}
+                        </th>
+                      ))}
                       <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {staffUsers.filter(u => !u.isOwner).length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-6 py-8 text-center text-slate-500">
+                        <td colSpan={VIAR_SECTIONS.length + 3} className="px-6 py-8 text-center text-slate-500">
                           No delegated staff members yet. Click &quot;Add Staff Member&quot; to assign your first employee.
                         </td>
                       </tr>
@@ -2612,9 +2609,9 @@ export default function AdminPortalClient({
         {isManualEnrollOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-[#0f172a] border border-amber-500/40 rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
-              <h3 className="text-lg font-bold text-white mb-1">Manual Student Enrollment</h3>
+              <h3 className="text-lg font-bold text-white mb-1">Direct Student Enrollment (Add by Email)</h3>
               <p className="text-xs text-slate-400 mb-6">
-                Grant offline or scholarship access to the course.
+                Grant direct course access for offline payment or ashram registration.
               </p>
 
               <form onSubmit={handleManualEnroll} className="space-y-4 text-xs">
