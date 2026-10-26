@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerAuthUser, canAccessSection } from '@/lib/auth/serverAuth';
+import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { regenerateCalendarFeedToken, getCalendarFeedToken } from '@/lib/sessions/calendarFeed';
 
 export const dynamic = 'force-dynamic';
@@ -7,8 +7,11 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const auth = await getServerAuthUser();
-    if (!auth.isAuthenticated || (!auth.isOwner && !canAccessSection(auth, 'sessions'))) {
-      return NextResponse.json({ error: 'Unauthorized: sessions access required' }, { status: 403 });
+    if (!auth.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized: login required' }, { status: 401 });
+    }
+    if (!auth.isOwner) {
+      return NextResponse.json({ error: 'Forbidden: only the Owner can access the private calendar feed' }, { status: 403 });
     }
 
     const token = getCalendarFeedToken();
@@ -29,8 +32,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const auth = await getServerAuthUser();
-    if (!auth.isAuthenticated || (!auth.isOwner && !canAccessSection(auth, 'sessions'))) {
-      return NextResponse.json({ error: 'Unauthorized: sessions access required' }, { status: 403 });
+    if (!auth.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized: login required' }, { status: 401 });
+    }
+    if (!auth.isOwner) {
+      return NextResponse.json({ error: 'Forbidden: only the Owner can regenerate the private calendar feed token' }, { status: 403 });
     }
 
     const newToken = regenerateCalendarFeedToken();

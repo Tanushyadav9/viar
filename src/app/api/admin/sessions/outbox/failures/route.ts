@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
+import { getServerAuthUser, canAccessSection } from '@/lib/auth/serverAuth';
 import { listFailedEmails } from '@/lib/sessions/outboxService';
 
 export async function GET() {
@@ -9,8 +9,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized: login required' }, { status: 401 });
     }
 
-    if (!auth.isOwner && !isAuthorizedForSection(auth, 'sessions', 'VIEW')) {
-      return NextResponse.json({ error: 'Forbidden: Owner or staff access required' }, { status: 403 });
+    if (!auth.isOwner && !canAccessSection(auth, 'sessions')) {
+      return NextResponse.json({ error: 'Forbidden: sessions permission required' }, { status: 403 });
     }
 
     const failures = await listFailedEmails();

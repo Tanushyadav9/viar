@@ -7,8 +7,11 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const auth = await getServerAuthUser();
-    if (!auth.isAuthenticated || (!auth.isOwner && !canAccessSection(auth, 'sessions'))) {
-      return NextResponse.json({ error: 'Unauthorized: sessions access required' }, { status: 403 });
+    if (!auth.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized: login required' }, { status: 401 });
+    }
+    if (!auth.isOwner && !canAccessSection(auth, 'sessions')) {
+      return NextResponse.json({ error: 'Forbidden: explicit sessions permission required' }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);

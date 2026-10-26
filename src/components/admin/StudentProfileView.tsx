@@ -64,6 +64,7 @@ interface StudentProfileViewProps {
   onBack: () => void;
   onScheduleSession: (student: { id: string; name: string; email: string; phone?: string | null; timezone?: string }) => void;
   onOpenAttendanceModal: (session: StudentSessionRecord) => void;
+  isOwner?: boolean;
 }
 
 export default function StudentProfileView({
@@ -71,6 +72,7 @@ export default function StudentProfileView({
   onBack,
   onScheduleSession,
   onOpenAttendanceModal,
+  isOwner = true,
 }: StudentProfileViewProps) {
   const [data, setData] = useState<StudentData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -147,21 +149,23 @@ export default function StudentProfileView({
           <span>Back to Students Roster / छात्र सूची</span>
         </button>
 
-        <button
-          onClick={() =>
-            onScheduleSession({
-              id: student.id,
-              name: student.name,
-              email: student.email,
-              phone: student.phone,
-              timezone: studentTz,
-            })
-          }
-          className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Schedule a session / व्यक्तिगत सत्र तय करें</span>
-        </button>
+        {isOwner && (
+          <button
+            onClick={() =>
+              onScheduleSession({
+                id: student.id,
+                name: student.name,
+                email: student.email,
+                phone: student.phone,
+                timezone: studentTz,
+              })
+            }
+            className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Schedule a session / व्यक्तिगत सत्र तय करें</span>
+          </button>
+        )}
       </div>
 
       {/* 2. Scholar Profile Card */}
@@ -349,7 +353,7 @@ export default function StudentProfileView({
             <div className="text-center py-8 text-slate-500 text-xs space-y-3">
               <Calendar className="w-8 h-8 text-slate-600 mx-auto" />
               <p>No {activeSessionTab.toLowerCase()} 1-on-1 sessions found for {student.name}.</p>
-              {activeSessionTab === 'UPCOMING' && (
+              {isOwner && activeSessionTab === 'UPCOMING' && (
                 <button
                   onClick={() =>
                     onScheduleSession({

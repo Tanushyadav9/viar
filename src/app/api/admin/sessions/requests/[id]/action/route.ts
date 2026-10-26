@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerAuthUser, canAccessSection } from '@/lib/auth/serverAuth';
+import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import {
   resolveSessionRequest,
   createStudentSessionWithValidation,
@@ -14,8 +14,11 @@ export async function POST(
 ) {
   try {
     const auth = await getServerAuthUser();
-    if (!auth.isAuthenticated || (!auth.isOwner && !canAccessSection(auth, 'sessions'))) {
-      return NextResponse.json({ error: 'Unauthorized: sessions access required' }, { status: 403 });
+    if (!auth.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized: login required' }, { status: 401 });
+    }
+    if (!auth.isOwner) {
+      return NextResponse.json({ error: 'Forbidden: only the Owner can schedule, propose, or decline requests' }, { status: 403 });
     }
 
     const requestId = params.id;

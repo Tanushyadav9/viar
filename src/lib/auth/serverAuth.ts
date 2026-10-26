@@ -176,7 +176,7 @@ export async function getServerAuthUser(): Promise<ServerAuthResult> {
     if (isOwner) {
       role = 'OWNER';
       isStaff = true;
-      staffSections = ['content', 'media', 'courses', 'cohorts', 'students', 'quizzes', 'analytics', 'payments', 'staff'];
+      staffSections = ['content', 'media', 'courses', 'cohorts', 'sessions', 'students', 'quizzes', 'analytics', 'payments', 'staff'];
     } else {
       // Query active StaffPermission records from Neon PostgreSQL
       if (dbUser) {

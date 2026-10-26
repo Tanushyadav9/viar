@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
+import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { retryFailedEmail } from '@/lib/sessions/outboxService';
 
 export async function POST(req: NextRequest) {
@@ -9,8 +9,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: login required' }, { status: 401 });
     }
 
-    if (!auth.isOwner && !isAuthorizedForSection(auth, 'sessions', 'EDIT')) {
-      return NextResponse.json({ error: 'Forbidden: Owner or staff edit permission required' }, { status: 403 });
+    if (!auth.isOwner) {
+      return NextResponse.json({ error: 'Forbidden: only the Owner can retry failed email dispatches' }, { status: 403 });
     }
 
     const body = await req.json();

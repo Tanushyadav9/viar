@@ -8,6 +8,7 @@ import type {
   SessionHistoryLogRecord,
   CourseSessionSettings,
   SessionStatus,
+  SessionMeetingPlatform,
   PreferredTimeWindow,
 } from './types';
 
@@ -593,6 +594,85 @@ export async function listStudentSessions(options: {
   list.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   if (options.limit && options.limit > 0) list = list.slice(0, options.limit);
   return list;
+}
+
+export async function getStudentSessionById(id: string): Promise<StudentSessionRecord | null> {
+  try {
+    interface SessionDelegateRow {
+      id: string;
+      enrollmentId: string;
+      studentId: string;
+      student?: { name?: string | null; email?: string | null; phone?: string | null } | null;
+      courseId: string;
+      course?: { title?: string | null } | null;
+      moduleId?: string | null;
+      module?: { title?: string | null } | null;
+      lessonId?: string | null;
+      lesson?: { title?: string | null } | null;
+      title: string;
+      startTime: Date | string;
+      duration: number;
+      meetingLink?: string | null;
+      meetingPlatform: string;
+      status: SessionStatus;
+      privateNotes?: string | null;
+      sharedNotes?: string | null;
+      homework?: string | null;
+      recordingUrl?: string | null;
+      createdByUserId: string;
+      createdByUser?: { name?: string | null } | null;
+      createdAt: Date | string;
+      updatedAt: Date | string;
+    }
+
+    const delegate = (prisma as unknown as { studentSession?: { findUnique: (args: unknown) => Promise<SessionDelegateRow | null> } }).studentSession;
+    if (delegate) {
+      const s = await delegate.findUnique({
+        where: { id },
+        include: {
+          student: { select: { id: true, name: true, email: true, phone: true } },
+          course: { select: { id: true, title: true } },
+          module: { select: { id: true, title: true } },
+          lesson: { select: { id: true, title: true } },
+          createdByUser: { select: { id: true, name: true } },
+        },
+      });
+
+      if (s) {
+        return {
+          id: s.id,
+          enrollmentId: s.enrollmentId,
+          studentId: s.studentId,
+          studentName: s.student?.name || 'Student',
+          studentEmail: s.student?.email || '',
+          studentPhone: s.student?.phone || '',
+          courseId: s.courseId,
+          courseTitle: s.course?.title || 'Foundations of Vedic Astrology (Jyotish)',
+          moduleId: s.moduleId || null,
+          moduleTitle: s.module?.title || null,
+          lessonId: s.lessonId || null,
+          lessonTitle: s.lesson?.title || null,
+          title: s.title,
+          startTime: s.startTime instanceof Date ? s.startTime.toISOString() : s.startTime,
+          duration: s.duration,
+          meetingLink: s.meetingLink || null,
+          meetingPlatform: s.meetingPlatform as SessionMeetingPlatform,
+          status: s.status as SessionStatus,
+          privateNotes: s.privateNotes || null,
+          sharedNotes: s.sharedNotes || null,
+          homework: s.homework || null,
+          recordingUrl: s.recordingUrl || null,
+          createdByUserId: s.createdByUserId,
+          createdByName: s.createdByUser?.name || 'Acharya Niraj Kumar',
+          createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
+          updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : s.updatedAt,
+        };
+      }
+    }
+  } catch {}
+
+  initializeDefaults();
+  return _memoryStudentSessions.get(id) || null;
 }
 
 export async function updateStudentSession(

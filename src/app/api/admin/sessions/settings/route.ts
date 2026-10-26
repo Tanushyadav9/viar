@@ -10,8 +10,11 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const auth = await getServerAuthUser();
-    if (!auth.isAuthenticated || (!auth.isOwner && !canAccessSection(auth, 'sessions'))) {
-      return NextResponse.json({ error: 'Unauthorized: sessions access required' }, { status: 403 });
+    if (!auth.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized: login required' }, { status: 401 });
+    }
+    if (!auth.isOwner && !canAccessSection(auth, 'sessions')) {
+      return NextResponse.json({ error: 'Forbidden: explicit sessions permission required' }, { status: 403 });
     }
 
     const settings = await getCourseSessionSettings('course-what-is-astrology');
@@ -29,8 +32,11 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const auth = await getServerAuthUser();
-    if (!auth.isAuthenticated || (!auth.isOwner && !canAccessSection(auth, 'sessions'))) {
-      return NextResponse.json({ error: 'Unauthorized: sessions access required' }, { status: 403 });
+    if (!auth.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized: login required' }, { status: 401 });
+    }
+    if (!auth.isOwner) {
+      return NextResponse.json({ error: 'Forbidden: only the Owner can update session settings' }, { status: 403 });
     }
 
     const body = await req.json();

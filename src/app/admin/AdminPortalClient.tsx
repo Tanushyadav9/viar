@@ -1503,7 +1503,7 @@ export default function AdminPortalClient({
 
         {/* TAB: SESSIONS (1-on-1 Personal Live Classes) */}
         {isCurrentTabAllowed && activeTab === 'sessions' && (
-          <SessionsManager />
+          <SessionsManager isOwner={isOwner} />
         )}
 
         {/* TAB: STUDENTS / ROSTER */}
@@ -1511,6 +1511,7 @@ export default function AdminPortalClient({
           selectedStudentId ? (
             <StudentProfileView
               studentId={selectedStudentId}
+              isOwner={isOwner}
               onBack={() => setSelectedStudentId(null)}
               onScheduleSession={() => {
                 setActiveTab('sessions');

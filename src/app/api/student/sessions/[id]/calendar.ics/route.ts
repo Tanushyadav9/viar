@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { verifyUserCourseAccess } from '@/lib/auth/course-access';
-import { listStudentSessions } from '@/lib/sessions/oneOnOneService';
+import { getStudentSessionById } from '@/lib/sessions/oneOnOneService';
 import { generateStudentSessionICal } from '@/lib/sessions/calendarFeed';
 
 export async function GET(
@@ -22,12 +22,18 @@ export async function GET(
     const studentId = access.userId || auth.userId;
     const sessionId = params.id;
 
-    // Fetch student's sessions only
-    const sessions = await listStudentSessions({ studentId });
-    const targetSession = sessions.find((s) => s.id === sessionId);
+    // Fetch session by id and enforce strict student ownership
+    const targetSession = await getStudentSessionById(sessionId);
 
     if (!targetSession) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
+
+    if (targetSession.studentId !== studentId) {
+      return NextResponse.json(
+        { error: 'Forbidden: you can only download calendar for your own sessions' },
+        { status: 403 }
+      );
     }
 
     const icsContent = generateStudentSessionICal({

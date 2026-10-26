@@ -3,7 +3,7 @@ import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { verifyUserCourseAccess } from '@/lib/auth/course-access';
 import {
   createSessionRequest,
-  listStudentSessions,
+  getStudentSessionById,
   updateStudentSession,
   getCourseSessionSettings,
 } from '@/lib/sessions/oneOnOneService';
@@ -60,13 +60,19 @@ export async function POST(req: NextRequest) {
       }
 
       // Security check: verify this session belongs strictly to THIS student
-      const studentSessions = await listStudentSessions({ studentId });
-      const targetSession = studentSessions.find((s) => s.id === body.studentSessionId);
+      const targetSession = await getStudentSessionById(body.studentSessionId);
 
       if (!targetSession) {
         return NextResponse.json(
-          { error: 'Session not found or does not belong to your account' },
+          { error: 'Session not found' },
           { status: 404 }
+        );
+      }
+
+      if (targetSession.studentId !== studentId) {
+        return NextResponse.json(
+          { error: 'Forbidden: you cannot reschedule another student\'s session' },
+          { status: 403 }
         );
       }
 

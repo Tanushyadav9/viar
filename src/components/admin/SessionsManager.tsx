@@ -60,11 +60,13 @@ export { FLAGSHIP_23_MODULES };
 interface SessionsManagerProps {
   initialStudentId?: string;
   initialScheduleOpen?: boolean;
+  isOwner?: boolean;
 }
 
 export default function SessionsManager({
   initialStudentId,
   initialScheduleOpen = false,
+  isOwner: initialIsOwner = true,
 }: SessionsManagerProps) {
   // Main Navigation within Sessions
   const [activeMainTab, setActiveMainTab] = useState<'CALENDAR' | 'REQUESTS'>('CALENDAR');
@@ -73,6 +75,7 @@ export default function SessionsManager({
   const [calendarViewMode, setCalendarViewMode] = useState<'LIST' | 'WEEK'>('LIST');
 
   // State
+  const [isOwner, setIsOwner] = useState(initialIsOwner);
   const [sessions, setSessions] = useState<ExtendedSession[]>([]);
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [requests, setRequests] = useState<SessionRequestRecord[]>([]);
@@ -164,6 +167,9 @@ export default function SessionsManager({
       const res = await fetch('/api/admin/sessions');
       if (res.ok) {
         const data = await res.json();
+        if (typeof data.isOwner === 'boolean') {
+          setIsOwner(data.isOwner);
+        }
         setSessions(data.sessions || []);
         setStudents(data.students || []);
         if (data.courseSettings) {
@@ -654,21 +660,25 @@ export default function SessionsManager({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => handleOpenScheduleModal()}
-              className="gold-button px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-lg shadow-amber-500/20"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Schedule a session</span>
-            </button>
+            {isOwner && (
+              <button
+                onClick={() => handleOpenScheduleModal()}
+                className="gold-button px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-lg shadow-amber-500/20"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Schedule a session</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setShowSettingsModal(true)}
-              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition"
-            >
-              <Settings className="w-4 h-4 text-slate-400" />
-              <span>Session Policies</span>
-            </button>
+            {isOwner && (
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition"
+              >
+                <Settings className="w-4 h-4 text-slate-400" />
+                <span>Session Policies</span>
+              </button>
+            )}
 
             <button
               onClick={() => setShowOutboxModal(true)}
@@ -688,6 +698,19 @@ export default function SessionsManager({
             </button>
           </div>
         </div>
+
+        {/* Staff View Only Notice */}
+        {!isOwner && (
+          <div className="mt-4 p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center gap-3 text-xs text-blue-200">
+            <ShieldCheck className="w-5 h-5 text-blue-400 shrink-0" />
+            <div>
+              <p className="font-semibold text-blue-100">Staff View Mode</p>
+              <p className="text-blue-300/90 text-[11px] mt-0.5">
+                You have permission to view 1-on-1 sessions and requests. Only the Site Owner (Acharya Niraj Kumar) has authorization to create, change, or cancel sessions.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Outbox Failures Alert Banner */}
         {outboxFailures.length > 0 && (
@@ -848,50 +871,52 @@ export default function SessionsManager({
             </div>
           </div>
 
-          {/* Private iCal Subscription Box for Google Calendar */}
-          <div className="cosmic-card p-4 sm:p-5 rounded-2xl border border-white/10 bg-slate-900/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-                <Key className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                    Private iCal Calendar Feed (Secret Link)
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300">
-                    Google Calendar Sync
-                  </span>
+          {/* Private iCal Subscription Box for Google Calendar (Owner Only) */}
+          {isOwner && (
+            <div className="cosmic-card p-4 sm:p-5 rounded-2xl border border-white/10 bg-slate-900/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                  <Key className="w-5 h-5" />
                 </div>
-                <p className="text-xs text-slate-400 mt-1 max-w-xl">
-                  Add this secret URL to your Google Calendar or iPhone to automatically see all student live classes. Treat this link as a secret password.
-                </p>
-                <code className="text-[11px] text-amber-300 font-mono block mt-2 truncate max-w-md sm:max-w-xl bg-black/40 px-2 py-1 rounded border border-white/5">
-                  {calendarFeedUrl || 'Loading calendar feed URL...'}
-                </code>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                      Private iCal Calendar Feed (Secret Link)
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300">
+                      Google Calendar Sync
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1 max-w-xl">
+                    Add this secret URL to your Google Calendar or iPhone to automatically see all student live classes. Treat this link as a secret password.
+                  </p>
+                  <code className="text-[11px] text-amber-300 font-mono block mt-2 truncate max-w-md sm:max-w-xl bg-black/40 px-2 py-1 rounded border border-white/5">
+                    {calendarFeedUrl || 'Loading calendar feed URL...'}
+                  </code>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleCopyFeedUrl}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/10 transition flex items-center gap-1.5"
+                >
+                  {feedCopySuccess ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{feedCopySuccess ? 'URL Copied!' : 'Copy Feed Link'}</span>
+                </button>
+
+                <button
+                  onClick={handleRegenerateFeedToken}
+                  disabled={isRegeneratingToken}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition flex items-center gap-1.5"
+                  title="Invalidate current URL and generate a new secret token"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRegeneratingToken ? 'animate-spin' : ''}`} />
+                  <span>Regenerate URL</span>
+                </button>
               </div>
             </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={handleCopyFeedUrl}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/10 transition flex items-center gap-1.5"
-              >
-                {feedCopySuccess ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{feedCopySuccess ? 'URL Copied!' : 'Copy Feed Link'}</span>
-              </button>
-
-              <button
-                onClick={handleRegenerateFeedToken}
-                disabled={isRegeneratingToken}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition flex items-center gap-1.5"
-                title="Invalidate current URL and generate a new secret token"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRegeneratingToken ? 'animate-spin' : ''}`} />
-                <span>Regenerate URL</span>
-              </button>
-            </div>
-          </div>
+          )}
 
           {/* LIST VIEW */}
           {calendarViewMode === 'LIST' && (
