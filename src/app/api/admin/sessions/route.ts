@@ -12,6 +12,7 @@ import { sendSessionScheduledEmail } from '@/lib/sessions/sessionEmail';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
@@ -75,35 +76,7 @@ export async function GET(req: NextRequest) {
       }
     } catch {}
 
-    if (enrolledStudents.length === 0) {
-      enrolledStudents = [
-        {
-          id: 'usr_student_enrolled_001',
-          name: 'Rohan Sharma',
-          email: 'rohan.sharma@example.com',
-          phone: '+91 98101 23456',
-          timezone: 'Asia/Kolkata',
-          courseTitle: 'Foundations of Vedic Astrology (Jyotish)',
-        },
-        {
-          id: 'usr_student_enrolled_002',
-          name: 'Priya Patel',
-          email: 'priya.patel@example.com',
-          phone: '+91 99202 34567',
-          timezone: 'Asia/Kolkata',
-          courseTitle: 'Foundations of Vedic Astrology (Jyotish)',
-        },
-        {
-          id: 'usr_student_enrolled_003',
-          name: 'Amit Verma',
-          email: 'amit.verma@example.com',
-          phone: '+91 98765 43210',
-          timezone: 'Asia/Kolkata',
-          courseTitle: 'Foundations of Vedic Astrology (Jyotish)',
-        },
-      ];
-    }
-
+    // Zero mock student fallbacks: only real enrolled students from the database
     // Per-course session settings (e.g. sessionsIncludedPerStudent)
     const settings = await getCourseSessionSettings('course-what-is-astrology');
 
@@ -112,13 +85,22 @@ export async function GET(req: NextRequest) {
       whatsAppShareUrl: generateWhatsAppShareUrl(s),
     }));
 
-    return NextResponse.json({
-      success: true,
-      isOwner: auth.isOwner,
-      sessions: enhancedSessions,
-      students: enrolledStudents,
-      courseSettings: settings,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        isOwner: auth.isOwner,
+        sessions: enhancedSessions,
+        students: enrolledStudents,
+        courseSettings: settings,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    );
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to fetch sessions';
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -203,23 +185,49 @@ export async function POST(req: NextRequest) {
     const primarySession = validation.sessions[0];
 
     // Trigger transactional confirmation email to student
-    if (studentEmail) {
+    let recipientEmail = studentEmail || primarySession.studentEmail;
+    let recipientName = studentName || primarySession.studentName || 'Student';
+    let recipientTimezone = studentTimezone;
+
+    if (!recipientEmail && studentId) {
       try {
-        await sendSessionScheduledEmail({
-          studentName: studentName || primarySession.studentName,
-          studentEmail,
+        const u = await prisma.user.findUnique({
+          where: { id: studentId },
+          select: { email: true, name: true, timezone: true },
+        });
+        if (u?.email) {
+          recipientEmail = u.email;
+          if (!recipientName || recipientName === 'Student') recipientName = u.name;
+          if (!recipientTimezone) recipientTimezone = u.timezone || 'Asia/Kolkata';
+        }
+      } catch (lookupErr) {
+        console.warn('[sessions.POST] Student user lookup warning:', lookupErr);
+      }
+    }
+
+    let emailSent = false;
+    if (recipientEmail) {
+      try {
+        emailSent = await sendSessionScheduledEmail({
+          studentName: recipientName,
+          studentEmail: recipientEmail,
           topic: title,
           startTimeUtc: primarySession.startTime,
           durationMinutes: primarySession.duration,
           meetingLink: primarySession.meetingLink,
           notes: primarySession.sharedNotes,
-          studentTimezone: studentTimezone || 'Asia/Kolkata',
+          studentTimezone: recipientTimezone || 'Asia/Kolkata',
+          sessionId: primarySession.id,
         });
-      } catch {}
+      } catch (emailErr) {
+        console.error('[sendSessionScheduledEmail] Failed:', emailErr);
+      }
     }
 
     return NextResponse.json({
       success: true,
+      emailSent,
+      recipientEmail: recipientEmail || null,
       session: {
         ...primarySession,
         whatsAppShareUrl: generateWhatsAppShareUrl(primarySession),
@@ -231,8 +239,8 @@ export async function POST(req: NextRequest) {
       countCreated: validation.sessions.length,
       message:
         validation.sessions.length > 1
-          ? `Successfully scheduled ${validation.sessions.length} weekly sessions. Confirmation email sent.`
-          : 'Session scheduled successfully. Confirmation email sent to student.',
+          ? `Successfully scheduled ${validation.sessions.length} weekly sessions. Confirmation email ${emailSent ? 'sent' : 'queued'}.`
+          : `Session scheduled successfully. Confirmation email ${emailSent ? 'sent' : 'queued'} to student.`,
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to create session';

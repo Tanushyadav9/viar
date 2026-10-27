@@ -3,6 +3,9 @@ import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { verifyUserCourseAccess } from '@/lib/auth/course-access';
 import { listStudentSessions, listSessionRequests } from '@/lib/sessions/oneOnOneService';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   try {
     const auth = await getServerAuthUser();
@@ -79,17 +82,26 @@ export async function GET(req: NextRequest) {
     // Fetch student's session requests (reschedule or initial)
     const requests = await listSessionRequests({ studentId });
 
-    return NextResponse.json({
-      success: true,
-      enrolled: true,
-      enrollmentId: access.enrollmentId || null,
-      timezone: (auth.dbUser as { timezone?: string | null })?.timezone || 'Asia/Kolkata',
-      nextSession,
-      upcomingSessions,
-      pastSessions,
-      allSessions: sanitizedSessions,
-      requests,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        enrolled: true,
+        enrollmentId: access.enrollmentId || null,
+        timezone: (auth.dbUser as { timezone?: string | null })?.timezone || 'Asia/Kolkata',
+        nextSession,
+        upcomingSessions,
+        pastSessions,
+        allSessions: sanitizedSessions,
+        requests,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    );
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to fetch student sessions';
     return NextResponse.json({ error: msg }, { status: 500 });

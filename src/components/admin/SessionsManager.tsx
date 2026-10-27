@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import type { StudentSessionRecord, SessionRequestRecord, CourseSessionSettings } from '@/lib/sessions/types';
 import { formatSessionIST, formatInTimezone } from '@/lib/timezones';
+import { useLanguage } from '@/components/LanguageContext';
 
 interface OutboxFailureItem {
   id: string;
@@ -78,6 +79,8 @@ export default function SessionsManager({
   const [isOwner, setIsOwner] = useState(initialIsOwner);
   const [sessions, setSessions] = useState<ExtendedSession[]>([]);
   const [students, setStudents] = useState<StudentOption[]>([]);
+  const { language } = useLanguage();
+  const isHi = language === 'hi';
   const [requests, setRequests] = useState<SessionRequestRecord[]>([]);
   const [courseSettings, setCourseSettings] = useState<CourseSessionSettings>({
     sessionsIncludedPerStudent: null,
@@ -116,7 +119,7 @@ export default function SessionsManager({
   const [formTime, setFormTime] = useState('16:00');
   const [formDuration, setFormDuration] = useState(60);
   const [formPlatform, setFormPlatform] = useState('GOOGLE_MEET');
-  const [formLink, setFormLink] = useState('https://meet.google.com/new');
+  const [formLink, setFormLink] = useState('');
   const [formSharedNotes, setFormSharedNotes] = useState('Please have your natal birth details and chart ready.');
   const [formPrivateNotes, setFormPrivateNotes] = useState('');
   const [formRepeatWeekly, setFormRepeatWeekly] = useState(false);
@@ -321,11 +324,9 @@ export default function SessionsManager({
     setFormLink(
       (courseSettings.defaultMeetingPlatform || 'GOOGLE_MEET') === 'WHATSAPP_CALL'
         ? 'WhatsApp Video Call'
-        : (courseSettings.defaultMeetingPlatform || 'GOOGLE_MEET') === 'ZOOM'
-        ? 'https://zoom.us/j/your-meeting-id'
-        : 'https://meet.google.com/new'
+        : ''
     );
-    setFormSharedNotes('Please have your birth chart ready. Revise basic planetary significators.');
+    setFormSharedNotes('');
     setFormPrivateNotes('');
     setFormRepeatWeekly(false);
     setFormRepeatWeeks(8);
@@ -972,18 +973,32 @@ export default function SessionsManager({
           {calendarViewMode === 'LIST' && (
             <div className="space-y-4">
               {filteredSessions.length === 0 ? (
-                <div className="cosmic-card p-12 text-center text-slate-500 rounded-2xl border border-white/10 space-y-3">
-                  <CalendarIcon className="w-10 h-10 text-slate-600 mx-auto" />
-                  <p className="text-sm font-semibold text-slate-400">No sessions match the selected filter</p>
-                  <p className="text-xs text-slate-500 max-w-md mx-auto">
-                    Try changing the student filter or click &quot;Schedule a session&quot; to create a new 1-on-1 class.
-                  </p>
+                <div className="cosmic-card p-12 text-center text-slate-500 rounded-2xl border border-white/10 space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400">
+                    <CalendarIcon className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-base font-bold text-white">
+                      {sessions.length === 0
+                        ? (isHi ? 'कोई 1-on-1 व्यक्तिगत सत्र निर्धारित नहीं है' : 'No 1-on-1 Mentorship Sessions Scheduled Yet')
+                        : (isHi ? 'चयनित फ़िल्टर से कोई सत्र मेल नहीं खाता' : 'No sessions match the selected filter')}
+                    </p>
+                    <p className="text-xs text-slate-400 max-w-lg mx-auto leading-relaxed">
+                      {sessions.length === 0
+                        ? (isHi
+                            ? 'जब आप किसी नामांकित छात्र के साथ 1-on-1 सत्र निर्धारित करेंगे, तो वह यहाँ दिखाई देगा। छात्र को लाइव मीटिंग लिंक एवं समय सहित ईमेल तुरंत भेज दी जाएगी।'
+                            : 'When you schedule a 1-on-1 session with an enrolled student, it will appear here. The student is automatically notified via email with their class date, time, and live meeting link.')
+                        : (isHi
+                            ? 'कृपया छात्र फ़िल्टर बदलें या नई कक्षा बनाने के लिए "1-on-1 कक्षा निर्धारित करें" पर क्लिक करें।'
+                            : 'Try changing the student filter or click "Schedule 1-on-1 Class" to book a session.')}
+                    </p>
+                  </div>
                   <button
                     onClick={() => handleOpenScheduleModal()}
-                    className="gold-button px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
+                    className="gold-button px-5 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-lg shadow-amber-900/20"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Schedule 1-on-1 Class</span>
+                    <Plus className="w-4 h-4" />
+                    <span>{isHi ? '1-on-1 कक्षा निर्धारित करें' : 'Schedule 1-on-1 Class'}</span>
                   </button>
                 </div>
               ) : (
@@ -1575,14 +1590,26 @@ export default function SessionsManager({
                 </div>
 
                 <div>
-                  <label className="text-slate-300 font-bold block mb-1">Meeting Link:</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-slate-300 font-bold block">Meeting Link:</label>
+                    <button
+                      type="button"
+                      onClick={() => setFormLink('https://meet.google.com/new')}
+                      className="text-[11px] text-amber-400 hover:text-amber-300 underline font-medium"
+                    >
+                      + Generate Google Meet (meet.google.com/new)
+                    </button>
+                  </div>
                   <input
                     type="text"
                     value={formLink}
                     onChange={(e) => setFormLink(e.target.value)}
-                    placeholder="https://meet.google.com/..."
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-mono focus:outline-none focus:border-amber-400"
+                    placeholder="Paste real meeting link (e.g. https://meet.google.com/... or https://zoom.us/j/...)"
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
                   />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Scheduled by Owner: the real link you enter here will be immediately emailed to the student and unlocked in their dashboard.
+                  </p>
                 </div>
 
                 {/* 5. Repeat Weekly Option */}
