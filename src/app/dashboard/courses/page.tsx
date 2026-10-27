@@ -403,7 +403,7 @@ export default function MyCoursesPage() {
                   {catalogCourses.slice(0, 3).map((c) => (
                     <div key={c.id} className="cosmic-card rounded-2xl border border-white/10 overflow-hidden flex flex-col justify-between">
                       <div>
-                        <div className="relative h-40 w-full bg-slate-900">
+                        <div className="relative h-40 w-full bg-slate-100 dark:bg-slate-900">
                           <Image
                             src={c.thumbnailUrl || '/images/Acharya_Niraj_Kumar_Headshot.jpg'}
                             alt={c.title}
@@ -473,7 +473,7 @@ export default function MyCoursesPage() {
                         <span className="text-slate-300">Curriculum Progress</span>
                         <span className="text-amber-300 font-bold">{enr.progressPercentage}% Complete</span>
                       </div>
-                      <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-500"
                           style={{ width: `${enr.progressPercentage}%` }}

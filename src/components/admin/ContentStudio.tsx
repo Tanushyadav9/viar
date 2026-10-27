@@ -983,9 +983,9 @@ export default function ContentStudio({
                     onChange={(e) => setFormStatus(e.target.value as ContentStatus)}
                     className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
                   >
-                    <option value="PUBLISHED" className="bg-slate-900 text-white">Published (Visible to all visitors)</option>
-                    <option value="DRAFT" className="bg-slate-900 text-white">Draft (Hidden from public)</option>
-                    <option value="HIDDEN" className="bg-slate-900 text-white">Hidden (Archived offline)</option>
+                    <option value="PUBLISHED" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Published (Visible to all visitors)</option>
+                    <option value="DRAFT" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Draft (Hidden from public)</option>
+                    <option value="HIDDEN" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Hidden (Archived offline)</option>
                   </select>
                 </div>
 

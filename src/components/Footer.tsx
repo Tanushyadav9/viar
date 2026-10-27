@@ -408,7 +408,7 @@ export default function Footer() {
                 aria-label="Display Timezone"
               >
                 {COMMON_TIMEZONES.map((t) => (
-                  <option key={t.tz} value={t.tz} className="bg-slate-900 text-white">
+                  <option key={t.tz} value={t.tz} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                     {t.label} ({t.offset})
                   </option>
                 ))}

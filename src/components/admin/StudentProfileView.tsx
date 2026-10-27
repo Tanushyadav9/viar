@@ -501,19 +501,19 @@ export default function StudentProfileView({
 
                   {/* Meeting link */}
                   {session.meetingLink && (
-                    <div className="flex items-center gap-2 text-xs bg-slate-900/60 p-2.5 rounded-lg border border-white/5">
-                      <span className="text-slate-400">Class Link:</span>
+                    <div className="flex items-center gap-2 text-xs bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-200 dark:border-white/5">
+                      <span className="text-slate-600 dark:text-slate-400 font-semibold">Class Link:</span>
                       <a
                         href={session.meetingLink}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-amber-400 hover:underline font-mono truncate max-w-xs sm:max-w-md"
+                        className="text-amber-700 dark:text-amber-400 hover:underline font-mono truncate max-w-xs sm:max-w-md font-medium"
                       >
                         {session.meetingLink}
                       </a>
                       <button
                         onClick={() => handleCopy(session.meetingLink!, session.id)}
-                        className="p-1 rounded text-slate-400 hover:text-white transition ml-auto flex-shrink-0"
+                        className="p-1 rounded text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition ml-auto flex-shrink-0"
                         title="Copy link"
                       >
                         {copiedLink === session.id ? (

@@ -32,47 +32,47 @@ describe('Admin Accessibility (WCAG AA), Contrast, and Invariants Suite', () => 
         /bg-amber-400 text-slate-950 border border-amber-300 shadow-md font-black/,
         'Payments active tab must use high-contrast solid amber background with dark black text'
       );
-      // Inactive tab: bg-slate-800 text-slate-100 hover:text-white border border-slate-600/90
+      // Inactive tab: bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-100
       assert.match(
         adminPortalSrc,
-        /bg-slate-800 text-slate-100 hover:text-white hover:bg-slate-700 border border-slate-600\/90/,
-        'Payments inactive tabs must use high-contrast slate-800 with readable light slate-100 text'
+        /bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-100/,
+        'Payments inactive tabs must use high-contrast dual-mode styles with readable text'
       );
     });
 
     it('verifies Sessions meeting link box uses high contrast container, label, and copy button', () => {
       assert.match(
         sessionsManagerSrc,
-        /bg-slate-900 p-3 rounded-xl border-2 border-slate-700 shadow-sm/,
-        'Class meeting link box must have high contrast dark container with clear border'
+        /bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm/,
+        'Class meeting link box must have high contrast container with clear border'
       );
       assert.match(
         sessionsManagerSrc,
-        /text-slate-100 font-bold shrink-0/,
-        'Class meeting link label must be bold and high contrast text-slate-100'
+        /text-slate-700 dark:text-slate-100 font-bold shrink-0/,
+        'Class meeting link label must be bold and high contrast text'
       );
       assert.match(
         sessionsManagerSrc,
-        /text-amber-300 font-mono font-bold hover:underline/,
-        'Class meeting link text must be bright amber-300 font-bold'
+        /text-amber-700 dark:text-amber-300 font-mono font-bold hover:underline/,
+        'Class meeting link text must be bright amber font-bold'
       );
     });
 
     it('verifies time-window boxes in Requests use high contrast border and readable text', () => {
       assert.match(
         sessionsManagerSrc,
-        /bg-slate-900 border-2 border-amber-500\/60 text-xs shadow-sm/,
+        /bg-amber-500\/10 dark:bg-slate-900 border-2 border-amber-500\/40 dark:border-amber-500\/60 text-xs shadow-sm/,
         'Preferred time window boxes must have high contrast background and amber border'
       );
       assert.match(
         sessionsManagerSrc,
-        /font-extrabold text-amber-300 block mb-0\.5/,
-        'Slot header must be font-extrabold text-amber-300'
+        /font-extrabold text-amber-800 dark:text-amber-300 block mb-0\.5/,
+        'Slot header must be font-extrabold amber'
       );
       assert.match(
         sessionsManagerSrc,
-        /font-semibold text-slate-100/,
-        'Slot time label must be readable text-slate-100 font-semibold'
+        /font-semibold text-slate-800 dark:text-slate-100/,
+        'Slot time label must be readable text font-semibold'
       );
     });
 
@@ -100,8 +100,8 @@ describe('Admin Accessibility (WCAG AA), Contrast, and Invariants Suite', () => 
     it('verifies Certification Exam Readiness card is prominent and high contrast', () => {
       assert.match(
         adminPortalSrc,
-        /bg-slate-900 border-2 border-purple-400\/80 shadow-md/,
-        'Certification Exam Readiness card must have high-contrast border and dark background'
+        /bg-purple-500\/10 dark:bg-slate-900 border-2 border-purple-400 dark:border-purple-400\/80 shadow-md/,
+        'Certification Exam Readiness card must have high-contrast border and dual-mode background'
       );
       assert.match(
         adminPortalSrc,

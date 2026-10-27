@@ -1780,20 +1780,20 @@ export default function AdminPortalClient({
                       </div>
 
                       {/* Exam Readiness & Certification Overview Card (Target: 20 Questions) */}
-                      <div className="p-4 rounded-xl bg-slate-900 border-2 border-purple-400/80 shadow-md flex flex-wrap items-center justify-between text-xs gap-3">
+                      <div className="p-4 rounded-xl bg-purple-500/10 dark:bg-slate-900 border-2 border-purple-400 dark:border-purple-400/80 shadow-md flex flex-wrap items-center justify-between text-xs gap-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400 flex items-center justify-center text-purple-300 shrink-0">
-                            <Award className="w-5 h-5 text-purple-300" />
+                          <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400 flex items-center justify-center text-purple-600 dark:text-purple-300 shrink-0">
+                            <Award className="w-5 h-5 text-purple-600 dark:text-purple-300" />
                           </div>
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-extrabold text-white">Certification Exam Readiness</span>
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                              <span className="text-sm font-extrabold text-slate-900 dark:text-white">Certification Exam Readiness</span>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/40">
                                 20 / 20 Active
                               </span>
                             </div>
-                            <p className="text-xs text-slate-200">
-                              <strong className="text-amber-300 font-bold text-sm">20 of 20</strong> questions active in question bank (Target: 20 Questions).
+                            <p className="text-xs text-slate-700 dark:text-slate-200">
+                              <strong className="text-amber-700 dark:text-amber-300 font-bold text-sm">20 of 20</strong> questions active in question bank (Target: 20 Questions).
                             </p>
                           </div>
                         </div>
@@ -1839,7 +1839,7 @@ export default function AdminPortalClient({
                             <button
                               type="button"
                               onClick={() => handleUpdateCourseStatus(crs, 'ARCHIVED')}
-                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/5"
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-white/5"
                             >
                               Archive
                             </button>
@@ -2218,7 +2218,7 @@ export default function AdminPortalClient({
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-2">
                 
                 {/* Status Navigation Tabs (High Contrast WCAG AA) */}
-                <div className="flex flex-wrap items-center gap-2 bg-slate-900 p-2 rounded-xl border-2 border-slate-700 shadow-sm">
+                <div className="flex flex-wrap items-center gap-2 bg-slate-100 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                   {[
                     { id: 'PAYMENT_CLAIMED', label: 'Claimed (Waiting Check)', count: orderCounts.PAYMENT_CLAIMED, highlight: orderCounts.PAYMENT_CLAIMED > 0 },
                     { id: 'PENDING_PAYMENT', label: 'Awaiting Payment', count: orderCounts.PENDING_PAYMENT },
@@ -2245,17 +2245,17 @@ export default function AdminPortalClient({
                           isActive
                             ? 'bg-amber-400 text-slate-950 border border-amber-300 shadow-md font-black'
                             : tab.highlight
-                            ? 'bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 border border-amber-400/60 font-bold'
-                            : 'bg-slate-800 text-slate-100 hover:text-white hover:bg-slate-700 border border-slate-600/90'
+                            ? 'bg-amber-500/20 text-amber-700 dark:text-amber-200 hover:bg-amber-500/30 border border-amber-400/60 font-bold'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-100 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600/90'
                         }`}
                       >
                         <span>{tab.label}</span>
                         <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
                           isActive
-                            ? 'bg-slate-950 text-amber-300 font-black'
+                            ? 'bg-amber-950 text-amber-200 dark:bg-slate-950 dark:text-amber-300 font-black'
                             : tab.highlight
                             ? 'bg-amber-400 text-slate-950 font-black'
-                            : 'bg-slate-700 text-white font-bold border border-slate-500'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-white font-bold border border-slate-300 dark:border-slate-500'
                         }`}>
                           {tab.count}
                         </span>

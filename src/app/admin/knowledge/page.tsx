@@ -245,10 +245,10 @@ export default function AdminKnowledgePage() {
   const pendingUnanswered = unanswered.filter((u) => u.status === 'PENDING');
 
   return (
-    <div className="cosmic-bg min-h-screen py-10 px-4 sm:px-6 lg:px-8 text-white">
+    <div className="cosmic-bg min-h-screen py-10 px-4 sm:px-6 lg:px-8 text-slate-900 dark:text-white">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Navigation & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
           <div>
             <Link
               href="/admin"
@@ -262,13 +262,13 @@ export default function AdminKnowledgePage() {
                 <Sparkles className="w-5 h-5 text-amber-400" />
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
                   <span>AI Assistant Knowledge Studio</span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
                     Owner Only
                   </span>
                 </h1>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-600 dark:text-slate-400">
                   Teach the chatbot new answers without code and review inquiries visitors ask.
                 </p>
               </div>
@@ -279,7 +279,7 @@ export default function AdminKnowledgePage() {
             <button
               onClick={() => fetchKnowledgeData()}
               disabled={isLoading}
-              className="px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-xs font-semibold hover:bg-slate-800 transition flex items-center gap-1.5"
+              className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/10 text-xs font-semibold text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
@@ -374,7 +374,7 @@ export default function AdminKnowledgePage() {
                   placeholder="Search questions & answers..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                  className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/10 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -382,7 +382,7 @@ export default function AdminKnowledgePage() {
                 <select
                   value={selectedLanguage}
                   onChange={(e) => setSelectedLanguage(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-amber-400"
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/10 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                 >
                   <option value="all">All Languages (EN / HI / Hinglish)</option>
                   <option value="en">English</option>
@@ -395,7 +395,7 @@ export default function AdminKnowledgePage() {
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-amber-400"
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/10 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                 >
                   <option value="all">All Categories</option>
                   <option value="general">General</option>
@@ -418,9 +418,9 @@ export default function AdminKnowledgePage() {
               signInUrl="/login?returnUrl=/admin/knowledge"
               loadingMessage="Loading knowledge base entries..."
               emptyComponent={
-                <div className="py-16 text-center cosmic-card rounded-2xl border border-white/10 p-8 space-y-3">
+                <div className="py-16 text-center cosmic-card rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 p-8 space-y-3">
                   <BookOpen className="w-10 h-10 text-slate-600 mx-auto" />
-                  <h3 className="text-sm font-bold text-white">No custom knowledge entries found</h3>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">No custom knowledge entries found</h3>
                   <p className="text-xs text-slate-400 max-w-md mx-auto">
                     The AI assistant is currently answering from structured curriculum files and live database prices. Click &ldquo;Add Knowledge Entry&rdquo; to teach it new questions and answers.
                   </p>
@@ -435,7 +435,7 @@ export default function AdminKnowledgePage() {
               }
             >
               {filteredEntries.length === 0 ? (
-                <div className="py-12 text-center cosmic-card rounded-2xl border border-white/10 p-6 space-y-2">
+                <div className="py-12 text-center cosmic-card rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 p-6 space-y-2">
                   <p className="text-sm text-slate-300">No entries match your search filter.</p>
                 </div>
               ) : (
@@ -443,7 +443,7 @@ export default function AdminKnowledgePage() {
                   {filteredEntries.map((entry) => (
                     <div
                       key={entry.id}
-                      className="p-5 rounded-2xl cosmic-card border border-white/10 space-y-3 hover:border-amber-400/40 transition flex flex-col justify-between"
+                      className="p-5 rounded-2xl cosmic-card border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 space-y-3 hover:border-amber-400/40 transition flex flex-col justify-between"
                     >
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
@@ -459,14 +459,14 @@ export default function AdminKnowledgePage() {
                             className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                               entry.published
                                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                : 'bg-slate-800 text-slate-400 border border-white/10'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-white/10'
                             }`}
                           >
                             {entry.published ? 'Live on AI' : 'Draft'}
                           </span>
                         </div>
 
-                        <h4 className="text-sm font-bold text-white leading-snug">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">
                           Q: {entry.question}
                         </h4>
                         <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line line-clamp-4">
@@ -532,8 +532,8 @@ export default function AdminKnowledgePage() {
                       key={u.id}
                       className={`p-4 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                         isPending
-                          ? 'bg-slate-900/90 border-amber-500/30'
-                          : 'bg-slate-950/50 border-white/5 opacity-60'
+                          ? 'bg-white dark:bg-slate-900/90 border-amber-500/30 shadow-sm'
+                          : 'bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-white/5 opacity-60'
                       }`}
                     >
                       <div className="space-y-1 max-w-2xl">
@@ -550,14 +550,14 @@ export default function AdminKnowledgePage() {
                               u.status === 'CONVERTED'
                                 ? 'bg-emerald-500/20 text-emerald-400'
                                 : u.status === 'DISMISSED'
-                                ? 'bg-slate-800 text-slate-400'
+                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                                 : 'bg-amber-400 text-slate-950 font-bold'
                             }`}
                           >
                             {u.status === 'CONVERTED' ? 'Added to Knowledge' : u.status === 'DISMISSED' ? 'Dismissed' : 'Pending review'}
                           </span>
                         </div>
-                        <p className="text-sm font-medium text-white">{u.question}</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">{u.question}</p>
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
@@ -576,7 +576,7 @@ export default function AdminKnowledgePage() {
                         {isPending && (
                           <button
                             onClick={() => handleDismissUnanswered(u.id)}
-                            className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition"
+                            className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-transparent text-xs transition"
                           >
                             Dismiss
                           </button>
@@ -600,19 +600,19 @@ export default function AdminKnowledgePage() {
         {/* MODAL / DRAWER: NEW & EDIT KNOWLEDGE ENTRY */}
         {isEditorOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-slate-950 border border-amber-500/30 rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-6 shadow-2xl">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <div className="bg-white dark:bg-slate-950 border border-amber-500/30 rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-6 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
                     <Sparkles className="w-4 h-4 text-amber-400" />
                   </div>
-                  <h3 className="text-base font-bold text-white">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
                     {editingId ? 'Edit Knowledge Entry' : 'Teach Assistant a New Answer'}
                   </h3>
                 </div>
                 <button
                   onClick={() => setIsEditorOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -635,7 +635,7 @@ export default function AdminKnowledgePage() {
                     value={formQuestion}
                     onChange={(e) => setFormQuestion(e.target.value)}
                     placeholder="e.g. Can I pay in installments?"
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-white/15 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                   />
                 </div>
 
@@ -649,7 +649,7 @@ export default function AdminKnowledgePage() {
                     value={formAnswer}
                     onChange={(e) => setFormAnswer(e.target.value)}
                     placeholder="Enter the exact answer the AI assistant should speak..."
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-white/15 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
                   />
                 </div>
 
@@ -659,7 +659,7 @@ export default function AdminKnowledgePage() {
                     <select
                       value={formCategory}
                       onChange={(e) => setFormCategory(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-amber-400"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                     >
                       <option value="general">General</option>
                       <option value="pricing">Pricing & Tuition</option>
@@ -676,7 +676,7 @@ export default function AdminKnowledgePage() {
                     <select
                       value={formLanguage}
                       onChange={(e) => setFormLanguage(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-white/15 rounded-xl text-xs text-white focus:outline-none focus:border-amber-400"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                     >
                       <option value="en">English</option>
                       <option value="hi">हिंदी (Devanagari)</option>
@@ -691,18 +691,18 @@ export default function AdminKnowledgePage() {
                     id="formPublished"
                     checked={formPublished}
                     onChange={(e) => setFormPublished(e.target.checked)}
-                    className="w-4 h-4 rounded text-amber-500 bg-slate-900 border-white/20 focus:ring-0"
+                    className="w-4 h-4 rounded text-amber-500 bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-white/20 focus:ring-0"
                   />
                   <label htmlFor="formPublished" className="text-xs text-slate-300 font-medium cursor-pointer">
                     Publish immediately (AI Assistant starts using this answer right away)
                   </label>
                 </div>
 
-                <div className="pt-4 border-t border-white/10 flex items-center justify-end gap-3">
+                <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setIsEditorOpen(false)}
-                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700 transition"
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-transparent text-xs font-semibold transition"
                   >
                     Cancel
                   </button>

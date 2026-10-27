@@ -436,10 +436,10 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
           role="dialog"
           aria-modal="true"
           aria-label={isHi ? 'विहंगम ज्योतिष एआई सहायक' : 'VIAR AI Assistant'}
-          className="fixed inset-0 sm:inset-auto bottom-0 sm:bottom-6 sm:right-6 w-full sm:w-[380px] h-full sm:h-[560px] rounded-none sm:rounded-2xl z-50 flex flex-col bg-slate-950 border border-amber-500/30 shadow-2xl shadow-amber-500/20 backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200 motion-reduce:animate-none"
+          className="fixed inset-0 sm:inset-auto bottom-0 sm:bottom-6 sm:right-6 w-full sm:w-[380px] h-full sm:h-[560px] rounded-none sm:rounded-2xl z-50 flex flex-col bg-white dark:bg-slate-950 border border-amber-500/30 shadow-2xl shadow-amber-500/20 backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200 motion-reduce:animate-none"
         >
           {/* Header */}
-          <div className="px-4 py-3 bg-gradient-to-r from-amber-500/20 via-slate-900 to-amber-950/30 border-b border-amber-500/20 flex items-center justify-between shrink-0">
+          <div className="px-4 py-3 bg-gradient-to-r from-amber-50 via-white to-amber-100/50 dark:from-amber-500/20 dark:via-slate-900 dark:to-amber-950/30 border-b border-amber-500/20 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 p-[1.5px] shadow-md shadow-amber-500/25 shrink-0">
                 <div className="w-full h-full bg-white dark:bg-slate-950 rounded-[10px] flex items-center justify-center p-1 overflow-hidden">
@@ -454,14 +454,14 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-bold text-white tracking-wide">
+                  <span className="text-sm font-bold text-slate-900 dark:text-white tracking-wide">
                     {isHi ? 'विहंगम एआई सहायक' : 'VIAR AI Assistant'}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">
                     {isHi ? 'एआई सहायक' : 'AI assistant'}
                   </span>
                 </div>
-                <span className="text-[10px] text-amber-300/80">
+                <span className="text-[10px] text-amber-700 dark:text-amber-300/80">
                   {isHi ? 'वैदिक ज्योतिष मास्टरक्लास • ₹5,100' : 'Vedic Astrology Masterclass • ₹5,100'}
                 </span>
               </div>
@@ -473,7 +473,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                 onClick={handleNewChat}
                 aria-label={isHi ? 'नई बातचीत शुरू करें' : 'Start new chat'}
                 title={isHi ? 'नई बातचीत शुरू करें' : 'Start new chat'}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-white/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-amber-700 dark:text-slate-400 dark:hover:text-amber-300 hover:bg-slate-100 dark:hover:bg-white/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
                 <RotateCcw className="w-4 h-4" />
               </button>
@@ -486,7 +486,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                 }}
                 aria-label={isHi ? 'सहायक बंद करें' : 'Close assistant'}
                 title={isHi ? 'सहायक बंद करें' : 'Close assistant'}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -523,7 +523,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                       className={`p-3 rounded-2xl ${
                         isUser
                           ? 'bg-amber-500 text-slate-950 font-medium rounded-tr-none'
-                          : 'bg-slate-900 border border-white/10 text-slate-200 rounded-tl-none leading-relaxed'
+                          : 'bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 rounded-tl-none leading-relaxed'
                       }`}
                     >
                       {/* Safe text/markdown rendering (no raw HTML) */}
@@ -555,7 +555,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'
                                   : isCall
                                   ? 'bg-sky-600 hover:bg-sky-500 text-white shadow-sky-500/20'
-                                  : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/30'
+                                  : 'bg-amber-50 dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-slate-700 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-400/30'
                               }`}
                             >
                               {isWhatsApp && <MessageCircle className="w-3 h-3" />}
@@ -589,7 +589,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
             {/* Four Suggested-Question Chips (Shown right after initial greeting) */}
             {messages.length <= 2 && (
               <div className="pt-1 pb-2 space-y-1.5">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 px-1">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-600 dark:text-slate-400 px-1">
                   {isHi ? 'सुझाए गए प्रश्न:' : 'Suggested questions:'}
                 </span>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -598,7 +598,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                       key={chip}
                       onClick={() => handleSendMessage(chip)}
                       disabled={isLoading}
-                      className="p-2 rounded-xl text-left bg-slate-900/90 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-white/10 hover:border-amber-400/40 text-xs font-medium transition disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                      className="p-2 rounded-xl text-left bg-slate-50 dark:bg-slate-900/90 hover:bg-amber-50 dark:hover:bg-amber-500/20 text-slate-700 dark:text-slate-300 hover:text-amber-800 dark:hover:text-amber-300 border border-slate-200 dark:border-white/10 hover:border-amber-400/40 text-xs font-medium transition disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                     >
                       {chip}
                     </button>
@@ -613,7 +613,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                 <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin motion-reduce:animate-none" />
                 </div>
-                <div className="p-2.5 rounded-2xl bg-slate-900 border border-white/10 text-slate-400 rounded-tl-none flex items-center gap-1.5">
+                <div className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 rounded-tl-none flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce motion-reduce:animate-none"></span>
                   <span
                     className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-bounce motion-reduce:animate-none"
@@ -631,8 +631,8 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
           </div>
 
           {/* Persistent Escalation Bar (Always available: WhatsApp pre-filled with last inquiry, Call, Booking link) */}
-          <div className="px-3 py-1.5 bg-slate-900/80 border-t border-white/10 flex items-center justify-between gap-1 shrink-0 text-[11px]">
-            <span className="text-[10px] text-slate-400 font-medium">
+          <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-white/10 flex items-center justify-between gap-1 shrink-0 text-[11px]">
+            <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium">
               {isHi ? 'सहायता:' : 'Assistance:'}
             </span>
 
@@ -643,7 +643,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                 target="_blank"
                 rel="noopener noreferrer"
                 title={isHi ? 'व्हाट्सएप पर पूछें' : 'Ask on WhatsApp'}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/40 transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400"
               >
                 <MessageCircle className="w-3 h-3 text-emerald-400" />
                 <span>WhatsApp</span>
@@ -653,7 +653,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
               <a
                 href="tel:+919311215564"
                 title={isHi ? 'कॉल करें' : 'Call'}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-950/80 hover:bg-sky-900 text-sky-300 border border-sky-500/40 transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/80 hover:bg-sky-100 dark:hover:bg-sky-900 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-500/40 transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400"
               >
                 <Phone className="w-3 h-3 text-sky-400" />
                 <span>{isHi ? 'कॉल' : 'Call'}</span>
@@ -663,7 +663,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
               <Link
                 href="/checkout?course=what-is-astrology"
                 title={isHi ? 'प्रवेश लें' : 'Enroll in course'}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-500/40 transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/80 hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/40 transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
               >
                 <GraduationCap className="w-3 h-3 text-amber-400" />
                 <span>{isHi ? 'प्रवेश' : 'Enroll'}</span>
@@ -672,7 +672,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
           </div>
 
           {/* Input Form with 500 characters limit */}
-          <div className="p-3 bg-slate-950 border-t border-white/10 shrink-0">
+          <div className="p-3 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-white/10 shrink-0">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -693,7 +693,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
                   }
                   maxLength={500}
                   disabled={isLoading}
-                  className="w-full pl-3 pr-8 py-2 bg-slate-900/90 border border-white/15 focus:border-amber-400 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition"
+                  className="w-full pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-white/15 focus:border-amber-400 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition"
                 />
                 {inputText.length > 0 && (
                   <span className="absolute right-2 top-2.5 text-[9px] text-slate-500 font-mono">
@@ -713,7 +713,7 @@ export default function FloatingAIAssistant({ isConfigured = true }: FloatingAIA
             </form>
 
             {/* Mandatory Footer Note with Privacy Policy Link */}
-            <p className="mt-2 text-[10px] text-slate-400 text-center leading-normal">
+            <p className="mt-2 text-[10px] text-slate-600 dark:text-slate-400 text-center leading-normal">
               {isHi ? (
                 <>
                   एआई सहायक। उत्तर अपूर्ण हो सकते हैं। व्यक्तिगत मार्गदर्शन के लिए{' '}

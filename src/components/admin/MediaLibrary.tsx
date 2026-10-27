@@ -316,7 +316,7 @@ export default function MediaLibrary({ isOwner, userEmail }: MediaLibraryProps) 
               className="cosmic-card rounded-2xl border border-white/10 overflow-hidden flex flex-col justify-between group hover:border-amber-500/40 transition"
             >
               {/* Image Preview Container */}
-              <div className="relative aspect-video w-full bg-slate-900/80 flex items-center justify-center overflow-hidden border-b border-white/10">
+              <div className="relative aspect-video w-full bg-slate-100 dark:bg-slate-900/80 flex items-center justify-center overflow-hidden border-b border-slate-200 dark:border-white/10">
                 <Image
                   src={asset.url}
                   alt={asset.altTextEn}

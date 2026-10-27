@@ -123,17 +123,17 @@ export default function CourseDetailClient({ slug, initialStatus }: CourseDetail
   if (notFound) {
     return (
       <div className="min-h-screen cosmic-bg flex flex-col items-center justify-center p-4 text-center">
-        <div className="w-full max-w-xl bg-slate-900/90 border border-amber-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-md">
+        <div className="w-full max-w-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-amber-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-md">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-4">
             <span>404 Notice</span>
             <span>•</span>
             <span>पाठ्यक्रम नहीं मिला</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">Course Not Found</h1>
-          <p className="text-amber-300 font-medium text-sm mb-3">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mb-2">Course Not Found</h1>
+          <p className="text-amber-700 dark:text-amber-300 font-medium text-sm mb-3">
             यह पाठ्यक्रम उपलब्ध नहीं है अथवा इसका पता बदल गया है
           </p>
-          <p className="text-slate-400 text-xs sm:text-sm max-w-md mx-auto mb-6">
+          <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm max-w-md mx-auto mb-6">
             The course you are looking for does not exist or has been moved in the Vihangam Institute catalog.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
@@ -149,8 +149,8 @@ export default function CourseDetailClient({ slug, initialStatus }: CourseDetail
               WhatsApp Admissions
             </a>
           </div>
-          <div className="border-t border-slate-800 pt-4 text-xs text-slate-400">
-            Admissions Desk: <a href="tel:+919311215564" className="text-amber-400 hover:underline">+91 93112 15564</a> (WhatsApp & Phone)
+          <div className="border-t border-slate-200 dark:border-slate-800 pt-4 text-xs text-slate-600 dark:text-slate-400">
+            Admissions Desk: <a href="tel:+919311215564" className="text-amber-600 dark:text-amber-400 hover:underline">+91 93112 15564</a> (WhatsApp & Phone)
           </div>
         </div>
       </div>

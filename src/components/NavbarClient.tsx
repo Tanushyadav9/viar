@@ -480,7 +480,7 @@ export default function NavbarClient({ serverAuth }: NavbarClientProps = {}) {
                 className="w-full px-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-white/5 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/10 appearance-none focus:outline-none focus:ring-1 focus:ring-amber-500 font-medium"
               >
                 {COMMON_TIMEZONES.map((t) => (
-                  <option key={t.tz} value={t.tz} className="bg-slate-900 text-white">
+                  <option key={t.tz} value={t.tz} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                     {t.label} ({t.offset})
                   </option>
                 ))}

@@ -440,7 +440,7 @@ export default function CohortClassByClassPage() {
                 <span className="text-slate-300">Course Completion</span>
                 <span className="text-amber-300">{progress.completedClasses} / {progress.totalClasses} ({progress.percentage}%)</span>
               </div>
-              <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden mb-3">
+              <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mb-3">
                 <div
                   className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-500"
                   style={{ width: `${progress.percentage}%` }}

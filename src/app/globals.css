@@ -245,9 +245,99 @@ html[data-theme="light"] .bg-\[\#07090e\],
 html[data-theme="light"] .bg-\[\#090d16\],
 html[data-theme="light"] .bg-\[\#0d131f\],
 html[data-theme="light"] .bg-\[\#111827\],
-html[data-theme="light"] .bg-\[\#0f172a\] {
+html[data-theme="light"] .bg-\[\#0f172a\],
+html.light .bg-slate-950,
+html.light .bg-slate-900,
+html.light .bg-slate-850,
+html[data-theme="light"] .bg-slate-950,
+html[data-theme="light"] .bg-slate-900,
+html[data-theme="light"] .bg-slate-850 {
   background-color: #ffffff !important;
   border-color: rgba(226, 232, 240, 0.9) !important;
+}
+
+/* Secondary dark surfaces and pills (bg-slate-800, bg-slate-700) */
+html.light .bg-slate-800,
+html.light .bg-slate-700,
+html[data-theme="light"] .bg-slate-800,
+html[data-theme="light"] .bg-slate-700 {
+  background-color: #f1f5f9 !important;
+  color: #1e293b !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light .hover\:bg-slate-700:hover,
+html.light .hover\:bg-slate-800:hover,
+html[data-theme="light"] .hover\:bg-slate-700:hover,
+html[data-theme="light"] .hover\:bg-slate-800:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Code, pre, and secret link blocks in light mode */
+html.light code,
+html.light pre,
+html[data-theme="light"] code,
+html[data-theme="light"] pre {
+  background-color: #f8fafc !important;
+  color: #92400e !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Dark borders in light mode */
+html.light .border-slate-800,
+html.light .border-slate-700,
+html.light .border-slate-600,
+html[data-theme="light"] .border-slate-800,
+html[data-theme="light"] .border-slate-700,
+html[data-theme="light"] .border-slate-600 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Select options */
+html.light option,
+html[data-theme="light"] option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* Solid accent buttons retain white text in light mode */
+html.light .bg-emerald-600,
+html.light .bg-emerald-500,
+html.light .bg-rose-600,
+html.light .bg-rose-500,
+html.light .bg-sky-600,
+html.light .bg-sky-500,
+html.light .bg-blue-600,
+html.light .bg-purple-600,
+html[data-theme="light"] .bg-emerald-600,
+html[data-theme="light"] .bg-emerald-500,
+html[data-theme="light"] .bg-rose-600,
+html[data-theme="light"] .bg-rose-500,
+html[data-theme="light"] .bg-sky-600,
+html[data-theme="light"] .bg-sky-500,
+html[data-theme="light"] .bg-blue-600,
+html[data-theme="light"] .bg-purple-600 {
+  color: #ffffff !important;
+}
+
+html.light .bg-emerald-600 *,
+html.light .bg-emerald-500 *,
+html.light .bg-rose-600 *,
+html.light .bg-rose-500 *,
+html.light .bg-sky-600 *,
+html.light .bg-sky-500 *,
+html.light .bg-blue-600 *,
+html.light .bg-purple-600 *,
+html[data-theme="light"] .bg-emerald-600 *,
+html[data-theme="light"] .bg-emerald-500 *,
+html[data-theme="light"] .bg-rose-600 *,
+html[data-theme="light"] .bg-rose-500 *,
+html[data-theme="light"] .bg-sky-600 *,
+html[data-theme="light"] .bg-sky-500 *,
+html[data-theme="light"] .bg-blue-600 *,
+html[data-theme="light"] .bg-purple-600 * {
+  color: #ffffff !important;
 }
 
 html.light .from-\[\#111827\],
@@ -264,10 +354,10 @@ html[data-theme="light"] .to-\[\#0d131f\] {
 }
 
 /* Light mode inputs, textareas, selects */
-html.light input,
+html.light input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="file"]),
 html.light textarea,
 html.light select,
-html[data-theme="light"] input,
+html[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="file"]),
 html[data-theme="light"] textarea,
 html[data-theme="light"] select {
   background-color: #ffffff !important;

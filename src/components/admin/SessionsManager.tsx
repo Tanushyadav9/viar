@@ -857,7 +857,7 @@ export default function SessionsManager({
                   className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition ${
                     activeFilter === f.id
                       ? 'bg-amber-400 text-slate-950 font-black shadow-sm'
-                      : 'bg-slate-800 text-slate-100 hover:text-white hover:bg-slate-700 border border-slate-600'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-100 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600'
                   }`}
                 >
                   {f.label}
@@ -874,7 +874,7 @@ export default function SessionsManager({
                   placeholder="Search topic or student..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -883,13 +883,13 @@ export default function SessionsManager({
                 <select
                   value={selectedStudentFilter}
                   onChange={(e) => setSelectedStudentFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-amber-400 cursor-pointer"
                 >
-                  <option value="ALL" className="bg-slate-900 text-white">
+                  <option value="ALL" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                     Filter by Student: All ({students.length})
                   </option>
                   {students.map((st) => (
-                    <option key={st.id} value={st.id} className="bg-slate-900 text-white">
+                    <option key={st.id} value={st.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                       {st.name} ({st.email})
                     </option>
                   ))}
@@ -897,13 +897,13 @@ export default function SessionsManager({
               </div>
 
               {/* View Mode Toggle: List vs Week */}
-              <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 text-xs">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10 text-xs">
                 <button
                   onClick={() => setCalendarViewMode('LIST')}
                   className={`px-3 py-1 rounded-lg font-semibold transition ${
                     calendarViewMode === 'LIST'
                       ? 'bg-amber-400 text-slate-950 font-bold'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   List View
@@ -913,7 +913,7 @@ export default function SessionsManager({
                   className={`px-3 py-1 rounded-lg font-semibold transition ${
                     calendarViewMode === 'WEEK'
                       ? 'bg-amber-400 text-slate-950 font-bold'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   Week View
@@ -924,24 +924,24 @@ export default function SessionsManager({
 
           {/* Private iCal Subscription Box for Google Calendar (Owner Only) */}
           {isOwner && (
-            <div className="p-4 sm:p-5 rounded-2xl border-2 border-slate-700 bg-slate-900 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+            <div className="p-4 sm:p-5 rounded-2xl border-2 border-amber-500/20 dark:border-slate-700 bg-amber-500/5 dark:bg-slate-900 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
               <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
+                <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-500 dark:text-amber-300 border border-amber-500/40 shrink-0">
                   <Key className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-black text-white uppercase tracking-wider">
+                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
                       Private iCal Calendar Feed (Secret Link)
                     </h3>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950">
                       Google Calendar Sync
                     </span>
                   </div>
-                  <p className="text-xs text-slate-300 mt-1 max-w-xl font-medium">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 max-w-xl font-medium">
                     Add this secret URL to your Google Calendar or iPhone to automatically see all student live classes. Treat this link as a secret password.
                   </p>
-                  <code className="text-xs text-amber-300 font-mono font-bold block mt-2 truncate max-w-md sm:max-w-xl bg-slate-950 p-2.5 rounded-xl border border-slate-700">
+                  <code className="text-xs text-amber-800 dark:text-amber-300 font-mono font-bold block mt-2 truncate max-w-md sm:max-w-xl bg-white dark:bg-slate-950 p-2.5 rounded-xl border border-amber-200 dark:border-slate-700 shadow-inner select-all">
                     {calendarFeedUrl || 'Loading calendar feed URL...'}
                   </code>
                 </div>
@@ -950,9 +950,9 @@ export default function SessionsManager({
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={handleCopyFeedUrl}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 transition flex items-center gap-1.5 shadow-sm"
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600 transition flex items-center gap-1.5 shadow-sm"
                 >
-                  {feedCopySuccess ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-300" />}
+                  {feedCopySuccess ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />}
                   <span>{feedCopySuccess ? 'URL Copied!' : 'Copy Feed Link'}</span>
                 </button>
 
@@ -1012,12 +1012,12 @@ export default function SessionsManager({
                   return (
                     <div
                       key={s.id}
-                      className="cosmic-card p-5 rounded-2xl border border-white/10 hover:border-amber-500/30 transition space-y-3 bg-slate-900/40"
+                      className="cosmic-card p-5 rounded-2xl border border-slate-200 dark:border-white/10 hover:border-amber-500/30 transition space-y-3 bg-white dark:bg-slate-900/40"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-white text-base">{s.title}</span>
+                            <span className="font-bold text-slate-900 dark:text-white text-base">{s.title}</span>
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                 s.status === 'COMPLETED'
@@ -1034,18 +1034,18 @@ export default function SessionsManager({
                           </div>
 
                           <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
-                            <span className="text-amber-300 font-bold flex items-center gap-1">
+                            <span className="text-amber-500 dark:text-amber-300 font-bold flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5" />
                               {timeIst} (IST)
                             </span>
                             {timeLocal && (
-                              <span className="text-sky-300 font-mono text-[11px]">
+                              <span className="text-sky-500 dark:text-sky-300 font-mono text-[11px]">
                                 ({timeLocal} in {stTz})
                               </span>
                             )}
                             <span className="text-slate-500">• {s.duration} mins</span>
                             <span className="text-slate-500">•</span>
-                            <span className="text-white font-medium flex items-center gap-1">
+                            <span className="text-slate-900 dark:text-white font-medium flex items-center gap-1">
                               <User className="w-3.5 h-3.5 text-purple-400" />
                               {s.studentName} ({s.studentEmail})
                             </span>
@@ -1068,7 +1068,7 @@ export default function SessionsManager({
 
                           <button
                             onClick={() => handleOpenAttendanceModal(s)}
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/10 transition"
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-800 dark:text-white border border-slate-300 dark:border-white/10 transition"
                           >
                             Attendance & Notes
                           </button>
@@ -1077,7 +1077,7 @@ export default function SessionsManager({
                           {s.status === 'MISSED' && (
                             <button
                               onClick={() => handleOpenScheduleModal(s.studentId)}
-                              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition flex items-center gap-1"
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 dark:text-amber-300 border border-amber-500/40 transition flex items-center gap-1"
                             >
                               <RotateCcw className="w-3 h-3" />
                               <span>Reschedule in 1 Click</span>
@@ -1088,29 +1088,29 @@ export default function SessionsManager({
 
                       {/* Class Join Link */}
                       {s.meetingLink && (
-                        <div className="flex items-center gap-2 text-xs bg-slate-900 p-3 rounded-xl border-2 border-slate-700 shadow-sm">
-                          <span className="text-slate-100 font-bold shrink-0">Class Link:</span>
+                        <div className="flex items-center gap-2 text-xs bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                          <span className="text-slate-700 dark:text-slate-100 font-bold shrink-0">Class Link:</span>
                           <a
                             href={s.meetingLink}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-amber-300 font-mono font-bold hover:underline truncate max-w-sm sm:max-w-md"
+                            className="text-amber-700 dark:text-amber-300 font-mono font-bold hover:underline truncate max-w-sm sm:max-w-md"
                           >
                             {s.meetingLink}
                           </a>
                           <button
                             onClick={() => handleCopyLink(s.meetingLink!, s.id)}
-                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 transition ml-auto shrink-0 flex items-center gap-1 font-semibold text-[11px]"
+                            className="p-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600 transition ml-auto shrink-0 flex items-center gap-1 font-semibold text-[11px]"
                             title="Copy link"
                           >
                             {copiedLink === s.id ? (
                               <>
-                                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                <span className="text-emerald-400 font-bold">Copied</span>
+                                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                <span className="text-emerald-600 dark:text-emerald-400 font-bold">Copied</span>
                               </>
                             ) : (
                               <>
-                                <Copy className="w-3.5 h-3.5 text-slate-300" />
+                                <Copy className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
                                 <span>Copy Link</span>
                               </>
                             )}
@@ -1165,11 +1165,11 @@ export default function SessionsManager({
                   return (
                     <div
                       key={dayName}
-                      className="cosmic-card p-3 rounded-2xl border border-white/10 bg-slate-900/50 flex flex-col min-h-[220px]"
+                      className="cosmic-card p-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/50 flex flex-col min-h-[220px]"
                     >
-                      <div className="pb-2 border-b border-white/10 flex items-center justify-between">
-                        <span className="text-xs font-bold text-white">{dayName}</span>
-                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-slate-400">
+                      <div className="pb-2 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">{dayName}</span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400">
                           {daySessions.length}
                         </span>
                       </div>
@@ -1239,12 +1239,12 @@ export default function SessionsManager({
             requests.map((r) => (
               <div
                 key={r.id}
-                className="cosmic-card p-5 rounded-2xl border border-white/10 hover:border-amber-500/20 transition space-y-3 bg-slate-900/40"
+                className="cosmic-card p-5 rounded-2xl border border-slate-200 dark:border-white/10 hover:border-amber-500/20 transition space-y-3 bg-white dark:bg-slate-900/40"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-white text-base">
+                      <span className="font-bold text-slate-900 dark:text-white text-base">
                         {r.requestType === 'RESCHEDULE' ? 'Reschedule Request' : 'New Session Request'}
                       </span>
                       <span
@@ -1260,8 +1260,8 @@ export default function SessionsManager({
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-400 mt-1">
-                      From: <strong className="text-white">{r.studentName}</strong> ({r.studentEmail})
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      From: <strong className="text-slate-900 dark:text-white">{r.studentName}</strong> ({r.studentEmail})
                     </p>
                   </div>
 
@@ -1297,8 +1297,8 @@ export default function SessionsManager({
 
                 {/* Message / Reason */}
                 {r.message && (
-                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-300">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-xs text-slate-700 dark:text-slate-300">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
                       Student Message / Reason:
                     </span>
                     <p>{r.message}</p>
@@ -1308,7 +1308,7 @@ export default function SessionsManager({
                 {/* Preferred Time Windows */}
                 {r.preferredWindows && r.preferredWindows.length > 0 && (
                   <div className="space-y-1.5 text-xs">
-                    <span className="text-[11px] uppercase font-black text-amber-300 block">
+                    <span className="text-[11px] uppercase font-black text-amber-700 dark:text-amber-300 block">
                       Preferred Time Windows (2-3 Slots Selected by Student):
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
@@ -1317,10 +1317,10 @@ export default function SessionsManager({
                         return (
                           <div
                             key={idx}
-                            className="p-3 rounded-xl bg-slate-900 border-2 border-amber-500/60 text-xs shadow-sm"
+                            className="p-3 rounded-xl bg-amber-500/10 dark:bg-slate-900 border-2 border-amber-500/40 dark:border-amber-500/60 text-xs shadow-sm"
                           >
-                            <span className="font-extrabold text-amber-300 block mb-0.5">Slot #{idx + 1}</span>
-                            <span className="font-semibold text-slate-100">{win.label || winStart} (IST)</span>
+                            <span className="font-extrabold text-amber-800 dark:text-amber-300 block mb-0.5">Slot #{idx + 1}</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-100">{win.label || winStart} (IST)</span>
                           </div>
                         );
                       })}
@@ -1336,15 +1336,15 @@ export default function SessionsManager({
       {/* 4. MODAL: SCHEDULE SESSION */}
       {isScheduleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="cosmic-card w-full max-w-2xl p-6 sm:p-8 rounded-3xl border border-white/20 bg-slate-950 space-y-6 my-8">
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+          <div className="cosmic-card w-full max-w-2xl p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-white/20 bg-white dark:bg-slate-950 space-y-6 my-8 text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/10">
               <div className="flex items-center gap-2">
-                <Video className="w-5 h-5 text-amber-400" />
-                <h3 className="text-lg font-bold text-white">Schedule 1-on-1 Class</h3>
+                <Video className="w-5 h-5 text-amber-500 dark:text-amber-400" />
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Schedule 1-on-1 Class</h3>
               </div>
               <button
                 onClick={() => setIsScheduleModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1422,16 +1422,16 @@ export default function SessionsManager({
 
                 {/* 1. Student Selector */}
                 <div>
-                  <label className="text-slate-300 font-bold block mb-1.5">
+                  <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1.5">
                     Select Student / Enrolled Student:
                   </label>
                   <select
                     value={formStudentId}
                     onChange={(e) => setFormStudentId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                   >
                     {students.map((st) => (
-                      <option key={st.id} value={st.id} className="bg-slate-900 text-white">
+                      <option key={st.id} value={st.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                         {st.name} ({st.email}) {st.timezone ? `• ${st.timezone}` : ''}
                       </option>
                     ))}
@@ -1441,13 +1441,13 @@ export default function SessionsManager({
                 {/* 2. Topic Selector: Pick Module or Custom */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-slate-300 font-bold">Topic for this Class:</label>
+                    <label className="text-slate-700 dark:text-slate-300 font-bold">Topic for this Class:</label>
                     <div className="flex items-center gap-2 text-[11px]">
                       <button
                         type="button"
                         onClick={() => setFormTopicMode('MODULE')}
                         className={`px-2 py-0.5 rounded font-semibold ${
-                          formTopicMode === 'MODULE' ? 'bg-amber-400 text-slate-950' : 'text-slate-400'
+                          formTopicMode === 'MODULE' ? 'bg-amber-400 text-slate-950 font-bold' : 'text-slate-500 dark:text-slate-400'
                         }`}
                       >
                         Pick 23-Module
@@ -1456,7 +1456,7 @@ export default function SessionsManager({
                         type="button"
                         onClick={() => setFormTopicMode('CUSTOM')}
                         className={`px-2 py-0.5 rounded font-semibold ${
-                          formTopicMode === 'CUSTOM' ? 'bg-amber-400 text-slate-950' : 'text-slate-400'
+                          formTopicMode === 'CUSTOM' ? 'bg-amber-400 text-slate-950 font-bold' : 'text-slate-500 dark:text-slate-400'
                         }`}
                       >
                         Custom Topic
@@ -1468,10 +1468,10 @@ export default function SessionsManager({
                     <select
                       value={formSelectedModule}
                       onChange={(e) => setFormSelectedModule(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                     >
                       {FLAGSHIP_23_MODULES.map((mod, idx) => (
-                        <option key={idx} value={mod} className="bg-slate-900 text-white">
+                        <option key={idx} value={mod} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                           {mod}
                         </option>
                       ))}
@@ -1482,7 +1482,7 @@ export default function SessionsManager({
                       placeholder="e.g. Navamsha D9 Chart Reading & Career Consultation"
                       value={formCustomTitle}
                       onChange={(e) => setFormCustomTitle(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                     />
                   )}
                 </div>
@@ -1490,70 +1490,70 @@ export default function SessionsManager({
                 {/* 3. Date & Time Picker with dual IST + Student Timezone live preview */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-slate-300 font-bold block mb-1">Class Date:</label>
+                    <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">Class Date:</label>
                     <input
                       type="date"
                       value={formDate}
                       onChange={(e) => setFormDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                     />
                   </div>
 
                   <div>
-                    <label className="text-slate-300 font-bold block mb-1">Class Time (IST):</label>
+                    <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">Class Time (IST):</label>
                     <input
                       type="time"
                       value={formTime}
                       onChange={(e) => setFormTime(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                     />
                   </div>
                 </div>
 
                 {/* Dual Timezone Live Preview Card */}
                 {scheduledTimePreview && (
-                  <div className="p-3 rounded-xl bg-slate-900/80 border border-white/10 flex items-center justify-between text-xs">
-                    <span className="text-amber-300 font-bold">
+                  <div className="p-3 rounded-xl bg-amber-500/10 dark:bg-slate-900/80 border border-amber-500/20 dark:border-white/10 flex items-center justify-between text-xs">
+                    <span className="text-amber-700 dark:text-amber-300 font-bold">
                       🇮🇳 Time in IST: {scheduledTimePreview.istTime}
                     </span>
                     {scheduledTimePreview.studentTime ? (
-                      <span className="text-sky-300 font-mono">
+                      <span className="text-sky-700 dark:text-sky-300 font-mono">
                         Student Time ({studentTz}): {scheduledTimePreview.studentTime}
                       </span>
                     ) : (
-                      <span className="text-slate-400 italic">Student is in India Standard Time</span>
+                      <span className="text-slate-500 dark:text-slate-400 italic">Student is in India Standard Time</span>
                     )}
                   </div>
                 )}
 
                 {/* Quick Presets */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] text-slate-400">Quick presets:</span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">Quick presets:</span>
                   <button
                     type="button"
                     onClick={() => setQuickTime('TODAY_4PM')}
-                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-[10px]"
+                    className="px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 text-[10px]"
                   >
                     Today 4 PM
                   </button>
                   <button
                     type="button"
                     onClick={() => setQuickTime('TOMORROW_11AM')}
-                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-[10px]"
+                    className="px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 text-[10px]"
                   >
                     Tomorrow 11 AM
                   </button>
                   <button
                     type="button"
                     onClick={() => setQuickTime('TOMORROW_4PM')}
-                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-[10px]"
+                    className="px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 text-[10px]"
                   >
                     Tomorrow 4 PM
                   </button>
                   <button
                     type="button"
                     onClick={() => setQuickTime('TOMORROW_6PM')}
-                    className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-[10px]"
+                    className="px-2 py-0.5 rounded bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 text-[10px]"
                   >
                     Tomorrow 6 PM
                   </button>
@@ -1562,40 +1562,40 @@ export default function SessionsManager({
                 {/* 4. Duration & Meeting Link */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-slate-300 font-bold block mb-1">Duration:</label>
+                    <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">Duration:</label>
                     <select
                       value={formDuration}
                       onChange={(e) => setFormDuration(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                     >
-                      <option value={30} className="bg-slate-900">30 Minutes</option>
-                      <option value={45} className="bg-slate-900">45 Minutes</option>
-                      <option value={60} className="bg-slate-900">60 Minutes (Standard)</option>
-                      <option value={90} className="bg-slate-900">90 Minutes</option>
+                      <option value={30} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">30 Minutes</option>
+                      <option value={45} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">45 Minutes</option>
+                      <option value={60} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">60 Minutes (Standard)</option>
+                      <option value={90} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">90 Minutes</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="text-slate-300 font-bold block mb-1">Meeting Platform:</label>
+                    <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">Meeting Platform:</label>
                     <select
                       value={formPlatform}
                       onChange={(e) => setFormPlatform(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                     >
-                      <option value="GOOGLE_MEET" className="bg-slate-900">Google Meet</option>
-                      <option value="ZOOM" className="bg-slate-900">Zoom Meeting</option>
-                      <option value="WHATSAPP_CALL" className="bg-slate-900">WhatsApp Video Call</option>
+                      <option value="GOOGLE_MEET" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Google Meet</option>
+                      <option value="ZOOM" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Zoom Meeting</option>
+                      <option value="WHATSAPP_CALL" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">WhatsApp Video Call</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-slate-300 font-bold block">Meeting Link:</label>
+                    <label className="text-slate-700 dark:text-slate-300 font-bold block">Meeting Link:</label>
                     <button
                       type="button"
                       onClick={() => setFormLink('https://meet.google.com/new')}
-                      className="text-[11px] text-amber-400 hover:text-amber-300 underline font-medium"
+                      className="text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 underline font-medium"
                     >
                       + Generate Google Meet (meet.google.com/new)
                     </button>
@@ -1605,23 +1605,23 @@ export default function SessionsManager({
                     value={formLink}
                     onChange={(e) => setFormLink(e.target.value)}
                     placeholder="Paste real meeting link (e.g. https://meet.google.com/... or https://zoom.us/j/...)"
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-mono text-xs focus:outline-none focus:border-amber-400"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:border-amber-400"
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                     Scheduled by Owner: the real link you enter here will be immediately emailed to the student and unlocked in their dashboard.
                   </p>
                 </div>
 
                 {/* 5. Repeat Weekly Option */}
-                <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 space-y-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={formRepeatWeekly}
                       onChange={(e) => setFormRepeatWeekly(e.target.checked)}
-                      className="w-4 h-4 rounded text-amber-400 bg-white/5 border-white/20"
+                      className="w-4 h-4 rounded text-amber-500 bg-white dark:bg-white/5 border-slate-300 dark:border-white/20"
                     />
-                    <span className="font-bold text-white text-xs">
+                    <span className="font-bold text-slate-900 dark:text-white text-xs">
                       Repeat weekly (create a scheduled set of classes)
                     </span>
                   </label>
@@ -1629,11 +1629,11 @@ export default function SessionsManager({
                   {formRepeatWeekly && (
                     <div className="pl-6 space-y-2 pt-1">
                       <div className="flex items-center gap-3">
-                        <span className="text-slate-300">Repeat for:</span>
+                        <span className="text-slate-700 dark:text-slate-300">Repeat for:</span>
                         <select
                           value={formRepeatWeeks}
                           onChange={(e) => setFormRepeatWeeks(Number(e.target.value))}
-                          className="px-3 py-1 rounded-lg bg-slate-900 border border-white/20 text-amber-300 font-bold text-xs"
+                          className="px-3 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/20 text-amber-700 dark:text-amber-300 font-bold text-xs"
                         >
                           <option value={2}>2 weeks (2 classes)</option>
                           <option value={4}>4 weeks (4 classes)</option>
@@ -1707,19 +1707,19 @@ export default function SessionsManager({
       {/* 5. MODAL: ATTENDANCE & POST-CLASS SUMMARY */}
       {isAttendanceModalOpen && selectedSessionForAttendance && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="cosmic-card w-full max-w-xl p-6 sm:p-8 rounded-3xl border border-white/20 bg-slate-950 space-y-5 my-8 text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+          <div className="cosmic-card w-full max-w-xl p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-white/20 bg-white dark:bg-slate-950 space-y-5 my-8 text-xs text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
               <div>
-                <h3 className="text-base font-bold text-white">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
                   Post-Class Attendance & Notes
                 </h3>
-                <p className="text-slate-400 text-[11px]">
+                <p className="text-slate-500 dark:text-slate-400 text-[11px]">
                   {selectedSessionForAttendance.title} with {selectedSessionForAttendance.studentName}
                 </p>
               </div>
               <button
                 onClick={() => setIsAttendanceModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1728,7 +1728,7 @@ export default function SessionsManager({
             <form onSubmit={handleSaveAttendance} className="space-y-4">
               {/* Status Radio Group */}
               <div>
-                <label className="text-slate-300 font-bold block mb-1.5">Class Status:</label>
+                <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1.5">Class Status:</label>
                 <div className="grid grid-cols-3 gap-2">
                   {(['COMPLETED', 'MISSED', 'CANCELLED'] as const).map((st) => (
                     <button
@@ -1738,11 +1738,11 @@ export default function SessionsManager({
                       className={`p-2.5 rounded-xl border text-center font-bold transition ${
                         attStatus === st
                           ? st === 'COMPLETED'
-                            ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
+                            ? 'bg-emerald-500/20 border-emerald-500 text-emerald-600 dark:text-emerald-300'
                             : st === 'MISSED'
-                            ? 'bg-rose-500/20 border-rose-500 text-rose-300'
-                            : 'bg-slate-500/20 border-slate-400 text-slate-300'
-                          : 'bg-white/5 border-white/10 text-slate-400'
+                            ? 'bg-rose-500/20 border-rose-500 text-rose-600 dark:text-rose-300'
+                            : 'bg-slate-200 dark:bg-slate-500/20 border-slate-400 text-slate-800 dark:text-slate-300'
+                          : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400'
                       }`}
                     >
                       {st}
@@ -1832,55 +1832,55 @@ export default function SessionsManager({
       {/* 6. MODAL: PROPOSE OR DECLINE REQUEST */}
       {activeRequestAction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="cosmic-card w-full max-w-md p-6 rounded-3xl border border-white/20 bg-slate-950 space-y-4 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-white/10">
-              <h3 className="text-sm font-bold text-white">
+          <div className="cosmic-card w-full max-w-md p-6 rounded-3xl border border-slate-200 dark:border-white/20 bg-white dark:bg-slate-950 space-y-4 text-xs text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-white/10">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                 {activeRequestAction.type === 'PROPOSE' ? 'Propose Alternate Time' : 'Decline Session Request'}
               </h3>
               <button
                 onClick={() => setActiveRequestAction(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-slate-300">
-              For student: <strong className="text-white">{activeRequestAction.request.studentName}</strong>
+            <p className="text-slate-600 dark:text-slate-300">
+              For student: <strong className="text-slate-900 dark:text-white">{activeRequestAction.request.studentName}</strong>
             </p>
 
             {activeRequestAction.type === 'PROPOSE' ? (
               <div className="space-y-3">
                 <div>
-                  <label className="text-slate-300 font-bold block mb-1">Proposed Alternate Slot:</label>
+                  <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">Proposed Alternate Slot:</label>
                   <input
                     type="text"
                     placeholder="e.g. Thursday at 5:00 PM IST or Saturday 11:00 AM IST"
                     value={proposalTimeInput}
                     onChange={(e) => setProposalTimeInput(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
                 <div>
-                  <label className="text-slate-300 font-bold block mb-1">Note for Student:</label>
+                  <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">Note for Student:</label>
                   <textarea
                     rows={2}
                     placeholder="e.g. Thursday works best for an in-depth chart reading."
                     value={requestActionNote}
                     onChange={(e) => setRequestActionNote(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
               </div>
             ) : (
               <div>
-                <label className="text-slate-300 font-bold block mb-1">Reason for Declining:</label>
+                <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">Reason for Declining:</label>
                 <textarea
                   rows={3}
                   placeholder="e.g. Fully booked this week. Please propose a date next week."
                   value={requestActionNote}
                   onChange={(e) => setRequestActionNote(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-amber-400"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                 />
               </div>
             )}
@@ -1889,7 +1889,7 @@ export default function SessionsManager({
               <button
                 type="button"
                 onClick={() => setActiveRequestAction(null)}
-                className="px-3 py-1.5 rounded-xl text-slate-400 hover:text-white"
+                className="px-3 py-1.5 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white"
               >
                 Cancel
               </button>
@@ -1911,31 +1911,31 @@ export default function SessionsManager({
       {/* ------------------------------------------------------------------------ */}
       {showOutboxModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-2xl rounded-3xl bg-slate-900 border border-white/10 p-6 sm:p-7 shadow-2xl space-y-5 my-8">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+          <div className="relative w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-6 sm:p-7 shadow-2xl space-y-5 my-8 text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-amber-400" />
-                  <h3 className="text-lg font-bold text-white">Transactional Email Outbox</h3>
+                  <Mail className="w-5 h-5 text-amber-500 dark:text-amber-400" />
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Transactional Email Outbox</h3>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Automatic retry queue and delivery status for scheduled sessions, schedule adjustments, cancellations, and 24h / 1h pre-class reminders.
                 </p>
               </div>
               <button
                 onClick={() => setShowOutboxModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white transition"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {outboxActionMessage && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs flex items-center justify-between">
                 <span>{outboxActionMessage}</span>
                 <button
                   onClick={() => setOutboxActionMessage(null)}
-                  className="text-slate-400 hover:text-white"
+                  className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -1943,16 +1943,16 @@ export default function SessionsManager({
             )}
 
             {outboxFailures.length === 0 ? (
-              <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/5 text-center space-y-2">
-                <Check className="w-8 h-8 text-emerald-400 mx-auto" />
-                <h4 className="text-sm font-bold text-white">All Emails Delivered Successfully</h4>
-                <p className="text-xs text-slate-400 max-w-md mx-auto">
+              <div className="p-8 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 text-center space-y-2">
+                <Check className="w-8 h-8 text-emerald-500 dark:text-emerald-400 mx-auto" />
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">All Emails Delivered Successfully</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
                   There are no failed email dispatches. Scheduled confirmations, update notices, cancellations, and pre-class reminders are delivering without errors.
                 </p>
               </div>
             ) : (
               <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-                <p className="text-xs font-semibold text-rose-300 flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-rose-600 dark:text-rose-300 flex items-center gap-1.5">
                   <AlertTriangle className="w-3.5 h-3.5" />
                   <span>{outboxFailures.length} failed delivery attempt(s) requiring attention:</span>
                 </p>
@@ -1961,22 +1961,22 @@ export default function SessionsManager({
                   {outboxFailures.map((failure) => (
                     <div
                       key={failure.id}
-                      className="p-4 rounded-2xl bg-slate-950 border border-rose-500/30 space-y-2"
+                      className="p-4 rounded-2xl bg-rose-500/5 dark:bg-slate-950 border border-rose-500/30 space-y-2"
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-white/5 pb-2">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/30">
                               {failure.emailType}
                             </span>
-                            <span className="text-xs font-bold text-white">
+                            <span className="text-xs font-bold text-slate-900 dark:text-white">
                               {failure.recipientEmail}
                             </span>
                             {failure.recipientName && (
-                              <span className="text-xs text-slate-400">({failure.recipientName})</span>
+                              <span className="text-xs text-slate-500 dark:text-slate-400">({failure.recipientName})</span>
                             )}
                           </div>
-                          <p className="text-xs text-slate-300 font-semibold mt-1">
+                          <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold mt-1">
                             {failure.subject}
                           </p>
                         </div>
@@ -1984,16 +1984,16 @@ export default function SessionsManager({
                         <button
                           onClick={() => handleRetryOutboxEmail(failure.id)}
                           disabled={retryingEmailId === failure.id}
-                          className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5 self-start sm:self-center transition disabled:opacity-50"
+                          className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-600 dark:text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5 self-start sm:self-center transition disabled:opacity-50"
                         >
                           <RefreshCw className={`w-3.5 h-3.5 ${retryingEmailId === failure.id ? 'animate-spin' : ''}`} />
                           <span>{retryingEmailId === failure.id ? 'Retrying...' : 'Retry Now'}</span>
                         </button>
                       </div>
 
-                      <div className="text-[11px] text-slate-400 space-y-1">
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
                         {failure.lastError && (
-                          <p className="text-rose-400 font-mono text-[10px] bg-rose-950/40 p-2 rounded border border-rose-900/30">
+                          <p className="text-rose-600 dark:text-rose-400 font-mono text-[10px] bg-rose-50 dark:bg-rose-950/40 p-2 rounded border border-rose-200 dark:border-rose-900/30">
                             Error: {failure.lastError}
                           </p>
                         )}
@@ -2008,14 +2008,14 @@ export default function SessionsManager({
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-3 border-t border-white/10 text-xs">
+            <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-white/10 text-xs">
               <span className="text-[11px] text-slate-500">
                 Processed every 15 minutes by GitHub Actions workflow
               </span>
               <button
                 type="button"
                 onClick={() => setShowOutboxModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 font-semibold"
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold"
               >
                 Close
               </button>
@@ -2029,20 +2029,20 @@ export default function SessionsManager({
       {/* ------------------------------------------------------------------------ */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-slate-900 border border-white/10 p-6 sm:p-7 shadow-2xl space-y-5 my-8">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-6 sm:p-7 shadow-2xl space-y-5 my-8 text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <Settings className="w-5 h-5 text-amber-400" />
-                  <h3 className="text-lg font-bold text-white">1-on-1 Session Policies</h3>
+                  <Settings className="w-5 h-5 text-amber-500 dark:text-amber-400" />
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">1-on-1 Session Policies</h3>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Configure reschedule advance notice periods and optional per-student included session counts.
                 </p>
               </div>
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white transition"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2050,18 +2050,18 @@ export default function SessionsManager({
 
             {settingsSaveSuccess ? (
               <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-2">
-                <Check className="w-8 h-8 text-emerald-400 mx-auto" />
-                <p className="text-xs font-bold text-emerald-300">Session policies updated successfully!</p>
+                <Check className="w-8 h-8 text-emerald-500 dark:text-emerald-400 mx-auto" />
+                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-300">Session policies updated successfully!</p>
               </div>
             ) : (
               <form onSubmit={handleSaveCourseSettings} className="space-y-4 text-xs">
                 {/* 1. Reschedule Notice Period */}
                 <div className="space-y-1">
-                  <label className="font-bold text-white flex items-center justify-between">
+                  <label className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
                     <span>Reschedule Notice Period (Hours)</span>
-                    <span className="text-[10px] text-amber-400 font-normal">Default: 24 Hours</span>
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">Default: 24 Hours</span>
                   </label>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     Students must submit online reschedule requests at least this many hours in advance of the session. Within this window, they are directed to contact Acharya ji on WhatsApp.
                   </p>
                   <div className="flex items-center gap-2 pt-1">
@@ -2072,19 +2072,19 @@ export default function SessionsManager({
                       value={settingsNoticeHours}
                       onChange={(e) => setSettingsNoticeHours(Number(e.target.value))}
                       required
-                      className="w-32 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-sm focus:outline-none focus:border-amber-400"
+                      className="w-32 px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white font-bold text-sm focus:outline-none focus:border-amber-400"
                     />
-                    <span className="text-xs text-slate-300 font-medium">Hours before class</span>
+                    <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">Hours before class</span>
                   </div>
                 </div>
 
                 {/* 2. Optional Sessions Included */}
-                <div className="space-y-1 pt-3 border-t border-white/10">
-                  <label className="font-bold text-white flex items-center justify-between">
+                <div className="space-y-1 pt-3 border-t border-slate-200 dark:border-white/10">
+                  <label className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
                     <span>Sessions Included Per Student</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Optional / Empty by default</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Optional / Empty by default</span>
                   </label>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     Leave blank to hide quota counters. If set, students and admins will see usage progress (e.g. &quot;2 of 5 sessions used&quot;).
                   </p>
                   <div className="flex items-center gap-2 pt-1">
@@ -2094,12 +2094,12 @@ export default function SessionsManager({
                       placeholder="e.g. 5 (or leave empty)"
                       value={settingsIncludedCount}
                       onChange={(e) => setSettingsIncludedCount(e.target.value === '' ? '' : Number(e.target.value))}
-                      className="w-48 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                      className="w-48 px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-amber-400"
                     />
                     <button
                       type="button"
                       onClick={() => setSettingsIncludedCount('')}
-                      className="text-[11px] text-slate-400 hover:text-white"
+                      className="text-[11px] text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     >
                       Clear
                     </button>
@@ -2107,14 +2107,14 @@ export default function SessionsManager({
                 </div>
 
                 {/* 3. Maximum Active Students Capacity */}
-                <div className="space-y-1 pt-3 border-t border-white/10">
-                  <label className="font-bold text-white flex items-center justify-between">
+                <div className="space-y-1 pt-3 border-t border-slate-200 dark:border-white/10">
+                  <label className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
                     <span>Maximum Active Students Capacity</span>
-                    <span className="text-[10px] text-slate-400 font-normal">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
                       {settingsMaxStudents === '' ? 'Currently: Unlimited' : `Cap: ${settingsMaxStudents} Students`}
                     </span>
                   </label>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     Set a real limit on concurrent active 1-on-1 students to prevent overload. Leave empty for no hard limit.
                   </p>
                   <div className="flex items-center gap-2 pt-1">
@@ -2125,12 +2125,12 @@ export default function SessionsManager({
                       placeholder="e.g. 25 (or leave empty)"
                       value={settingsMaxStudents}
                       onChange={(e) => setSettingsMaxStudents(e.target.value === '' ? '' : Number(e.target.value))}
-                      className="w-48 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                      className="w-48 px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-amber-400"
                     />
                     <button
                       type="button"
                       onClick={() => setSettingsMaxStudents('')}
-                      className="text-[11px] text-slate-400 hover:text-white"
+                      className="text-[11px] text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     >
                       Clear Limit
                     </button>
@@ -2138,12 +2138,12 @@ export default function SessionsManager({
                 </div>
 
                 {/* 4. Usual Session Length */}
-                <div className="space-y-2 pt-3 border-t border-white/10">
-                  <label className="font-bold text-white flex items-center justify-between">
+                <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-white/10">
+                  <label className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
                     <span>Usual Session Length</span>
-                    <span className="text-[10px] text-amber-400 font-normal">{settingsSessionLength} Minutes Default</span>
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">{settingsSessionLength} Minutes Default</span>
                   </label>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     Standard duration pre-filled when scheduling new 1-on-1 classes.
                   </p>
                   <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -2155,7 +2155,7 @@ export default function SessionsManager({
                         className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
                           settingsSessionLength === mins
                             ? 'bg-amber-400 text-slate-950 border-amber-400 font-bold'
-                            : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300'
+                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300'
                         }`}
                       >
                         {mins} Mins
@@ -2169,22 +2169,22 @@ export default function SessionsManager({
                         step={5}
                         value={settingsSessionLength}
                         onChange={(e) => setSettingsSessionLength(Number(e.target.value))}
-                        className="w-24 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400"
+                        className="w-24 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-amber-400"
                       />
-                      <span className="text-slate-400 text-xs">minutes</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-xs">minutes</span>
                     </div>
                   </div>
                 </div>
 
                 {/* 5. Default Meeting Platform */}
-                <div className="space-y-2 pt-3 border-t border-white/10">
-                  <label className="font-bold text-white flex items-center justify-between">
+                <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-white/10">
+                  <label className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
                     <span>Default Live Meeting Platform</span>
-                    <span className="text-[10px] text-amber-400 font-normal">
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
                       {settingsMeetingPlatform === 'GOOGLE_MEET' ? 'Google Meet' : settingsMeetingPlatform === 'ZOOM' ? 'Zoom' : 'WhatsApp Call'}
                     </span>
                   </label>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     Preferred platform pre-selected when creating live sessions.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
@@ -2199,36 +2199,36 @@ export default function SessionsManager({
                         onClick={() => setSettingsMeetingPlatform(plat.id)}
                         className={`p-2.5 rounded-xl border text-left transition ${
                           settingsMeetingPlatform === plat.id
-                            ? 'bg-amber-500/10 border-amber-500/50 text-white'
-                            : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300'
+                            ? 'bg-amber-500/10 border-amber-500/50 text-slate-900 dark:text-white'
+                            : 'bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:hover:bg-white/10 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300'
                         }`}
                       >
                         <div className="flex items-center justify-between w-full mb-0.5">
                           <span className="font-bold text-xs">{plat.title}</span>
                           {settingsMeetingPlatform === plat.id && (
-                            <Check className="w-3.5 h-3.5 text-amber-400" />
+                            <Check className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                           )}
                         </div>
-                        <span className="text-[10px] text-slate-400 block">{plat.desc}</span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block">{plat.desc}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 {/* 6. Weekly Working Hours (Asia/Kolkata) */}
-                <div className="space-y-2 pt-3 border-t border-white/10">
+                <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-white/10">
                   <div className="flex items-center justify-between">
-                    <label className="font-bold text-white flex items-center gap-1.5">
+                    <label className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                       <span>Weekly Working Hours (Asia/Kolkata)</span>
                     </label>
-                    <span className="text-[10px] text-slate-400">IST Timezone</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">IST Timezone</span>
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                     Available teaching days & time slots for clash detection and booking warnings.
                   </p>
-                  <div className="space-y-1.5 pt-1 bg-black/30 p-2.5 rounded-2xl border border-white/5">
+                  <div className="space-y-1.5 pt-1 bg-slate-50 dark:bg-black/30 p-2.5 rounded-2xl border border-slate-200 dark:border-white/5">
                     {settingsWorkingHours.map((day, idx) => (
-                      <div key={day.dayOfWeek} className="flex items-center justify-between gap-2 py-1 border-b border-white/5 last:border-0 text-xs">
+                      <div key={day.dayOfWeek} className="flex items-center justify-between gap-2 py-1 border-b border-slate-200 dark:border-white/5 last:border-0 text-xs">
                         <label className="flex items-center gap-2 cursor-pointer w-28">
                           <input
                             type="checkbox"
@@ -2238,9 +2238,9 @@ export default function SessionsManager({
                               updated[idx] = { ...updated[idx], isEnabled: e.target.checked };
                               setSettingsWorkingHours(updated);
                             }}
-                            className="rounded border-white/20 text-amber-400 focus:ring-amber-400"
+                            className="rounded border-slate-300 dark:border-white/20 text-amber-500 focus:ring-amber-400"
                           />
-                          <span className={day.isEnabled ? 'text-white font-semibold' : 'text-slate-500 line-through'}>
+                          <span className={day.isEnabled ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-400 dark:text-slate-500 line-through'}>
                             {day.dayName}
                           </span>
                         </label>
@@ -2255,7 +2255,7 @@ export default function SessionsManager({
                                 updated[idx] = { ...updated[idx], startTime: e.target.value };
                                 setSettingsWorkingHours(updated);
                               }}
-                              className="px-2 py-0.5 rounded-lg bg-white/10 border border-white/10 text-white font-mono text-xs"
+                              className="px-2 py-0.5 rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white font-mono text-xs"
                             />
                             <span className="text-slate-500 text-[10px]">to</span>
                             <input
@@ -2266,23 +2266,23 @@ export default function SessionsManager({
                                 updated[idx] = { ...updated[idx], endTime: e.target.value };
                                 setSettingsWorkingHours(updated);
                               }}
-                              className="px-2 py-0.5 rounded-lg bg-white/10 border border-white/10 text-white font-mono text-xs"
+                              className="px-2 py-0.5 rounded-lg bg-white dark:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white font-mono text-xs"
                             />
-                            <span className="text-[10px] text-slate-400">IST</span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400">IST</span>
                           </div>
                         ) : (
-                          <span className="text-[11px] text-slate-500 italic">Day Off (No Classes)</span>
+                          <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">Day Off (No Classes)</span>
                         )}
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-white/10">
+                <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-white/10">
                   <button
                     type="button"
                     onClick={() => setShowSettingsModal(false)}
-                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold"
                   >
                     Cancel
                   </button>

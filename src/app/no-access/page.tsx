@@ -54,10 +54,10 @@ function NoAccessContent({ searchParams }: NoAccessProps) {
               />
             </div>
             <div className="text-left">
-              <span className="text-2xl font-black tracking-wider text-white block leading-none">
-                VIAR<span className="text-amber-400">.IN</span>
+              <span className="text-2xl font-black tracking-wider text-slate-900 dark:text-white block leading-none">
+                VIAR<span className="text-amber-500 dark:text-amber-400">.IN</span>
               </span>
-              <span className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold block mt-0.5">
+              <span className="text-[10px] text-slate-600 dark:text-slate-400 uppercase tracking-widest font-semibold block mt-0.5">
                 Vihangam Academy
               </span>
             </div>
@@ -65,20 +65,20 @@ function NoAccessContent({ searchParams }: NoAccessProps) {
         </div>
 
         {/* Access Restricted Card */}
-        <div className="cosmic-card p-6 sm:p-10 rounded-3xl border border-red-500/30 bg-slate-900/80 shadow-2xl space-y-6 text-center backdrop-blur-xl">
-          <div className="w-16 h-16 rounded-2xl bg-red-500/15 border border-red-500/30 flex items-center justify-center mx-auto text-red-400 shadow-lg shadow-red-500/10">
+        <div className="cosmic-card p-6 sm:p-10 rounded-3xl border border-red-500/30 bg-white dark:bg-slate-900/80 shadow-2xl space-y-6 text-center backdrop-blur-xl">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/15 border border-red-500/30 flex items-center justify-center mx-auto text-red-500 dark:text-red-400 shadow-lg shadow-red-500/10">
             <ShieldAlert className="w-8 h-8" />
           </div>
 
           <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wider uppercase bg-red-500/10 border border-red-500/20 text-red-400 mb-3">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wider uppercase bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 mb-3">
               <Lock className="w-3.5 h-3.5" /> 403 Forbidden
             </span>
-            <h1 className="text-2xl sm:text-3xl font-black text-white">{title}</h1>
-            <p className="text-sm text-slate-300 mt-3 leading-relaxed">{description}</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">{title}</h1>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mt-3 leading-relaxed">{description}</p>
           </div>
 
-          <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               href="/dashboard"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-amber-500/20"
@@ -87,13 +87,13 @@ function NoAccessContent({ searchParams }: NoAccessProps) {
             </Link>
             <Link
               href="/"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-xs transition"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white font-semibold text-xs transition"
             >
               <Home className="w-4 h-4" /> Return to Home
             </Link>
             <Link
               href="/login"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white font-semibold text-xs transition"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white font-semibold text-xs transition"
             >
               <UserCheck className="w-4 h-4" /> Switch Account
             </Link>

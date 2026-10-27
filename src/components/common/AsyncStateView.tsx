@@ -72,7 +72,7 @@ export function AsyncStateView({
       return (
         <div
           data-testid="async-auth-error-state"
-          className="cosmic-card p-8 sm:p-12 rounded-3xl border border-red-500/30 bg-slate-900/80 text-center max-w-lg mx-auto space-y-4 shadow-2xl my-8"
+          className="cosmic-card p-8 sm:p-12 rounded-3xl border border-red-500/30 bg-white dark:bg-slate-900/80 text-slate-900 dark:text-white text-center max-w-lg mx-auto space-y-4 shadow-2xl my-8"
         >
           <div className="w-14 h-14 rounded-2xl bg-red-500/15 border border-red-500/30 flex items-center justify-center mx-auto text-red-400 shadow-lg shadow-red-500/10">
             <Lock className="w-7 h-7" />
@@ -105,7 +105,7 @@ export function AsyncStateView({
     return (
       <div
         data-testid="async-server-error-state"
-        className="cosmic-card p-8 sm:p-12 rounded-3xl border border-amber-500/30 bg-slate-900/80 text-center max-w-lg mx-auto space-y-4 shadow-2xl my-8"
+        className="cosmic-card p-8 sm:p-12 rounded-3xl border border-amber-500/30 bg-white dark:bg-slate-900/80 text-slate-900 dark:text-white text-center max-w-lg mx-auto space-y-4 shadow-2xl my-8"
       >
         <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400 shadow-lg shadow-amber-500/10">
           <AlertCircle className="w-7 h-7" />
