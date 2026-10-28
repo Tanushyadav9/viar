@@ -1,4 +1,4 @@
-name: 1-on-1 Session Reminders & Email Outbox Dispatcher
+name: Course Live Class & Session Reminders & Email Outbox Dispatcher
 
 on:
   schedule:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   dispatch-reminders:
-    name: Dispatch 24h/1h Session Reminders & Process Outbox
+    name: Dispatch 24h/1h Live Class Reminders & Process Outbox
     runs-on: ubuntu-latest
     timeout-minutes: 5
 

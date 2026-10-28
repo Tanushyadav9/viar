@@ -11,6 +11,16 @@ import {
   formatStartsInCountdown,
   autoCompletePastLiveClasses,
 } from '../src/lib/courses/liveClassesService';
+import {
+  generateSecureCalendarToken,
+  hashCalendarToken,
+  maskCalendarToken,
+  getCalendarFeedToken,
+  verifyCalendarFeedToken,
+  regenerateCalendarFeedToken,
+  generateOwnerLiveClassesICal,
+} from '../src/lib/sessions/calendarFeed';
+import { enqueueSessionEmail } from '../src/lib/sessions/outboxService';
 
 describe('Prompt 10: Course Live Classes Invariants & Validation', () => {
   describe('1. Meeting Link Validation (Google Meet & Zoom)', () => {
@@ -489,6 +499,103 @@ describe('Prompt 10: Course Live Classes Invariants & Validation', () => {
 
       assert.strictEqual(progressRecord.completed, true, 'Progress must be marked completed for student');
       assert.strictEqual(progressRecord.watched, true, 'Watching recording completes lesson');
+    });
+  });
+
+  describe('8. Student Reminders (24h/1h) & Owner Calendar (iCal Feed)', () => {
+    it('generates cryptographic token with at least 32 bytes (256 bits) of entropy', () => {
+      const token = generateSecureCalendarToken();
+      assert.strictEqual(token.startsWith('sec_vcal_'), true, 'Token must have standard prefix');
+      const hexPart = token.replace('sec_vcal_', '');
+      assert.strictEqual(hexPart.length, 64, '32 bytes of entropy produces 64 hex characters');
+    });
+
+    it('stores token hashed with SHA-256 and supports timing-safe verification', () => {
+      const token = getCalendarFeedToken();
+      const hash = hashCalendarToken(token);
+      assert.strictEqual(hash.length, 64, 'SHA-256 hash must be 64 characters');
+      assert.strictEqual(verifyCalendarFeedToken(token), true, 'Valid token must be verified');
+      assert.strictEqual(verifyCalendarFeedToken('sec_vcal_invalid_token_123'), false, 'Bad token must be rejected');
+      assert.strictEqual(verifyCalendarFeedToken(''), false, 'Empty token must be rejected');
+    });
+
+    it('masks token appropriately showing prefix, bullets, and last 4 characters', () => {
+      const token = 'sec_vcal_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+      const masked = maskCalendarToken(token);
+      assert.strictEqual(masked.startsWith('sec_vcal_••••••••••••••••'), true);
+      assert.strictEqual(masked.endsWith('cdef'), true);
+    });
+
+    it('regeneration immediately invalidates the previous token', () => {
+      const oldToken = getCalendarFeedToken();
+      const newToken = regenerateCalendarFeedToken();
+      assert.notStrictEqual(oldToken, newToken, 'New token must differ from old token');
+      assert.strictEqual(verifyCalendarFeedToken(newToken), true, 'New token must verify');
+      assert.strictEqual(verifyCalendarFeedToken(oldToken), false, 'Old token must immediately fail verification');
+    });
+
+    it('Owner iCal feed contains live classes only with strictly zero student PII', () => {
+      const testClasses = [
+        {
+          id: 'live-class-navamsha-101',
+          title: 'Navamsha Marriage Breakdown & Compatibility',
+          startTime: '2026-11-25T14:30:00.000Z',
+          durationMinutes: 90,
+          meetingLink: 'https://meet.google.com/abc-defg-hij',
+          meetingPlatform: 'GOOGLE_MEET',
+          agenda: 'Analyzing 7th house in D9 chart and planetary aspects',
+          courseTitle: 'Foundations of Vedic Astrology',
+          status: 'SCHEDULED',
+        },
+      ];
+
+      const ics = generateOwnerLiveClassesICal(testClasses);
+      assert.ok(ics.includes('BEGIN:VCALENDAR'), 'Must be RFC 5545 calendar');
+      assert.ok(ics.includes('BEGIN:VEVENT'), 'Must contain VEVENT');
+      assert.ok(ics.includes('SUMMARY:VIAR Live Class: Navamsha Marriage Breakdown & Compatibility'));
+      assert.ok(ics.includes('LOCATION:https://meet.google.com/abc-defg-hij'));
+      assert.ok(ics.includes('URL:https://meet.google.com/abc-defg-hij'));
+      assert.ok(ics.includes('DESCRIPTION:Course: Foundations of Vedic Astrology\\nFormat: Interactive Course Live Class'));
+
+      // Zero student PII guardrails
+      assert.strictEqual(ics.includes('Rohan'), false, 'Must not contain any student names');
+      assert.strictEqual(ics.includes('Alice'), false, 'Must not contain any student names');
+      assert.strictEqual(ics.includes('example.com'), false, 'Must not contain student emails');
+      assert.strictEqual(ics.includes('@gmail.com'), false, 'Must not contain student emails');
+      assert.strictEqual(ics.includes('phone'), false, 'Must not contain student phone numbers');
+    });
+
+    it('outbox service enforces strict idempotency for course live class reminders', async () => {
+      const idempotencyKey = `live_class_24h_lesson_test_99_${Date.now()}`;
+
+      // First enqueue
+      const first = await enqueueSessionEmail({
+        recipientEmail: 'approved.student@example.org',
+        recipientName: 'Vedic Student',
+        emailType: 'REMINDER_24H',
+        subject: 'Reminder: Tomorrow is your Live Class with Acharya Niraj Kumar',
+        htmlContent: '<p>Live class details</p>',
+        textContent: 'Live class details',
+        idempotencyKey,
+        immediateDispatch: false,
+      });
+
+      assert.strictEqual(first.idempotencyKey, idempotencyKey);
+
+      // Duplicate enqueue with same idempotency key
+      const duplicate = await enqueueSessionEmail({
+        recipientEmail: 'approved.student@example.org',
+        recipientName: 'Vedic Student',
+        emailType: 'REMINDER_24H',
+        subject: 'Reminder: Tomorrow is your Live Class with Acharya Niraj Kumar',
+        htmlContent: '<p>Live class details</p>',
+        textContent: 'Live class details',
+        idempotencyKey,
+        immediateDispatch: false,
+      });
+
+      // Must return identical record without duplicating
+      assert.strictEqual(duplicate.id, first.id, 'Idempotency must prevent duplicate outbox entries');
     });
   });
 });

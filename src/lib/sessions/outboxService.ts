@@ -566,14 +566,236 @@ export async function checkAndQueueReminders(): Promise<{
   const errors: string[] = [];
 
   // Window bounds:
-  // 24h reminder window: between 23h and 25h ahead (or <= 24h and > 1h ahead)
+  // 24h reminder window: between 23h and 25h ahead (or <= 24h and > 1.5h ahead)
   const window24hEnd = nowMs + 25 * 60 * 60 * 1000;
   const window24hStart = nowMs + 1.5 * 60 * 60 * 1000; // Do not send 24h reminder if class is in < 1.5h
 
-  // 1h reminder window: between 45m and 75m ahead (or <= 1h and >= now)
+  // 1h reminder window: between 45m and 75m ahead (or <= 1h and >= now - 5m)
   const window1hEnd = nowMs + 75 * 60 * 1000;
   const window1hStart = nowMs - 5 * 60 * 1000; // within 5 mins past start grace
 
+  // ------------------------------------------------------------------------
+  // 1. AUTO-COMPLETE EXPIRED LIVE CLASSES
+  // ------------------------------------------------------------------------
+  try {
+    const { autoCompletePastLiveClasses } = await import('@/lib/courses/liveClassesService');
+    await autoCompletePastLiveClasses();
+  } catch {}
+
+  // ------------------------------------------------------------------------
+  // 2. SCAN COURSE LIVE CLASSES (type = 'LIVE_SESSION')
+  // ------------------------------------------------------------------------
+  try {
+    const liveLessons = await prisma.lesson.findMany({
+      where: {
+        type: 'LIVE_SESSION',
+        status: { in: ['SCHEDULED', 'PUBLISHED'] },
+        liveScheduledAt: {
+          gte: new Date(nowMs - 15 * 60 * 1000), // active/recent
+          lte: new Date(nowMs + 26 * 60 * 60 * 1000), // next 26 hours
+        },
+      },
+      include: {
+        module: {
+          include: {
+            course: {
+              select: { id: true, title: true, slug: true },
+            },
+          },
+        },
+      },
+    });
+
+    for (const lesson of liveLessons) {
+      if (!lesson.liveScheduledAt) continue;
+      const lessonStartMs = new Date(lesson.liveScheduledAt).getTime();
+      const courseId = lesson.module?.course?.id;
+      const courseTitle = lesson.module?.course?.title || 'Foundations of Vedic Astrology';
+
+      const is24hCandidate = lessonStartMs >= window24hStart && lessonStartMs <= window24hEnd;
+      const is1hCandidate = lessonStartMs >= window1hStart && lessonStartMs <= window1hEnd;
+
+      if (!is24hCandidate && !is1hCandidate) continue;
+
+      // Find all active approved students enrolled in this course
+      const enrollments = courseId
+        ? await prisma.enrollment.findMany({
+            where: { courseId, status: 'ACTIVE' },
+            include: { user: { select: { id: true, name: true, email: true } } },
+          })
+        : [];
+
+      // Extract unique active students with valid emails
+      const studentMap = new Map<string, { id: string; name: string; email: string }>();
+      for (const enr of enrollments) {
+        if (enr.user?.email && !studentMap.has(enr.user.id)) {
+          studentMap.set(enr.user.id, {
+            id: enr.user.id,
+            name: enr.user.name || 'Student',
+            email: enr.user.email,
+          });
+        }
+      }
+
+      for (const student of Array.from(studentMap.values())) {
+        // A. 24-HOUR REMINDER
+        if (is24hCandidate) {
+          const idempotencyKey = `live_class_24h_${lesson.id}_${student.id}`;
+          let alreadySent = false;
+          try {
+            const found = await prisma.sessionEmailOutbox.findUnique({
+              where: { idempotencyKey },
+            });
+            if (found) alreadySent = true;
+          } catch {}
+
+          if (!alreadySent) {
+            for (const item of Array.from(_memoryOutbox.values())) {
+              if (item.idempotencyKey === idempotencyKey) {
+                alreadySent = true;
+                break;
+              }
+            }
+          }
+
+          if (!alreadySent) {
+            const timeIst = formatInTimezone(lesson.liveScheduledAt.toISOString(), 'Asia/Kolkata', 'short');
+            const timeLocal = formatInTimezone(lesson.liveScheduledAt.toISOString(), 'America/New_York', 'short');
+            const subject = `Reminder: Tomorrow is your Live Class with Acharya Niraj Kumar — ${lesson.title}`;
+
+            const html = `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0b0f17; color: #cbd5e1; border: 1px solid rgba(245,158,11,0.3); border-radius: 16px; padding: 28px;">
+                <div style="text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 16px; margin-bottom: 20px;">
+                  <h2 style="color: #f59e0b; margin: 0; font-size: 18px;">Vihangam Institute of Astrology and Research</h2>
+                  <p style="color: #94a3b8; font-size: 12px; margin: 4px 0 0;">24-Hour Course Live Class Reminder</p>
+                </div>
+                <p style="color: #ffffff; font-size: 15px;">Namaste <strong>${student.name} ji</strong>,</p>
+                <p style="font-size: 14px; line-height: 1.6;">
+                  This is a reminder that an interactive live class for <strong>${courseTitle}</strong> with <strong>Acharya Niraj Kumar</strong> is scheduled for tomorrow:
+                </p>
+                <div style="background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px; margin: 20px 0;">
+                  <p style="margin: 4px 0; color: #ffffff;"><strong>Topic:</strong> ${lesson.title}</p>
+                  ${lesson.agenda ? `<p style="margin: 4px 0; color: #94a3b8;"><strong>Agenda:</strong> ${lesson.agenda}</p>` : ''}
+                  <p style="margin: 4px 0; color: #f59e0b;"><strong>Time (IST):</strong> ${timeIst} IST</p>
+                  <p style="margin: 4px 0; color: #38bdf8;"><strong>Time (EDT):</strong> ${timeLocal} EDT</p>
+                  <p style="margin: 4px 0; color: #ffffff;"><strong>Duration:</strong> ${lesson.durationMinutes || 60} Minutes</p>
+                  <p style="margin: 4px 0; color: #ffffff;"><strong>Platform:</strong> ${lesson.meetingPlatform === 'ZOOM' ? 'Zoom Meeting' : 'Google Meet'}</p>
+                </div>
+                <p style="font-size: 13px; color: #94a3b8; line-height: 1.5;">
+                  The join button in your student portal activates 30 minutes before class start. If you cannot attend live, the full recording will be posted in the course curriculum shortly after the session.
+                </p>
+                <div style="text-align: center; margin: 24px 0;">
+                  <a href="https://viar.in/dashboard?tab=live-classes" style="display: inline-block; padding: 12px 28px; background: linear-gradient(135deg, #d97706, #b45309); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px;">Open Student Portal</a>
+                </div>
+                <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-top: 20px; font-size: 12px; color: #64748b; text-align: center;">
+                  <p>Questions or need help? WhatsApp: <a href="https://wa.me/919311215564" style="color: #f59e0b;">+91 93112 15564</a></p>
+                </div>
+              </div>
+            `;
+
+            const text = `Namaste ${student.name} ji,\n\nReminder: Your Live Class for ${courseTitle} with Acharya Niraj Kumar is scheduled for tomorrow at ${timeIst} IST.\nTopic: ${lesson.title}\nStudent Portal: https://viar.in/dashboard?tab=live-classes\nWhatsApp Helpline: +91 93112 15564`;
+
+            try {
+              await enqueueSessionEmail({
+                sessionId: null,
+                recipientEmail: student.email,
+                recipientName: student.name,
+                emailType: 'REMINDER_24H',
+                subject,
+                htmlContent: html,
+                textContent: text,
+                idempotencyKey,
+                immediateDispatch: true,
+              });
+              queued24h++;
+            } catch (e) {
+              errors.push(`Failed 24h reminder for live class ${lesson.id} student ${student.id}: ${e}`);
+            }
+          }
+        }
+
+        // B. 1-HOUR REMINDER
+        if (is1hCandidate) {
+          const idempotencyKey = `live_class_1h_${lesson.id}_${student.id}`;
+          let alreadySent = false;
+          try {
+            const found = await prisma.sessionEmailOutbox.findUnique({
+              where: { idempotencyKey },
+            });
+            if (found) alreadySent = true;
+          } catch {}
+
+          if (!alreadySent) {
+            for (const item of Array.from(_memoryOutbox.values())) {
+              if (item.idempotencyKey === idempotencyKey) {
+                alreadySent = true;
+                break;
+              }
+            }
+          }
+
+          if (!alreadySent) {
+            const timeIst = formatInTimezone(lesson.liveScheduledAt.toISOString(), 'Asia/Kolkata', 'short');
+            const subject = `Starting in 1 Hour: Live Class with Acharya Niraj Kumar — ${lesson.title}`;
+
+            const html = `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0b0f17; color: #cbd5e1; border: 2px solid #f59e0b; border-radius: 16px; padding: 28px;">
+                <div style="text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 16px; margin-bottom: 20px;">
+                  <h2 style="color: #f59e0b; margin: 0; font-size: 18px;">Vihangam Institute of Astrology and Research</h2>
+                  <span style="display: inline-block; margin-top: 6px; padding: 4px 12px; background: rgba(245,158,11,0.2); color: #f59e0b; border-radius: 999px; font-weight: 700; font-size: 12px;">Class Starts in 1 Hour</span>
+                </div>
+                <p style="color: #ffffff; font-size: 15px;">Namaste <strong>${student.name} ji</strong>,</p>
+                <p style="font-size: 14px; line-height: 1.6;">
+                  Your interactive live class for <strong>${courseTitle}</strong> with <strong>Acharya Niraj Kumar</strong> begins in 60 minutes.
+                </p>
+                <div style="background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px; margin: 20px 0;">
+                  <p style="margin: 4px 0; color: #ffffff;"><strong>Topic:</strong> ${lesson.title}</p>
+                  ${lesson.agenda ? `<p style="margin: 4px 0; color: #94a3b8;"><strong>Agenda:</strong> ${lesson.agenda}</p>` : ''}
+                  <p style="margin: 4px 0; color: #f59e0b;"><strong>Time (IST):</strong> ${timeIst} IST</p>
+                  <p style="margin: 4px 0; color: #ffffff;"><strong>Platform:</strong> ${lesson.meetingPlatform === 'ZOOM' ? 'Zoom Meeting' : 'Google Meet'}</p>
+                  ${lesson.liveJoinLink ? `<p style="margin: 8px 0 0;"><a href="${lesson.liveJoinLink}" style="color: #38bdf8; text-decoration: underline; font-weight: 700;">Direct Meeting Link: ${lesson.liveJoinLink}</a></p>` : ''}
+                </div>
+                <p style="font-size: 13px; color: #94a3b8; line-height: 1.5;">
+                  The &quot;Join now&quot; button in your student portal activates 30 minutes before class. Please find a quiet space and keep your study materials ready.
+                </p>
+                <div style="text-align: center; margin: 24px 0;">
+                  <a href="${lesson.liveJoinLink || 'https://viar.in/dashboard?tab=live-classes'}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #d97706, #b45309); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px;">Join Class / Open Portal</a>
+                </div>
+                <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-top: 20px; font-size: 12px; color: #64748b; text-align: center;">
+                  <p>Acharya Niraj Kumar Helpline: <a href="https://wa.me/919311215564" style="color: #f59e0b;">+91 93112 15564</a></p>
+                </div>
+              </div>
+            `;
+
+            const text = `Namaste ${student.name} ji,\n\nYour live class with Acharya Niraj Kumar starts in 1 hour at ${timeIst} IST.\nTopic: ${lesson.title}\nJoin Link: ${lesson.liveJoinLink || 'https://viar.in/dashboard?tab=live-classes'}\nWhatsApp Helpline: +91 93112 15564`;
+
+            try {
+              await enqueueSessionEmail({
+                sessionId: null,
+                recipientEmail: student.email,
+                recipientName: student.name,
+                emailType: 'REMINDER_1H',
+                subject,
+                htmlContent: html,
+                textContent: text,
+                idempotencyKey,
+                immediateDispatch: true,
+              });
+              queued1h++;
+            } catch (e) {
+              errors.push(`Failed 1h reminder for live class ${lesson.id} student ${student.id}: ${e}`);
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    errors.push(`Course live classes scan error: ${err}`);
+  }
+
+  // ------------------------------------------------------------------------
+  // 3. SCAN 1-ON-1 SESSIONS
+  // ------------------------------------------------------------------------
   // Load upcoming sessions
   let sessions: StudentSessionRecord[] = [];
 

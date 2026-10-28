@@ -121,6 +121,24 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
   // Live modal link validation
   const liveLinkVal = formMeetingLink.trim() ? isValidMeetingLink(formMeetingLink, formProvider) : null;
 
+  // Owner Calendar Feed State (RFC 5545 Live Classes Only Feed)
+  const [calendarFeedUrl, setCalendarFeedUrl] = useState<string>('');
+  const [calendarFeedMasked, setCalendarFeedMasked] = useState<string>('');
+  const [isRegeneratingToken, setIsRegeneratingToken] = useState(false);
+  const [feedCopySuccess, setFeedCopySuccess] = useState(false);
+
+  // Load calendar feed
+  const loadCalendarFeed = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/sessions/calendar-feed');
+      if (res.ok) {
+        const data = await res.json();
+        setCalendarFeedUrl(data.feedUrl || '');
+        setCalendarFeedMasked(data.maskedFeedUrl || data.feedUrl || '');
+      }
+    } catch {}
+  }, []);
+
   // Load modules for dropdown
   const loadModules = useCallback(async () => {
     try {
@@ -170,7 +188,45 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
   useEffect(() => {
     loadLiveClasses();
     loadModules();
-  }, [loadLiveClasses, loadModules]);
+    loadCalendarFeed();
+  }, [loadLiveClasses, loadModules, loadCalendarFeed]);
+
+  const handleCopyCalendarFeed = () => {
+    if (!calendarFeedUrl) return;
+    navigator.clipboard.writeText(calendarFeedUrl);
+    setFeedCopySuccess(true);
+    setTimeout(() => setFeedCopySuccess(false), 2500);
+  };
+
+  const handleRegenerateCalendarFeed = async () => {
+    if (
+      !confirm(
+        'Are you sure you want to regenerate your private calendar feed token? Your previous Google Calendar or Outlook subscription link will stop receiving updates.'
+      )
+    ) {
+      return;
+    }
+    setIsRegeneratingToken(true);
+    try {
+      const res = await fetch('/api/admin/sessions/calendar-feed', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setCalendarFeedUrl(data.feedUrl || '');
+        setCalendarFeedMasked(data.maskedFeedUrl || data.feedUrl || '');
+        setFeedbackMessage({
+          type: 'success',
+          text: 'Secret calendar feed token regenerated successfully. Old subscription URLs are now invalidated.',
+        });
+      }
+    } catch {
+      setFeedbackMessage({
+        type: 'error',
+        text: 'Failed to regenerate calendar feed token.',
+      });
+    } finally {
+      setIsRegeneratingToken(false);
+    }
+  };
 
   // Handle open modal for new schedule
   const handleOpenScheduleModal = () => {
@@ -553,6 +609,62 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
             <option value={45}>45 minutes before start</option>
             <option value={60}>60 minutes before start</option>
           </select>
+        </div>
+      </div>
+
+      {/* Owner Control: Private iCal Calendar Subscription Feed (Live Classes Only) */}
+      <div className="cosmic-card p-5 rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/[0.04] to-slate-900/50 space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Calendar className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Owner iCal Subscription Feed (Live Classes Only)
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950">
+                Google / Apple / Outlook Calendar Sync
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl">
+              Subscribe in your preferred calendar application. Automatically syncs all course live classes.
+              <strong className="text-amber-400"> Zero student names or emails are included</strong> — preserves complete student privacy.
+            </p>
+            <p className="text-[11px] text-slate-400 font-hindi">
+              कैलेंडर सदस्यता: केवल लाइव कक्षाएं शामिल हैं (शून्य छात्र व्यक्तिगत डेटा)। गूगल या एप्पल कैलेंडर में लाइव कक्षाएं सिंक करें।
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleCopyCalendarFeed}
+              disabled={!calendarFeedUrl}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition flex items-center gap-1.5 shadow-sm"
+            >
+              {feedCopySuccess ? <Check className="w-3.5 h-3.5 text-slate-950" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{feedCopySuccess ? 'URL Copied!' : 'Copy Feed URL'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleRegenerateCalendarFeed}
+              disabled={isRegeneratingToken}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white border border-rose-400 transition flex items-center gap-1.5 shadow-sm"
+              title="Invalidates the current URL and generates a new 32-byte cryptographically secure token"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRegeneratingToken ? 'animate-spin' : ''}`} />
+              <span>Regenerate Token</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Masked URL Display */}
+        <div className="flex items-center gap-2 bg-black/40 px-3.5 py-2.5 rounded-xl border border-white/10">
+          <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <code className="text-xs text-amber-300/90 font-mono truncate select-all flex-1">
+            {calendarFeedMasked || calendarFeedUrl || 'Loading calendar feed URL...'}
+          </code>
+          <span className="text-[10px] text-slate-400 font-mono uppercase shrink-0">SHA-256 Hashed Token</span>
         </div>
       </div>
 

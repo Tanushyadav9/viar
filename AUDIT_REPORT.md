@@ -1498,4 +1498,61 @@ In `CourseLiveClassesManager.tsx`, the Owner can attach a recording to the live 
 - Both portals inform students:
   > *"Zero Attendance Penalty: Watching the recording counts identically to attending live. Completion and certificate are unlocked exclusively by scoring 70%+ on the Final Certification Exam."*
 
+---
+
+## 26. Reminders, 15-Minute Scheduled Cron & Owner Calendar Architecture
+
+### 26.1 Automated Student Reminders (24h and 1h Before Each Class)
+- **Scanning Engine (`checkAndQueueReminders`)**:
+  - Automatically queries all course live classes (`Lesson` records with `type = 'LIVE_SESSION'` and `status IN ('SCHEDULED', 'PUBLISHED')`).
+  - **24-Hour Reminder Window**: Checks classes scheduled between `now + 1.5h` and `now + 25h`.
+  - **1-Hour Reminder Window**: Checks classes scheduled between `now - 5m` and `now + 75m`.
+  - For each upcoming live class, queries all approved active enrolled students (`Enrollment` where `status = 'ACTIVE'`).
+  - Enqueues personalized transactional emails through the transactional email outbox (`SessionEmailOutbox`).
+  - **1-Hour Reminder Content**: Prominently displays the verified meeting link (`liveJoinLink`), IST start time, local timezone equivalent, and direct "Join Class / Open Portal" action button.
+
+### 26.2 Guaranteed Idempotency & Exponential Backoff Retries
+- **Strict Idempotency Keys**:
+  - 24-Hour reminders use key: `live_class_24h_${lesson.id}_${student.id}`.
+  - 1-Hour reminders use key: `live_class_1h_${lesson.id}_${student.id}`.
+  - The email outbox database table (`session_email_outbox`) enforces `@unique` on `idempotency_key`.
+  - If the reminder scanner or cron executes multiple times during the reminder window, duplicate entries are rejected immediately and never dispatched twice.
+- **Exponential Backoff Retries**:
+  - Failed deliveries record `status = 'PENDING'`, increment `attempts`, and set `nextAttemptAt` using exponential delay (2m, 5m, 15m).
+  - Outbox dispatch worker (`processOutboxQueue(50)`) automatically retries pending emails on subsequent cron runs.
+  - Permanent failures (`attempts >= 3`) set `status = 'FAILED'` and appear in the Owner's Failed Deliveries Review console with 1-click manual retry.
+
+### 26.3 15-Minute GitHub Actions Cron Workflow
+- **Workflow File**: `.github/workflows/session-reminders-cron.yml`
+- **Schedule**: `cron: '*/15 * * * *'` (runs every 15 minutes around the clock, overcoming Vercel Hobby plan daily-only limitation).
+- **Security**: Hits protected endpoint `POST /api/cron/session-reminders` with `Authorization: Bearer ${{ secrets.CRON_SECRET }}`.
+- **Cron Responsibilities**:
+  1. Executes `checkAndQueueReminders()` to scan upcoming live classes and queue 24h/1h notifications.
+  2. Executes `processOutboxQueue(50)` to dispatch pending emails and retry failed transmissions.
+  3. Executes `autoCompletePastLiveClasses()` to automatically mark past live classes as `COMPLETED`.
+
+### 26.4 Owner Calendar Feed (Live Classes Only & Zero Student PII)
+- **RFC 5545 Compliance**: Endpoint `/api/admin/sessions/calendar.ics?token=...` produces compliant `VCALENDAR` feeds for Google Calendar, Apple Calendar, and Microsoft Outlook.
+- **Strict Zero Student PII Invariant**:
+  - The Owner calendar feed queries `prisma.lesson` for course live classes.
+  - The generated `.ics` contains only course live class schedules, title, agenda, and meeting links.
+  - **Zero student names, zero student emails, zero student phone numbers, and zero private student notes** are ever rendered into the calendar feed.
+
+### 26.5 Cryptographic Token Generation, Hashed Storage & Immediate Invalidation
+- **32-Byte Cryptographic Randomness**:
+  - Token generated with `crypto.randomBytes(32).toString('hex')` (256 bits of cryptographic entropy, 64 hex characters).
+  - Prefix: `sec_vcal_${hex}`.
+- **SHA-256 Hashed Storage**:
+  - Tokens are never stored in plaintext in the database.
+  - Computed `tokenHash = crypto.createHash('sha256').update(token).digest('hex')` is stored in `ContentItem` (`collection: 'site_settings'`, `key: 'owner_calendar_feed_token_hash'`).
+- **Timing-Safe Constant-Time Verification**:
+  - `verifyCalendarFeedToken` and `verifyCalendarFeedTokenAsync` compare the SHA-256 hash of incoming tokens using `crypto.timingSafeEqual` to prevent timing attacks.
+- **Masked Token UI Display**:
+  - UI displays masked token with bullet points: `sec_vcal_••••••••••••••••${last4}`.
+  - Single-click "Copy Feed URL" copies the complete active feed URL to the clipboard.
+- **Immediate Invalidation on Regenerate**:
+  - Owner clicking "Regenerate Token" invalidates the existing token immediately, generates a fresh 32-byte token, updates the SHA-256 database hash, and provides the new subscription URL.
+  - Old calendar feed URLs return `401 Unauthorized` immediately upon token regeneration.
+
+
 

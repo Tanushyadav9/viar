@@ -96,6 +96,7 @@ export default function SessionsManager({
 
   // Secret iCal calendar feed token
   const [calendarFeedUrl, setCalendarFeedUrl] = useState<string>('');
+  const [calendarFeedMasked, setCalendarFeedMasked] = useState<string>('');
   const [isRegeneratingToken, setIsRegeneratingToken] = useState(false);
   const [feedCopySuccess, setFeedCopySuccess] = useState(false);
 
@@ -234,9 +235,7 @@ export default function SessionsManager({
       if (feedRes.ok) {
         const feedData = await feedRes.json();
         setCalendarFeedUrl(feedData.feedUrl || '');
-      } else {
-        const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        setCalendarFeedUrl(`${origin}/api/admin/sessions/calendar.ics?token=sec_vcal_acharyaniraj_8f3a92b1e7c4`);
+        setCalendarFeedMasked(feedData.maskedFeedUrl || feedData.feedUrl || '');
       }
 
       // 4. Outbox Failures
@@ -247,8 +246,6 @@ export default function SessionsManager({
       }
     } catch {
       // offline / test fallback
-      const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      setCalendarFeedUrl(`${origin}/api/admin/sessions/calendar.ics?token=sec_vcal_acharyaniraj_8f3a92b1e7c4`);
     } finally {
       setIsLoading(false);
     }
@@ -530,6 +527,7 @@ export default function SessionsManager({
       if (res.ok) {
         const data = await res.json();
         setCalendarFeedUrl(data.feedUrl || '');
+        setCalendarFeedMasked(data.maskedFeedUrl || data.feedUrl || '');
         alert('Secret calendar subscription feed URL regenerated successfully.');
       }
     } catch {
@@ -921,7 +919,7 @@ export default function SessionsManager({
                     Add this secret URL to your Google Calendar or iPhone to automatically see all student live classes. Treat this link as a secret password.
                   </p>
                   <code className="text-xs text-amber-800 dark:text-amber-300 font-mono font-bold block mt-2 truncate max-w-md sm:max-w-xl bg-white dark:bg-slate-950 p-2.5 rounded-xl border border-amber-200 dark:border-slate-700 shadow-inner select-all">
-                    {calendarFeedUrl || 'Loading calendar feed URL...'}
+                    {calendarFeedMasked || calendarFeedUrl || 'Loading calendar feed URL...'}
                   </code>
                 </div>
               </div>
