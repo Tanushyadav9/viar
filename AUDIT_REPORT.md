@@ -1319,3 +1319,54 @@ All underlying database models, Prisma schemas, and database tables remain 100% 
 9. `SessionProgress` (`session_progress`)
 
 If the client later decides to offer 1-on-1 sessions, setting `NEXT_PUBLIC_ONE_TO_ONE_ENABLED=true` in `.env` instantly restores all 1-on-1 scheduling flows, booking modals, and terminology without database migration or architectural restructuring.
+
+---
+
+## 22. Course Live Classes System Architecture (Prompt 10)
+
+### 22.1 Architecture Overview
+A course live class in VIAR is implemented as a first-class lesson type (`type = 'LIVE_SESSION'`) inside the course curriculum under its respective `Module`. In the Admin Portal, live classes appear under **Course** in a dedicated subtab: **Live classes** (`live-classes`), sitting directly alongside `Curriculum & Lessons` and `Quizzes & Certificates`.
+
+### 22.2 Data Model & Fields
+The `Lesson` model in `prisma/schema.prisma` and the Neon PostgreSQL `lessons` table store all live class fields:
+- `title` (`title`): Live class title (e.g. "Navamsha (D9) Chart Synthesis")
+- `titleHi` (`title_hi`): Optional Hindi title
+- `agenda` (`agenda` / `description`): Key syllabus topics and chart reading objectives
+- `date` & `startTime`: Entered in IST (Indian Standard Time, UTC+05:30) and converted to exact UTC for storage in `liveScheduledAt` (`live_scheduled_at`)
+- `durationMinutes` (`duration_minutes`): Duration in minutes (45, 60, 75, 90, 120 mins)
+- `liveTimezone` (`live_timezone`): Stored as UTC, default display in `Asia/Kolkata`
+- `meetingPlatform` (`meeting_platform`): `GOOGLE_MEET` or `ZOOM`
+- `liveJoinLink` (`live_join_link`): Validated meeting link URL
+- `zoomPasscode` (`zoom_passcode`): Optional Zoom passcode
+- `privateHostNotes` (`private_host_notes`): Confidential host notes reserved strictly for Acharya ji and staff; strictly hidden from students
+- `documentUrl` (`document_url`): Notes PDF / study material presentation attachment
+- `status` (`status`): `DRAFT`, `SCHEDULED`, `COMPLETED`, `CANCELLED`
+- `recordingUrl` (`recording_url`): Cloudflare Stream or video URL for recorded playback; watching counts the same as attending
+
+### 22.3 Meeting Link Validation & Publishing Invariant
+Enforced in `src/lib/courses/liveClassesService.ts`:
+- **Drafts**: Can be saved as `DRAFT` without a meeting link.
+- **Publishing (`SCHEDULED`)**: CANNOT be published without a validated link.
+- **Google Meet Invariant**: Only real Google Meet links matching `https://meet.google.com/[a-z]{3}-[a-z]{4}-[a-z]{3}` (e.g. `meet.google.com/abc-defg-hij`) are accepted. Fake or auto-generated slugs (e.g. `jyotish-mentorship-01`, `sec-ret-link`) are rejected with a clear bilingual error.
+- **Zoom Invariant**: Real Zoom links matching `https://[subdomain.]zoom.us/j/[0-9]{9,11}` are validated.
+
+### 22.4 Server Clash Protection
+Enforced on the server in `checkLiveClassClash`:
+- Mathematical overlap condition: `newStart < existEnd && existStart < newEnd`
+- Checked against all active non-cancelled, non-draft live classes
+- If a clash is detected, the server refuses scheduling with HTTP 409 Conflict and bilingual details:
+  - English: *"Scheduling conflict: The live class '{title}' is already scheduled from {startIST} to {endIST}. Two live classes cannot overlap."*
+  - Hindi: *"समय टकराव: '{title}' लाइव कक्षा पहले से ही {startIST} से {endIST} तक निर्धारित है। दो लाइव कक्षाएं एक ही समय पर नहीं हो सकतीं।"*
+
+### 22.5 Student Notifications & Outbox Pattern
+Enforced in `updateLiveClass`:
+- **Rescheduled Class**: When date, start time, duration, or meeting link is updated on a scheduled class, transactional update emails are queued via `SessionEmailOutbox` for all active enrolled students (`status = 'ACTIVE'`).
+- **Cancelled Class**: When a live class is cancelled, cancellation emails detailing the date, topic, and reason are queued via `SessionEmailOutbox` for all active enrolled students.
+- All actions are logged in `ActivityLog` with details of student count notified.
+
+### 22.6 Student Portal & Security Isolation
+- Gated API `GET /api/student/sessions` automatically queries course live classes from `lessons` where `type = 'LIVE_SESSION'` and `status IN ('SCHEDULED', 'PUBLISHED', 'COMPLETED')`.
+- Strictly sanitizes `privateHostNotes`: the student payload contains zero private host notes.
+- Join button activates 15 minutes prior to start time with live countdown.
+- Full recordings available under Past Classes for students who missed live attendance.
+- Complete Light Mode & Dark Mode styling consistency verified across student timetable.
