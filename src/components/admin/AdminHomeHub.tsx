@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { AdminSection } from '@/lib/types';
 import AdminHelpBox from './AdminHelpBox';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 
 export interface RecentActivityItem {
   id: string;
@@ -62,7 +63,7 @@ export default function AdminHomeHub({
     },
     {
       id: 'tile-sessions',
-      title: 'Sessions',
+      title: ONE_TO_ONE_ENABLED ? 'Sessions' : 'Live Classes',
       badge: liveClassesTodayCount > 0 ? `${liveClassesTodayCount} Scheduled` : undefined,
       helpText: 'Schedule course live classes, set meeting links, and upload class recordings.',
       icon: <Video className="w-6 h-6 text-amber-400" />,

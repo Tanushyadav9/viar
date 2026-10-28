@@ -254,6 +254,8 @@ model Lesson {
   liveJoinLink      String?         @map("live_join_link")
   meetingPlatform   MeetingPlatform? @default(GOOGLE_MEET) @map("meeting_platform")
   agenda            String?         @db.Text
+  zoomPasscode      String?         @map("zoom_passcode")
+  privateHostNotes  String?         @db.Text @map("private_host_notes")
   recordingUrl      String?         @map("recording_url")
   recordingStreamId String?         @map("recording_stream_id")
 

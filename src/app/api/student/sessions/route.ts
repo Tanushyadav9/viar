@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { verifyUserCourseAccess } from '@/lib/auth/course-access';
 import { listStudentSessions, listSessionRequests } from '@/lib/sessions/oneOnOneService';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -31,11 +32,11 @@ export async function GET(req: NextRequest) {
 
     const studentId = access.userId || auth.userId;
 
-    // Fetch this student's sessions only — never another student's sessions
-    const rawSessions = await listStudentSessions({ studentId });
+    // Fetch this student's individual sessions (if 1-on-1 enabled)
+    const rawSessions = await listStudentSessions({ studentId }).catch(() => []);
 
-    // Cleanse sessions: strictly strip privateNotes (reserved exclusively for Owner)
-    const sanitizedSessions = rawSessions.map((s) => ({
+    // Cleanse individual sessions: strictly strip privateNotes (reserved exclusively for Owner)
+    const sanitizedIndividualSessions = rawSessions.map((s) => ({
       id: s.id,
       title: s.title,
       startTime: s.startTime,
@@ -53,6 +54,83 @@ export async function GET(req: NextRequest) {
       updatedAt: s.updatedAt,
       // Zero privateNotes sent to client
     }));
+
+    // Fetch Course Live Classes (flagship course interactive classes where all approved students attend)
+    let courseLiveLessons: Array<{
+      id: string;
+      title: string;
+      agenda: string | null;
+      description: string | null;
+      liveScheduledAt: Date | null;
+      durationMinutes: number | null;
+      liveJoinLink: string | null;
+      meetingPlatform: string | null;
+      status: string;
+      recordingUrl: string | null;
+      documentUrl: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+      module?: {
+        id: string;
+        title: string;
+        order: number;
+        course?: {
+          title: string;
+        } | null;
+      } | null;
+    }> = [];
+
+    try {
+      courseLiveLessons = await prisma.lesson.findMany({
+        where: {
+          type: 'LIVE_SESSION',
+          status: { in: ['SCHEDULED', 'PUBLISHED', 'COMPLETED'] },
+          liveScheduledAt: { not: null },
+        },
+        include: {
+          module: {
+            select: {
+              id: true,
+              title: true,
+              order: true,
+              course: {
+                select: {
+                  title: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { liveScheduledAt: 'asc' },
+      });
+    } catch (err) {
+      console.warn('[student/sessions] Error fetching course live lessons:', err);
+    }
+
+    const sanitizedCourseLiveSessions = courseLiveLessons.map((l) => ({
+      id: l.id,
+      title: l.title,
+      startTime: l.liveScheduledAt!.toISOString(),
+      duration: l.durationMinutes || 60,
+      meetingLink: l.liveJoinLink,
+      meetingPlatform: l.meetingPlatform || 'GOOGLE_MEET',
+      status: l.status === 'PUBLISHED' ? 'SCHEDULED' : l.status,
+      sharedNotes: l.agenda || l.description || '',
+      homework: null,
+      recordingUrl: l.recordingUrl,
+      documentUrl: l.documentUrl,
+      notesPdf: l.documentUrl,
+      courseTitle: l.module?.course?.title || 'Foundations of Vedic Astrology',
+      moduleTitle: l.module?.title || `Module ${l.module?.order || 1}`,
+      lessonTitle: l.title,
+      isCourseLiveClass: true,
+      createdAt: l.createdAt.toISOString(),
+      updatedAt: l.updatedAt.toISOString(),
+      // Zero privateHostNotes sent to client
+    }));
+
+    // Merge individual sessions with Course Live Classes
+    const sanitizedSessions = [...sanitizedCourseLiveSessions, ...sanitizedIndividualSessions];
 
     const nowMs = Date.now();
 
@@ -80,7 +158,7 @@ export async function GET(req: NextRequest) {
     );
 
     // Fetch student's session requests (reschedule or initial)
-    const requests = await listSessionRequests({ studentId });
+    const requests = await listSessionRequests({ studentId }).catch(() => []);
 
     return NextResponse.json(
       {

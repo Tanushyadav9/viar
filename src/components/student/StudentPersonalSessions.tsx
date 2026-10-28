@@ -212,23 +212,23 @@ export default function StudentPersonalSessions() {
   return (
     <div className="space-y-8">
       {/* 1. Header & Timezone Notification */}
-      <div className="p-6 rounded-3xl cosmic-card border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-900 shadow-xl">
+      <div className="p-6 rounded-3xl cosmic-card border border-amber-500/30 bg-gradient-to-r from-amber-50/80 via-white to-amber-50/40 dark:from-amber-500/10 dark:via-slate-900 dark:to-slate-900 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40">
                 Live Interactive Classes &amp; Timetable
               </span>
               <span className="text-xs text-slate-400">•</span>
-              <span className="text-xs text-slate-300 font-hindi">लाइव ज्योतिष कक्षाएं एवं समय सारणी</span>
+              <span className="text-xs text-slate-600 dark:text-slate-300 font-hindi">लाइव ज्योतिष कक्षाएं एवं समय सारणी</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
               Course Live Classes &amp; Recordings
             </h2>
-            <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
               Attend interactive group classes conducted by Acharya Niraj Kumar or watch full session recordings. Attending live or watching the recording counts equally towards your course completion.
             </p>
-            <div className="pt-1 flex items-center gap-2 text-[11px] text-amber-300/90 font-medium">
+            <div className="pt-1 flex items-center gap-2 text-[11px] text-amber-700 dark:text-amber-300/90 font-medium">
               <Clock className="w-3.5 h-3.5" />
               <span>Times rendered in your local timezone: <strong>{userTz}</strong> (IST provided on schedule)</span>
             </div>
@@ -246,9 +246,9 @@ export default function StudentPersonalSessions() {
               href="https://wa.me/919311215564?text=Namaste%20Acharya%20ji%2C%20I%20am%20messaging%20regarding%20the%20Vedic%20Astrology%20live%20class."
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-200 flex items-center gap-2 transition"
+              className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-xs font-medium text-slate-700 dark:text-slate-200 flex items-center gap-2 transition"
             >
-              <MessageCircle className="w-4 h-4 text-emerald-400" />
+              <MessageCircle className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
               <span>Admissions Desk</span>
             </a>
           </div>
@@ -258,8 +258,8 @@ export default function StudentPersonalSessions() {
       {/* 2. THE NEXT LIVE CLASS (Featured Next Class or Polished Notice) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Video className="w-4 h-4 text-amber-400" />
+          <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Video className="w-4 h-4 text-amber-500 dark:text-amber-400" />
             <span>Next Live Class (अगली लाइव कक्षा)</span>
           </h3>
           {nextSession && (
@@ -409,8 +409,8 @@ export default function StudentPersonalSessions() {
       {/* 3. UPCOMING SESSIONS LIST */}
       {upcomingSessions.length > 1 && (
         <div className="space-y-3">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-amber-400" />
+          <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-amber-500 dark:text-amber-400" />
             <span>Upcoming Schedule ({upcomingSessions.length - 1} further class{upcomingSessions.length - 1 === 1 ? '' : 'es'})</span>
           </h3>
 
@@ -418,26 +418,26 @@ export default function StudentPersonalSessions() {
             {upcomingSessions.slice(1).map((s) => (
               <div
                 key={s.id}
-                className="p-5 rounded-2xl cosmic-card border border-white/10 hover:border-amber-500/30 transition space-y-3"
+                className="p-5 rounded-2xl cosmic-card border border-slate-200 dark:border-white/10 hover:border-amber-500/30 transition space-y-3 bg-white dark:bg-slate-900/60"
               >
                 <div className="flex items-center justify-between text-xs">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-300">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-700 dark:text-amber-300">
                     Cohort Class
                   </span>
-                  <span className="text-slate-400">{s.duration || 60} mins</span>
+                  <span className="text-slate-500 dark:text-slate-400">{s.duration || 60} mins</span>
                 </div>
 
-                <h4 className="text-sm font-bold text-white leading-snug">{s.title}</h4>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{s.title}</h4>
 
-                <div className="text-xs text-amber-300 font-semibold">
+                <div className="text-xs text-amber-700 dark:text-amber-300 font-semibold">
                   {formatInTimezone(s.startTime, userTz)}
                 </div>
-                <div className="text-[11px] text-slate-400 font-mono">
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                   IST: {formatSessionIST(s.startTime)}
                 </div>
 
                 {s.sharedNotes && (
-                  <p className="text-[11px] text-slate-400 line-clamp-2 pt-1 border-t border-white/5">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 pt-1 border-t border-slate-100 dark:border-white/5">
                     {s.sharedNotes}
                   </p>
                 )}

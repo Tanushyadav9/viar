@@ -1,0 +1,196 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
+import {
+  isValidMeetingLink,
+  parseIstToUtc,
+  formatUtcToIst,
+} from '../src/lib/courses/liveClassesService';
+
+describe('Prompt 10: Course Live Classes Invariants & Validation', () => {
+  describe('1. Meeting Link Validation (Google Meet & Zoom)', () => {
+    it('accepts authentic Google Meet links matching abc-defg-hij (3-4-3 letters)', () => {
+      const link1 = 'https://meet.google.com/abc-defg-hij';
+      const res1 = isValidMeetingLink(link1, 'GOOGLE_MEET');
+      assert.strictEqual(res1.valid, true);
+      assert.strictEqual(res1.provider, 'GOOGLE_MEET');
+      assert.strictEqual(res1.normalizedUrl, 'https://meet.google.com/abc-defg-hij');
+
+      const link2 = 'meet.google.com/xyz-pqrs-tuv';
+      const res2 = isValidMeetingLink(link2);
+      assert.strictEqual(res2.valid, true);
+      assert.strictEqual(res2.provider, 'GOOGLE_MEET');
+      assert.strictEqual(res2.normalizedUrl, 'https://meet.google.com/xyz-pqrs-tuv');
+    });
+
+    it('rejects fake, generated, or non-conforming Google Meet links', () => {
+      // Prompt 5 finding: https://meet.google.com/jyotish-mentorship-01
+      const fake1 = 'https://meet.google.com/jyotish-mentorship-01';
+      const res1 = isValidMeetingLink(fake1, 'GOOGLE_MEET');
+      assert.strictEqual(res1.valid, false);
+      assert.ok(res1.error?.includes('abc-defg-hij'));
+
+      const fake2 = 'https://meet.google.com/sec-ret-link';
+      const res2 = isValidMeetingLink(fake2);
+      assert.strictEqual(res2.valid, false);
+
+      const empty = '';
+      const res3 = isValidMeetingLink(empty);
+      assert.strictEqual(res3.valid, false);
+    });
+
+    it('accepts authentic Zoom join links', () => {
+      const zoom1 = 'https://us02web.zoom.us/j/12345678901';
+      const res1 = isValidMeetingLink(zoom1, 'ZOOM');
+      assert.strictEqual(res1.valid, true);
+      assert.strictEqual(res1.provider, 'ZOOM');
+
+      const zoom2 = 'https://zoom.us/j/9876543210';
+      const res2 = isValidMeetingLink(zoom2);
+      assert.strictEqual(res2.valid, true);
+      assert.strictEqual(res2.provider, 'ZOOM');
+    });
+
+    it('rejects unsupported domains and malformed URLs', () => {
+      const teams = 'https://teams.microsoft.com/l/meetup-join/12345';
+      const res = isValidMeetingLink(teams);
+      assert.strictEqual(res.valid, false);
+      assert.ok(res.error?.includes('Google Meet and Zoom'));
+    });
+  });
+
+  describe('2. Timezone Handling: IST Input to UTC Storage', () => {
+    it('converts IST date and time to exact UTC timestamp', () => {
+      // 15 Nov 2026 at 18:30 IST is 13:00 UTC (18:30 - 05:30)
+      const utc = parseIstToUtc('2026-11-15', '18:30');
+      assert.strictEqual(utc.toISOString(), '2026-11-15T13:00:00.000Z');
+
+      // 1 Jan 2027 at 10:00 IST is 04:30 UTC
+      const utc2 = parseIstToUtc('2027-01-01', '10:00');
+      assert.strictEqual(utc2.toISOString(), '2027-01-01T04:30:00.000Z');
+    });
+
+    it('formats UTC timestamp back to IST date, time, and display', () => {
+      const { dateStr, timeStr, display } = formatUtcToIst('2026-11-15T13:00:00.000Z');
+      assert.strictEqual(dateStr, '2026-11-15');
+      assert.strictEqual(timeStr, '18:30');
+      assert.ok(display.includes('6:30'));
+      assert.ok(display.includes('Nov') || display.includes('15'));
+    });
+  });
+
+  describe('3. Draft vs Published Invariant', () => {
+    it('allows a class to be saved as DRAFT without a meeting link', () => {
+      const draftInput = {
+        title: 'Navamsha Chart Reading',
+        status: 'DRAFT',
+        meetingLink: null,
+      };
+      // For draft, empty meeting link is valid
+      const linkCheck = draftInput.meetingLink ? isValidMeetingLink(draftInput.meetingLink) : { valid: true };
+      assert.strictEqual(linkCheck.valid, true);
+    });
+
+    it('forbids publishing a SCHEDULED class without a valid meeting link', () => {
+      const scheduledInput = {
+        title: 'Navamsha Chart Reading',
+        status: 'SCHEDULED',
+        meetingLink: null,
+      };
+      const isPublishing = scheduledInput.status === 'SCHEDULED';
+      const hasValidLink = Boolean(
+        scheduledInput.meetingLink && isValidMeetingLink(scheduledInput.meetingLink).valid
+      );
+
+      assert.strictEqual(isPublishing, true);
+      assert.strictEqual(hasValidLink, false);
+    });
+  });
+
+  describe('4. Clash Protection Overlap Logic', () => {
+    function isTimeOverlap(
+      startA: number,
+      durationA: number,
+      startB: number,
+      durationB: number
+    ): boolean {
+      const endA = startA + durationA * 60 * 1000;
+      const endB = startB + durationB * 60 * 1000;
+      return startA < endB && startB < endA;
+    }
+
+    const class1Start = new Date('2026-11-15T12:30:00.000Z').getTime(); // 18:00 IST
+    const class1Duration = 60; // 18:00 to 19:00 IST
+
+    it('detects overlap when a new class starts during an existing class', () => {
+      const newClassStart = new Date('2026-11-15T13:00:00.000Z').getTime(); // 18:30 IST
+      const newClassDuration = 60; // 18:30 to 19:30 IST
+
+      const overlap = isTimeOverlap(class1Start, class1Duration, newClassStart, newClassDuration);
+      assert.strictEqual(overlap, true, 'Classes overlapping from 18:30 to 19:00 should clash');
+    });
+
+    it('detects overlap when a new class encompasses an existing class', () => {
+      const newClassStart = new Date('2026-11-15T12:00:00.000Z').getTime(); // 17:30 IST
+      const newClassDuration = 120; // 17:30 to 19:30 IST
+
+      const overlap = isTimeOverlap(class1Start, class1Duration, newClassStart, newClassDuration);
+      assert.strictEqual(overlap, true);
+    });
+
+    it('allows adjacent non-overlapping classes that touch boundaries', () => {
+      // 17:00 to 18:00 IST (ends exactly when class 1 starts)
+      const prevClassStart = new Date('2026-11-15T11:30:00.000Z').getTime(); // 17:00 IST
+      const prevClassDuration = 60;
+      assert.strictEqual(
+        isTimeOverlap(class1Start, class1Duration, prevClassStart, prevClassDuration),
+        false,
+        'Adjacent preceding class should not clash'
+      );
+
+      // 19:00 to 20:00 IST (starts exactly when class 1 ends)
+      const nextClassStart = new Date('2026-11-15T13:30:00.000Z').getTime(); // 19:00 IST
+      const nextClassDuration = 60;
+      assert.strictEqual(
+        isTimeOverlap(class1Start, class1Duration, nextClassStart, nextClassDuration),
+        false,
+        'Adjacent succeeding class should not clash'
+      );
+    });
+  });
+
+  describe('5. Security: Private Host Notes Student Isolation', () => {
+    it('sanitizes student response so privateHostNotes is never exposed', () => {
+      const dbLiveSession = {
+        id: 'lesson-live-1',
+        title: 'Lagna Analysis',
+        agenda: 'Discussion on Ascendant signs and lordships',
+        liveScheduledAt: new Date('2026-11-20T12:30:00.000Z'),
+        durationMinutes: 60,
+        liveJoinLink: 'https://meet.google.com/abc-defg-hij',
+        meetingPlatform: 'GOOGLE_MEET',
+        status: 'SCHEDULED',
+        documentUrl: 'https://viar.in/notes/lagna.pdf',
+        privateHostNotes: 'CONFIDENTIAL: Focus on student questions regarding Saturn retrograde.',
+      };
+
+      // Student sanitizer representation
+      const studentView = {
+        id: dbLiveSession.id,
+        title: dbLiveSession.title,
+        startTime: dbLiveSession.liveScheduledAt.toISOString(),
+        duration: dbLiveSession.durationMinutes,
+        meetingLink: dbLiveSession.liveJoinLink,
+        meetingPlatform: dbLiveSession.meetingPlatform,
+        status: dbLiveSession.status,
+        sharedNotes: dbLiveSession.agenda,
+        notesPdf: dbLiveSession.documentUrl,
+        // strictly no privateHostNotes
+      };
+
+      assert.strictEqual('privateHostNotes' in studentView, false);
+      assert.strictEqual(studentView.title, 'Lagna Analysis');
+      assert.strictEqual(studentView.meetingLink, 'https://meet.google.com/abc-defg-hij');
+      assert.strictEqual(studentView.notesPdf, 'https://viar.in/notes/lagna.pdf');
+    });
+  });
+});

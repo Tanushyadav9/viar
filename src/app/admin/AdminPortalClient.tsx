@@ -46,7 +46,9 @@ import {
 import ContentStudio from '@/components/admin/ContentStudio';
 import MediaLibrary from '@/components/admin/MediaLibrary';
 import SessionsManager from '@/components/admin/SessionsManager';
+import { CourseLiveClassesManager } from '@/components/admin/CourseLiveClassesManager';
 import StudentProfileView from '@/components/admin/StudentProfileView';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 import {
   ScheduledClass,
   Course,
@@ -231,7 +233,7 @@ export default function AdminPortalClient({
   const [enrollments, setEnrollments] = useState<AdminEnrollmentItem[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-  const [courseSubTab, setCourseSubTab] = useState<'curriculum' | 'quizzes'>('curriculum');
+  const [courseSubTab, setCourseSubTab] = useState<'curriculum' | 'quizzes' | 'live-classes'>('curriculum');
   const [contentSubTab, setContentSubTab] = useState<'content' | 'media'>('content');
   const [settingsSubTab, setSettingsSubTab] = useState<'payment' | 'test_data' | 'staff'>('payment');
   const [isEnrolmentModalOpen, setIsEnrolmentModalOpen] = useState(false);
@@ -1577,6 +1579,11 @@ export default function AdminPortalClient({
             userEmail={currentUser?.email || ''}
             allowedSections={allowedSections}
             onSelectSection={(sec, opts) => {
+              if (sec === 'sessions' && !ONE_TO_ONE_ENABLED) {
+                setActiveTab('courses');
+                setCourseSubTab('live-classes');
+                return;
+              }
               setActiveTab(sec);
               if (opts?.collection) {
                 setSelectedContentCollection(opts.collection);
@@ -1665,6 +1672,14 @@ export default function AdminPortalClient({
                 <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-black/30">
                   {INITIAL_FINAL_TEST.questions.length} Qs
                 </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCourseSubTab('live-classes')}
+                className="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer bg-white/5 text-slate-300 hover:bg-white/10"
+              >
+                <Video className="w-3.5 h-3.5" />
+                <span>Live classes</span>
               </button>
             </div>
             {/* Non-technical Help Panel */}
@@ -2605,6 +2620,17 @@ export default function AdminPortalClient({
                   {INITIAL_FINAL_TEST.questions.length} Qs
                 </span>
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('courses');
+                  setCourseSubTab('live-classes');
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer bg-white/5 text-slate-300 hover:bg-white/10"
+              >
+                <Video className="w-3.5 h-3.5" />
+                <span>Live classes</span>
+              </button>
             </div>
             {/* Non-technical Help Panel */}
             <div className="cosmic-card p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
@@ -2906,7 +2932,43 @@ export default function AdminPortalClient({
           </div>
         )}
 
-        {/* TAB: SETTINGS (Payment Settings, Test Data, Staff Roles) */}
+        {/* TAB: LIVE CLASSES (under Course) */}
+        {isCurrentTabAllowed && activeTab === 'courses' && courseSubTab === 'live-classes' && (
+          <div className="space-y-6">
+            {/* Course Sub-tab Switcher */}
+            <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+              <button
+                type="button"
+                onClick={() => setCourseSubTab('curriculum')}
+                className="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer bg-white/5 text-slate-300 hover:bg-white/10"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Curriculum & Lessons</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCourseSubTab('quizzes')}
+                className="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer bg-white/5 text-slate-300 hover:bg-white/10"
+              >
+                <Award className="w-3.5 h-3.5" />
+                <span>Quizzes & Certificates</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-black/30">
+                  {INITIAL_FINAL_TEST.questions.length} Qs
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCourseSubTab('live-classes')}
+                className="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20"
+              >
+                <Video className="w-3.5 h-3.5" />
+                <span>Live classes</span>
+              </button>
+            </div>
+
+            <CourseLiveClassesManager isOwner={isOwner} />
+          </div>
+        )}
         {isCurrentTabAllowed && activeTab === 'staff' && (
           <div className="space-y-6">
             {/* Settings Sub-tab Switcher */}
