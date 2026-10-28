@@ -101,7 +101,7 @@ export default function Footer() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-white">
-                {isHi ? 'रिकॉर्डेड मॉड्यूल एवं 1-on-1 सत्र' : 'Recorded Modules & 1-on-1 Sessions'}
+                {isHi ? 'रिकॉर्डेड मॉड्यूल एवं लाइव कक्षाएं' : 'Recorded Modules & Live Classes'}
               </h4>
               <p className="text-xs text-slate-400 mt-0.5">
                 {isHi
@@ -117,7 +117,7 @@ export default function Footer() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-white">
-                {isHi ? 'लचीला एवं व्यक्तिगत अध्ययन' : 'Self-Paced & Personal Mentorship'}
+                {isHi ? 'स्व-गति अध्ययन एवं क्लास रिकॉर्डिंग' : 'Self-Paced Learning & Class Recordings'}
               </h4>
               <p className="text-xs text-slate-400 mt-0.5">
                 {isHi
@@ -285,7 +285,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/dashboard/courses/what-is-astrology" className="hover:text-amber-400 transition">
-                  {isHi ? 'रिकॉर्डेड मॉड्यूल एवं 1-on-1 सत्र' : 'Recorded Modules & 1-on-1 Sessions'}
+                  {isHi ? 'रिकॉर्डेड मॉड्यूल एवं लाइव कक्षाएं' : 'Recorded Modules & Live Classes'}
                 </Link>
               </li>
               <li>

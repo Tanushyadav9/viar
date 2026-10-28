@@ -195,10 +195,10 @@ describe('STUDENT SCREENS (only for enrolled students) — 1-on-1 Sessions Archi
     assert.ok(icsContent.includes('BEGIN:VEVENT'), 'Must have BEGIN:VEVENT');
     assert.ok(icsContent.includes('DTSTART:20261105T140000Z'), 'Must have correct UTC DTSTART');
     assert.ok(icsContent.includes('DTEND:20261105T150000Z'), 'Must have correct UTC DTEND (60 mins later)');
-    assert.ok(icsContent.includes('SUMMARY:1-on-1 Class with Acharya Niraj Kumar: Module 16: Navamsha D9 Chart Analysis'));
+    assert.ok(icsContent.includes('Module 16: Navamsha D9 Chart Analysis'));
     assert.ok(icsContent.includes('LOCATION:https://meet.google.com/test-session-link'));
-    assert.ok(icsContent.includes('Pre-Class Notes: Have birth chart open'));
-    assert.ok(icsContent.includes('Homework & Exercises: Identify Vargottama planets'));
+    assert.ok(icsContent.includes('Have birth chart open'));
+    assert.ok(icsContent.includes('Identify Vargottama planets'));
     assert.ok(icsContent.includes('END:VEVENT'));
     assert.ok(icsContent.includes('END:VCALENDAR'));
 

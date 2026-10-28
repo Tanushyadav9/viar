@@ -21,7 +21,7 @@ export default function AdminSessionsPage() {
 
           <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
             <Video className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-            <span>1-on-1 Mentorship Sessions</span>
+            <span>Course Live Classes &amp; Timetable</span>
           </div>
         </div>
 

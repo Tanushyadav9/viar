@@ -64,7 +64,7 @@ export default function AdminHomeHub({
       id: 'tile-sessions',
       title: 'Sessions',
       badge: liveClassesTodayCount > 0 ? `${liveClassesTodayCount} Scheduled` : undefined,
-      helpText: 'Schedule 1-on-1 personal classes, set meeting links, and manage calendar.',
+      helpText: 'Schedule course live classes, set meeting links, and upload class recordings.',
       icon: <Video className="w-6 h-6 text-amber-400" />,
       action: () => onSelectSection('sessions'),
     },
@@ -261,14 +261,14 @@ export default function AdminHomeHub({
             </div>
           </div>
 
-          {/* Card 4: 1-on-1 Sessions today or tomorrow */}
+          {/* Card 4: Live Classes today or tomorrow */}
           <div
             onClick={() => onSelectSection('sessions')}
             className="p-4 rounded-2xl border border-white/10 bg-white/[0.03] flex flex-col justify-between cursor-pointer hover:border-amber-500/30 transition"
           >
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-slate-400">1-on-1 Sessions (Today / Tomorrow)</span>
+                <span className="text-xs font-semibold text-slate-400">Live Classes (Upcoming)</span>
                 <Video className="w-4 h-4 text-amber-400" />
               </div>
               <div className="text-2xl font-black text-white">
@@ -277,7 +277,7 @@ export default function AdminHomeHub({
             </div>
             <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
               <span className={liveClassesTodayCount > 0 ? 'text-amber-300 font-bold' : 'text-slate-400'}>
-                {liveClassesTodayCount > 0 ? `${liveClassesTodayCount} personal class${liveClassesTodayCount === 1 ? '' : 'es'} scheduled` : 'No sessions scheduled today'}
+                {liveClassesTodayCount > 0 ? `${liveClassesTodayCount} live class${liveClassesTodayCount === 1 ? '' : 'es'} scheduled` : 'No live classes today'}
               </span>
               <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
             </div>

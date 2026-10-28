@@ -516,7 +516,7 @@ function StudentDashboardContent() {
             }`}
           >
             <Video className="w-4 h-4" />
-            <span>My Sessions (1-on-1)</span>
+            <span>Live Classes &amp; Timetable</span>
           </button>
 
           <button

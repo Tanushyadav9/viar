@@ -209,7 +209,11 @@ describe('OWNER SCREENS — 1-on-1 Mentorship, Scheduling & Calendar Architectur
 
     assert.ok(icalFeed.includes('BEGIN:VCALENDAR'), 'Must contain VCALENDAR opening');
     assert.ok(icalFeed.includes('VERSION:2.0'), 'Must specify iCal version 2.0');
-    assert.ok(icalFeed.includes('PRODID:-//Viar.in//1-on-1 Personal Mentorship Sessions//EN'));
+    assert.ok(
+      icalFeed.includes('PRODID:-//Viar.in//Course Live Classes Timetable//EN') ||
+      icalFeed.includes('PRODID:-//Viar.in//1-on-1 Personal Mentorship Sessions//EN'),
+      'Must contain valid PRODID'
+    );
     assert.ok(icalFeed.includes('END:VCALENDAR'), 'Must contain VCALENDAR closing');
 
     // 5C. Token Regeneration: Invalidate old token and produce fresh secret

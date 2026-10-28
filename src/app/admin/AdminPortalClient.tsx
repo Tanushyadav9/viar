@@ -695,7 +695,7 @@ export default function AdminPortalClient({
     const rawPhone = (order.studentPhone || order.user?.phone || '').replace(/[^0-9]/g, '');
     const cleanPhone = rawPhone.startsWith('91') && rawPhone.length === 12 ? rawPhone : `91${rawPhone.replace(/^0+/, '')}`;
 
-    const text = `Namaste ${studentName}! 🙏\n\nYour payment of ₹${order.amount.toLocaleString('en-IN')} for "${courseTitle}" (Order Ref: ${order.orderReference}) has been verified and confirmed.\n\nYour course access is now ACTIVE on viar.in! Simply log in to access all curriculum modules, notes, and 1-on-1 personal sessions:\nhttps://viar.in/dashboard\n\nIf you have any questions, we are here to support you.\n\nWarm regards,\nVihangam Institute of Astrology & Research (VIAR)`;
+    const text = `Namaste ${studentName}! 🙏\n\nYour payment of ₹${order.amount.toLocaleString('en-IN')} for "${courseTitle}" (Order Ref: ${order.orderReference}) has been verified and confirmed.\n\nYour course access is now ACTIVE on viar.in! Simply log in to access all curriculum modules, notes, and interactive live classes:\nhttps://viar.in/dashboard\n\nIf you have any questions, we are here to support you.\n\nWarm regards,\nVihangam Institute of Astrology & Research (VIAR)`;
 
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
   };
@@ -1294,7 +1294,7 @@ export default function AdminPortalClient({
             </h1>
             <p className="text-xs text-slate-400 mt-1">
               {isOwner
-                ? 'Manage 23 course modules, 1-on-1 personal classes, enrolled students, payments, and site content.'
+                ? 'Manage course modules, interactive live classes, enrolled students, payments, and site content.'
                 : `Section-restricted console. You currently have access to: ${allowedSections.map((s) => ADMIN_SECTIONS_META[s]?.shortTitle).join(', ') || 'None'}.`}
             </p>
           </div>
@@ -1681,7 +1681,7 @@ export default function AdminPortalClient({
               <div>
                 <h3 className="text-lg font-bold text-white">Course Catalog &amp; Syllabus</h3>
                 <p className="text-xs text-slate-400">
-                  Manage your curriculum modules, lessons, tuition fees, and 1-on-1 personal session settings.
+                  Manage your curriculum modules, lessons, tuition fees, and live class schedule.
                 </p>
               </div>
 
@@ -1722,7 +1722,7 @@ export default function AdminPortalClient({
                           </span>
                         </div>
                         <span className="text-xs text-slate-400">
-                          23 Modules • 1-on-1 Mentorship
+                          23 Modules • Cohort Live Classes
                         </span>
                       </div>
 
@@ -1730,7 +1730,7 @@ export default function AdminPortalClient({
                         <h4 className="text-base font-bold text-white">{crs.title}</h4>
                         {crs.tagline && <p className="text-xs text-amber-300/80 mt-0.5 font-medium">{crs.tagline}</p>}
                         <p className="text-xs text-slate-300 mt-1 line-clamp-2">
-                          {crs.description || 'Comprehensive curriculum covering Vedic Astrology principles, chart reading, and 1-on-1 personal mentorship.'}
+                          {crs.description || 'Comprehensive curriculum covering Vedic Astrology principles, chart reading, and interactive live classes.'}
                         </p>
                       </div>
 
@@ -1881,7 +1881,7 @@ export default function AdminPortalClient({
           </div>
         )}
 
-        {/* TAB: SESSIONS (1-on-1 Personal Live Classes) */}
+        {/* TAB: SESSIONS (Course Live Classes & Timetable) */}
         {isCurrentTabAllowed && activeTab === 'sessions' && (
           <SessionsManager isOwner={isOwner} />
         )}
@@ -1990,7 +1990,7 @@ export default function AdminPortalClient({
                             key={enr.id}
                             onClick={() => setSelectedStudentId(enr.studentId || enr.id)}
                             className="hover:bg-white/[0.05] transition cursor-pointer group"
-                            title="Click to view student profile &amp; 1-on-1 sessions"
+                            title="Click to view student profile &amp; live class attendance"
                           >
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
@@ -2006,7 +2006,7 @@ export default function AdminPortalClient({
                             </td>
                             <td className="px-6 py-4">
                               <p className="text-white font-medium">{enr.courseTitle || 'The Ultimate Vedic Astrology Course'}</p>
-                              <p className="text-[10px] text-amber-400 font-medium">Recorded modules and 1-on-1 sessions</p>
+                              <p className="text-[10px] text-amber-400 font-medium">Recorded modules and live interactive classes</p>
                             </td>
                             <td className="px-6 py-4 text-slate-400">
                               {dateStr}
@@ -2422,7 +2422,7 @@ export default function AdminPortalClient({
                                 {ord.course?.title || 'What is Astrology'}
                               </p>
                               <p className="text-[10px] text-amber-400">
-                                1-on-1 Mentorship &amp; Video Modules
+                                Self-Paced Modules &amp; Live Classes
                               </p>
                             </td>
 
@@ -2785,13 +2785,13 @@ export default function AdminPortalClient({
             <div className="cosmic-card p-6 rounded-2xl border border-white/10">
               <h3 className="text-lg font-bold text-white mb-1">Reports &amp; Learning Progress</h3>
               <p className="text-xs text-slate-400 mb-6">
-                Database-driven tracking of student completion, 1-on-1 personal classes, and exam pass rates.
+                Database-driven tracking of student completion, live class attendance, and exam pass rates.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-semibold">Course Delivery</span>
-                  <p className="text-2xl font-black text-amber-300 mt-1">Recorded + 1-on-1</p>
+                  <p className="text-2xl font-black text-amber-300 mt-1">Recorded + Live Classes</p>
                   <p className="text-[10px] text-amber-300 mt-1">{readinessStats.totalLessons} lessons in preparation</p>
                 </div>
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
@@ -2837,7 +2837,7 @@ export default function AdminPortalClient({
                     </div>
                     <div>
                       <div className="flex justify-between text-slate-400 mb-1">
-                        <span>1-on-1 Mentorship Model</span>
+                        <span>Cohort Live Class Model</span>
                         <span className="text-emerald-300 font-bold">Active &amp; Ready</span>
                       </div>
                       <p className="text-[10px] text-slate-500">Personal classes scheduled individually per student.</p>

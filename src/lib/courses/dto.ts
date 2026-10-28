@@ -155,7 +155,7 @@ const DEFAULT_FAQS: CourseFaqDTO[] = [
   {
     question: 'How is this course delivered?',
     answer:
-      'The curriculum is organized into comprehensive structured modules, downloadable study guides, and 1-on-1 personal mentorship sessions with Acharya Niraj Kumar. You can learn at your own pace and schedule 1-on-1 sessions when you are ready.',
+      'The curriculum is organized into comprehensive structured modules, downloadable study guides, and interactive live classes with Acharya Niraj Kumar. You can learn at your own pace with recorded lessons and join live cohort sessions. Class recordings are provided for any session you miss.',
   },
   {
     question: 'Do I get a certificate upon completion?',
@@ -172,7 +172,7 @@ const DEFAULT_FAQS: CourseFaqDTO[] = [
 const DEFAULT_HIGHLIGHTS: string[] = [
   'Comprehensive structured modules covering the complete science of Vedic Astrology',
   '2 bonus real-world chart reading masterclasses: Career analysis and Marriage timing',
-  'Recorded curriculum modules and direct 1-on-1 personal mentorship sessions',
+  'Recorded curriculum modules and interactive cohort live classes with recordings',
   'Downloadable high-resolution chart templates, planetary tables, and study cheatsheets',
   'Final graded assessment and official verifiable Certificate of Completion from Vihangam Institute of Astrology and Research',
 ];

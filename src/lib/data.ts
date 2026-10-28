@@ -321,9 +321,9 @@ export const INITIAL_COURSES: Course[] = [
     id: 'course-what-is-astrology',
     slug: 'what-is-astrology',
     title: 'The Ultimate Astrology Course: Foundations to Chart Mastery',
-    tagline: 'Learn the sacred science of Vedic Astrology from first principles to real chart readings with recorded curriculum modules and 1-on-1 personal mentorship.',
-    subtitle: 'Comprehensive Curriculum Modules • Personal 1-on-1 Mentorship • Graded Exam & Verifiable Certificate',
-    description: 'A comprehensive curriculum covering the nature of planets, 12 signs, 12 houses, planetary dignities, combustion, retrograde motion, dashas, nakshatras, gemstones, rudraksha, and practical chart interpretation with real case studies and personal 1-on-1 mentorship.',
+    tagline: 'Learn the sacred science of Vedic Astrology from first principles to real chart readings with recorded curriculum modules and interactive live classes.',
+    subtitle: 'Comprehensive Curriculum Modules • Interactive Live Classes • Graded Exam & Verifiable Certificate',
+    description: 'A comprehensive curriculum covering the nature of planets, 12 signs, 12 houses, planetary dignities, combustion, retrograde motion, dashas, nakshatras, gemstones, rudraksha, and practical chart interpretation with real case studies and interactive live classes.',
     level: 'All Levels',
     deliveryMode: 'SELF_PACED',
     hasLifetimeAccess: true,
@@ -357,7 +357,7 @@ export const INITIAL_COURSES: Course[] = [
     highlights: [
       'Comprehensive structured modules covering the complete science of Vedic Astrology',
       '2 bonus real-world chart reading masterclasses: Career analysis and Marriage timing',
-      'Recorded curriculum modules and direct 1-on-1 personal mentorship sessions',
+      'Recorded curriculum modules and interactive cohort live classes with recordings',
       'Downloadable high-resolution chart templates, planetary tables, and study cheatsheets',
       'Final graded assessment and official verifiable Certificate of Completion from Vihangam Institute of Astrology and Research',
       'Direct academic Q&A discussions and doubt resolution with Acharya Niraj Kumar',
@@ -379,7 +379,7 @@ export const INITIAL_COURSES: Course[] = [
     faqs: [
       {
         question: 'How is this course delivered?',
-        answer: 'The curriculum is organized into comprehensive structured modules, downloadable study guides, and 1-on-1 personal mentorship sessions with Acharya Niraj Kumar. You can learn at your own pace and schedule 1-on-1 sessions when you are ready.',
+        answer: 'The curriculum is organized into comprehensive structured modules, downloadable study guides, and interactive live classes with Acharya Niraj Kumar. You can learn at your own pace with recorded lessons and join live cohort sessions. Class recordings are provided for any session you miss.',
       },
       {
         question: 'Do I get a certificate upon completion?',
@@ -395,7 +395,7 @@ export const INITIAL_COURSES: Course[] = [
       },
       {
         question: 'Is the tuition a one-time payment?',
-        answer: 'Yes, strictly a one-time tuition fee of ₹5,100 (or $69 USD) for complete curriculum access, downloadable study guides, 1-on-1 mentorship, and certification. There are no recurring fees.',
+        answer: 'Yes, strictly a one-time tuition fee of ₹5,100 (or $69 USD) for complete curriculum access, downloadable study guides, interactive live classes with recordings, and certification. There are no recurring fees.',
       },
     ],
   },
@@ -408,10 +408,10 @@ export const INITIAL_COHORTS: Cohort[] = [
     id: 'cohort-wia-batch-1',
     courseId: 'course-what-is-astrology',
     batchNumber: 1,
-    batchName: 'Foundation Batch — Recorded Modules & Mentorship',
+    batchName: 'Foundation Batch — Recorded Modules & Live Classes',
     startDate: '2026-01-01T00:00:00.000Z',
     endDate: '2030-12-31T23:59:59.000Z',
-    scheduleDescription: 'Structured modules and personal 1-on-1 mentorship sessions. Progress at your own pace.',
+    scheduleDescription: 'Structured recorded modules and interactive cohort live classes with recordings. Progress at your own pace.',
     scheduleTimeUtc: {
       dayOfWeek: [0, 1, 2, 3, 4, 5, 6],
       hoursUtc: 0,
@@ -424,7 +424,7 @@ export const INITIAL_COHORTS: Cohort[] = [
   },
 ];
 
-/* Flagship classes (Empty: All live teaching is 1-on-1 personal sessions, not group classes) */
+/* Flagship cohort classes (Interactive live classes conducted for the course cohort) */
 export const SCHEDULED_CLASSES_FLAGSHIP: ScheduledClass[] = [];
 
 /* 20-Question Final Graded Quiz */

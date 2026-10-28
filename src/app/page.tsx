@@ -232,7 +232,7 @@ export default function HomePage() {
                   <Video className="w-6 h-6" />
                 </div>
                 <h4 className="text-xl font-bold text-white mb-3">
-                  {isHi ? 'रिकॉर्डेड मॉड्यूल एवं 1-on-1 सत्र' : 'Recorded Modules & 1-on-1 Sessions'}
+                  {isHi ? 'रिकॉर्डेड मॉड्यूल एवं लाइव कक्षाएं' : 'Recorded Modules & Live Classes'}
                 </h4>
                 <p className="text-sm text-slate-300 leading-relaxed">
                   {isHi
@@ -242,7 +242,7 @@ export default function HomePage() {
               </div>
               <div className="mt-6 pt-6 border-t border-white/10 text-xs font-semibold text-amber-300 flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>{isHi ? 'रिकॉर्डेड पाठ्यक्रम और व्यक्तिगत 1-on-1 मार्गदर्शन' : 'Recorded modules and personal 1-on-1 mentorship'}</span>
+                <span>{isHi ? 'रिकॉर्डेड पाठ्यक्रम और समूह लाइव कक्षाएं' : 'Recorded modules and interactive cohort live classes'}</span>
               </div>
             </div>
 
@@ -253,7 +253,7 @@ export default function HomePage() {
                   <Clock className="w-6 h-6" />
                 </div>
                 <h4 className="text-xl font-bold text-white mb-3">
-                  {isHi ? 'लचीला अध्ययन एवं व्यक्तिगत मार्गदर्शन' : 'Flexible Self-Paced & 1-on-1 Sessions'}
+                  {isHi ? 'स्व-गति अध्ययन एवं कक्षा रिकॉर्डिंग' : 'Self-Paced Learning with Full Recordings'}
                 </h4>
                 <p className="text-sm text-slate-300 leading-relaxed">
                   {isHi
@@ -263,7 +263,7 @@ export default function HomePage() {
               </div>
               <div className="mt-6 pt-6 border-t border-white/10 text-xs font-semibold text-amber-300 flex items-center gap-1.5">
                 <Globe className="w-4 h-4 text-amber-400" />
-                <span>{isHi ? 'विश्व में कहीं से भी अध्ययन और व्यक्तिगत मार्गदर्शन' : 'Learn from anywhere with personal 1-on-1 mentorship'}</span>
+                <span>{isHi ? 'लाइव क्लास और रिकॉर्डिंग दोनों उपलब्ध' : 'Live classes & on-demand recordings included'}</span>
               </div>
             </div>
 
@@ -329,7 +329,7 @@ export default function HomePage() {
                 <p className="text-lg text-amber-300/90 font-medium mb-6">
                   {isHi
                     ? '23 ऑन-डिमांड वीडियो मॉड्यूल • 2 बोनस केस स्टडी कार्यशालाएं • रिकॉर्डेड मॉड्यूल एवं 1-ऑन-1 सत्र • मूल्यांकन परीक्षा एवं प्रमाणपत्र'
-                    : '23 On-Demand Video Modules • 2 Bonus Chart Workshops • Recorded Modules & 1-on-1 Sessions • Graded Exam & Certificate'}
+                    : '23 Video Modules • 2 Bonus Chart Workshops • Live Interactive Classes & Recordings • Graded Exam & Certificate'}
                 </p>
                 <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-8">
                   {isHi

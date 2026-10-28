@@ -244,8 +244,8 @@ describe('Admin Accessibility (WCAG AA), Contrast, and Invariants Suite', () => 
       );
       assert.match(
         adminPortalSrc,
-        /Recorded \+ 1-on-1/,
-        'Reports delivery must accurately read "Recorded + 1-on-1"'
+        /Recorded \+ Live Classes/,
+        'Reports delivery must accurately read "Recorded + Live Classes"'
       );
     });
   });

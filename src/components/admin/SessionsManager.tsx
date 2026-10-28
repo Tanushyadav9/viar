@@ -120,7 +120,7 @@ export default function SessionsManager({
   const [formDuration, setFormDuration] = useState(60);
   const [formPlatform, setFormPlatform] = useState('GOOGLE_MEET');
   const [formLink, setFormLink] = useState('');
-  const [formSharedNotes, setFormSharedNotes] = useState('Please have your natal birth details and chart ready.');
+  const [formSharedNotes, setFormSharedNotes] = useState('Class materials, handouts, and live discussion agenda for the cohort.');
   const [formPrivateNotes, setFormPrivateNotes] = useState('');
   const [formRepeatWeekly, setFormRepeatWeekly] = useState(false);
   const [formRepeatWeeks, setFormRepeatWeeks] = useState(8);
@@ -602,11 +602,6 @@ export default function SessionsManager({
     });
   }, [sessions, selectedStudentFilter, searchQuery, activeFilter]);
 
-  // Pending requests count
-  const pendingRequestsCount = useMemo(() => {
-    return requests.filter((r) => r.status === 'PENDING').length;
-  }, [requests]);
-
   // Grouped sessions for Week View (Monday to Sunday)
   const weekGroupedSessions = useMemo(() => {
     const days: Record<string, ExtendedSession[]> = {
@@ -698,7 +693,7 @@ export default function SessionsManager({
                 <span>Sessions & Personal Live Classes</span>
               </span>
               <span className="text-xs text-slate-400">•</span>
-              <span className="text-xs text-slate-300 font-hindi">व्यक्तिगत लाइव ज्योतिष कक्षाएं</span>
+              <span className="text-xs text-slate-600 dark:text-slate-300 font-hindi">लाइव ज्योतिष कक्षाएं एवं समय सारणी</span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2">
@@ -706,7 +701,7 @@ export default function SessionsManager({
               {isLoading && <span className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />}
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Manage 1-on-1 personal classes, calendar sync, and clash protection for your students. Schedule weekly classes, answer student requests, and export your private calendar feed.
+              Schedule interactive live classes for the course cohort, set real meeting links (Google Meet / Zoom), and upload class recordings for approved students.
             </p>
           </div>
 
@@ -717,7 +712,7 @@ export default function SessionsManager({
                 className="gold-button px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-lg shadow-amber-500/20"
               >
                 <Plus className="w-4 h-4" />
-                <span>Schedule a session</span>
+                <span>Schedule Live Class</span>
               </button>
             )}
 
@@ -803,34 +798,13 @@ export default function SessionsManager({
           )}
 
         {/* Primary Tabs: Calendar vs Requests Inbox */}
-        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-white/10">
+        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-slate-200 dark:border-white/10">
           <button
             onClick={() => setActiveMainTab('CALENDAR')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-              activeMainTab === 'CALENDAR'
-                ? 'bg-amber-400 text-slate-950 shadow-md'
-                : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'
-            }`}
+            className="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-amber-400 text-slate-950 shadow-md"
           >
             <CalendarIcon className="w-4 h-4" />
-            <span>Sessions Calendar ({sessions.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveMainTab('REQUESTS')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 relative ${
-              activeMainTab === 'REQUESTS'
-                ? 'bg-amber-400 text-slate-950 shadow-md'
-                : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'
-            }`}
-          >
-            <Inbox className="w-4 h-4" />
-            <span>Requests Inbox</span>
-            {pendingRequestsCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white">
-                {pendingRequestsCount} Waiting
-              </span>
-            )}
+            <span>Live Classes Timetable ({sessions.length})</span>
           </button>
         </div>
       </div>
@@ -1340,7 +1314,7 @@ export default function SessionsManager({
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/10">
               <div className="flex items-center gap-2">
                 <Video className="w-5 h-5 text-amber-500 dark:text-amber-400" />
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Schedule 1-on-1 Class</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Schedule Live Class for Cohort</h3>
               </div>
               <button
                 onClick={() => setIsScheduleModalOpen(false)}
@@ -1608,7 +1582,7 @@ export default function SessionsManager({
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:border-amber-400"
                   />
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                    Scheduled by Owner: the real link you enter here will be immediately emailed to the student and unlocked in their dashboard.
+                    Scheduled by Owner: the real Google Meet / Zoom link you enter here will be unlocked on the live class timetable for all approved students.
                   </p>
                 </div>
 

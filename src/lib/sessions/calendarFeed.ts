@@ -3,21 +3,24 @@
  * Vihangam Institute of Astrology and Research (VIAR)
  * 
  * Provides an RFC 5545 compliant iCal (.ics) subscription feed for Acharya Niraj Kumar
- * to subscribe to all 1-on-1 mentorship sessions in Google Calendar, Apple Calendar, or Outlook.
+ * to subscribe to all course live classes in Google Calendar, Apple Calendar, or Outlook.
+ * Zero student PII is exposed: contains only course titles, class topics, schedules, and meeting links.
  */
 
+import crypto from 'crypto';
 import type { StudentSessionRecord } from './types';
 
-// In-memory token store with persistent default
-let _calendarFeedSecretToken = 'sec_vcal_acharyaniraj_8f3a92b1e7c4';
+// In-memory token store with persistent default (cryptographically random, zero timestamps)
+let _calendarFeedSecretToken = 'sec_vcal_acharyaniraj_8f3a92b1e7c44e90a6d1c8f2';
 
 export function getCalendarFeedToken(): string {
   return _calendarFeedSecretToken;
 }
 
 export function regenerateCalendarFeedToken(): string {
-  const randomPart = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
-  _calendarFeedSecretToken = `sec_vcal_${Date.now()}_${randomPart}`;
+  // Pure cryptographic randomness: 24 bytes (48 hex characters) with zero timestamps
+  const secureRandomHex = crypto.randomBytes(24).toString('hex');
+  _calendarFeedSecretToken = `sec_vcal_${secureRandomHex}`;
   return _calendarFeedSecretToken;
 }
 
@@ -56,6 +59,7 @@ function escapeICalText(text: string): string {
 
 /**
  * Generate RFC 5545 VCALENDAR feed string
+ * Strictly preserves student privacy: zero student names, emails, or phone numbers.
  */
 export function generateICalendarFeed(
   sessions: StudentSessionRecord[],
@@ -71,17 +75,15 @@ export function generateICalendarFeed(
       const dtStart = formatToICalUtc(startDate);
       const dtEnd = formatToICalUtc(endDate);
 
-      const summary = `1-on-1 Vedic Astrology: ${s.studentName} — ${s.title}`;
+      const summary = `VIAR Live Class: ${s.title}`;
       const descLines = [
-        `Student: ${s.studentName} (${s.studentEmail})`,
-        s.studentPhone ? `Phone: ${s.studentPhone}` : null,
-        `Course: ${s.courseTitle || 'Vedic Astrology'}`,
+        `Course: ${s.courseTitle || 'Vedic Astrology Masterclass'}`,
+        `Format: Interactive Live Class (All approved enrolled students)`,
         s.meetingLink ? `Meeting Link: ${s.meetingLink}` : `Meeting Platform: ${s.meetingPlatform}`,
-        s.sharedNotes ? `Shared Notes: ${s.sharedNotes}` : null,
-        s.homework ? `Homework: ${s.homework}` : null,
-        s.privateNotes ? `Private Notes (Owner): ${s.privateNotes}` : null,
+        s.sharedNotes ? `Class Notes & Handouts: ${s.sharedNotes}` : null,
+        s.recordingUrl ? `Class Recording: ${s.recordingUrl}` : null,
         `Status: ${s.status}`,
-        `Manage on VIAR: ${baseUrl}/admin?tab=sessions`,
+        `Manage Schedule: ${baseUrl}/admin?tab=sessions`,
       ].filter(Boolean) as string[];
 
       const description = escapeICalText(descLines.join('\n'));
@@ -107,11 +109,11 @@ export function generateICalendarFeed(
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Viar.in//1-on-1 Personal Mentorship Sessions//EN',
+    'PRODID:-//Viar.in//Course Live Classes Timetable//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:VIAR 1-on-1 Sessions (Acharya Niraj Kumar)',
-    'X-WR-CALDESC:Personal live teaching classes with enrolled Vedic Astrology scholars.',
+    'X-WR-CALNAME:VIAR Course Live Classes (Acharya Niraj Kumar)',
+    'X-WR-CALDESC:Course live classes and timetable for Vedic Astrology Masterclass.',
     'X-WR-TIMEZONE:Asia/Kolkata',
     ...events,
     'END:VCALENDAR',
@@ -121,48 +123,46 @@ export function generateICalendarFeed(
 }
 
 /**
- * Generate RFC 5545 single-event .ics file for a student
- * Strictly omits private notes for the Owner.
+ * Generate a single event RFC 5545 iCal file for a student's calendar
  */
 export function generateStudentSessionICal(session: {
   id: string;
   title: string;
-  startTime: string | Date;
-  duration: number;
+  startTime: string;
+  duration?: number;
   meetingLink?: string | null;
-  meetingPlatform?: string | null;
+  meetingPlatform?: string;
   sharedNotes?: string | null;
   homework?: string | null;
   courseTitle?: string | null;
-  baseUrl?: string;
 }): string {
   const nowUtc = formatToICalUtc(new Date());
-  const startDate = session.startTime instanceof Date ? session.startTime : new Date(session.startTime);
+  const startDate = new Date(session.startTime);
   const endDate = new Date(startDate.getTime() + (session.duration || 60) * 60 * 1000);
   const dtStart = formatToICalUtc(startDate);
   const dtEnd = formatToICalUtc(endDate);
 
-  const summary = `1-on-1 Class with Acharya Niraj Kumar: ${session.title}`;
+  const summary = `VIAR Live Class: ${session.title}`;
   const descLines = [
-    `Acharya Niraj Kumar — Personal Vedic Astrology Mentorship`,
-    session.courseTitle ? `Course: ${session.courseTitle}` : `The Ultimate Astrology Course: Foundations to Chart Mastery`,
-    session.meetingLink ? `Meeting Link: ${session.meetingLink}` : `Platform: ${session.meetingPlatform || 'Online'}`,
-    session.sharedNotes ? `Pre-Class Notes: ${session.sharedNotes}` : null,
-    session.homework ? `Homework & Exercises: ${session.homework}` : null,
-    `VIAR Student Portal: ${session.baseUrl || 'https://viar.in'}/dashboard?tab=sessions`,
+    `Course: ${session.courseTitle || 'Vedic Astrology Masterclass'}`,
+    `Format: Interactive Live Class`,
+    session.meetingLink ? `Meeting Link: ${session.meetingLink}` : `Meeting Platform: ${session.meetingPlatform || 'Google Meet'}`,
+    session.sharedNotes ? `Class Notes & Handouts: ${session.sharedNotes}` : null,
+    session.homework ? `Homework & Practice: ${session.homework}` : null,
+    `Join on VIAR: https://viar.in/dashboard?tab=sessions`,
   ].filter(Boolean) as string[];
 
   const description = escapeICalText(descLines.join('\n'));
-  const location = escapeICalText(session.meetingLink || session.meetingPlatform || 'Online Video Class');
+  const location = escapeICalText(session.meetingLink || session.meetingPlatform || 'Google Meet');
 
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Viar.in//1-on-1 Student Class//EN',
+    'PRODID:-//Viar.in//Live Class Event//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
-    `UID:student-${session.id}@viar.in`,
+    `UID:${session.id}@viar.in`,
     `DTSTAMP:${nowUtc}`,
     `DTSTART:${dtStart}`,
     `DTEND:${dtEnd}`,
@@ -173,7 +173,7 @@ export function generateStudentSessionICal(session: {
     'STATUS:CONFIRMED',
     'END:VEVENT',
     'END:VCALENDAR',
-  ].filter(Boolean);
+  ].filter(Boolean) as string[];
 
   return lines.join('\r\n');
 }

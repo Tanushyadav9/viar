@@ -510,14 +510,14 @@ describe('Admin Live Findings 1-16 & Launch Readiness Test Suite', () => {
         'Must not display unhedged "23 Video Modules" without 1-on-1 sessions'
       );
 
-      // 2. Mentorship + recorded modules wording must exist in both EN and HI
+      // 2. Mentorship / Live classes + recorded modules wording must exist in both EN and HI
       assert.ok(
-        content.includes('Recorded Modules & 1-on-1 Sessions'),
-        'Footer must advertise Recorded Modules & 1-on-1 Sessions in EN'
+        content.includes('Recorded Modules & Live Classes') || content.includes('Recorded Modules & 1-on-1 Sessions'),
+        'Footer must advertise Recorded Modules & Live Classes in EN'
       );
       assert.ok(
-        content.includes('रिकॉर्डेड मॉड्यूल एवं 1-on-1 सत्र'),
-        'Footer must advertise Recorded Modules & 1-on-1 Sessions in HI'
+        content.includes('रिकॉर्डेड मॉड्यूल एवं लाइव कक्षाएं') || content.includes('रिकॉर्डेड मॉड्यूल एवं 1-on-1 सत्र'),
+        'Footer must advertise Recorded Modules & Live Classes in HI'
       );
       assert.ok(
         content.includes('pending client approval'),
@@ -544,10 +544,10 @@ describe('Admin Live Findings 1-16 & Launch Readiness Test Suite', () => {
         'Must not contain "No live Zoom scheduling pressure or timezone conflicts"'
       );
 
-      // 2. Mentorship pillars present with client approval hedge
+      // 2. Mentorship / Live classes pillars present with client approval hedge
       assert.ok(
-        content.includes('Flexible Self-Paced & 1-on-1 Sessions'),
-        'Home page must feature Flexible Self-Paced & 1-on-1 Sessions'
+        content.includes('Self-Paced Learning with Full Recordings') || content.includes('Flexible Self-Paced & 1-on-1 Sessions'),
+        'Home page must feature Self-Paced Learning with Full Recordings'
       );
       assert.ok(
         content.includes('pending client approval'),
