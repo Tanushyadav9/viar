@@ -29,7 +29,17 @@ export {
   REJECTED_WORDS,
   type MeetingLinkValidationResult,
 } from './meetingLinkValidation';
+export {
+  computeLiveClassJoinWindow,
+  gateMeetingLinkForStudent,
+  formatStartsInCountdown,
+  DEFAULT_REVEAL_MINUTES,
+  POST_CLASS_WINDOW_HOURS,
+  type LiveClassButtonState,
+  type JoinWindowComputation,
+} from './liveClassJoinWindow';
 import { isValidMeetingLink, INVALID_LINK_MESSAGE_EN } from './meetingLinkValidation';
+import { DEFAULT_REVEAL_MINUTES } from './liveClassJoinWindow';
 
 /**
  * Converts IST date string ("YYYY-MM-DD") and time string ("HH:mm") into a UTC Date.
@@ -695,3 +705,96 @@ export async function notifyEnrolledStudentsForLiveClass(params: {
     return 0;
   }
 }
+
+/**
+ * Retrieve the Owner-adjustable reveal window (minutes before start time).
+ * Defaults to 30 minutes. Range: [5, 120] minutes.
+ */
+export async function getLiveClassRevealMinutes(): Promise<number> {
+  try {
+    const item = await prisma.contentItem.findUnique({
+      where: {
+        collection_key: {
+          collection: 'site_settings',
+          key: 'live_class_reveal_minutes',
+        },
+      },
+      select: { contentEn: true },
+    });
+
+    if (item && item.contentEn) {
+      const parsed = parseInt(item.contentEn, 10);
+      if (!isNaN(parsed) && parsed >= 5 && parsed <= 120) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn('[getLiveClassRevealMinutes] DB read error:', err);
+  }
+
+  return DEFAULT_REVEAL_MINUTES; // 30 minutes
+}
+
+/**
+ * Updates the Owner-adjustable reveal window setting in database.
+ */
+export async function setLiveClassRevealMinutes(params: {
+  minutes: number;
+  userId?: string | null;
+  userEmail?: string | null;
+}): Promise<number> {
+  const { minutes, userId, userEmail } = params;
+  const clampedMinutes = Math.min(120, Math.max(5, Math.round(minutes)));
+
+  try {
+    await prisma.contentItem.upsert({
+      where: {
+        collection_key: {
+          collection: 'site_settings',
+          key: 'live_class_reveal_minutes',
+        },
+      },
+      create: {
+        collection: 'site_settings',
+        key: 'live_class_reveal_minutes',
+        titleEn: 'Live Class Meeting Link Reveal Window (Minutes Before Start)',
+        titleHi: 'लाइव कक्षा मीटिंग लिंक प्रदर्शन समय (प्रारंभ से कितने मिनट पहले)',
+        contentEn: String(clampedMinutes),
+        contentHi: String(clampedMinutes),
+        metadata: { minutes: clampedMinutes, min: 5, max: 120 },
+        status: 'PUBLISHED',
+        sortOrder: 8,
+        updatedById: userId || undefined,
+      },
+      update: {
+        contentEn: String(clampedMinutes),
+        contentHi: String(clampedMinutes),
+        metadata: { minutes: clampedMinutes, min: 5, max: 120 },
+        updatedById: userId || undefined,
+      },
+    });
+
+    try {
+      await prisma.activityLog.create({
+        data: {
+          action: 'SETTINGS_UPDATE',
+          entityType: 'SITE_SETTINGS',
+          entityId: 'site_settings:live_class_reveal_minutes',
+          userId: userId || null,
+          userEmail: userEmail || null,
+          details: {
+            setting: 'live_class_reveal_minutes',
+            minutes: clampedMinutes,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      });
+    } catch {}
+
+    return clampedMinutes;
+  } catch (err) {
+    console.error('[setLiveClassRevealMinutes] Error saving setting:', err);
+    throw new Error('Failed to update live class reveal window setting.');
+  }
+}
+

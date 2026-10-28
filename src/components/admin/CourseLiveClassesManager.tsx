@@ -74,6 +74,9 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
   const [activeSubTab, setActiveSubTab] = useState<'upcoming' | 'past'>('upcoming');
   const [upcomingClasses, setUpcomingClasses] = useState<LiveClassRecord[]>([]);
   const [pastClasses, setPastClasses] = useState<LiveClassRecord[]>([]);
+  const [revealMinutes, setRevealMinutes] = useState<number>(30);
+  const [isUpdatingReveal, setIsUpdatingReveal] = useState(false);
+  const [revealSuccess, setRevealSuccess] = useState(false);
   const [modules, setModules] = useState<ModuleOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -150,6 +153,9 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
         if (data.success) {
           setUpcomingClasses(data.upcoming || []);
           setPastClasses(data.past || []);
+          if (data.revealMinutesBefore) {
+            setRevealMinutes(data.revealMinutesBefore);
+          }
         }
       }
     } catch (err) {
@@ -439,6 +445,27 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
     setTimeout(() => setCopiedId(null), 2500);
   };
 
+  const handleSaveRevealMinutes = async (mins: number) => {
+    setIsUpdatingReveal(true);
+    setRevealSuccess(false);
+    try {
+      const res = await fetch('/api/admin/courses/live-classes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set_reveal_minutes', minutes: mins }),
+      });
+      if (res.ok) {
+        setRevealMinutes(mins);
+        setRevealSuccess(true);
+        setTimeout(() => setRevealSuccess(false), 3000);
+      }
+    } catch (e) {
+      console.warn('Failed saving reveal minutes:', e);
+    } finally {
+      setIsUpdatingReveal(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Feedback Banner */}
@@ -480,6 +507,39 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
               <strong className="text-amber-400/90">लाइव कक्षाएं कैसे काम करती हैं:</strong> लाइव कक्षा पाठ्यक्रम का हिस्सा है। सभी स्वीकृत विद्यार्थी एक ही मीटिंग लिंक से जुड़ते हैं। बिना लिंक के ड्राफ्ट बनाया जा सकता है, पर पब्लिश करने के लिए असली गूगल मीट या ज़ूम लिंक आवश्यक है।
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Owner Control: Student Meeting Link Reveal Window */}
+      <div className="cosmic-card p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+            <span className="text-xs font-bold text-slate-900 dark:text-white">
+              Student Join Link Reveal Window (विद्यार्थी मीटिंग लिंक प्रदर्शन समय)
+            </span>
+            {revealSuccess && (
+              <span className="text-[11px] font-bold text-emerald-500 animate-pulse">✓ Saved</span>
+            )}
+          </div>
+          <p className="text-[11px] text-slate-600 dark:text-slate-400">
+            Server strictly conceals the meeting link from students until this window opens (default 30 min before start), and suppresses it 2 hours after end.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">Reveal link:</span>
+          <select
+            value={revealMinutes}
+            onChange={(e) => handleSaveRevealMinutes(Number(e.target.value))}
+            disabled={isUpdatingReveal}
+            className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-400 cursor-pointer"
+          >
+            <option value={15}>15 minutes before start</option>
+            <option value={30}>30 minutes before start (Default)</option>
+            <option value={45}>45 minutes before start</option>
+            <option value={60}>60 minutes before start</option>
+          </select>
         </div>
       </div>
 

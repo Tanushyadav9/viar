@@ -1395,3 +1395,70 @@ Enforced in `updateLiveClass`:
 
 4. **Pure Client/Server Boundary**:
    - `src/lib/courses/meetingLinkValidation.ts` has zero database/server imports, ensuring strict compliance with boundary tests (`no-server-in-client.test.ts`).
+
+---
+
+## 24. Live Class Student Visibility, Link Gating & Join States ("When Students See What")
+
+### 24.1 Strict Server-Side Enrollment Enforcement
+- **401 Unauthorized**: Logged-out or unauthenticated requests to `/api/student/sessions` or `/api/student/sessions/[id]/calendar.ics` are rejected immediately.
+- **403 Forbidden**: Visitors who are not actively enrolled (`status !== 'ACTIVE'`), unapproved applicants, rejected applicants, or revoked accounts are blocked server-side:
+  - Zero timetable data, zero lesson titles, and zero meeting links are returned.
+  - Returns clear explanation (`enrolled: false, reason: "..."`).
+- **Student UI Gating (`StudentPersonalSessions.tsx`)**:
+  - Unapproved/Non-enrolled: Displays "Enrollment Approval Required" banner with link to course enrollment and WhatsApp inquiry.
+  - Revoked: Displays "Access Ended" banner with direct WhatsApp restoration contact.
+
+### 24.2 Instant Schedule Visibility (Dual Timezones: Local + IST)
+- As soon as the Owner schedules and publishes a live class (`status = 'SCHEDULED'`), the following metadata appears immediately in the student portal:
+  - Class title & Hindi title
+  - Duration in minutes & platform
+  - Agenda & preparation notes (`sharedNotes`)
+  - Date and time in the student's local timezone (e.g. `Asia/Kolkata`, `America/New_York`, `Europe/London`)
+  - Date and time in Indian Standard Time (IST)
+- Drafts (`status = 'DRAFT'`) and cancelled classes are completely excluded from active student timetables.
+
+### 24.3 Server-Side Meeting Link Gating (Zero Leakage Outside Window)
+- **Invariant**: The meeting join link (`meetingLink`) appears **30 minutes before the start** and until **2 hours after the end** (Owner-adjustable "reveal link N minutes before").
+- **Zero Wire Leakage**: Outside the `[start - revealMinutes, end + 2h]` window, the server strictly sets `meetingLink: null`. The link is never sent to the browser under any circumstances.
+- **Client-Safe Pure Utility (`src/lib/courses/liveClassJoinWindow.ts`)**:
+  - Implements `computeLiveClassJoinWindow` and `gateMeetingLinkForStudent` with zero server/Prisma dependencies, satisfying `tests/no-server-in-client.test.ts`.
+
+### 24.4 Owner-Adjustable Reveal Window Setting
+- **Database Backed**: Stored in `ContentItem` under `site_settings:live_class_reveal_minutes` (default: 30 minutes, valid range: 5 to 120 minutes).
+- **Admin Control**: Added to `CourseLiveClassesManager.tsx` with one-click selector (15, 30, 45, 60 minutes) and audit logging in `ActivityLog`.
+- **API Endpoint**: `POST /api/admin/courses/live-classes` accepts `{ action: 'set_reveal_minutes', minutes: N }`.
+
+### 24.5 Four Explicit Join Button States
+Both the Featured Next Class card and individual upcoming class cards implement the 4 explicit states:
+1. **"Starts in…"** (`STARTS_IN`):
+   - Active when `now < revealStartMs` (outside the reveal window).
+   - Displays live countdown: e.g. `"Starts in 2h 15m"` / `"प्रारंभ होने में 2 घंटे 15 मिनट"`.
+   - Subtext: `"Join link reveals 30m before start"`.
+2. **"Join now"** (`JOIN_NOW`):
+   - Active when within reveal window (`revealStartMs <= now <= endMs`) and `meetingLink` is present.
+   - Clickable primary gold button with pulsing indicator that opens the verified meeting link in a new tab.
+   - Hindi label: `"अभी जुड़ें"`.
+3. **"Class ended: recording coming soon"** (`CLASS_ENDED`):
+   - Active after class ends (`now > endMs`) when `recordingUrl` has not yet been uploaded.
+   - Clean informational badge informing students that the recording is in processing.
+   - Hindi label: `"कक्षा समाप्त: रिकॉर्डिंग जल्द उपलब्ध होगी"`.
+4. **"Watch recording"** (`WATCH_RECORDING`):
+   - Active whenever `recordingUrl` is populated.
+   - Clickable gold button opening session playback; marks student watch progress automatically (watching recording counts identically to attending live).
+   - Hindi label: `"रिकॉर्डिंग देखें"`.
+
+### 24.6 Zero Grey Placeholder Panels
+- When no upcoming live classes are scheduled, the student portal displays a clean, branded cosmic card:
+  - Title: `"No live class scheduled yet."`
+  - Hindi translation: `"अभी कोई लाइव कक्षा निर्धारित नहीं है।"`
+  - Description: *"Interactive live classes with Acharya Niraj Kumar will appear here as soon as scheduled. All approved students attend together with one meeting link. In the meantime, you can study all 23 self-paced video modules in the curriculum tab."*
+  - Direct gold button: *"Go to Video Modules"*.
+  - Completely eliminates dull grey placeholder styling; fully styled with cosmic gold borders, responsive in both Light and Dark mode.
+
+### 24.7 "Add to Calendar" (.ICS) for Every Class
+- Added dedicated `"Add to calendar"` button to every upcoming class card (featured card and upcoming grid).
+- Generates RFC 5545 compliant `.ics` file via `/api/student/sessions/[id]/calendar.ics`.
+- If requested outside the reveal window, the meeting link is withheld from the calendar file and points students to the portal dashboard (`https://viar.in/dashboard?tab=sessions`).
+- Also provides instant `"Add to Google Calendar"` one-click web link.
+

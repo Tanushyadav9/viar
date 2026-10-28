@@ -3,6 +3,8 @@ import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth
 import {
   listLiveClasses,
   createLiveClass,
+  getLiveClassRevealMinutes,
+  setLiveClassRevealMinutes,
   LiveClassInput,
 } from '@/lib/courses/liveClassesService';
 
@@ -23,9 +25,11 @@ export async function GET(req: NextRequest) {
       courseId,
       includePrivateNotes: true,
     });
+    const revealMinutes = await getLiveClassRevealMinutes();
 
     return NextResponse.json({
       success: true,
+      revealMinutesBefore: revealMinutes,
       ...data,
     });
   } catch (err: unknown) {
@@ -42,6 +46,16 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+
+    if (body.action === 'set_reveal_minutes') {
+      const minutes = await setLiveClassRevealMinutes({
+        minutes: Number(body.minutes),
+        userId: auth.userId,
+        userEmail: auth.email,
+      });
+      return NextResponse.json({ success: true, revealMinutesBefore: minutes });
+    }
+
     const input: LiveClassInput = {
       moduleId: body.moduleId,
       title: body.title,

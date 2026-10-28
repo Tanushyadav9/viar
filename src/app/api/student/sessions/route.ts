@@ -3,6 +3,11 @@ import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { verifyUserCourseAccess } from '@/lib/auth/course-access';
 import { listStudentSessions, listSessionRequests } from '@/lib/sessions/oneOnOneService';
 import { prisma } from '@/lib/prisma';
+import {
+  computeLiveClassJoinWindow,
+  gateMeetingLinkForStudent,
+} from '@/lib/courses/liveClassJoinWindow';
+import { getLiveClassRevealMinutes } from '@/lib/courses/liveClassesService';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -31,6 +36,10 @@ export async function GET(req: NextRequest) {
     }
 
     const studentId = access.userId || auth.userId;
+    const nowMs = Date.now();
+
+    // Owner-adjustable reveal window (default 30 mins before start)
+    const revealMinutes = await getLiveClassRevealMinutes();
 
     // Fetch this student's individual sessions (if 1-on-1 enabled)
     const rawSessions = await listStudentSessions({ studentId }).catch(() => []);
@@ -52,6 +61,7 @@ export async function GET(req: NextRequest) {
       lessonTitle: s.lessonTitle,
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
+      isCourseLiveClass: false,
       // Zero privateNotes sent to client
     }));
 
@@ -107,32 +117,57 @@ export async function GET(req: NextRequest) {
       console.warn('[student/sessions] Error fetching course live lessons:', err);
     }
 
-    const sanitizedCourseLiveSessions = courseLiveLessons.map((l) => ({
-      id: l.id,
-      title: l.title,
-      startTime: l.liveScheduledAt!.toISOString(),
-      duration: l.durationMinutes || 60,
-      meetingLink: l.liveJoinLink,
-      meetingPlatform: l.meetingPlatform || 'GOOGLE_MEET',
-      status: l.status === 'PUBLISHED' ? 'SCHEDULED' : l.status,
-      sharedNotes: l.agenda || l.description || '',
-      homework: null,
-      recordingUrl: l.recordingUrl,
-      documentUrl: l.documentUrl,
-      notesPdf: l.documentUrl,
-      courseTitle: l.module?.course?.title || 'Foundations of Vedic Astrology',
-      moduleTitle: l.module?.title || `Module ${l.module?.order || 1}`,
-      lessonTitle: l.title,
-      isCourseLiveClass: true,
-      createdAt: l.createdAt.toISOString(),
-      updatedAt: l.updatedAt.toISOString(),
-      // Zero privateHostNotes sent to client
-    }));
+    const sanitizedCourseLiveSessions = courseLiveLessons.map((l) => {
+      const window = computeLiveClassJoinWindow({
+        startTime: l.liveScheduledAt!,
+        durationMinutes: l.durationMinutes || 60,
+        recordingUrl: l.recordingUrl,
+        revealMinutesBefore: revealMinutes,
+        nowMs,
+      });
+
+      const safeLink = gateMeetingLinkForStudent({
+        rawMeetingLink: l.liveJoinLink,
+        startTime: l.liveScheduledAt!,
+        durationMinutes: l.durationMinutes || 60,
+        revealMinutesBefore: revealMinutes,
+        nowMs,
+      });
+
+      return {
+        id: l.id,
+        title: l.title,
+        startTime: l.liveScheduledAt!.toISOString(),
+        duration: l.durationMinutes || 60,
+        meetingLink: safeLink,
+        meetingPlatform: l.meetingPlatform || 'GOOGLE_MEET',
+        status: l.status === 'PUBLISHED' ? 'SCHEDULED' : l.status,
+        sharedNotes: l.agenda || l.description || '',
+        homework: null,
+        recordingUrl: l.recordingUrl,
+        documentUrl: l.documentUrl,
+        notesPdf: l.documentUrl,
+        courseTitle: l.module?.course?.title || 'Foundations of Vedic Astrology',
+        moduleTitle: l.module?.title || `Module ${l.module?.order || 1}`,
+        lessonTitle: l.title,
+        isCourseLiveClass: true,
+        createdAt: l.createdAt.toISOString(),
+        updatedAt: l.updatedAt.toISOString(),
+        isWindowOpen: window.isWindowOpen,
+        canJoin: window.canJoin,
+        hasEnded: window.hasEnded,
+        buttonState: window.buttonState,
+        buttonLabelEn: window.buttonLabelEn,
+        buttonLabelHi: window.buttonLabelHi,
+        startsInFormattedEn: window.startsInFormattedEn,
+        startsInFormattedHi: window.startsInFormattedHi,
+        revealMinutesBefore: revealMinutes,
+        // Zero privateHostNotes sent to client
+      };
+    });
 
     // Merge individual sessions with Course Live Classes
     const sanitizedSessions = [...sanitizedCourseLiveSessions, ...sanitizedIndividualSessions];
-
-    const nowMs = Date.now();
 
     // Segregate upcoming vs past sessions
     const upcomingSessions = sanitizedSessions.filter((s) => {
@@ -166,6 +201,7 @@ export async function GET(req: NextRequest) {
         enrolled: true,
         enrollmentId: access.enrollmentId || null,
         timezone: (auth.dbUser as { timezone?: string | null })?.timezone || 'Asia/Kolkata',
+        revealMinutesBefore: revealMinutes,
         nextSession,
         upcomingSessions,
         pastSessions,

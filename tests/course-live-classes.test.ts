@@ -6,6 +6,9 @@ import {
   formatUtcToIst,
   INVALID_LINK_MESSAGE_EN,
   INVALID_LINK_MESSAGE_HI,
+  computeLiveClassJoinWindow,
+  gateMeetingLinkForStudent,
+  formatStartsInCountdown,
 } from '../src/lib/courses/liveClassesService';
 
 describe('Prompt 10: Course Live Classes Invariants & Validation', () => {
@@ -243,6 +246,168 @@ describe('Prompt 10: Course Live Classes Invariants & Validation', () => {
       assert.strictEqual(studentView.title, 'Lagna Analysis');
       assert.strictEqual(studentView.meetingLink, 'https://meet.google.com/abc-defg-hij');
       assert.strictEqual(studentView.notesPdf, 'https://viar.in/notes/lagna.pdf');
+    });
+  });
+
+  describe('6. Student Live Class Visibility & Reveal Window Link Gating', () => {
+    const classStartUtc = '2026-11-20T10:00:00.000Z'; // 15:30 IST
+    const classStartMs = new Date(classStartUtc).getTime();
+    const duration = 60; // 1 hour -> ends at 11:00 UTC (16:30 IST)
+    const validLink = 'https://meet.google.com/abc-defg-hij';
+
+    it('outside reveal window (>30 mins before start): meeting link is strictly null, button state is STARTS_IN', () => {
+      // 45 minutes before start
+      const nowMs = classStartMs - 45 * 60 * 1000;
+
+      const gatedLink = gateMeetingLinkForStudent({
+        rawMeetingLink: validLink,
+        startTime: classStartUtc,
+        durationMinutes: duration,
+        nowMs,
+      });
+      assert.strictEqual(gatedLink, null, 'Link must be strictly null outside reveal window');
+
+      const window = computeLiveClassJoinWindow({
+        startTime: classStartUtc,
+        durationMinutes: duration,
+        nowMs,
+      });
+      assert.strictEqual(window.isWindowOpen, false);
+      assert.strictEqual(window.canJoin, false);
+      assert.strictEqual(window.hasEnded, false);
+      assert.strictEqual(window.buttonState, 'STARTS_IN');
+      assert.strictEqual(window.buttonLabelEn.includes('Starts in'), true);
+      assert.strictEqual(window.buttonLabelHi.includes('प्रारंभ होने में'), true);
+    });
+
+    it('inside reveal window (15 mins before start): meeting link is returned, button state is JOIN_NOW', () => {
+      // 15 minutes before start
+      const nowMs = classStartMs - 15 * 60 * 1000;
+
+      const gatedLink = gateMeetingLinkForStudent({
+        rawMeetingLink: validLink,
+        startTime: classStartUtc,
+        durationMinutes: duration,
+        nowMs,
+      });
+      assert.strictEqual(gatedLink, validLink, 'Link must be revealed inside the 30-min window');
+
+      const window = computeLiveClassJoinWindow({
+        startTime: classStartUtc,
+        durationMinutes: duration,
+        nowMs,
+      });
+      assert.strictEqual(window.isWindowOpen, true);
+      assert.strictEqual(window.canJoin, true);
+      assert.strictEqual(window.buttonState, 'JOIN_NOW');
+      assert.strictEqual(window.buttonLabelEn, 'Join now');
+      assert.strictEqual(window.buttonLabelHi, 'अभी जुड़ें');
+    });
+
+    it('during class: meeting link is returned, button state is JOIN_NOW', () => {
+      // 20 minutes into class
+      const nowMs = classStartMs + 20 * 60 * 1000;
+
+      const gatedLink = gateMeetingLinkForStudent({
+        rawMeetingLink: validLink,
+        startTime: classStartUtc,
+        durationMinutes: duration,
+        nowMs,
+      });
+      assert.strictEqual(gatedLink, validLink);
+
+      const window = computeLiveClassJoinWindow({
+        startTime: classStartUtc,
+        durationMinutes: duration,
+        nowMs,
+      });
+      assert.strictEqual(window.isWindowOpen, true);
+      assert.strictEqual(window.canJoin, true);
+      assert.strictEqual(window.buttonState, 'JOIN_NOW');
+    });
+
+    it('class ended without recording (<2 hours after end): meeting link still accessible, button state is CLASS_ENDED', () => {
+      // 30 minutes after class ends
+      const nowMs = classStartMs + (duration + 30) * 60 * 1000;
+
+      const gatedLink = gateMeetingLinkForStudent({
+        rawMeetingLink: validLink,
+        startTime: classStartUtc,
+        durationMinutes: duration,
+        nowMs,
+      });
+      assert.strictEqual(gatedLink, validLink, 'Meeting link stays accessible until 2 hours after end');
+
+      const window = computeLiveClassJoinWindow({
+        startTime: classStartUtc,
+        durationMinutes: duration,
+        nowMs,
+      });
+      assert.strictEqual(window.isWindowOpen, true);
+      assert.strictEqual(window.hasEnded, true);
+      assert.strictEqual(window.canJoin, false);
+      assert.strictEqual(window.buttonState, 'CLASS_ENDED');
+      assert.strictEqual(window.buttonLabelEn, 'Class ended: recording coming soon');
+      assert.strictEqual(window.buttonLabelHi, 'कक्षा समाप्त: रिकॉर्डिंग जल्द उपलब्ध होगी');
+    });
+
+    it('class ended (>2 hours after end): meeting link is strictly null', () => {
+      // 2 hours and 15 minutes after end
+      const nowMs = classStartMs + (duration + 135) * 60 * 1000;
+
+      const gatedLink = gateMeetingLinkForStudent({
+        rawMeetingLink: validLink,
+        startTime: classStartUtc,
+        durationMinutes: duration,
+        nowMs,
+      });
+      assert.strictEqual(gatedLink, null, 'Meeting link must be suppressed after 2 hours past end');
+
+      const window = computeLiveClassJoinWindow({
+        startTime: classStartUtc,
+        durationMinutes: duration,
+        nowMs,
+      });
+      assert.strictEqual(window.isWindowOpen, false);
+      assert.strictEqual(window.hasEnded, true);
+      assert.strictEqual(window.buttonState, 'CLASS_ENDED');
+    });
+
+    it('when recordingUrl is present: button state is WATCH_RECORDING', () => {
+      const recordingUrl = 'https://customer-xxx.cloudflarestream.com/yyy/manifest/video.m3u8';
+      const nowMs = classStartMs + (duration + 30) * 60 * 1000;
+
+      const window = computeLiveClassJoinWindow({
+        startTime: classStartUtc,
+        durationMinutes: duration,
+        recordingUrl,
+        nowMs,
+      });
+      assert.strictEqual(window.buttonState, 'WATCH_RECORDING');
+      assert.strictEqual(window.buttonLabelEn, 'Watch recording');
+      assert.strictEqual(window.buttonLabelHi, 'रिकॉर्डिंग देखें');
+    });
+
+    it('Owner-adjustable reveal window (e.g. 15 mins or 60 mins)', () => {
+      // Test custom revealMinutesBefore = 60 mins
+      const customWindow60 = computeLiveClassJoinWindow({
+        startTime: classStartUtc,
+        durationMinutes: duration,
+        revealMinutesBefore: 60,
+        nowMs: classStartMs - 50 * 60 * 1000, // 50m before start
+      });
+      assert.strictEqual(customWindow60.isWindowOpen, true, '60m window should open at 50m before start');
+      assert.strictEqual(customWindow60.buttonState, 'JOIN_NOW');
+
+      // Test custom revealMinutesBefore = 15 mins
+      const customWindow15 = computeLiveClassJoinWindow({
+        startTime: classStartUtc,
+        durationMinutes: duration,
+        revealMinutesBefore: 15,
+        nowMs: classStartMs - 25 * 60 * 1000, // 25m before start
+      });
+      assert.strictEqual(customWindow15.isWindowOpen, false, '15m window should be closed at 25m before start');
+      assert.strictEqual(customWindow15.buttonState, 'STARTS_IN');
     });
   });
 });

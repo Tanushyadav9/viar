@@ -14,13 +14,17 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  Download,
 } from 'lucide-react';
 import {
   formatInTimezone,
-  getJoinWindowStatus,
   formatSessionIST,
   generateGoogleCalendarUrl,
 } from '@/lib/timezones';
+import {
+  computeLiveClassJoinWindow,
+  type LiveClassButtonState,
+} from '@/lib/courses/liveClassJoinWindow';
 
 interface StudentSessionItem {
   id: string;
@@ -33,11 +37,22 @@ interface StudentSessionItem {
   sharedNotes: string | null;
   homework: string | null;
   recordingUrl: string | null;
+  documentUrl?: string | null;
+  notesPdf?: string | null;
   courseTitle?: string | null;
   moduleTitle?: string | null;
   lessonTitle?: string | null;
   attendedLive?: boolean;
   watchedRecording?: boolean;
+  isWindowOpen?: boolean;
+  canJoin?: boolean;
+  hasEnded?: boolean;
+  buttonState?: LiveClassButtonState;
+  buttonLabelEn?: string;
+  buttonLabelHi?: string;
+  startsInFormattedEn?: string;
+  startsInFormattedHi?: string;
+  revealMinutesBefore?: number;
 }
 
 export default function StudentPersonalSessions() {
@@ -46,6 +61,7 @@ export default function StudentPersonalSessions() {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [accessReason, setAccessReason] = useState<string>('');
   const [isRevoked, setIsRevoked] = useState(false);
+  const [revealMinutesBefore, setRevealMinutesBefore] = useState<number>(30);
 
   const [nextSession, setNextSession] = useState<StudentSessionItem | null>(null);
   const [upcomingSessions, setUpcomingSessions] = useState<StudentSessionItem[]>([]);
@@ -53,7 +69,7 @@ export default function StudentPersonalSessions() {
   const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null);
   const [watchedSessionIds, setWatchedSessionIds] = useState<Set<string>>(new Set());
 
-  // Ticker for join button 15-minute countdown
+  // Ticker for live countdown updates (every 15 seconds)
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -84,6 +100,7 @@ export default function StudentPersonalSessions() {
       if (data?.enrolled) {
         setIsEnrolled(true);
         if (data.timezone) setUserTz(data.timezone);
+        if (data.revealMinutesBefore) setRevealMinutesBefore(data.revealMinutesBefore);
         setNextSession(data.nextSession || null);
         setUpcomingSessions(data.upcomingSessions || []);
         setPastSessions(data.pastSessions || []);
@@ -126,6 +143,88 @@ export default function StudentPersonalSessions() {
   // Helper: Trigger native .ics download
   const handleDownloadIcs = (session: StudentSessionItem) => {
     window.open(`/api/student/sessions/${session.id}/calendar.ics`, '_blank');
+  };
+
+  // ----------------------------------------------------------------------------
+  // Helper: Render the 4 explicit join button states
+  // 1. "Starts in…" (countdown when outside reveal window)
+  // 2. "Join now" (active clickable button with meeting link when window is open and class is live/starting)
+  // 3. "Class ended: recording coming soon" (after class has ended and recording is not yet uploaded)
+  // 4. "Watch recording" (clickable button when recording URL is present)
+  // ----------------------------------------------------------------------------
+  const renderJoinButton = (session: StudentSessionItem, isCompact = false) => {
+    const windowStatus = computeLiveClassJoinWindow({
+      startTime: session.startTime,
+      durationMinutes: session.duration || 60,
+      recordingUrl: session.recordingUrl,
+      revealMinutesBefore: session.revealMinutesBefore || revealMinutesBefore || 30,
+    });
+
+    const state = session.buttonState || windowStatus.buttonState;
+
+    if (state === 'WATCH_RECORDING') {
+      return (
+        <button
+          onClick={() => handleWatchRecording(session)}
+          className={`gold-button font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition ${
+            isCompact ? 'px-4 py-2 rounded-xl' : 'px-6 py-3 rounded-xl'
+          }`}
+        >
+          <Play className="w-4 h-4" />
+          <span>Watch recording</span>
+        </button>
+      );
+    }
+
+    if (state === 'CLASS_ENDED') {
+      return (
+        <div
+          className={`rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-center ${
+            isCompact ? 'px-3 py-1.5' : 'px-4 py-2.5 space-y-0.5'
+          }`}
+        >
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+            Class ended: recording coming soon
+          </span>
+          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-hindi block">
+            कक्षा समाप्त: रिकॉर्डिंग जल्द उपलब्ध होगी
+          </span>
+        </div>
+      );
+    }
+
+    if (state === 'JOIN_NOW' && session.meetingLink) {
+      return (
+        <a
+          href={session.meetingLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`gold-button font-bold text-xs flex items-center justify-center gap-2 shadow-xl shadow-amber-900/40 animate-pulse ${
+            isCompact ? 'px-4 py-2 rounded-xl' : 'px-6 py-3 rounded-xl'
+          }`}
+        >
+          <Video className="w-4 h-4" />
+          <span>Join now</span>
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+      );
+    }
+
+    // Default: STARTS_IN (outside reveal window)
+    return (
+      <div
+        className={`rounded-xl bg-amber-500/10 dark:bg-amber-500/10 border border-amber-500/30 text-center ${
+          isCompact ? 'px-3 py-1.5' : 'px-4 py-2 space-y-0.5'
+        }`}
+      >
+        <span className="text-xs font-bold text-amber-800 dark:text-amber-300 block">
+          {windowStatus.buttonLabelEn || 'Starts in…'}
+        </span>
+        <span className="text-[10px] text-slate-600 dark:text-slate-400 block">
+          Join link reveals {windowStatus.revealMinutesBefore}m before start
+        </span>
+      </div>
+    );
   };
 
   // ----------------------------------------------------------------------------
@@ -236,7 +335,7 @@ export default function StudentPersonalSessions() {
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <Link
-              href="/dashboard?tab=recordings"
+              href="/dashboard?tab=schedule"
               className="gold-button px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-amber-900/20 transition"
             >
               <Play className="w-4 h-4" />
@@ -255,7 +354,7 @@ export default function StudentPersonalSessions() {
         </div>
       </div>
 
-      {/* 2. THE NEXT LIVE CLASS (Featured Next Class or Polished Notice) */}
+      {/* 2. THE NEXT LIVE CLASS (Featured Next Class or Polished Branded Notice) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -263,31 +362,34 @@ export default function StudentPersonalSessions() {
             <span>Next Live Class (अगली लाइव कक्षा)</span>
           </h3>
           {nextSession && (
-            <span className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[11px] font-semibold text-emerald-500 dark:text-emerald-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>Confirmed on Schedule</span>
             </span>
           )}
         </div>
 
         {!nextSession ? (
-          <div className="p-8 sm:p-10 rounded-3xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 text-center space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-500 dark:text-amber-400">
-              <Calendar className="w-6 h-6" />
+          /* ZERO grey placeholder panels: clean, branded cosmic card */
+          <div className="p-8 sm:p-10 rounded-3xl cosmic-card border-2 border-amber-500/30 bg-gradient-to-br from-white via-amber-50/30 to-amber-100/20 dark:from-slate-900 dark:via-slate-900/90 dark:to-amber-950/20 text-center space-y-4 shadow-xl">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-600 dark:text-amber-400">
+              <Calendar className="w-7 h-7" />
             </div>
             <div className="space-y-1.5">
-              <h4 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                No Upcoming Live Classes Scheduled
+              <h4 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                No live class scheduled yet.
               </h4>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-lg mx-auto leading-relaxed">
-                The next interactive live class schedule and meeting link will be announced here by Acharya Niraj Kumar.
-                In the meantime, you can study all 23 self-paced video modules in the curriculum tab.
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-hindi">
+                अभी कोई लाइव कक्षा निर्धारित नहीं है।
+              </p>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-lg mx-auto leading-relaxed pt-1">
+                Interactive live classes with Acharya Niraj Kumar will appear here as soon as scheduled. All approved students attend together with one meeting link. In the meantime, you can study all 23 self-paced video modules in the curriculum tab.
               </p>
             </div>
             <div className="pt-2">
               <Link
-                href="/dashboard?tab=recordings"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition shadow-md shadow-amber-500/20"
+                href="/dashboard?tab=schedule"
+                className="gold-button inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition shadow-md shadow-amber-500/20"
               >
                 <Play className="w-4 h-4" />
                 <span>Go to Video Modules</span>
@@ -296,12 +398,6 @@ export default function StudentPersonalSessions() {
           </div>
         ) : (
           (() => {
-            const joinStatus = getJoinWindowStatus(
-              nextSession.startTime,
-              15,
-              nextSession.duration || 60
-            );
-
             const timeLocal = formatInTimezone(nextSession.startTime, userTz);
             const timeIst = formatSessionIST(nextSession.startTime);
 
@@ -328,7 +424,7 @@ export default function StudentPersonalSessions() {
                       {nextSession.title}
                     </h4>
 
-                    {/* Dual Timezone Badge */}
+                    {/* Dual Timezone Badge: Student Local Time and IST */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1">
                       <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs font-bold text-amber-700 dark:text-amber-300">
                         <Clock className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
@@ -340,64 +436,61 @@ export default function StudentPersonalSessions() {
                     </div>
                   </div>
 
-                  {/* Actions: Join Button (appears 15 minutes before) */}
+                  {/* Actions: 4 Explicit Join Button States & Calendar */}
                   <div className="flex flex-col sm:flex-row md:flex-col items-stretch sm:items-center md:items-end gap-2.5 shrink-0 pt-2 md:pt-0">
-                    {joinStatus.canJoin ? (
-                      <a
-                        href={nextSession.meetingLink || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="gold-button px-6 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xl shadow-amber-900/40 animate-pulse"
-                      >
-                        <Video className="w-4 h-4" />
-                        <span>Join Live Class Now</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    ) : (
-                      <div className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-center space-y-0.5">
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
-                          Join link activates 15m before class
-                        </span>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                          {joinStatus.formattedCountdown}
-                        </span>
-                      </div>
-                    )}
+                    {renderJoinButton(nextSession)}
 
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleDownloadIcs(nextSession)}
+                        className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center gap-1.5"
+                        title="Add to calendar (.ics download)"
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>Add to calendar</span>
+                      </button>
+
                       <a
                         href={generateGoogleCalendarUrl(
                           `VIAR Live Class: ${nextSession.title}`,
-                          `Vedic Astrology interactive live class with Acharya Niraj Kumar.\nMeeting Link: ${nextSession.meetingLink || 'To be shared'}\nClass Notes: ${nextSession.sharedNotes || 'Standard handouts'}`,
+                          `Vedic Astrology interactive live class with Acharya Niraj Kumar.\nAgenda: ${nextSession.sharedNotes || 'Live interactive class'}`,
                           nextSession.meetingLink || 'Google Meet',
                           nextSession.startTime,
                           nextSession.duration || 60
                         )}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-slate-300 hover:text-white transition flex items-center gap-1.5"
+                        className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-white/10 text-[11px] font-medium transition"
+                        title="Add to Google Calendar"
                       >
-                        <Calendar className="w-3 h-3 text-amber-400" />
-                        <span>Add to Google Calendar</span>
+                        <span>Google Cal</span>
                       </a>
-                      <button
-                        onClick={() => handleDownloadIcs(nextSession)}
-                        className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-slate-300 hover:text-white transition"
-                        title="Download .ics calendar file"
-                      >
-                        <span>.ICS</span>
-                      </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Class Notes / Preparation */}
+                {/* Class Notes / Preparation Agenda (Appears immediately when scheduled) */}
                 {nextSession.sharedNotes && (
                   <div className="p-3.5 rounded-2xl bg-amber-500/5 dark:bg-black/30 border border-amber-500/20 text-xs text-slate-700 dark:text-slate-300 space-y-1">
                     <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5" /> Class Notes &amp; Preparation:
+                      <FileText className="w-3.5 h-3.5" /> Class Agenda &amp; Preparation:
                     </span>
                     <p className="leading-relaxed whitespace-pre-line pl-5">{nextSession.sharedNotes}</p>
+                  </div>
+                )}
+
+                {/* Optional Handouts / PDF download */}
+                {nextSession.notesPdf && (
+                  <div className="pt-1 flex items-center gap-2">
+                    <a
+                      href={nextSession.notesPdf}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-300 transition"
+                    >
+                      <Download className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Download Class Handout (PDF)</span>
+                    </a>
                   </div>
                 )}
               </div>
@@ -418,29 +511,64 @@ export default function StudentPersonalSessions() {
             {upcomingSessions.slice(1).map((s) => (
               <div
                 key={s.id}
-                className="p-5 rounded-2xl cosmic-card border border-slate-200 dark:border-white/10 hover:border-amber-500/30 transition space-y-3 bg-white dark:bg-slate-900/60"
+                className="p-5 rounded-2xl cosmic-card border border-slate-200 dark:border-white/10 hover:border-amber-500/30 transition space-y-3 bg-white dark:bg-slate-900/60 flex flex-col justify-between"
               >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                    Cohort Class
-                  </span>
-                  <span className="text-slate-500 dark:text-slate-400">{s.duration || 60} mins</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                      Cohort Class
+                    </span>
+                    <span className="text-slate-500 dark:text-slate-400">{s.duration || 60} mins</span>
+                  </div>
+
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{s.title}</h4>
+
+                  {/* Dual timezone */}
+                  <div className="space-y-0.5">
+                    <div className="text-xs text-amber-700 dark:text-amber-300 font-semibold">
+                      {formatInTimezone(s.startTime, userTz)}
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                      IST: {formatSessionIST(s.startTime)}
+                    </div>
+                  </div>
+
+                  {s.sharedNotes && (
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 pt-1 border-t border-slate-100 dark:border-white/5">
+                      {s.sharedNotes}
+                    </p>
+                  )}
                 </div>
 
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{s.title}</h4>
+                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 border-t border-slate-100 dark:border-white/5">
+                  <div>{renderJoinButton(s, true)}</div>
 
-                <div className="text-xs text-amber-700 dark:text-amber-300 font-semibold">
-                  {formatInTimezone(s.startTime, userTz)}
+                  <div className="flex items-center gap-1.5 self-end sm:self-center">
+                    <button
+                      onClick={() => handleDownloadIcs(s)}
+                      className="px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center gap-1"
+                      title="Add to calendar (.ics download)"
+                    >
+                      <Calendar className="w-3 h-3" />
+                      <span>Add to cal</span>
+                    </button>
+                    <a
+                      href={generateGoogleCalendarUrl(
+                        `VIAR Live Class: ${s.title}`,
+                        `Vedic Astrology interactive live class with Acharya Niraj Kumar.\nAgenda: ${s.sharedNotes || 'Live interactive class'}`,
+                        s.meetingLink || 'Google Meet',
+                        s.startTime,
+                        s.duration || 60
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-white/10 text-[10px] font-medium transition"
+                      title="Google Calendar"
+                    >
+                      <span>Google Cal</span>
+                    </a>
+                  </div>
                 </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                  IST: {formatSessionIST(s.startTime)}
-                </div>
-
-                {s.sharedNotes && (
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 pt-1 border-t border-slate-100 dark:border-white/5">
-                    {s.sharedNotes}
-                  </p>
-                )}
               </div>
             ))}
           </div>
@@ -452,7 +580,7 @@ export default function StudentPersonalSessions() {
         <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-white/10">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
               <span>Past Classes &amp; Session Recordings ({pastSessions.length})</span>
             </h3>
             <span className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -473,7 +601,7 @@ export default function StudentPersonalSessions() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
                           {s.attendedLive ? 'Attended Live' : isWatched ? 'Watched Recording' : 'Completed Class'}
                         </span>
                         <span className="text-xs text-slate-400">•</span>
@@ -491,11 +619,11 @@ export default function StudentPersonalSessions() {
                           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition shadow-sm"
                         >
                           <Play className="w-3.5 h-3.5" />
-                          <span>Watch Recording</span>
+                          <span>Watch recording</span>
                         </button>
                       ) : (
-                        <span className="text-[11px] text-slate-400 italic">
-                          Recording processing...
+                        <span className="text-xs text-slate-500 dark:text-slate-400 italic">
+                          Class ended: recording coming soon
                         </span>
                       )}
 
@@ -513,7 +641,7 @@ export default function StudentPersonalSessions() {
 
                   {isExpanded && s.sharedNotes && (
                     <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 text-xs text-slate-700 dark:text-slate-300 space-y-1 mt-2">
-                      <span className="font-bold text-amber-800 dark:text-amber-300">Class Notes &amp; Handouts:</span>
+                      <span className="font-bold text-amber-800 dark:text-amber-300">Class Agenda &amp; Handouts:</span>
                       <p className="leading-relaxed whitespace-pre-line">{s.sharedNotes}</p>
                     </div>
                   )}
