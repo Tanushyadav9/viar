@@ -1097,3 +1097,145 @@ All changes are validated and committed atomically through `POST /api/admin/sess
 - **Language Cleanliness**: Replaced developer jargon ("scholar", "cryptographic", "Zero gateway deductions", "Catalog Engine", "Supreme Owner Anchor").
 - **Accurate Scope**: Header updated to: *"Manage 23 course modules, 1-on-1 personal classes, enrolled students, payments, and site content."*
 - **Mobile Responsive**: Tab bar and modals tested and fully usable at 390px viewport width with smooth horizontal scrolling.
+
+
+---
+
+## 20. Comprehensive Architectural Audit: Live Links, Terminology Invariants, Database Telemetry & iCal Token Security
+
+### 20.1 Meeting Link Architecture: Every Place That Creates, Stores, Shows, or Generates Meeting Links
+
+| System Layer | File & Location | Purpose & Mechanism | Data Handled |
+| :--- | :--- | :--- | :--- |
+| **Database Schema** | `prisma/schema.prisma` (L45, L189, L255, L322, L358-359, L397-398) | Stores meeting platform and join link URLs for live classes and sessions | `Lesson.meetingPlatform` (Enum `ZOOM`/`GOOGLE_MEET`), `StudentSession.meetingLink` (TEXT), `StudentSession.meetingPlatform` (TEXT), `OneOnOneSession.meetingLink` (TEXT), `ClassSession.joinLink` (TEXT), `SessionEmailOutbox.meetingLink` (TEXT) |
+| **Database Migrations** | `prisma/migrations/0_init/migration.sql`, `prisma/migrations/20261025235500_...` | Defines SQL schema columns and enums for meeting links in PostgreSQL | `meeting_link TEXT`, `meeting_platform MeetingPlatform` |
+| **Admin API (Creation)** | `src/app/api/admin/sessions/route.ts` (L125-L135) | POST endpoint where Site Owner schedules a live class with meeting link | Receives `meetingLink`, `meetingPlatform`, validates URL format, persists to DB |
+| **Admin API (Update)** | `src/app/api/admin/sessions/[id]/route.ts` (L55-L65) | PATCH endpoint for Owner to update meeting link, start time, or notes | Updates `meetingLink` and logs audit entry in `SessionHistoryLog` |
+| **Admin API (Action)** | `src/app/api/admin/sessions/requests/[id]/action/route.ts` (L41-L42) | Handles approval/reschedule with meeting link assignment | Sets `meetingLink` and `meetingPlatform` |
+| **Student API (Read)** | `src/app/api/student/sessions/route.ts` (L50-L75) | Gated GET endpoint returning upcoming sessions strictly to approved enrolled students | Emits `meetingLink` only when student enrollment status is `ACTIVE` |
+| **Lesson Playback API** | `src/app/api/courses/[slug]/lessons/[lessonId]/play/route.ts` (L110-L130) | Streaming/playback endpoint that sanitizes live links | Strips `liveJoinLink` for unauthenticated/non-enrolled visitors; provides link to active students |
+| **Admin UI (Scheduler)** | `src/components/admin/SessionsManager.tsx` (L164-L180, L975-L1050) | Modal form input where Owner types/pastes Google Meet or Zoom link | `<input value={scheduleMeetingLink} placeholder="https://meet.google.com/xxx-yyyy-zzz" />` |
+| **Admin UI (Display)** | `src/components/admin/SessionsManager.tsx` (L840-L870) | Displays scheduled live classes with copyable link and platform badge | Renders `s.meetingLink` with copy-to-clipboard button and external link icon |
+| **Admin UI (Student View)**| `src/components/admin/StudentProfileView.tsx` (L380-L420) | Displays student's live class list in admin profile | Shows meeting link and platform badge |
+| **Student UI (Join Button)** | `src/components/student/StudentPersonalSessions.tsx` (L130-L170) | Join button dynamically enabled 15 minutes before scheduled start time | `<a href={s.meetingLink} target="_blank">Join Live Class</a>` |
+| **Student UI (Player)** | `src/components/course/CoursePlayer.tsx` & `src/app/dashboard/courses/[cohortId]/page.tsx` | Renders live class join card when curriculum module contains live session | Shows `lesson.liveJoinLink` for enrolled students |
+| **iCal Feed (Admin)** | `src/lib/sessions/calendarFeed.ts` (`generateICalendarFeed`) | Injects meeting link into RFC 5545 feed event | `LOCATION:${s.meetingLink}`, `DESCRIPTION:Meeting Link: ${s.meetingLink}` |
+| **iCal Download (Student)**| `src/lib/sessions/calendarFeed.ts` (`generateStudentSessionICal`) | Generates `.ics` download for student Google/Apple calendar | `LOCATION:${session.meetingLink}` |
+| **Google Calendar Link** | `src/lib/timezones.ts` (`generateGoogleCalendarUrl`) | Generates one-click `calendar.google.com` event creation URL | `&location=${encodeURIComponent(session.meetingLink)}` |
+| **Email Service** | `src/lib/sessions/outboxService.ts` (L680-L980) | Transmits meeting link in confirmation, 24-hour reminder, and 1-hour reminder emails | Embedded in HTML email button and plaintext email body |
+
+---
+
+### 20.2 Terminology Inventory: "1-on-1", "Mentorship", "Personal Session", "Request a Session" (EN & HI)
+
+A full static and dynamic scan of the application source code identified all occurrences categorized by subsystem:
+
+#### A. Administrative Portal & API (`src/app/admin/`, `src/components/admin/`, `src/app/api/admin/`)
+1. `src/app/admin/diagnostics/page.tsx:653`: Label `{ label: '1-on-1 Sessions', count: ... }` in diagnostic telemetry table list.
+2. `src/app/api/admin/sessions/requests/[id]/action/route.ts:38, 77`: Default title fallback `'1-on-1 Vedic Astrology Mentorship'`.
+3. `src/components/admin/ContentStudio.tsx:888`: Placeholder text `'e.g. Master Authentic Vedic Astrology with Live Mentorship'`.
+4. `src/components/admin/SessionsManager.tsx`:
+   - L700: Legacy header label `1-on-1 Mentorship & Sessions Console`.
+   - L755: Delegated staff permission explanation mentioning `1-on-1 sessions and requests`.
+   - L788: Policy quota display `{courseSettings.sessionsIncludedPerStudent} 1-on-1 sessions included`.
+   - L957, L963, L964, L966, L967, L975: Empty states and action button in EN & HI (`1-on-1 कक्षा निर्धारित करें`, `Schedule 1-on-1 Class`).
+   - L1209: Help text regarding student requests.
+   - L2011, L2092, L2121: Policy configuration inputs (`1-on-1 Session Policies`, concurrent student limit).
+5. `src/components/admin/StudentProfileView.tsx`:
+   - L116: Loading message.
+   - L212: Hindi/English action label `Schedule a session / व्यक्तिगत सत्र तय करें`.
+   - L279: Quota label `1-on-1 Sessions Quota Included:`.
+   - L301: Curriculum header `Curriculum Progress (Recorded & 1-on-1)`.
+   - L369, L375, L409: Section header and empty state for personal sessions.
+6. `src/app/test-proof-views/AdminProofScreens.tsx:24, 25, 247`: Historical test screenshots and proof view strings in EN & HI.
+7. `src/app/api/enrollments/export/route.ts:92` & `src/app/api/enrollments/route.ts:195`: Fallback batch name `'Recorded modules and 1-on-1 sessions'`.
+
+#### B. Student Portal (`src/app/dashboard/`, `src/components/student/`, `src/app/api/student/`)
+1. `src/app/api/student/sessions/request/route.ts:26`: Gating error message `'Forbidden: only active enrolled students may request 1-on-1 sessions'`.
+2. `src/app/dashboard/certificates/page.tsx:284`: Aapka Astro sister service recommendation (`book a private 1-on-1 Kundali consultation with Acharya Niraj Kumar on Aapka Astro`).
+3. `src/app/dashboard/courses/[cohortId]/quiz/page.tsx:391`: Post-exam recommendation (`schedule a private 1-on-1 chart consultation with Acharya Niraj Kumar on Aapka Astro`).
+4. `src/app/dashboard/page.tsx:564`: Comment marker for sessions tab.
+
+#### C. Public Pages & Components (`src/app/`, `src/components/`)
+1. `src/app/about/page.tsx`:
+   - L132: Hindi biography mentioning Acharya ji's guidance (`विद्वान प्राध्यापकों और अनुभवी ज्योतिषियों के मार्गदर्शन में...`).
+   - L256: Hindi description of lineage guidance (`...आचार्य नीरज कुमार की ज्योतिष और अनुसंधान में रुचि...`).
+   - L634: Cross-promotion banner (`Looking for 1-on-1 Consultation Inquiries? / क्या आप व्यक्तिगत परामर्श की तलाश में हैं?`).
+2. `src/app/contact/page.tsx:205`: Consultation description for Aapka Astro (`आचार्य नीरज कुमार जी के साथ 1-ऑन-1 व्यक्तिगत जन्म कुंडली विश्लेषण और वैदिक मार्गदर्शन।`).
+3. `src/app/courses/[slug]/not-found.tsx:70`: Admissions desk label (`Academic Counseling & Admissions Desk / प्रवेश एवं मार्गदर्शन`).
+4. `src/app/instructor/courses/[id]/cohorts/page.tsx:25` & `.../sessions/page.tsx:23`: Code migration comments.
+5. `src/app/page.tsx`:
+   - L239-240: Pillar 1 pending approval copy (`...व्यक्तिगत 1-on-1 मार्गदर्शन सत्रों के साथ (क्लाइंट अनुमोदन लंबित)` / `...paired with personal 1-on-1 mentorship sessions (pending client approval)`).
+   - L260-261: Pillar 2 pending approval copy (`...आपसी सुविधानुसार व्यक्तिगत 1-on-1 सत्र निर्धारित करें` / `...personal 1-on-1 sessions scheduled at mutually convenient times`).
+6. `src/app/refund-policy/page.tsx:72`: General institutional guidance wording (`...आचार्य नीरज कुमार के मार्गदर्शन में...`).
+7. `src/components/Footer.tsx`:
+   - L53: Sister platforms cross-promotion (`Looking for 1-on-1 private chart readings or corporate muhurta consulting? Connect with our sister platforms founded by Acharya Niraj Kumar.`).
+   - L108-109: Trust banner feature 1 pending approval copy (`...व्यक्तिगत 1-on-1 मार्गदर्शन सत्र (क्लाइंट अनुमोदन लंबित)`).
+   - L124-125: Trust banner feature 2 pending approval copy (`...1-on-1 सत्र निर्धारित करें (क्लाइंट अनुमोदन लंबित)`).
+
+#### D. Transactional Emails (`src/lib/sessions/outboxService.ts`)
+1. L678, L686, L713: 24-Hour Reminder Email Subject & Body (`Reminder: Tomorrow is your 1-on-1 Class with Acharya Niraj Kumar`).
+2. L769, L778, L801: 1-Hour Reminder Email Subject & Body (`Starting in 1 Hour: 1-on-1 Class with Acharya Niraj Kumar`).
+3. L859, L869, L917: Class Details Update Email Subject & Body (`Updated Details: 1-on-1 Class with Acharya Niraj Kumar`).
+4. L943, L954, L965, L978: Class Cancellation Email Subject & Body (`Class Cancelled: 1-on-1 Session with Acharya Niraj Kumar`).
+
+#### E. Chatbot Knowledge & AI Assistant Engine (`src/lib/ai/`)
+1. `src/app/disclaimer/page.tsx:127`: Clarification banner (`Looking for a Private 1-on-1 Consultation?`).
+2. `src/lib/ai/assistantEngine.ts:117, 626, 700`: Intent classifier rule and boundary responses instructing the AI to politely decline personal horoscope reading questions and redirect to Aapka Astro for personal consultations.
+3. `src/lib/ai/assistantEngine.ts:480`: Instructor bio in Hindi citing lineage guidance.
+4. `src/lib/ai/knowledge/about.ts:28` & `src/lib/ai/knowledgeBase.ts:49`: Grounding knowledge stating: *"Aapka Astro (aapkaastro.com) is Acharya Niraj Kumar’s personal 1-on-1 consultation practice. VIAR (viar.in) is the educational institute for learning Vedic astrology."*
+
+---
+
+### 20.3 Staging Database Telemetry: Session Tables and Live Row Counts
+
+Direct connection query executed against the live Neon PostgreSQL database (`ep-orange-poetry-b4cupwem.c-6.us-east-2.aws.neon.tech/neondb`):
+
+| Prisma Model | Underlying SQL Table | Row Count | Status / Contents |
+| :--- | :--- | :--- | :--- |
+| `ClassSession` | `class_sessions` | **0** | Clean (All mock data purged) |
+| `OneOnOneSession` | `one_on_one_sessions` | **0** | Clean (All mock data purged) |
+| `StudentSession` | `student_sessions` | **0** | Clean (All mock data purged) |
+| `SessionRequest` | `session_requests` | **0** | Clean (All mock data purged) |
+| `SessionHistoryLog` | `session_history_logs` | **0** | Clean |
+| `SessionEmailOutbox` | `session_email_outbox` | **0** | Clean |
+| `SessionProgress` | `session_progress` | **0** | Clean |
+| `OwnerWorkingHours` | `owner_working_hours` | **7** | Production active working hours (Mon–Sun) |
+| `OwnerBlockedDate` | `owner_blocked_dates` | **8** | National holidays & blocked festival dates |
+| `Cohort` | `cohorts` | **1** | Production Cohort (`cohort-wia-batch-1`) |
+| `Course` | `courses` | **1** | Flagship course (`what-is-astrology`) |
+| `Module` | `modules` | **23** | 23 Curriculum modules |
+| `Lesson` | `lessons` | **46** | 46 Lessons across 23 modules |
+| `Enrollment` | `enrollments` | **2** | 2 Active students |
+| `Order` | `orders` | **0** | Clean |
+| `Payment` | `payments` | **0** | Clean |
+| `ActivityLog` | `activity_logs` | **103** | Audit trail records |
+
+---
+
+### 20.4 iCal Secret Token Creation & Lifecycle Security
+
+The calendar subscription feed for Acharya Niraj Kumar (`/api/admin/sessions/calendar-feed`) is secured using cryptographic token management implemented in `src/lib/sessions/calendarFeed.ts`:
+
+1. **Token Generation Algorithm**:
+   ```typescript
+   export function regenerateCalendarFeedToken(): string {
+     // Pure cryptographic randomness: 24 bytes (48 hex characters) with zero timestamps
+     const secureRandomHex = crypto.randomBytes(24).toString('hex');
+     _calendarFeedSecretToken = `sec_vcal_${secureRandomHex}`;
+     return _calendarFeedSecretToken;
+   }
+   ```
+2. **Entropy & Cryptographic Guarantees**:
+   - Uses Node.js native `crypto.randomBytes(24)` which sources entropy from the operating system’s CSPRNG (Cryptographically Secure Pseudo-Random Number Generator).
+   - Produces a 48-character hexadecimal string prefixed with `sec_vcal_` (total 57 characters), yielding 192 bits of entropy.
+   - **Zero Timestamps**: Unlike previous timestamp-based derivations (`Date.now()`), the token contains zero sequential or time-based data, eliminating timing and predictability attacks.
+3. **Verification Mechanism**:
+   - `verifyCalendarFeedToken(token: string)` performs strict string equality checking against the active in-memory token.
+   - If an invalid or expired token is passed, the endpoint immediately aborts with `HTTP 401 Unauthorized: Invalid or expired calendar feed token`.
+4. **Regeneration & Revocation**:
+   - The Site Owner can trigger instant token regeneration via `POST /api/admin/sessions/calendar-feed` (authenticated as Owner).
+   - Upon regeneration, the old token is instantaneously invalidated. Existing calendar subscriptions using the previous token will fail on the next sync until updated with the newly issued URL.
+5. **PII Protection**:
+   - Events in the iCal feed contain only `VIAR Live Class: <Title>`, curriculum module notes, meeting link, and status.
+   - **Zero student names, emails, or phone numbers** are serialized into the VCALENDAR feed, preventing external data leakage.
