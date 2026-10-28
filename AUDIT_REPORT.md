@@ -1239,3 +1239,83 @@ The calendar subscription feed for Acharya Niraj Kumar (`/api/admin/sessions/cal
 5. **PII Protection**:
    - Events in the iCal feed contain only `VIAR Live Class: <Title>`, curriculum module notes, meeting link, and status.
    - **Zero student names, emails, or phone numbers** are serialized into the VCALENDAR feed, preventing external data leakage.
+
+
+---
+
+## 21. Deactivation of Undecided 1-on-1 Mentorship Feature (`ONE_TO_ONE_ENABLED = false`)
+
+### 21.1 Architectural Configuration
+A feature flag has been implemented in [`src/config/features.ts`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/src/config/features.ts) and exposed via [`src/config/env.ts`](file:///c:/Users/TANUSH%20YADAV/Desktop/viar/src/config/env.ts):
+
+```typescript
+export const ONE_TO_ONE_ENABLED: boolean =
+  (typeof process !== 'undefined' &&
+    (process.env.NEXT_PUBLIC_ONE_TO_ONE_ENABLED === 'true' ||
+     process.env.ONE_TO_ONE_ENABLED === 'true')) ||
+  false;
+```
+
+**State**: **Default OFF (`false`)**.
+
+### 21.2 Complete Inventory of Exact Copy Removed and Replaced
+
+| Subsystem & Location | Previous Copy (1-on-1 / Mentorship) | Active Replaced Copy (`ONE_TO_ONE_ENABLED = false`) | Code Preservation Status |
+| :--- | :--- | :--- | :--- |
+| **Admin Navigation & Breadcrumb** (`SessionsManager.tsx`) | `1-on-1 Mentorship & Sessions Console` | `Course Live Classes & Timetable` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Admin Banner Badge** (`SessionsManager.tsx`) | `Sessions & Personal Live Classes` | `Course Live Classes & Timetable` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Admin Staff View Note** (`SessionsManager.tsx`) | `You have permission to view 1-on-1 sessions and requests.` | `You have permission to view course live classes and schedule timetable.` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Admin Quota Badge** (`SessionsManager.tsx`) | `X 1-on-1 sessions included per enrolled student` | *(Suppressed from UI)* | Preserved behind `ONE_TO_ONE_ENABLED &&` guard |
+| **Admin Empty State Heading** (`SessionsManager.tsx`) | `No 1-on-1 Mentorship Sessions Scheduled Yet` / `कोई 1-on-1 व्यक्तिगत सत्र निर्धारित नहीं है` | `No Live Classes Scheduled Yet` / `कोई लाइव कक्षा निर्धारित नहीं है` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Admin Empty State Body** (`SessionsManager.tsx`) | `When you schedule a 1-on-1 session with an enrolled student, it will appear here. The student is automatically notified via email with their class date, time, and live meeting link.` | `When you schedule a course live class, it will appear here. Enrolled students will see the schedule, date, time, and live meeting link in their portal.` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Admin Schedule Button** (`SessionsManager.tsx`) | `Schedule 1-on-1 Class` / `1-on-1 कक्षा निर्धारित करें` | `Schedule Live Class` / `लाइव कक्षा निर्धारित करें` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Admin Policy Modal Header** (`SessionsManager.tsx`) | `1-on-1 Session Policies` | `Live Class Policies` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Admin Policy Field Help** (`SessionsManager.tsx`) | `Standard duration pre-filled when scheduling new 1-on-1 classes.` | `Standard duration pre-filled when scheduling new live classes.` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Admin Staff Permission Description** (`permissions.ts`) | `1-on-1 Personal Live Classes` | `Course Live Classes & Timetable` | Preserved in RBAC registry |
+| **Admin Student Profile Loading** (`StudentProfileView.tsx`) | `Loading student profile, enrollment details & 1-on-1 personal classes...` | `Loading student profile, enrollment details & live classes...` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Admin Student Profile Action** (`StudentProfileView.tsx`) | `Schedule a session / व्यक्तिगत सत्र तय करें` | `Schedule Live Class / लाइव कक्षा तय करें` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Admin Student Profile Header** (`StudentProfileView.tsx`) | `Personal 1-on-1 Sessions (X)` | `Live Classes (X)` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Admin Student Profile Syllabus** (`StudentProfileView.tsx`) | `Curriculum Progress (Recorded & 1-on-1)` | `Curriculum Progress` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Admin Student Profile Quota** (`StudentProfileView.tsx`) | `1-on-1 Sessions Quota Included:` | *(Suppressed from UI)* | Preserved behind `ONE_TO_ONE_ENABLED &&` guard |
+| **Admin Diagnostics Telemetry** (`diagnostics/page.tsx`) | `1-on-1 Sessions` | `Live Classes` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Roster Export Batch Name** (`enrollments/export/route.ts`) | `Recorded modules and 1-on-1 sessions` | `Recorded modules and live classes` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Announcement Bar Title Defaults** (`defaultContent.ts`) | `Course & 1-on-1 Mentorship` / `पाठ्यक्रम एवं व्यक्तिगत मार्गदर्शन` | `Course & Live Classes` / `पाठ्यक्रम एवं लाइव कक्षाएं` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Announcement Bar Body Defaults** (`defaultContent.ts`) | `Vedic Astrology Course & 1-on-1 Mentorship with Acharya Niraj Kumar` / `आचार्य नीरज कुमार जी के साथ वैदिक ज्योतिष पाठ्यक्रम एवं 1-on-1 व्यक्तिगत मार्गदर्शन` | `Vedic Astrology Course & Interactive Live Classes with Acharya Niraj Kumar` / `आचार्य नीरज कुमार जी के साथ वैदिक ज्योतिष पाठ्यक्रम एवं लाइव कक्षाएं` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Course Testimonials** (`src/lib/data.ts`) | `highlight: 'Structured curriculum flexibility with personal mentorship'`, `flexible 1-on-1 mentorship` | `highlight: 'Structured curriculum flexibility with live classes'`, `flexible live classes and recordings` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Home Page Feature Pillar 1** (`src/app/page.tsx`) | `...व्यक्तिगत 1-on-1 मार्गदर्शन सत्रों के साथ (क्लाइंट अनुमोदन लंबित)` / `...paired with personal 1-on-1 mentorship sessions (pending client approval)` | `...समूह लाइव कक्षाओं और रिकॉर्डिंग के साथ` / `...paired with interactive cohort live classes and full recordings` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Home Page Feature Pillar 2** (`src/app/page.tsx`) | `...आपसी सुविधानुसार व्यक्तिगत 1-on-1 सत्र निर्धारित करें` / `...personal 1-on-1 sessions scheduled at mutually convenient times` | `...समूह लाइव कक्षाओं एवं रिकॉर्डिंग का लाभ लें` / `...cohort live classes and full recordings included` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Footer Feature Trust Banner 1** (`Footer.tsx`) | `...व्यक्तिगत 1-on-1 मार्गदर्शन सत्र (क्लाइंट अनुमोदन लंबित)` / `...personal 1-on-1 mentorship sessions (pending client approval)` | `...समूह लाइव कक्षाएं एवं रिकॉर्डिंग` / `...interactive cohort live classes and full recordings` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Footer Feature Trust Banner 2** (`Footer.tsx`) | `...1-on-1 सत्र निर्धारित करें (क्लाइंट अनुमोदन लंबित)` / `...personal 1-on-1 sessions scheduled by mutual convenience` | `...पूर्व-निर्धारित लाइव कक्षाओं में भाग लें` / `...live cohort sessions announced in advance` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Footer Sister Service Promo** (`Footer.tsx`) | `Looking for 1-on-1 private chart readings or corporate muhurta consulting?` | `Looking for private chart readings or corporate muhurta consulting?` | Preserved |
+| **About Page Sister Service Banner** (`about/page.tsx`) | `Looking for 1-on-1 Consultation Instead?` | `Looking for Personal Consultation Instead?` | Preserved |
+| **Contact Page Consultation Promo** (`contact/page.tsx`) | `आचार्य नीरज कुमार जी के साथ 1-ऑन-1 व्यक्तिगत जन्म कुंडली विश्लेषण...` | `आचार्य नीरज कुमार जी के साथ व्यक्तिगत जन्म कुंडली विश्लेषण...` | Preserved |
+| **Disclaimer Platform Boundary** (`disclaimer/page.tsx`) | `Looking for a Private 1-on-1 Consultation?` | `Looking for a Private Consultation?` | Preserved |
+| **Student Certificate Alumni Note** (`dashboard/certificates/page.tsx`) | `book a private 1-on-1 Kundali consultation...` / `Book 1:1 Consultation on Aapka Astro` | `book a private Kundali consultation...` / `Book Consultation on Aapka Astro` | Preserved |
+| **Student Quiz Alumni Note** (`quiz/page.tsx`) | `schedule a private 1-on-1 chart consultation with Acharya Niraj Kumar on Aapka Astro` | `schedule a private chart consultation with Acharya Niraj Kumar on Aapka Astro` | Preserved |
+| **Student Session Request API** (`/api/student/sessions/request`) | Accepts initial session booking requests | Returns HTTP 403: `Individual 1-on-1 session booking is disabled. Course live classes are scheduled by the instructor for the cohort.` | Route logic preserved; gated when flag is off |
+| **Transactional Email: 24H Reminder** (`outboxService.ts`) | `Reminder: Tomorrow is your 1-on-1 Class with Acharya Niraj Kumar` / `your 1-on-1 personal mentorship class` | `Reminder: Tomorrow is your Live Class with Acharya Niraj Kumar` / `your course live class` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Transactional Email: 1H Reminder** (`outboxService.ts`) | `Starting in 1 Hour: 1-on-1 Class with Acharya Niraj Kumar` / `Your personal 1-on-1 live session` | `Starting in 1 Hour: Live Class with Acharya Niraj Kumar` / `Your course live class` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Transactional Email: Preparation** (`outboxService.ts`) | `Please find a quiet space and keep your birth chart ready.` | `Please find a quiet space and keep your study materials ready.` | Preserved |
+| **Transactional Email: Updated** (`outboxService.ts`) | `Updated Details: 1-on-1 Class with Acharya Niraj Kumar` | `Updated Details: Live Class with Acharya Niraj Kumar` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **Transactional Email: Cancelled** (`outboxService.ts`) | `Class Cancelled: 1-on-1 Session with Acharya Niraj Kumar` / `Schedule Replacement Slot` | `Class Cancelled: Live Class with Acharya Niraj Kumar` / `Open Student Portal` | Preserved via ternary on `ONE_TO_ONE_ENABLED` |
+| **AI Assistant Boundary Reply** (`assistantEngine.ts`) | `To consult Acharya Niraj Kumar 1-on-1 for a comprehensive birth chart reading...` | `To consult Acharya Niraj Kumar for a comprehensive personal birth chart reading...` | Preserved |
+| **AI Assistant Grounding Knowledge** (`about.ts`, `knowledgeBase.ts`) | `Acharya Niraj Kumar’s personal 1-on-1 consultation practice` | `Acharya Niraj Kumar’s personal consultation practice` | Preserved |
+| **AI Knowledge FAQ Summary** (`knowledgeRetriever.ts`) | `book 1-on-1 reading with Acharya Niraj Kumar via Aapka Astro` | `book a private consultation with Acharya Niraj Kumar via Aapka Astro` | Preserved |
+
+### 21.3 Student Portal Birth Details Invariant
+- **Strict Verification**: The entire student portal codebase (`src/app/dashboard/` and `src/components/student/`) contains **zero intake fields** for birth date, birth time, place of birth, or Lagna/Kundali charts.
+- **Academic Purity**: The student portal exclusively hosts course materials, video lessons, downloadable study guides, cohort live class timetables, interactive practice labs, and certification exams. Personal astrology consultation intake is strictly segregated to Aapka Astro (`aapkaastro.com`).
+
+### 21.4 Preservation of Schemas and Tables for Future Reconsideration
+All underlying database models, Prisma schemas, and database tables remain 100% intact:
+1. `ClassSession` (`class_sessions`)
+2. `OneOnOneSession` (`one_on_one_sessions`)
+3. `StudentSession` (`student_sessions`)
+4. `SessionRequest` (`session_requests`)
+5. `OwnerWorkingHours` (`owner_working_hours`)
+6. `OwnerBlockedDate` (`owner_blocked_dates`)
+7. `SessionHistoryLog` (`session_history_logs`)
+8. `SessionEmailOutbox` (`session_email_outbox`)
+9. `SessionProgress` (`session_progress`)
+
+If the client later decides to offer 1-on-1 sessions, setting `NEXT_PUBLIC_ONE_TO_ONE_ENABLED=true` in `.env` instantly restores all 1-on-1 scheduling flows, booking modals, and terminology without database migration or architectural restructuring.

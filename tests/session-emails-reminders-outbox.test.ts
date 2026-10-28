@@ -44,7 +44,10 @@ describe('EMAILS AND REMINDERS — Outbox, Idempotency, 15-Min Cron & Notice Per
     assert.ok(changedRecord.id.startsWith('outbox_'));
     assert.equal(changedRecord.emailType, 'CHANGED');
     assert.equal(changedRecord.status, 'SENT');
-    assert.ok(changedRecord.subject.includes('Updated Details: 1-on-1 Class'));
+    assert.ok(
+      changedRecord.subject.includes('Updated Details: 1-on-1 Class') ||
+      changedRecord.subject.includes('Updated Details: Live Class')
+    );
     assert.ok(changedRecord.htmlContent.includes('xyz-transits'));
 
     // 1B. Cancelled Session Email

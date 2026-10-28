@@ -5,6 +5,7 @@ import {
   createStudentSessionWithValidation,
 } from '@/lib/sessions/oneOnOneService';
 import { sendSessionRequestStatusEmail, sendSessionScheduledEmail } from '@/lib/sessions/sessionEmail';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,7 @@ export async function POST(
         enrollmentId: data.enrollmentId,
         studentId: data.studentId,
         courseId: data.courseId,
-        title: data.title || '1-on-1 Vedic Astrology Mentorship',
+        title: data.title || (ONE_TO_ONE_ENABLED ? '1-on-1 Vedic Astrology Mentorship' : 'Vedic Astrology Live Class'),
         startTime: data.startTime,
         duration: data.duration || 60,
         meetingLink: data.meetingLink,
@@ -74,7 +75,7 @@ export async function POST(
         await sendSessionScheduledEmail({
           studentName: studentName || 'Student',
           studentEmail,
-          topic: data.title || '1-on-1 Vedic Astrology Mentorship',
+          topic: data.title || (ONE_TO_ONE_ENABLED ? '1-on-1 Vedic Astrology Mentorship' : 'Vedic Astrology Live Class'),
           startTimeUtc: data.startTime,
           durationMinutes: data.duration || 60,
           meetingLink: data.meetingLink,

@@ -393,7 +393,7 @@ ${relevantCustom
     contextParts.push(`=== GENERAL FAQ ===
 - Access: 100% self-paced on-demand with lifetime access.
 - Prerequisites: None (starts from ground zero).
-- Personal Consultations: Not included in course fee; book 1-on-1 reading with Acharya Niraj Kumar via Aapka Astro.`);
+- Personal Consultations: Not included in course fee; book a private consultation with Acharya Niraj Kumar via Aapka Astro.`);
   }
 
   return {

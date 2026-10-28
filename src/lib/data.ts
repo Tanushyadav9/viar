@@ -1,4 +1,5 @@
 import type { Course, CourseModule, Cohort, ScheduledClass, FinalTest, User, Certificate, Enrollment, Testimonial } from './types';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 
 /**
  * ==============================================================================
@@ -44,9 +45,13 @@ export const PLACEHOLDER_TESTIMONIALS: Testimonial[] = [
     location: 'London, United Kingdom',
     role: 'Mindfulness Coach',
     rating: 5,
-    highlight: 'Structured curriculum flexibility with personal mentorship',
+    highlight: ONE_TO_ONE_ENABLED
+      ? 'Structured curriculum flexibility with personal mentorship'
+      : 'Structured curriculum flexibility with live classes',
     isInternational: true,
-    content: 'Living in the UK with a packed client schedule, finding a course with structured modules and flexible 1-on-1 mentorship was critical. Having downloadable lesson notes, direct guidance, and practical chart breakdowns made the entire learning experience seamless.',
+    content: ONE_TO_ONE_ENABLED
+      ? 'Living in the UK with a packed client schedule, finding a course with structured modules and flexible 1-on-1 mentorship was critical. Having downloadable lesson notes, direct guidance, and practical chart breakdowns made the entire learning experience seamless.'
+      : 'Living in the UK with a packed client schedule, finding a course with structured modules and flexible live classes was critical. Having downloadable lesson notes, direct guidance, and practical chart breakdowns made the entire learning experience seamless.',
   },
   {
     id: 'test-3',

@@ -623,7 +623,7 @@ export function generateGroundedAssistantResponse(
       };
     }
     return {
-      reply: `Namaste! As the VIAR Academic Assistant, I am specialized strictly in our astrology courses, curriculum, tuition, and admissions. I cannot analyze personal horoscopes or generate astrological predictions.\n\nTo consult Acharya Niraj Kumar 1-on-1 for a comprehensive birth chart reading, career/marriage forecast, or Vastu audit, please reach out on our sister consultation platform Aapka Astro (aapkaastro.com) or connect directly via WhatsApp or phone call:`,
+      reply: `Namaste! As the VIAR Academic Assistant, I am specialized strictly in our astrology courses, curriculum, tuition, and admissions. I cannot analyze personal horoscopes or generate astrological predictions.\n\nTo consult Acharya Niraj Kumar for a comprehensive personal birth chart reading, career/marriage forecast, or Vastu audit, please reach out on our sister consultation platform Aapka Astro (aapkaastro.com) or connect directly via WhatsApp or phone call:`,
       language,
       intent,
       confidence: 'high',

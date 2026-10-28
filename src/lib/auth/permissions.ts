@@ -92,9 +92,9 @@ export const ADMIN_SECTIONS_META: Record<AdminSection, AdminSectionMeta> = {
   },
   sessions: {
     key: 'sessions',
-    title: '1-on-1 Personal Live Classes',
+    title: 'Course Live Classes & Timetable',
     shortTitle: 'Sessions',
-    description: 'Schedule personal live classes for individual students, set meeting links, pre-class notes, and record what was taught.',
+    description: 'Schedule course live classes for the cohort, set meeting links, pre-class notes, and upload recordings.',
   },
   students: {
     key: 'students',

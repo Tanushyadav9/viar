@@ -23,7 +23,7 @@ export const SISTER_SERVICES: Record<'aapkaAstro' | 'dowConsulting', SisterServi
     name: 'Aapka Astro',
     domain: 'aapkaastro.com',
     url: 'https://aapkaastro.com',
-    tagline: '1-on-1 Personal Astrology & Vastu Consultations',
+    tagline: 'Personal Astrology & Vastu Consultations',
     description:
       'Private birth chart readings, Kundli matching, Prashna Jyotish, and residential Vastu audits directly with Acharya Niraj Kumar.',
     ctaText: 'Book Personal Consultation',

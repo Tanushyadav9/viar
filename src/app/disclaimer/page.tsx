@@ -124,7 +124,7 @@ export default function DisclaimerPage() {
               Enrolling in Vihangam Institute of Astrology and Research courses grants access to group educational instruction, structured syllabus modules, and academic Q&amp;A. It <strong>does not include private, confidential personal chart consultations</strong>.
             </p>
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-slate-300">
-              <div className="font-semibold text-white mb-1">Looking for a Private 1-on-1 Consultation?</div>
+              <div className="font-semibold text-white mb-1">Looking for a Private Consultation?</div>
               <p className="text-slate-400">
                 Personal birth chart analysis and confidential advisory sessions with Acharya Niraj Kumar are provided separately through our sister practice at{' '}
                 <a

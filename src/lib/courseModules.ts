@@ -1,7 +1,7 @@
 /**
  * 23 Modules of the Flagship Vedic Astrology Course
  * The Ultimate Astrology Course: Foundations to Chart Mastery
- * Used for 1-on-1 personal mentorship topic selection across Admin and Student portals.
+ * Used for live class curriculum topic reference across Admin and Student portals.
  */
 
 export const FLAGSHIP_23_MODULES: readonly string[] = [

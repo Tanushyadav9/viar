@@ -281,7 +281,7 @@ export default function StudentCertificatesPage() {
                 Apply Your Knowledge to Your Own Chart
               </h3>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                Now that you have mastered the foundational mechanics of Jyotish, book a private 1-on-1 Kundali consultation with <strong>Acharya Niraj Kumar</strong> on Aapka Astro. Have your personal dashas, karmic questions, and remedies analyzed directly by your master instructor.
+                Now that you have mastered the foundational mechanics of Jyotish, book a private Kundali consultation with <strong>Acharya Niraj Kumar</strong> on Aapka Astro. Have your personal dashas, karmic questions, and remedies analyzed directly by your master instructor.
               </p>
             </div>
 
@@ -292,7 +292,7 @@ export default function StudentCertificatesPage() {
                 rel="noopener noreferrer"
                 className="gold-button w-full sm:w-auto px-6 py-3.5 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2 shadow-lg"
               >
-                <span>Book 1:1 Consultation on Aapka Astro</span>
+                <span>Book Consultation on Aapka Astro</span>
                 <ExternalLink className="w-4 h-4" />
               </a>
               <a

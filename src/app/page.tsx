@@ -24,6 +24,7 @@ import { Course, Cohort, ContentItem } from '@/lib/types';
 import { SISTER_SERVICES } from '@/config/services';
 import { useLanguage } from '@/components/LanguageContext';
 import { BUILTIN_CONTENT_DEFAULTS } from '@/lib/content/defaultContent';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 
 export default function HomePage() {
   const { language } = useLanguage();
@@ -236,8 +237,12 @@ export default function HomePage() {
                 </h4>
                 <p className="text-sm text-slate-300 leading-relaxed">
                   {isHi
-                    ? 'आचार्य नीरज कुमार द्वारा पढ़ाया गया संरचित पाठ्यक्रम, व्यक्तिगत 1-on-1 मार्गदर्शन सत्रों के साथ (क्लाइंट अनुमोदन लंबित)।'
-                    : 'Foundational-to-advanced structured curriculum taught by Acharya Niraj Kumar, paired with personal 1-on-1 mentorship sessions (pending client approval).'}
+                    ? (ONE_TO_ONE_ENABLED
+                        ? 'आचार्य नीरज कुमार द्वारा पढ़ाया गया संरचित पाठ्यक्रम, व्यक्तिगत 1-on-1 मार्गदर्शन सत्रों के साथ (क्लाइंट अनुमोदन लंबित)।'
+                        : 'आचार्य नीरज कुमार द्वारा पढ़ाया गया संरचित पाठ्यक्रम, समूह लाइव कक्षाओं और रिकॉर्डिंग के साथ।')
+                    : (ONE_TO_ONE_ENABLED
+                        ? 'Foundational-to-advanced structured curriculum taught by Acharya Niraj Kumar, paired with personal 1-on-1 mentorship sessions (pending client approval).'
+                        : 'Foundational-to-advanced structured curriculum taught by Acharya Niraj Kumar, paired with interactive cohort live classes and full recordings.')}
                 </p>
               </div>
               <div className="mt-6 pt-6 border-t border-white/10 text-xs font-semibold text-amber-300 flex items-center gap-1.5">
@@ -257,8 +262,12 @@ export default function HomePage() {
                 </h4>
                 <p className="text-sm text-slate-300 leading-relaxed">
                   {isHi
-                    ? 'अपनी गति से रिकॉर्डेड व्याख्यान देखें, और आपसी सुविधानुसार व्यक्तिगत 1-on-1 सत्र निर्धारित करें (क्लाइंट अनुमोदन लंबित)।'
-                    : 'Study recorded lessons at your own pace, with personal 1-on-1 sessions scheduled at mutually convenient times (pending client approval).'}
+                    ? (ONE_TO_ONE_ENABLED
+                        ? 'अपनी गति से रिकॉर्डेड व्याख्यान देखें, और आपसी सुविधानुसार व्यक्तिगत 1-on-1 सत्र निर्धारित करें (क्लाइंट अनुमोदन लंबित)।'
+                        : 'अपनी गति से रिकॉर्डेड व्याख्यान देखें, और समूह लाइव कक्षाओं एवं रिकॉर्डिंग का लाभ लें।')
+                    : (ONE_TO_ONE_ENABLED
+                        ? 'Study recorded lessons at your own pace, with personal 1-on-1 sessions scheduled at mutually convenient times (pending client approval).'
+                        : 'Study recorded lessons at your own pace, with cohort live classes and full recordings included.')}
                 </p>
               </div>
               <div className="mt-6 pt-6 border-t border-white/10 text-xs font-semibold text-amber-300 flex items-center gap-1.5">

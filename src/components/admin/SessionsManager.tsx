@@ -23,6 +23,7 @@ import {
   Settings,
   AlertTriangle,
 } from 'lucide-react';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 import type { StudentSessionRecord, SessionRequestRecord, CourseSessionSettings } from '@/lib/sessions/types';
 import { formatSessionIST, formatInTimezone } from '@/lib/timezones';
 import { useLanguage } from '@/components/LanguageContext';
@@ -690,14 +691,14 @@ export default function SessionsManager({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
                 <Video className="w-3.5 h-3.5 text-amber-400" />
-                <span>Sessions & Personal Live Classes</span>
+                <span>{ONE_TO_ONE_ENABLED ? 'Sessions & Personal Live Classes' : 'Course Live Classes & Timetable'}</span>
               </span>
               <span className="text-xs text-slate-400">•</span>
               <span className="text-xs text-slate-600 dark:text-slate-300 font-hindi">लाइव ज्योतिष कक्षाएं एवं समय सारणी</span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2">
-              <span>1-on-1 Mentorship & Sessions Console</span>
+              <span>{ONE_TO_ONE_ENABLED ? '1-on-1 Mentorship & Sessions Console' : 'Course Live Classes & Timetable'}</span>
               {isLoading && <span className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />}
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
@@ -752,7 +753,9 @@ export default function SessionsManager({
             <div>
               <p className="font-semibold text-blue-100">Staff View Mode</p>
               <p className="text-blue-300/90 text-[11px] mt-0.5">
-                You have permission to view 1-on-1 sessions and requests. Only the Site Owner (Acharya Niraj Kumar) has authorization to create, change, or cancel sessions.
+                {ONE_TO_ONE_ENABLED
+                  ? 'You have permission to view 1-on-1 sessions and requests. Only the Site Owner (Acharya Niraj Kumar) has authorization to create, change, or cancel sessions.'
+                  : 'You have permission to view course live classes and schedule timetable. Only the Site Owner (Acharya Niraj Kumar) has authorization to create, change, or cancel sessions.'}
               </p>
             </div>
           </div>
@@ -776,8 +779,9 @@ export default function SessionsManager({
           </div>
         )}
 
-        {/* Optional Course Settings: Sessions Included per Student (Shown ONLY when set!) */}
-        {courseSettings.sessionsIncludedPerStudent !== null &&
+        {/* Optional Course Settings: Sessions Included per Student (Shown ONLY when set and 1-on-1 is enabled!) */}
+        {ONE_TO_ONE_ENABLED &&
+          courseSettings.sessionsIncludedPerStudent !== null &&
           courseSettings.sessionsIncludedPerStudent !== undefined &&
           courseSettings.sessionsIncludedPerStudent > 0 && (
             <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between flex-wrap gap-2 text-xs">
@@ -954,17 +958,27 @@ export default function SessionsManager({
                   <div className="space-y-1">
                     <p className="text-base font-bold text-white">
                       {sessions.length === 0
-                        ? (isHi ? 'कोई 1-on-1 व्यक्तिगत सत्र निर्धारित नहीं है' : 'No 1-on-1 Mentorship Sessions Scheduled Yet')
+                        ? (ONE_TO_ONE_ENABLED
+                            ? (isHi ? 'कोई 1-on-1 व्यक्तिगत सत्र निर्धारित नहीं है' : 'No 1-on-1 Mentorship Sessions Scheduled Yet')
+                            : (isHi ? 'कोई लाइव कक्षा निर्धारित नहीं है' : 'No Live Classes Scheduled Yet'))
                         : (isHi ? 'चयनित फ़िल्टर से कोई सत्र मेल नहीं खाता' : 'No sessions match the selected filter')}
                     </p>
                     <p className="text-xs text-slate-400 max-w-lg mx-auto leading-relaxed">
                       {sessions.length === 0
-                        ? (isHi
-                            ? 'जब आप किसी नामांकित छात्र के साथ 1-on-1 सत्र निर्धारित करेंगे, तो वह यहाँ दिखाई देगा। छात्र को लाइव मीटिंग लिंक एवं समय सहित ईमेल तुरंत भेज दी जाएगी।'
-                            : 'When you schedule a 1-on-1 session with an enrolled student, it will appear here. The student is automatically notified via email with their class date, time, and live meeting link.')
-                        : (isHi
-                            ? 'कृपया छात्र फ़िल्टर बदलें या नई कक्षा बनाने के लिए "1-on-1 कक्षा निर्धारित करें" पर क्लिक करें।'
-                            : 'Try changing the student filter or click "Schedule 1-on-1 Class" to book a session.')}
+                        ? (ONE_TO_ONE_ENABLED
+                            ? (isHi
+                                ? 'जब आप किसी नामांकित छात्र के साथ 1-on-1 सत्र निर्धारित करेंगे, तो वह यहाँ दिखाई देगा। छात्र को लाइव मीटिंग लिंक एवं समय सहित ईमेल तुरंत भेज दी जाएगी।'
+                                : 'When you schedule a 1-on-1 session with an enrolled student, it will appear here. The student is automatically notified via email with their class date, time, and live meeting link.')
+                            : (isHi
+                                ? 'जब आप किसी लाइव कक्षा का निर्धारण करेंगे, तो वह यहाँ दिखाई देगी। नामांकित विद्यार्थियों को उनके पोर्टल में समय और मीटिंग लिंक दिखाई देगा।'
+                                : 'When you schedule a course live class, it will appear here. Enrolled students will see the schedule, date, time, and live meeting link in their portal.'))
+                        : (ONE_TO_ONE_ENABLED
+                            ? (isHi
+                                ? 'कृपया छात्र फ़िल्टर बदलें या नई कक्षा बनाने के लिए "1-on-1 कक्षा निर्धारित करें" पर क्लिक करें।'
+                                : 'Try changing the student filter or click "Schedule 1-on-1 Class" to book a session.')
+                            : (isHi
+                                ? 'कृपया फ़िल्टर बदलें या नई कक्षा बनाने के लिए "लाइव कक्षा निर्धारित करें" पर क्लिक करें।'
+                                : 'Try changing the filter or click "Schedule Live Class" to book a class.'))}
                     </p>
                   </div>
                   <button
@@ -972,7 +986,11 @@ export default function SessionsManager({
                     className="gold-button px-5 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-lg shadow-amber-900/20"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>{isHi ? '1-on-1 कक्षा निर्धारित करें' : 'Schedule 1-on-1 Class'}</span>
+                    <span>
+                      {ONE_TO_ONE_ENABLED
+                        ? (isHi ? '1-on-1 कक्षा निर्धारित करें' : 'Schedule 1-on-1 Class')
+                        : (isHi ? 'लाइव कक्षा निर्धारित करें' : 'Schedule Live Class')}
+                    </span>
                   </button>
                 </div>
               ) : (
@@ -1206,7 +1224,9 @@ export default function SessionsManager({
               <Inbox className="w-10 h-10 text-slate-600 mx-auto" />
               <p className="text-sm font-semibold text-slate-400">No session requests in inbox</p>
               <p className="text-xs text-slate-500">
-                When students request a 1-on-1 session or propose a reschedule, it will appear here for 1-click scheduling.
+                {ONE_TO_ONE_ENABLED
+                  ? 'When students request a 1-on-1 session or propose a reschedule, it will appear here for 1-click scheduling.'
+                  : 'When students submit schedule questions or reschedule inquiries, they appear here.'}
               </p>
             </div>
           ) : (
@@ -2008,10 +2028,12 @@ export default function SessionsManager({
               <div>
                 <div className="flex items-center gap-2">
                   <Settings className="w-5 h-5 text-amber-500 dark:text-amber-400" />
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">1-on-1 Session Policies</h3>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    {ONE_TO_ONE_ENABLED ? '1-on-1 Session Policies' : 'Live Class Policies'}
+                  </h3>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Configure reschedule advance notice periods and optional per-student included session counts.
+                  Configure reschedule advance notice periods and class scheduling parameters.
                 </p>
               </div>
               <button
@@ -2089,7 +2111,7 @@ export default function SessionsManager({
                     </span>
                   </label>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                    Set a real limit on concurrent active 1-on-1 students to prevent overload. Leave empty for no hard limit.
+                    Set a real limit on concurrent active students to prevent overload. Leave empty for no hard limit.
                   </p>
                   <div className="flex items-center gap-2 pt-1">
                     <input
@@ -2118,7 +2140,7 @@ export default function SessionsManager({
                     <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">{settingsSessionLength} Minutes Default</span>
                   </label>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                    Standard duration pre-filled when scheduling new 1-on-1 classes.
+                    Standard duration pre-filled when scheduling new {ONE_TO_ONE_ENABLED ? '1-on-1' : 'live'} classes.
                   </p>
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     {[30, 45, 60, 90, 120].map((mins) => (

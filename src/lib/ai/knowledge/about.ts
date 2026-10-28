@@ -25,7 +25,7 @@ export const ABOUT_INSTITUTE_KNOWLEDGE = {
     ],
     distinctionNotice:
       'VIAR (viar.in) is the academic training institute for learning astrology. ' +
-      'Aapka Astro (aapkaastro.com) is Acharya Niraj Kumar’s personal 1-on-1 consultation practice for personal horoscope readings and Vastu audits.',
+      'Aapka Astro (aapkaastro.com) is Acharya Niraj Kumar’s personal consultation practice for horoscope readings and Vastu audits.',
   },
   contacts: {
     whatsapp: '+91 93112 15564',

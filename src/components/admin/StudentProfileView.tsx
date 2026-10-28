@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { StudentSessionRecord } from '@/lib/sessions/types';
 import { formatSessionIST, formatInTimezone } from '@/lib/timezones';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 
 interface StudentData {
   student: {
@@ -113,7 +114,9 @@ export default function StudentProfileView({
     return (
       <div className="p-8 text-center text-slate-400">
         <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs">Loading student profile, enrollment details &amp; 1-on-1 personal classes...</p>
+        <p className="text-xs">
+          Loading student profile, enrollment details &amp; {ONE_TO_ONE_ENABLED ? '1-on-1 personal classes' : 'live classes'}...
+        </p>
       </div>
     );
   }
@@ -209,7 +212,11 @@ export default function StudentProfileView({
               className="gold-button px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto"
             >
               <Plus className="w-4 h-4" />
-              <span>Schedule a session / व्यक्तिगत सत्र तय करें</span>
+              <span>
+                {ONE_TO_ONE_ENABLED
+                  ? 'Schedule a session / व्यक्तिगत सत्र तय करें'
+                  : 'Schedule Live Class / लाइव कक्षा तय करें'}
+              </span>
             </button>
           )}
         </div>
@@ -270,8 +277,8 @@ export default function StudentProfileView({
           </div>
         </div>
 
-        {/* Optional Included Sessions Quota Banner (Shown ONLY when Owner set an included count!) */}
-        {sessionsIncluded !== null && sessionsIncluded !== undefined && sessionsIncluded > 0 && (
+        {/* Optional Included Sessions Quota Banner (Shown ONLY when 1-on-1 is enabled and Owner set an included count!) */}
+        {ONE_TO_ONE_ENABLED && sessionsIncluded !== null && sessionsIncluded !== undefined && sessionsIncluded > 0 && (
           <div className="mt-5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-amber-400" />
@@ -298,7 +305,7 @@ export default function StudentProfileView({
             <div className="flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-purple-400" />
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                Curriculum Progress (Recorded & 1-on-1)
+                Curriculum Progress {ONE_TO_ONE_ENABLED ? '(Recorded & 1-on-1)' : ''}
               </h3>
             </div>
             <span className="text-xs font-bold text-purple-300">{progress.percentage}%</span>
@@ -366,13 +373,13 @@ export default function StudentProfileView({
         </div>
       </div>
 
-      {/* 4. 1-on-1 Sessions for this Student */}
+      {/* 4. Live / Personal Sessions for this Student */}
       <div className="cosmic-card rounded-2xl border border-white/10 overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <Video className="w-4 h-4 text-cyan-400" />
             <h3 className="text-sm font-bold text-white">
-              Personal 1-on-1 Sessions ({sessions.all.length})
+              {ONE_TO_ONE_ENABLED ? 'Personal 1-on-1 Sessions' : 'Live Classes'} ({sessions.all.length})
             </h3>
           </div>
 
@@ -406,7 +413,9 @@ export default function StudentProfileView({
           {currentList.length === 0 ? (
             <div className="text-center py-8 text-slate-500 text-xs space-y-3">
               <Calendar className="w-8 h-8 text-slate-600 mx-auto" />
-              <p>No {activeSessionTab.toLowerCase()} 1-on-1 sessions found for {student.name}.</p>
+              <p>
+                No {activeSessionTab.toLowerCase()} {ONE_TO_ONE_ENABLED ? '1-on-1 sessions' : 'classes'} found for {student.name}.
+              </p>
               {isOwner && activeSessionTab === 'UPCOMING' && (
                 <button
                   onClick={() =>

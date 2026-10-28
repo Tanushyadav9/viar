@@ -28,6 +28,7 @@ import {
 import { isSiteOwner } from '@/lib/auth/permissions';
 import { User } from '@/lib/types';
 import { useUser } from '@clerk/nextjs';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 import {
   AsyncStateView,
   type AsyncStateStatus,
@@ -650,7 +651,7 @@ export default function AdminDiagnosticsPage() {
               { label: 'Courses', count: data?.tableCounts?.courses ?? 0, icon: BookOpen, key: 'courses' },
               { label: 'Modules', count: data?.tableCounts?.modules ?? 0, icon: Layers, key: 'modules' },
               { label: 'Lessons', count: data?.tableCounts?.lessons ?? 0, icon: BookOpen, key: 'lessons' },
-              { label: '1-on-1 Sessions', count: data?.tableCounts?.studentSessions ?? data?.tableCounts?.cohorts ?? 0, icon: Video, key: 'studentSessions' },
+              { label: ONE_TO_ONE_ENABLED ? '1-on-1 Sessions' : 'Live Classes', count: data?.tableCounts?.studentSessions ?? data?.tableCounts?.cohorts ?? 0, icon: Video, key: 'studentSessions' },
               { label: 'Classes', count: data?.tableCounts?.classSessions ?? 0, icon: Clock, key: 'classSessions' },
               { label: 'Enrollments', count: data?.tableCounts?.enrollments ?? 0, icon: Award, key: 'enrollments' },
               { label: 'Progress', count: data?.tableCounts?.sessionProgress ?? 0, icon: Activity, key: 'sessionProgress' },

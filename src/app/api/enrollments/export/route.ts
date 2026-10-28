@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerAuthUser, isAuthorizedForSection } from '@/lib/auth/serverAuth';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,7 +90,7 @@ export async function GET(req: NextRequest) {
         enr.user.email || '',
         enr.user.phone || '',
         associatedCourse?.title || '',
-        'Recorded modules and 1-on-1 sessions',
+        ONE_TO_ONE_ENABLED ? 'Recorded modules and 1-on-1 sessions' : 'Recorded modules and live classes',
         enr.enrolledAt.toISOString().split('T')[0],
         enr.amountPaid.toString(),
         enr.currency,

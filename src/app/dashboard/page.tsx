@@ -561,7 +561,7 @@ function StudentDashboardContent() {
           </button>
         </div>
 
-        {/* TAB: 1-ON-1 SESSIONS */}
+        {/* TAB: LIVE CLASSES & TIMETABLE */}
         {activeTab === 'sessions' && (
           <StudentPersonalSessions />
         )}

@@ -6,6 +6,7 @@
 import { emailService } from '@/lib/email';
 import { formatSessionIST } from './oneOnOneService';
 import { formatInTimezone } from '@/lib/timezones';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 import {
   enqueueSessionEmail,
   sendSessionChangedEmail,
@@ -29,17 +30,19 @@ export async function sendSessionScheduledEmail(data: {
   const tz = data.studentTimezone || 'Asia/Kolkata';
   const timeLocal = tz !== 'Asia/Kolkata' ? formatInTimezone(data.startTimeUtc, tz, 'full') : null;
 
-  const subject = `Confirmed: 1-on-1 Class with Acharya Niraj Kumar — ${data.topic}`;
+  const subject = ONE_TO_ONE_ENABLED
+    ? `Confirmed: 1-on-1 Class with Acharya Niraj Kumar — ${data.topic}`
+    : `Confirmed: Live Class with Acharya Niraj Kumar — ${data.topic}`;
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0b0f17; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; padding: 28px;">
       <div style="text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 20px; margin-bottom: 24px;">
         <h2 style="color: #f59e0b; margin: 0 0 6px 0; font-size: 20px;">Vihangam Institute of Astrology & Research</h2>
-        <p style="color: #94a3b8; font-size: 13px; margin: 0;">Personal Mentorship & Live Jyotish Class</p>
+        <p style="color: #94a3b8; font-size: 13px; margin: 0;">${ONE_TO_ONE_ENABLED ? 'Personal Mentorship & Live Jyotish Class' : 'Course Live Class & Timetable'}</p>
       </div>
 
       <p style="font-size: 15px; color: #ffffff;">Namaste <strong>${data.studentName} ji</strong>,</p>
-      <p style="font-size: 14px; line-height: 1.6;">Your 1-on-1 personal teaching session with <strong>Acharya Niraj Kumar</strong> has been confirmed. Below are your class details:</p>
+      <p style="font-size: 14px; line-height: 1.6;">Your ${ONE_TO_ONE_ENABLED ? '1-on-1 personal teaching session' : 'live class'} with <strong>Acharya Niraj Kumar</strong> has been confirmed. Below are your class details:</p>
 
       <div style="background-color: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 18px; margin: 20px 0;">
         <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
@@ -98,7 +101,7 @@ export async function sendSessionScheduledEmail(data: {
     </div>
   `;
 
-  const text = `Namaste ${data.studentName} ji,\n\nYour 1-on-1 personal class with Acharya Niraj Kumar is scheduled for:\nTopic: ${data.topic}\nDate & Time: ${timeIst} IST\nDuration: ${data.durationMinutes} mins\nMeeting Link: ${data.meetingLink || 'Shared via WhatsApp'}\n\nPre-class notes: ${data.notes || 'Please have your birth chart ready.'}\n\nHelpline: +91 93112 15564\nViar.in`;
+  const text = `Namaste ${data.studentName} ji,\n\nYour ${ONE_TO_ONE_ENABLED ? '1-on-1 personal class' : 'live class'} with Acharya Niraj Kumar is scheduled for:\nTopic: ${data.topic}\nDate & Time: ${timeIst} IST\nDuration: ${data.durationMinutes} mins\nMeeting Link: ${data.meetingLink || 'Shared via portal'}\n\nPre-class notes: ${data.notes || 'Please have your study materials ready.'}\n\nHelpline: +91 93112 15564\nViar.in`;
 
   try {
     const record = await enqueueSessionEmail({
@@ -127,17 +130,23 @@ export async function sendSessionRequestStatusEmail(data: {
   scheduledTime?: string;
   meetingLink?: string;
 }): Promise<boolean> {
-  let subject = `Update on your 1-on-1 Class Request — Vihangam Institute (VIAR)`;
+  let subject = ONE_TO_ONE_ENABLED
+    ? `Update on your 1-on-1 Class Request — Vihangam Institute (VIAR)`
+    : `Update on your Live Class Request — Vihangam Institute (VIAR)`;
   let messageContent = '';
 
   if (data.status === 'ACCEPTED') {
-    subject = `Accepted: Your 1-on-1 Class Request with Acharya Niraj Kumar`;
+    subject = ONE_TO_ONE_ENABLED
+      ? `Accepted: Your 1-on-1 Class Request with Acharya Niraj Kumar`
+      : `Accepted: Your Live Class Request with Acharya Niraj Kumar`;
     messageContent = `
-      <p>Your request for a personal live class has been accepted and scheduled for <strong>${data.scheduledTime || 'the requested time'}</strong>.</p>
+      <p>Your request for a live class has been accepted and scheduled for <strong>${data.scheduledTime || 'the requested time'}</strong>.</p>
       ${data.meetingLink ? `<p>Join link: <a href="${data.meetingLink}" style="color: #f59e0b;">${data.meetingLink}</a></p>` : ''}
     `;
   } else if (data.status === 'PROPOSAL') {
-    subject = `Alternate Time Proposed for your 1-on-1 Class with Acharya Niraj Kumar`;
+    subject = ONE_TO_ONE_ENABLED
+      ? `Alternate Time Proposed for your 1-on-1 Class with Acharya Niraj Kumar`
+      : `Alternate Time Proposed for your Live Class with Acharya Niraj Kumar`;
     messageContent = `
       <p>Acharya Niraj Kumar has reviewed your session request. Due to prior commitments, an alternate time has been proposed:</p>
       <div style="background-color: rgba(56, 189, 248, 0.1); border-left: 3px solid #38bdf8; padding: 12px 16px; margin: 16px 0; font-size: 14px; color: #ffffff;">
@@ -147,7 +156,9 @@ export async function sendSessionRequestStatusEmail(data: {
       <p>Please message us on WhatsApp (<a href="https://wa.me/919311215564" style="color: #f59e0b;">+91 93112 15564</a>) to confirm this slot.</p>
     `;
   } else {
-    subject = `Regarding your 1-on-1 Session Request`;
+    subject = ONE_TO_ONE_ENABLED
+      ? `Regarding your 1-on-1 Session Request`
+      : `Regarding your Live Class Request`;
     messageContent = `
       <p>Acharya Niraj Kumar has reviewed your session request. Unfortunately, this slot cannot be accommodated at this moment.</p>
       <div style="background-color: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; padding: 12px 16px; margin: 16px 0; font-size: 14px; color: #ffffff;">

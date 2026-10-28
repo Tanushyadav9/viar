@@ -885,7 +885,7 @@ export default function ContentStudio({
                   }}
                   placeholder={
                     activeLangTab === 'en'
-                      ? 'e.g. Master Authentic Vedic Astrology with Live Mentorship'
+                      ? 'e.g. Master Authentic Vedic Astrology with Live Classes'
                       : 'उदा. गुरु-शिष्य परंपरा से सीखें प्रामाणिक वैदिक ज्योतिष'
                   }
                   className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-amber-400"

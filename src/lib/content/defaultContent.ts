@@ -20,6 +20,8 @@ export interface BuiltinContentItem {
   sortOrder: number;
 }
 
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
+
 export const BUILTIN_CONTENT_DEFAULTS: Record<string, BuiltinContentItem[]> = {
   // 1. SITE SETTINGS & CONTACT DETAILS
   site_settings: [
@@ -68,12 +70,14 @@ export const BUILTIN_CONTENT_DEFAULTS: Record<string, BuiltinContentItem[]> = {
     {
       collection: 'site_settings',
       key: 'announcement_bar',
-      titleEn: 'Course & 1-on-1 Mentorship',
-      titleHi: 'पाठ्यक्रम एवं व्यक्तिगत मार्गदर्शन',
-      contentEn:
-        'Vedic Astrology Course & 1-on-1 Mentorship with Acharya Niraj Kumar',
-      contentHi:
-        'आचार्य नीरज कुमार जी के साथ वैदिक ज्योतिष पाठ्यक्रम एवं 1-on-1 व्यक्तिगत मार्गदर्शन',
+      titleEn: ONE_TO_ONE_ENABLED ? 'Course & 1-on-1 Mentorship' : 'Course & Live Classes',
+      titleHi: ONE_TO_ONE_ENABLED ? 'पाठ्यक्रम एवं व्यक्तिगत मार्गदर्शन' : 'पाठ्यक्रम एवं लाइव कक्षाएं',
+      contentEn: ONE_TO_ONE_ENABLED
+        ? 'Vedic Astrology Course & 1-on-1 Mentorship with Acharya Niraj Kumar'
+        : 'Vedic Astrology Course & Interactive Live Classes with Acharya Niraj Kumar',
+      contentHi: ONE_TO_ONE_ENABLED
+        ? 'आचार्य नीरज कुमार जी के साथ वैदिक ज्योतिष पाठ्यक्रम एवं 1-on-1 व्यक्तिगत मार्गदर्शन'
+        : 'आचार्य नीरज कुमार जी के साथ वैदिक ज्योतिष पाठ्यक्रम एवं लाइव कक्षाएं',
       metadata: {
         url: '/courses/what-is-astrology',
         active: false, // Default OFF until client approves wording that does not promise "instant" or "lifetime"
@@ -153,12 +157,14 @@ export const BUILTIN_CONTENT_DEFAULTS: Record<string, BuiltinContentItem[]> = {
     {
       collection: 'hero',
       key: 'announcement_bar',
-      titleEn: 'Course & 1-on-1 Mentorship',
-      titleHi: 'पाठ्यक्रम एवं व्यक्तिगत मार्गदर्शन',
-      contentEn:
-        'Vedic Astrology Course & 1-on-1 Mentorship with Acharya Niraj Kumar',
-      contentHi:
-        'आचार्य नीरज कुमार जी के साथ वैदिक ज्योतिष पाठ्यक्रम एवं 1-on-1 व्यक्तिगत मार्गदर्शन',
+      titleEn: ONE_TO_ONE_ENABLED ? 'Course & 1-on-1 Mentorship' : 'Course & Live Classes',
+      titleHi: ONE_TO_ONE_ENABLED ? 'पाठ्यक्रम एवं व्यक्तिगत मार्गदर्शन' : 'पाठ्यक्रम एवं लाइव कक्षाएं',
+      contentEn: ONE_TO_ONE_ENABLED
+        ? 'Vedic Astrology Course & 1-on-1 Mentorship with Acharya Niraj Kumar'
+        : 'Vedic Astrology Course & Interactive Live Classes with Acharya Niraj Kumar',
+      contentHi: ONE_TO_ONE_ENABLED
+        ? 'आचार्य नीरज कुमार जी के साथ वैदिक ज्योतिष पाठ्यक्रम एवं 1-on-1 व्यक्तिगत मार्गदर्शन'
+        : 'आचार्य नीरज कुमार जी के साथ वैदिक ज्योतिष पाठ्यक्रम एवं लाइव कक्षाएं',
       metadata: {
         url: '/courses/what-is-astrology',
         active: false,

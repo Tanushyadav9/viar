@@ -202,7 +202,7 @@ export default function ContactPage() {
               </h4>
               <p className="text-xs text-slate-300 leading-relaxed">
                 {isHi
-                  ? 'आचार्य नीरज कुमार जी के साथ 1-ऑन-1 व्यक्तिगत जन्म कुंडली विश्लेषण और वैदिक मार्गदर्शन।'
+                  ? 'आचार्य नीरज कुमार जी के साथ व्यक्तिगत जन्म कुंडली विश्लेषण और वैदिक मार्गदर्शन।'
                   : SISTER_SERVICES.aapkaAstro.description}
               </p>
               <div className="flex items-center gap-2 pt-1">

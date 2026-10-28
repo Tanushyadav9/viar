@@ -46,7 +46,7 @@ export const VIAR_ACADEMY_FACTS = {
       'Former Corporate Vice President (Reliance Retail, Metro Cash & Carry, NIF Food)',
     ],
     relationshipWithAapkaAstro:
-      'VIAR (viar.in) is the educational institute for learning Vedic astrology. Aapka Astro (aapkaastro.com) is Acharya Niraj Kumar\'s personal consultation practice for 1-on-1 horoscope readings and Vastu audits.',
+      'VIAR (viar.in) is the educational institute for learning Vedic astrology. Aapka Astro (aapkaastro.com) is Acharya Niraj Kumar\'s personal consultation practice for horoscope readings and Vastu audits.',
   },
   contacts: {
     whatsapp: '+91 93112 15564',

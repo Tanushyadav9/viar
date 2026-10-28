@@ -631,7 +631,7 @@ export default function AboutPage() {
             </div>
             <div>
               <h3 className="text-xl font-bold text-white mb-1">
-                {isHi ? 'क्या आप व्यक्तिगत परामर्श की तलाश में हैं?' : 'Looking for 1-on-1 Consultation Instead?'}
+                {isHi ? 'क्या आप व्यक्तिगत परामर्श की तलाश में हैं?' : 'Looking for Personal Consultation Instead?'}
               </h3>
               <p className="text-sm text-slate-300 max-w-2xl">
                 {isHi

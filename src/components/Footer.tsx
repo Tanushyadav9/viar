@@ -8,6 +8,7 @@ import { SISTER_SERVICES } from '@/config/services';
 import { useLanguage } from '@/components/LanguageContext';
 import { COMMON_TIMEZONES, getUserLocalTimezone } from '@/lib/timezones';
 import { ViarStore } from '@/lib/store';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 
 export default function Footer() {
   const { isHi } = useLanguage();
@@ -50,7 +51,7 @@ export default function Footer() {
               <p className="text-xs text-slate-400 mt-1 max-w-2xl">
                 {isHi
                   ? 'व्यक्तिगत कुंडली विश्लेषण अथवा कॉर्पोरेट मुहूर्त परामर्श के लिए आचार्य नीरज कुमार द्वारा स्थापित हमारे सहयोगी मंचों से जुड़ें।'
-                  : 'Looking for 1-on-1 private chart readings or corporate muhurta consulting? Connect with our sister platforms founded by Acharya Niraj Kumar.'}
+                  : 'Looking for private chart readings or corporate muhurta consulting? Connect with our sister platforms founded by Acharya Niraj Kumar.'}
               </p>
             </div>
 
@@ -105,8 +106,12 @@ export default function Footer() {
               </h4>
               <p className="text-xs text-slate-400 mt-0.5">
                 {isHi
-                  ? 'संरचित रिकॉर्डेड पाठ्यक्रम और व्यक्तिगत 1-on-1 मार्गदर्शन सत्र (क्लाइंट अनुमोदन लंबित)।'
-                  : 'Structured recorded curriculum modules paired with personal 1-on-1 mentorship sessions (pending client approval).'}
+                  ? (ONE_TO_ONE_ENABLED
+                      ? 'संरचित रिकॉर्डेड पाठ्यक्रम और व्यक्तिगत 1-on-1 मार्गदर्शन सत्र (क्लाइंट अनुमोदन लंबित)।'
+                      : 'संरचित रिकॉर्डेड पाठ्यक्रम और समूह लाइव कक्षाएं एवं रिकॉर्डिंग।')
+                  : (ONE_TO_ONE_ENABLED
+                      ? 'Structured recorded curriculum modules paired with personal 1-on-1 mentorship sessions (pending client approval).'
+                      : 'Structured recorded curriculum modules paired with interactive cohort live classes and full recordings.')}
               </p>
             </div>
           </div>
@@ -121,8 +126,12 @@ export default function Footer() {
               </h4>
               <p className="text-xs text-slate-400 mt-0.5">
                 {isHi
-                  ? 'अपनी गति से रिकॉर्डेड व्याख्यान देखें, और आपसी सुविधानुसार 1-on-1 सत्र निर्धारित करें (क्लाइंट अनुमोदन लंबित)।'
-                  : 'Study recorded lessons at your own pace, with personal 1-on-1 sessions scheduled by mutual convenience (pending client approval).'}
+                  ? (ONE_TO_ONE_ENABLED
+                      ? 'अपनी गति से रिकॉर्डेड व्याख्यान देखें, और आपसी सुविधानुसार 1-on-1 सत्र निर्धारित करें (क्लाइंट अनुमोदन लंबित)।'
+                      : 'अपनी गति से रिकॉर्डेड व्याख्यान देखें, और पूर्व-निर्धारित लाइव कक्षाओं में भाग लें।')
+                  : (ONE_TO_ONE_ENABLED
+                      ? 'Study recorded lessons at your own pace, with personal 1-on-1 sessions scheduled by mutual convenience (pending client approval).'
+                      : 'Study recorded lessons at your own pace, with live cohort sessions announced in advance.')}
               </p>
             </div>
           </div>

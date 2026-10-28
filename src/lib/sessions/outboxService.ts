@@ -13,6 +13,7 @@ import { prisma } from '@/lib/prisma';
 import { emailService } from '@/lib/email';
 import { formatSessionIST } from './oneOnOneService';
 import { formatInTimezone } from '@/lib/timezones';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 import type { StudentSessionRecord } from './types';
 
 export type OutboxEmailType =
@@ -675,7 +676,9 @@ export async function checkAndQueueReminders(): Promise<{
         const timeIst = formatSessionIST(session.startTime);
         const timeLocal = formatInTimezone(session.startTime, 'America/New_York');
 
-        const subject = `Reminder: Tomorrow is your 1-on-1 Class with Acharya Niraj Kumar — ${session.title}`;
+        const subject = ONE_TO_ONE_ENABLED
+          ? `Reminder: Tomorrow is your 1-on-1 Class with Acharya Niraj Kumar — ${session.title}`
+          : `Reminder: Tomorrow is your Live Class with Acharya Niraj Kumar — ${session.title}`;
         const html = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0b0f17; color: #cbd5e1; border: 1px solid rgba(245,158,11,0.3); border-radius: 16px; padding: 28px;">
             <div style="text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 16px; margin-bottom: 20px;">
@@ -683,7 +686,11 @@ export async function checkAndQueueReminders(): Promise<{
               <p style="color: #94a3b8; font-size: 12px; margin: 4px 0 0;">24-Hour Pre-Class Reminder</p>
             </div>
             <p style="color: #ffffff; font-size: 15px;">Namaste <strong>${session.studentName} ji</strong>,</p>
-            <p style="font-size: 14px; line-height: 1.6;">This is a reminder that your 1-on-1 personal mentorship class with <strong>Acharya Niraj Kumar</strong> is scheduled for tomorrow:</p>
+            <p style="font-size: 14px; line-height: 1.6;">
+              ${ONE_TO_ONE_ENABLED
+                ? 'This is a reminder that your 1-on-1 personal mentorship class with <strong>Acharya Niraj Kumar</strong> is scheduled for tomorrow:'
+                : 'This is a reminder that your course live class with <strong>Acharya Niraj Kumar</strong> is scheduled for tomorrow:'}
+            </p>
             
             <div style="background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px; margin: 20px 0;">
               <p style="margin: 4px 0; color: #ffffff;"><strong>Topic:</strong> ${session.title}</p>
@@ -710,7 +717,7 @@ export async function checkAndQueueReminders(): Promise<{
           </div>
         `;
 
-        const text = `Namaste ${session.studentName} ji,\n\nReminder: Your 1-on-1 class with Acharya Niraj Kumar is scheduled for tomorrow at ${timeIst} IST.\nTopic: ${session.title}\nStudent Portal: https://viar.in/dashboard?tab=sessions\nHelpline: +91 93112 15564`;
+        const text = `Namaste ${session.studentName} ji,\n\nReminder: Your ${ONE_TO_ONE_ENABLED ? '1-on-1 class' : 'live class'} with Acharya Niraj Kumar is scheduled for tomorrow at ${timeIst} IST.\nTopic: ${session.title}\nStudent Portal: https://viar.in/dashboard?tab=sessions\nHelpline: +91 93112 15564`;
 
         try {
           await enqueueSessionEmail({
@@ -766,7 +773,9 @@ export async function checkAndQueueReminders(): Promise<{
 
       if (!alreadySent) {
         const timeIst = formatSessionIST(session.startTime);
-        const subject = `Starting in 1 Hour: 1-on-1 Class with Acharya Niraj Kumar — ${session.title}`;
+        const subject = ONE_TO_ONE_ENABLED
+          ? `Starting in 1 Hour: 1-on-1 Class with Acharya Niraj Kumar — ${session.title}`
+          : `Starting in 1 Hour: Live Class with Acharya Niraj Kumar — ${session.title}`;
 
         const html = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0b0f17; color: #cbd5e1; border: 2px solid #f59e0b; border-radius: 16px; padding: 28px;">
@@ -775,7 +784,11 @@ export async function checkAndQueueReminders(): Promise<{
               <span style="display: inline-block; margin-top: 6px; padding: 4px 12px; background: rgba(245,158,11,0.2); color: #f59e0b; border-radius: 999px; font-weight: 700; font-size: 12px;">Class Starts in 1 Hour</span>
             </div>
             <p style="color: #ffffff; font-size: 15px;">Namaste <strong>${session.studentName} ji</strong>,</p>
-            <p style="font-size: 14px; line-height: 1.6;">Your personal 1-on-1 live session with <strong>Acharya Niraj Kumar</strong> begins in 60 minutes.</p>
+            <p style="font-size: 14px; line-height: 1.6;">
+              ${ONE_TO_ONE_ENABLED
+                ? 'Your personal 1-on-1 live session with <strong>Acharya Niraj Kumar</strong> begins in 60 minutes.'
+                : 'Your course live class with <strong>Acharya Niraj Kumar</strong> begins in 60 minutes.'}
+            </p>
             
             <div style="background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px; margin: 20px 0;">
               <p style="margin: 4px 0; color: #ffffff;"><strong>Topic:</strong> ${session.title}</p>
@@ -785,7 +798,7 @@ export async function checkAndQueueReminders(): Promise<{
             </div>
 
             <p style="font-size: 13px; color: #94a3b8; line-height: 1.5;">
-              The &quot;Join Live Class&quot; button in your student portal activates 15 minutes before the session. Please find a quiet space and keep your birth chart ready.
+              The &quot;Join Live Class&quot; button in your student portal activates 15 minutes before the session. Please find a quiet space and keep your study materials ready.
             </p>
 
             <div style="text-align: center; margin: 24px 0;">
@@ -798,7 +811,7 @@ export async function checkAndQueueReminders(): Promise<{
           </div>
         `;
 
-        const text = `Namaste ${session.studentName} ji,\n\nYour 1-on-1 class with Acharya Niraj Kumar starts in 1 hour at ${timeIst} IST.\nTopic: ${session.title}\nMeeting Link: ${session.meetingLink || 'https://viar.in/dashboard?tab=sessions'}\nWhatsApp Helpline: +91 93112 15564`;
+        const text = `Namaste ${session.studentName} ji,\n\nYour ${ONE_TO_ONE_ENABLED ? '1-on-1 class' : 'live class'} with Acharya Niraj Kumar starts in 1 hour at ${timeIst} IST.\nTopic: ${session.title}\nMeeting Link: ${session.meetingLink || 'https://viar.in/dashboard?tab=sessions'}\nWhatsApp Helpline: +91 93112 15564`;
 
         try {
           await enqueueSessionEmail({
@@ -856,7 +869,9 @@ export async function sendSessionChangedEmail(data: {
   const tz = data.studentTimezone || 'Asia/Kolkata';
   const timeLocal = tz !== 'Asia/Kolkata' ? formatInTimezone(data.newStartTimeUtc, tz, 'full') : null;
 
-  const subject = `Updated Details: 1-on-1 Class with Acharya Niraj Kumar — ${data.topic}`;
+  const subject = ONE_TO_ONE_ENABLED
+    ? `Updated Details: 1-on-1 Class with Acharya Niraj Kumar — ${data.topic}`
+    : `Updated Details: Live Class with Acharya Niraj Kumar — ${data.topic}`;
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0b0f17; color: #cbd5e1; border: 1px solid rgba(56,189,248,0.3); border-radius: 16px; padding: 28px;">
@@ -866,7 +881,11 @@ export async function sendSessionChangedEmail(data: {
       </div>
 
       <p style="color: #ffffff; font-size: 15px;">Namaste <strong>${data.studentName} ji</strong>,</p>
-      <p style="font-size: 14px; line-height: 1.6;">Your 1-on-1 personal mentorship class details have been updated by <strong>Acharya Niraj Kumar</strong>:</p>
+      <p style="font-size: 14px; line-height: 1.6;">
+        ${ONE_TO_ONE_ENABLED
+          ? 'Your 1-on-1 personal mentorship class details have been updated by <strong>Acharya Niraj Kumar</strong>:'
+          : 'Your course live class details have been updated by <strong>Acharya Niraj Kumar</strong>:'}
+      </p>
 
       <div style="background-color: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 18px; margin: 20px 0;">
         <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
@@ -914,7 +933,7 @@ export async function sendSessionChangedEmail(data: {
     </div>
   `;
 
-  const text = `Namaste ${data.studentName} ji,\n\nYour 1-on-1 class details with Acharya Niraj Kumar have been updated.\nTopic: ${data.topic}\nNew Time: ${timeIst} IST\nDuration: ${data.durationMinutes} mins\nMeeting Link: ${data.meetingLink || 'Shared via portal'}\nStudent Portal: https://viar.in/dashboard?tab=sessions`;
+  const text = `Namaste ${data.studentName} ji,\n\nYour ${ONE_TO_ONE_ENABLED ? '1-on-1 class' : 'live class'} details with Acharya Niraj Kumar have been updated.\nTopic: ${data.topic}\nNew Time: ${timeIst} IST\nDuration: ${data.durationMinutes} mins\nMeeting Link: ${data.meetingLink || 'Shared via portal'}\nStudent Portal: https://viar.in/dashboard?tab=sessions`;
 
   return enqueueSessionEmail({
     sessionId: data.sessionId,
@@ -940,7 +959,9 @@ export async function sendSessionCancelledEmail(data: {
   sessionId?: string;
 }): Promise<SessionEmailOutboxRecord> {
   const timeIst = formatSessionIST(data.scheduledTimeUtc);
-  const subject = `Class Cancelled: 1-on-1 Session with Acharya Niraj Kumar — ${data.topic}`;
+  const subject = ONE_TO_ONE_ENABLED
+    ? `Class Cancelled: 1-on-1 Session with Acharya Niraj Kumar — ${data.topic}`
+    : `Class Cancelled: Live Class with Acharya Niraj Kumar — ${data.topic}`;
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0b0f17; color: #cbd5e1; border: 1px solid rgba(239,68,68,0.3); border-radius: 16px; padding: 28px;">
@@ -951,7 +972,7 @@ export async function sendSessionCancelledEmail(data: {
 
       <p style="color: #ffffff; font-size: 15px;">Namaste <strong>${data.studentName} ji</strong>,</p>
       <p style="font-size: 14px; line-height: 1.6;">
-        Your 1-on-1 class scheduled for <strong>${timeIst} IST</strong> (${data.topic}) has been cancelled.
+        Your ${ONE_TO_ONE_ENABLED ? '1-on-1 class' : 'live class'} scheduled for <strong>${timeIst} IST</strong> (${data.topic}) has been cancelled.
       </p>
 
       ${data.cancellationReason ? `
@@ -962,11 +983,13 @@ export async function sendSessionCancelledEmail(data: {
       ` : ''}
 
       <p style="font-size: 13px; color: #cbd5e1; line-height: 1.6;">
-        You can schedule a replacement personal session anytime via your student portal, or message Acharya ji directly on WhatsApp.
+        ${ONE_TO_ONE_ENABLED
+          ? 'You can schedule a replacement personal session anytime via your student portal, or message Acharya ji directly on WhatsApp.'
+          : 'Please check your student portal for newly scheduled live classes, or message Acharya ji directly on WhatsApp.'}
       </p>
 
       <div style="text-align: center; margin: 24px 0;">
-        <a href="https://viar.in/dashboard?tab=sessions" style="display: inline-block; padding: 12px 28px; background: linear-gradient(135deg, #d97706, #b45309); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px;">Schedule Replacement Slot</a>
+        <a href="https://viar.in/dashboard?tab=sessions" style="display: inline-block; padding: 12px 28px; background: linear-gradient(135deg, #d97706, #b45309); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px;">${ONE_TO_ONE_ENABLED ? 'Schedule Replacement Slot' : 'Open Student Portal'}</a>
       </div>
 
       <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-top: 20px; font-size: 12px; color: #64748b; text-align: center;">
@@ -975,7 +998,7 @@ export async function sendSessionCancelledEmail(data: {
     </div>
   `;
 
-  const text = `Namaste ${data.studentName} ji,\n\nYour 1-on-1 class with Acharya Niraj Kumar scheduled for ${timeIst} IST has been cancelled.\n${data.cancellationReason ? `Reason: ${data.cancellationReason}\n` : ''}\nPlease reschedule via your portal: https://viar.in/dashboard?tab=sessions\nWhatsApp: +91 93112 15564`;
+  const text = `Namaste ${data.studentName} ji,\n\nYour ${ONE_TO_ONE_ENABLED ? '1-on-1 class' : 'live class'} with Acharya Niraj Kumar scheduled for ${timeIst} IST has been cancelled.\n${data.cancellationReason ? `Reason: ${data.cancellationReason}\n` : ''}\nPlease check your portal: https://viar.in/dashboard?tab=sessions\nWhatsApp: +91 93112 15564`;
 
   return enqueueSessionEmail({
     sessionId: data.sessionId,

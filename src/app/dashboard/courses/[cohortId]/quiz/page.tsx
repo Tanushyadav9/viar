@@ -388,7 +388,7 @@ export default function FinalQuizPage() {
                       Ready to Analyze Your Personal Kundli?
                     </p>
                     <p className="text-[11px] text-slate-300 mb-3">
-                      As an academy graduate, schedule a private 1-on-1 chart consultation with Acharya Niraj Kumar on Aapka Astro.
+                      As an academy graduate, schedule a private chart consultation with Acharya Niraj Kumar on Aapka Astro.
                     </p>
                     <a
                       href="https://aapkaastro.com"

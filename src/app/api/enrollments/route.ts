@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 import { prisma } from '@/lib/prisma';
 import { getServerAuthUser, canAccessArea } from '@/lib/auth/serverAuth';
 import { emailService } from '@/lib/email';
@@ -192,7 +193,9 @@ export async function GET(req: NextRequest) {
             courseId: associatedCourse?.id || 'course-what-is-astrology',
             courseTitle: associatedCourse?.title || 'The Ultimate Vedic Astrology Course',
             cohortId: enr.cohortId || '',
-            cohortBatchName: enr.cohort?.batchName || 'Recorded modules and 1-on-1 sessions',
+            cohortBatchName:
+              enr.cohort?.batchName ||
+              (ONE_TO_ONE_ENABLED ? 'Recorded modules and 1-on-1 sessions' : 'Recorded modules and live classes'),
             enrolledAt: enr.enrolledAt ? enr.enrolledAt.toISOString() : new Date().toISOString(),
             amountPaid: displayAmount,
             paymentAmount: displayAmount,

@@ -67,6 +67,11 @@ export interface AppEnvConfig {
     fromAddress: string;
     replyTo: string;
   };
+
+  // Feature Flags
+  features: {
+    oneToOneEnabled: boolean;
+  };
 }
 
 function getEnvVar(key: string, fallback: string = ''): string {
@@ -144,4 +149,14 @@ export const env: AppEnvConfig = {
     fromAddress: getEnvVar('EMAIL_FROM', 'Vihangam Institute of Astrology and Research <admissions@viar.in>'),
     replyTo: getEnvVar('EMAIL_REPLY_TO', 'aapkaastro1606@gmail.com'),
   },
+
+  // Feature Flags
+  features: {
+    oneToOneEnabled:
+      getEnvVar('NEXT_PUBLIC_ONE_TO_ONE_ENABLED', 'false') === 'true' ||
+      getEnvVar('ONE_TO_ONE_ENABLED', 'false') === 'true',
+  },
 };
+
+export { ONE_TO_ONE_ENABLED } from './features';
+

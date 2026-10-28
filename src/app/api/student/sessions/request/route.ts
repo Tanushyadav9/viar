@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerAuthUser } from '@/lib/auth/serverAuth';
 import { verifyUserCourseAccess } from '@/lib/auth/course-access';
+import { ONE_TO_ONE_ENABLED } from '@/config/features';
 import {
   createSessionRequest,
   getStudentSessionById,
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
     if (!access.isEnrolled) {
       return NextResponse.json(
         {
-          error: 'Forbidden: only active enrolled students may request 1-on-1 sessions',
+          error: 'Forbidden: only active enrolled students may request session services',
           enrolled: false,
           reason: access.reason || 'No active enrollment',
         },
@@ -36,6 +37,17 @@ export async function POST(req: NextRequest) {
 
     const requestType: 'INITIAL' | 'RESCHEDULE' =
       body.requestType === 'RESCHEDULE' ? 'RESCHEDULE' : 'INITIAL';
+
+    // Verify 1-on-1 feature flag for new booking requests
+    if (!ONE_TO_ONE_ENABLED && requestType === 'INITIAL') {
+      return NextResponse.json(
+        {
+          error: 'Individual 1-on-1 session booking is disabled. Course live classes are scheduled by the instructor for the cohort.',
+          disabled: true,
+        },
+        { status: 403 }
+      );
+    }
 
     // Validate preferred windows (2 to 3 windows expected)
     const preferredWindows = Array.isArray(body.preferredWindows)
