@@ -105,7 +105,7 @@ export async function GET(
                 title: 'Introduction to Kundli',
                 type: 'VIDEO',
                 status: 'PUBLISHED',
-                liveJoinLink: 'https://meet.google.com/sec-ret-link',
+                liveJoinLink: null,
                 notesMarkdown: '# Secret Lesson Notes',
                 recordingUrl: 'https://stream.viar.in/secret-recording.mp4',
                 videoProviderId: 'secret-cf-stream-uid',

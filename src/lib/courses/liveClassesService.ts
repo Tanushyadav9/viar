@@ -22,122 +22,14 @@ export interface LiveClassInput {
   recordingStreamId?: string | null;
 }
 
-export interface MeetingLinkValidationResult {
-  valid: boolean;
-  provider?: 'GOOGLE_MEET' | 'ZOOM';
-  normalizedUrl?: string;
-  error?: string;
-  errorHi?: string;
-}
-
-/**
- * Validates meeting URLs for Google Meet and Zoom.
- * Enforces production invariants:
- * - Real Google Meet links follow https://meet.google.com/abc-defg-hij (3-4-3 letters)
- * - Auto-generated / fake slugs (e.g. "jyotish-mentorship-01", "sec-ret-link") are rejected
- * - Real Zoom links follow https://[subdomain.]zoom.us/j/1234567890 or https://zoom.us/my/username
- */
-export function isValidMeetingLink(
-  rawUrl?: string | null,
-  expectedProvider?: 'GOOGLE_MEET' | 'ZOOM' | null
-): MeetingLinkValidationResult {
-  if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.trim()) {
-    return {
-      valid: false,
-      error: 'Meeting link cannot be empty.',
-      errorHi: 'मीटिंग लिंक खाली नहीं हो सकता।',
-    };
-  }
-
-  let trimmed = rawUrl.trim();
-  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
-    trimmed = 'https://' + trimmed;
-  }
-
-  let parsed: URL;
-  try {
-    parsed = new URL(trimmed);
-  } catch {
-    return {
-      valid: false,
-      error: 'Invalid URL format.',
-      errorHi: 'अमान्य URL प्रारूप।',
-    };
-  }
-
-  const hostname = parsed.hostname.toLowerCase();
-  const pathname = parsed.pathname;
-
-  // 1. Google Meet Validation
-  const isMeetDomain = hostname === 'meet.google.com';
-  // Google Meet meeting codes are exactly 3 lowercase letters, hyphen, 4 lowercase letters, hyphen, 3 lowercase letters
-  const meetCodeMatch = pathname.match(/^\/([a-z]{3})-([a-z]{4})-([a-z]{3})$/i);
-
-  if (isMeetDomain) {
-    if (!meetCodeMatch) {
-      return {
-        valid: false,
-        provider: 'GOOGLE_MEET',
-        error:
-          'Invalid Google Meet link. Real Google Meet links look like https://meet.google.com/abc-defg-hij (3-4-3 lowercase letters). Auto-generated links are rejected.',
-        errorHi:
-          'अमान्य गूगल मीट लिंक। असली गूगल मीट कोड 3-4-3 अक्षरों (उदा. https://meet.google.com/abc-defg-hij) के प्रारूप में होते हैं।',
-      };
-    }
-    const cleanUrl = `https://meet.google.com/${meetCodeMatch[1].toLowerCase()}-${meetCodeMatch[2].toLowerCase()}-${meetCodeMatch[3].toLowerCase()}`;
-    return {
-      valid: true,
-      provider: 'GOOGLE_MEET',
-      normalizedUrl: cleanUrl,
-    };
-  }
-
-  // 2. Zoom Validation
-  const isZoomDomain = hostname === 'zoom.us' || hostname.endsWith('.zoom.us');
-  // Zoom join URLs: /j/123456789 or /j/12345678901 (9 to 11 digits) or personal vanity /my/name
-  const zoomPathMatch = pathname.match(/^\/(j\/\d{9,11}|my\/[a-zA-Z0-9._-]+)/i);
-
-  if (isZoomDomain) {
-    if (!zoomPathMatch) {
-      return {
-        valid: false,
-        provider: 'ZOOM',
-        error:
-          'Invalid Zoom meeting link. Real Zoom links follow the format https://zoom.us/j/1234567890 or https://us02web.zoom.us/j/...',
-        errorHi:
-          'अमान्य ज़ूम मीटिंग लिंक। असली ज़ूम लिंक https://zoom.us/j/1234567890 प्रारूप का होना चाहिए।',
-      };
-    }
-    return {
-      valid: true,
-      provider: 'ZOOM',
-      normalizedUrl: trimmed,
-    };
-  }
-
-  // Provider mismatch
-  if (expectedProvider === 'GOOGLE_MEET') {
-    return {
-      valid: false,
-      error: 'Please provide a valid Google Meet link (e.g. https://meet.google.com/abc-defg-hij).',
-      errorHi: 'कृपया वैध गूगल मीट लिंक दर्ज करें (उदा. https://meet.google.com/abc-defg-hij)।',
-    };
-  }
-
-  if (expectedProvider === 'ZOOM') {
-    return {
-      valid: false,
-      error: 'Please provide a valid Zoom link (e.g. https://zoom.us/j/1234567890).',
-      errorHi: 'कृपया वैध ज़ूम लिंक दर्ज करें (उदा. https://zoom.us/j/1234567890)।',
-    };
-  }
-
-  return {
-    valid: false,
-    error: 'Only Google Meet and Zoom meeting links are supported.',
-    errorHi: 'केवल गूगल मीट और ज़ूम मीटिंग लिंक समर्थित हैं।',
-  };
-}
+export {
+  isValidMeetingLink,
+  INVALID_LINK_MESSAGE_EN,
+  INVALID_LINK_MESSAGE_HI,
+  REJECTED_WORDS,
+  type MeetingLinkValidationResult,
+} from './meetingLinkValidation';
+import { isValidMeetingLink, INVALID_LINK_MESSAGE_EN } from './meetingLinkValidation';
 
 /**
  * Converts IST date string ("YYYY-MM-DD") and time string ("HH:mm") into a UTC Date.
@@ -334,6 +226,7 @@ export async function listLiveClasses(params?: {
 
   const formatted = lessons.map((l) => {
     const istInfo = l.liveScheduledAt ? formatUtcToIst(l.liveScheduledAt) : null;
+    const linkValidation = l.liveJoinLink ? isValidMeetingLink(l.liveJoinLink, l.meetingPlatform) : null;
     return {
       id: l.id,
       moduleId: l.moduleId,
@@ -353,6 +246,8 @@ export async function listLiveClasses(params?: {
       durationMinutes: l.durationMinutes || 60,
       provider: (l.meetingPlatform || 'GOOGLE_MEET') as 'GOOGLE_MEET' | 'ZOOM',
       meetingLink: l.liveJoinLink || '',
+      isLinkValid: linkValidation ? linkValidation.valid : false,
+      linkValidationError: linkValidation && !linkValidation.valid ? linkValidation.error : null,
       zoomPasscode: l.zoomPasscode || null,
       notesPdf: l.documentUrl || null,
       status: l.status,
@@ -587,10 +482,16 @@ export async function updateLiveClass(params: {
     }
   }
 
-  if (isPublishing && (!normalizedLink || !normalizedLink.trim())) {
-    throw new Error(
-      'A live class cannot be published without a valid meeting link. Save as Draft or paste a real Google Meet or Zoom link.'
-    );
+  if (isPublishing) {
+    if (!normalizedLink || !normalizedLink.trim()) {
+      throw new Error(
+        'A live class cannot be published without a valid meeting link. Save as Draft or paste a real Google Meet or Zoom link.'
+      );
+    }
+    const val = isValidMeetingLink(normalizedLink, provider);
+    if (!val.valid) {
+      throw new Error(val.error || INVALID_LINK_MESSAGE_EN);
+    }
   }
 
   // Clash Protection: verify no overlapping active live class if scheduled

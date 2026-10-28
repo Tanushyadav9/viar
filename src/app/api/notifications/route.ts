@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       sessionTitle,
       scheduledAtUtc: scheduledAtUtc || new Date(Date.now() + 3600000).toISOString(),
       studentTimezone: studentTimezone || 'Asia/Kolkata',
-      joinLink: joinLink || 'https://zoom.us/j/viar-live-session',
+      joinLink: (joinLink || '').trim(),
     };
 
     const results = await sendClassReminder(payload);

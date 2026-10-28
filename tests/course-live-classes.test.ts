@@ -4,6 +4,8 @@ import {
   isValidMeetingLink,
   parseIstToUtc,
   formatUtcToIst,
+  INVALID_LINK_MESSAGE_EN,
+  INVALID_LINK_MESSAGE_HI,
 } from '../src/lib/courses/liveClassesService';
 
 describe('Prompt 10: Course Live Classes Invariants & Validation', () => {
@@ -20,25 +22,55 @@ describe('Prompt 10: Course Live Classes Invariants & Validation', () => {
       assert.strictEqual(res2.valid, true);
       assert.strictEqual(res2.provider, 'GOOGLE_MEET');
       assert.strictEqual(res2.normalizedUrl, 'https://meet.google.com/xyz-pqrs-tuv');
+
+      const link3 = 'https://meet.google.com/kpm-vrtq-zxy';
+      assert.strictEqual(isValidMeetingLink(link3).valid, true);
+
+      const link4 = 'https://meet.google.com/wza-bcde-fgh';
+      assert.strictEqual(isValidMeetingLink(link4).valid, true);
     });
 
-    it('rejects fake, generated, or non-conforming Google Meet links', () => {
-      // Prompt 5 finding: https://meet.google.com/jyotish-mentorship-01
+    it('rejects fake, generated, or non-conforming Google Meet links with exact client message', () => {
+      // 1. Prompt example: https://meet.google.com/jyotish-mentorship-01
       const fake1 = 'https://meet.google.com/jyotish-mentorship-01';
       const res1 = isValidMeetingLink(fake1, 'GOOGLE_MEET');
       assert.strictEqual(res1.valid, false);
-      assert.ok(res1.error?.includes('abc-defg-hij'));
+      assert.strictEqual(res1.error, INVALID_LINK_MESSAGE_EN);
+      assert.strictEqual(res1.errorHi, INVALID_LINK_MESSAGE_HI);
 
+      // 2. Contains blacklisted words: example, test, jyotish-mentorship, xxx, demo
+      const fakeXxx = 'https://meet.google.com/xxx-xxxx-xxx';
+      const resXxx = isValidMeetingLink(fakeXxx);
+      assert.strictEqual(resXxx.valid, false);
+      assert.strictEqual(resXxx.error, INVALID_LINK_MESSAGE_EN);
+
+      const fakeDemo = 'https://meet.google.com/abc-demo-hij';
+      const resDemo = isValidMeetingLink(fakeDemo);
+      assert.strictEqual(resDemo.valid, false);
+      assert.strictEqual(resDemo.error, INVALID_LINK_MESSAGE_EN);
+
+      const fakeExample = 'https://meet.google.com/example-astrology';
+      const resExample = isValidMeetingLink(fakeExample);
+      assert.strictEqual(resExample.valid, false);
+      assert.strictEqual(resExample.error, INVALID_LINK_MESSAGE_EN);
+
+      const fakeTest = 'https://us02web.zoom.us/j/1234567890?test=1';
+      const resTest = isValidMeetingLink(fakeTest);
+      assert.strictEqual(resTest.valid, false);
+      assert.strictEqual(resTest.error, INVALID_LINK_MESSAGE_EN);
+
+      // 3. Fake auto-generated code
       const fake2 = 'https://meet.google.com/sec-ret-link';
       const res2 = isValidMeetingLink(fake2);
       assert.strictEqual(res2.valid, false);
+      assert.strictEqual(res2.error, INVALID_LINK_MESSAGE_EN);
 
       const empty = '';
       const res3 = isValidMeetingLink(empty);
       assert.strictEqual(res3.valid, false);
     });
 
-    it('accepts authentic Zoom join links', () => {
+    it('accepts authentic Zoom join links (with and without subdomains, with optional pwd)', () => {
       const zoom1 = 'https://us02web.zoom.us/j/12345678901';
       const res1 = isValidMeetingLink(zoom1, 'ZOOM');
       assert.strictEqual(res1.valid, true);
@@ -48,13 +80,18 @@ describe('Prompt 10: Course Live Classes Invariants & Validation', () => {
       const res2 = isValidMeetingLink(zoom2);
       assert.strictEqual(res2.valid, true);
       assert.strictEqual(res2.provider, 'ZOOM');
+
+      const zoom3 = 'https://us04web.zoom.us/j/98765432101?pwd=SecretPasscode123';
+      const res3 = isValidMeetingLink(zoom3);
+      assert.strictEqual(res3.valid, true);
+      assert.strictEqual(res3.provider, 'ZOOM');
     });
 
-    it('rejects unsupported domains and malformed URLs', () => {
+    it('rejects unsupported domains and malformed URLs with exact client message', () => {
       const teams = 'https://teams.microsoft.com/l/meetup-join/12345';
       const res = isValidMeetingLink(teams);
       assert.strictEqual(res.valid, false);
-      assert.ok(res.error?.includes('Google Meet and Zoom'));
+      assert.strictEqual(res.error, INVALID_LINK_MESSAGE_EN);
     });
   });
 
@@ -103,6 +140,21 @@ describe('Prompt 10: Course Live Classes Invariants & Validation', () => {
 
       assert.strictEqual(isPublishing, true);
       assert.strictEqual(hasValidLink, false);
+    });
+
+    it('blocks publishing when existing meeting link fails validation', () => {
+      const badExamples = [
+        'https://meet.google.com/jyotish-mentorship-01',
+        'https://meet.google.com/xxx-xxxx-xxx',
+        'https://meet.google.com/demo-astrology-session',
+        'https://zoom.us/j/example-call',
+      ];
+
+      for (const badLink of badExamples) {
+        const val = isValidMeetingLink(badLink);
+        assert.strictEqual(val.valid, false, `Link ${badLink} must fail validation`);
+        assert.strictEqual(val.error, INVALID_LINK_MESSAGE_EN);
+      }
     });
   });
 

@@ -22,6 +22,11 @@ import {
   Layers,
   Check,
 } from 'lucide-react';
+import {
+  isValidMeetingLink,
+  INVALID_LINK_MESSAGE_EN,
+  INVALID_LINK_MESSAGE_HI,
+} from '@/lib/courses/meetingLinkValidation';
 
 interface LiveClassRecord {
   id: string;
@@ -42,6 +47,8 @@ interface LiveClassRecord {
   durationMinutes: number;
   provider: 'GOOGLE_MEET' | 'ZOOM';
   meetingLink: string;
+  isLinkValid?: boolean;
+  linkValidationError?: string | null;
   zoomPasscode?: string | null;
   privateHostNotes?: string | null;
   notesPdf?: string | null;
@@ -105,6 +112,9 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
 
   // Copied link toast state
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Live modal link validation
+  const liveLinkVal = formMeetingLink.trim() ? isValidMeetingLink(formMeetingLink, formProvider) : null;
 
   // Load modules for dropdown
   const loadModules = useCallback(async () => {
@@ -208,6 +218,35 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     setClashError(null);
+
+    // Validate meeting link
+    if (formStatus === 'SCHEDULED') {
+      if (!formMeetingLink || !formMeetingLink.trim()) {
+        setClashError({
+          en: 'A live class cannot be published without a valid meeting link. Save as Draft or paste a real Google Meet or Zoom link.',
+          hi: 'बिना मीटिंग लिंक के लाइव कक्षा पब्लिश नहीं की जा सकती। ड्राफ्ट के रूप में सहेजें या वैध लिंक पेस्ट करें।',
+        });
+        return;
+      }
+      const val = isValidMeetingLink(formMeetingLink, formProvider);
+      if (!val.valid) {
+        setClashError({
+          en: val.error || INVALID_LINK_MESSAGE_EN,
+          hi: val.errorHi || INVALID_LINK_MESSAGE_HI,
+        });
+        return;
+      }
+    } else if (formMeetingLink && formMeetingLink.trim()) {
+      const val = isValidMeetingLink(formMeetingLink, formProvider);
+      if (!val.valid) {
+        setClashError({
+          en: val.error || INVALID_LINK_MESSAGE_EN,
+          hi: val.errorHi || INVALID_LINK_MESSAGE_HI,
+        });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -523,10 +562,16 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
           <div className="grid grid-cols-1 gap-4">
             {upcomingClasses.map((cls) => {
               const isDraft = cls.status === 'DRAFT';
+              const isLinkValid = cls.meetingLink ? isValidMeetingLink(cls.meetingLink, cls.provider).valid : false;
+              const hasInvalidLink = Boolean(cls.meetingLink && !isLinkValid);
               return (
                 <div
                   key={cls.id}
-                  className="cosmic-card p-5 rounded-2xl border border-white/10 hover:border-amber-500/40 transition space-y-4"
+                  className={`cosmic-card p-5 rounded-2xl border transition space-y-4 ${
+                    hasInvalidLink
+                      ? 'border-red-500/50 hover:border-red-500/80 bg-red-500/[0.02]'
+                      : 'border-white/10 hover:border-amber-500/40'
+                  }`}
                 >
                   <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                     <div className="space-y-2">
@@ -549,6 +594,13 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/5 text-slate-300 border border-white/10">
                           {cls.provider === 'ZOOM' ? 'Zoom' : 'Google Meet'}
                         </span>
+
+                        {hasInvalidLink && (
+                          <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 text-red-400" />
+                            <span>Invalid link</span>
+                          </span>
+                        )}
                       </div>
 
                       <h4 className="text-base font-bold text-white flex items-center gap-2">
@@ -562,6 +614,19 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
                         <p className="text-xs text-slate-300 line-clamp-2 max-w-2xl">
                           {cls.agenda}
                         </p>
+                      )}
+
+                      {/* Invalid link warning & block publishing indicator */}
+                      {hasInvalidLink && (
+                        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-200 flex items-start gap-2">
+                          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                          <div>
+                            <strong className="text-red-300 block mb-0.5">Publishing Blocked (Invalid Link):</strong>
+                            <p className="text-[11px] text-red-200/90 leading-relaxed">
+                              {INVALID_LINK_MESSAGE_EN}
+                            </p>
+                          </div>
+                        </div>
                       )}
 
                       {/* Timetable Badges */}
@@ -936,26 +1001,80 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Meeting Link {formStatus === 'SCHEDULED' && <span className="text-amber-400">*</span>}
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-300">
+                      Meeting Link {formStatus === 'SCHEDULED' && <span className="text-amber-400">*</span>}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {formMeetingLink.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            let target = formMeetingLink.trim();
+                            if (!target.startsWith('http://') && !target.startsWith('https://')) {
+                              target = 'https://' + target;
+                            }
+                            window.open(target, '_blank', 'noopener,noreferrer');
+                          }}
+                          className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Test link</span>
+                        </button>
+                      )}
+                      <a
+                        href="https://meet.google.com/new"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-slate-400 hover:text-slate-200 underline"
+                      >
+                        Create meeting
+                      </a>
+                    </div>
+                  </div>
                   <input
-                    type="url"
+                    type="text"
                     value={formMeetingLink}
                     onChange={(e) => setFormMeetingLink(e.target.value)}
                     placeholder={
                       formProvider === 'GOOGLE_MEET'
-                        ? 'https://meet.google.com/abc-defg-hij'
-                        : 'https://zoom.us/j/1234567890'
+                        ? 'Paste real Google Meet link (https://meet.google.com/abc-defg-hij)'
+                        : 'Paste real Zoom link (https://zoom.us/j/1234567890)'
                     }
                     required={formStatus === 'SCHEDULED'}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400 font-mono"
+                    className={`w-full px-3 py-2 rounded-xl bg-white/5 border text-white text-xs focus:outline-none font-mono ${
+                      formMeetingLink.trim() && !liveLinkVal?.valid
+                        ? 'border-red-500 focus:border-red-400'
+                        : formMeetingLink.trim() && liveLinkVal?.valid
+                        ? 'border-emerald-500 focus:border-emerald-400'
+                        : 'border-white/10 focus:border-amber-400'
+                    }`}
                   />
-                  <span className="text-[10px] text-slate-400 block mt-0.5">
-                    {formStatus === 'DRAFT'
-                      ? 'Optional for Drafts. Must be valid Google Meet or Zoom link to publish.'
-                      : 'Required to publish. Real Google Meet codes look like abc-defg-hij.'}
-                  </span>
+
+                  {/* Real-time Validation Feedback */}
+                  {formMeetingLink.trim() && !liveLinkVal?.valid && (
+                    <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-[11px] text-red-300 flex items-start gap-1.5 mt-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="text-red-300">Invalid link:</strong> {liveLinkVal?.error || INVALID_LINK_MESSAGE_EN}
+                      </div>
+                    </div>
+                  )}
+
+                  {formMeetingLink.trim() && liveLinkVal?.valid && (
+                    <div className="flex items-center gap-1 text-[11px] text-emerald-400 mt-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Valid {liveLinkVal.provider === 'ZOOM' ? 'Zoom' : 'Google Meet'} link confirmed</span>
+                    </div>
+                  )}
+
+                  {!formMeetingLink.trim() && (
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      {formStatus === 'DRAFT'
+                        ? 'Optional for Drafts. Must be valid Google Meet or Zoom link to publish.'
+                        : 'Required to publish. Real Google Meet codes look like abc-defg-hij.'}
+                    </span>
+                  )}
                 </div>
               </div>
 

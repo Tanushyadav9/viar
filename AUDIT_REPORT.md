@@ -1370,3 +1370,28 @@ Enforced in `updateLiveClass`:
 - Join button activates 15 minutes prior to start time with live countdown.
 - Full recordings available under Past Classes for students who missed live attendance.
 - Complete Light Mode & Dark Mode styling consistency verified across student timetable.
+
+---
+
+## 23. Meeting Links Architecture: Never Generated, Always Validated
+
+### 23.1 Core Production Policy
+1. **Zero Auto-Generation & Zero Default Links**:
+   - Meeting links are never auto-generated, pre-filled, or defaulted to placeholder values anywhere in the application.
+   - Removed all instances of fake/fallback URLs (e.g. `https://meet.google.com/sec-ret-link`, `https://zoom.us/j/viar-live-session`, and `+ Generate Google Meet` link setter).
+   - The Owner must paste a genuine link created directly in Google Calendar, Google Meet (`meet.google.com/new`), or Zoom.
+
+2. **Validation Rules (`src/lib/courses/meetingLinkValidation.ts`)**:
+   - **Google Meet**: Must strictly conform to `https://meet.google.com/xxx-xxxx-xxx` (three lowercase letter groups of 3, 4 and 3 letters: `[a-z]{3}-[a-z]{4}-[a-z]{3}`).
+   - **Zoom**: Must conform to `https://<subdomain>.zoom.us/j/<digits>` (numeric digits `\d{9,11}`) with optional `pwd` query parameter.
+   - **Blacklisted Substrings**: Any URL containing words like `example`, `test`, `jyotish-mentorship`, `xxx`, or `demo` is immediately rejected.
+   - **Rejection Message**: Any invalid or malformed URL returns the standardized message:
+     *"This does not look like a real Meet or Zoom link. Create the meeting in Google Calendar or at meet.google.com/new and paste the link here."*
+
+3. **UI Enhancements**:
+   - **"Test link" Button**: Added on modal forms and class cards to allow the Owner to open and verify the link in a new tab with one click.
+   - **"Invalid link" Badge**: Classes with links failing validation display a high-contrast red badge (`Invalid link`).
+   - **Publishing Blocked**: Forms and server API endpoints strictly block publishing (`status = 'SCHEDULED'`) until a real, valid meeting link is provided.
+
+4. **Pure Client/Server Boundary**:
+   - `src/lib/courses/meetingLinkValidation.ts` has zero database/server imports, ensuring strict compliance with boundary tests (`no-server-in-client.test.ts`).

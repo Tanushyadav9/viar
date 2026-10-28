@@ -22,6 +22,7 @@ import {
   Mail,
   Settings,
   AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 import { ONE_TO_ONE_ENABLED } from '@/config/features';
 import type { StudentSessionRecord, SessionRequestRecord, CourseSessionSettings } from '@/lib/sessions/types';
@@ -1585,24 +1586,43 @@ export default function SessionsManager({
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-slate-700 dark:text-slate-300 font-bold block">Meeting Link:</label>
-                    <button
-                      type="button"
-                      onClick={() => setFormLink('https://meet.google.com/new')}
-                      className="text-[11px] text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 underline font-medium"
-                    >
-                      + Generate Google Meet (meet.google.com/new)
-                    </button>
+                    <label className="text-slate-700 dark:text-slate-300 font-bold block text-xs">Meeting Link:</label>
+                    <div className="flex items-center gap-2">
+                      {formLink.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            let target = formLink.trim();
+                            if (!target.startsWith('http://') && !target.startsWith('https://')) {
+                              target = 'https://' + target;
+                            }
+                            window.open(target, '_blank', 'noopener,noreferrer');
+                          }}
+                          className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Test link</span>
+                        </button>
+                      )}
+                      <a
+                        href="https://meet.google.com/new"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 underline"
+                      >
+                        Create meeting
+                      </a>
+                    </div>
                   </div>
                   <input
                     type="text"
                     value={formLink}
                     onChange={(e) => setFormLink(e.target.value)}
-                    placeholder="Paste real meeting link (e.g. https://meet.google.com/... or https://zoom.us/j/...)"
+                    placeholder="Paste real meeting link (e.g. https://meet.google.com/abc-defg-hij or https://zoom.us/j/...)"
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:border-amber-400"
                   />
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                    Scheduled by Owner: the real Google Meet / Zoom link you enter here will be unlocked on the live class timetable for all approved students.
+                    No auto-generated links. Paste the real Google Meet or Zoom link created in Google Calendar or Zoom.
                   </p>
                 </div>
 
