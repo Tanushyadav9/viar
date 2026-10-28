@@ -1462,3 +1462,40 @@ Both the Featured Next Class card and individual upcoming class cards implement 
 - If requested outside the reveal window, the meeting link is withheld from the calendar file and points students to the portal dashboard (`https://viar.in/dashboard?tab=sessions`).
 - Also provides instant `"Add to Google Calendar"` one-click web link.
 
+---
+
+## 25. Recordings for Missed Classes & Automatic Completion Policy
+
+### 25.1 Dual-Mode Recording Architecture (Video Host vs Clearly Labelled External Link)
+In `CourseLiveClassesManager.tsx`, the Owner can attach a recording to the live class lesson in two explicit modes:
+1. **Mode 1: Upload / Link to Video Host (Cloudflare Stream)**:
+   - Configured with `recordingStreamId` (Cloudflare Stream video UID).
+   - Video is protected with Cloudflare Stream DRM, signed playback tokens (`generateSignedPlaybackToken`), and 15-minute token expiry.
+   - Badge in Admin & Student portals: `🔒 Video Host (Protected)` / `🔒 Protected Stream`.
+2. **Mode 2: Clearly Labelled External-Link Mode (YouTube Unlisted / Vimeo / Direct Link)**:
+   - Configured with `externalVideoUrl` / `recordingUrl` and `isExternalVideo = true`.
+   - Admin UI displays high-visibility warning:
+     > *"⚠️ Clearly Labelled External Mode: This video is hosted on an external platform and is not protected by academy DRM. Anyone with the direct link can share it."*
+   - Badge in Admin & Student portals: `⚠️ External Link Mode`.
+
+### 25.2 Protected Playback Rules for Live Class Recordings
+- Live class recordings are streamed through the EXACT same protected endpoint as curriculum video lessons: `/api/courses/[slug]/lessons/[lessonId]/play`.
+- **Strict Server Gating**:
+  - Unauthenticated visitors receive `401 Unauthorized`.
+  - Non-enrolled users receive `403 Forbidden` (`code: 'ENROLLMENT_REQUIRED'`).
+  - Active enrolled students (`status = 'ACTIVE'`) and authorized staff/owners receive signed playback tokens or authorized external stream sources.
+- **Student Portal Player**: Built-in player modal in `StudentPersonalSessions.tsx` authorizes the stream, displays the responsive video player, shows handouts, and records completion automatically.
+
+### 25.3 Automatic Class Completion After End Time
+- **Automatic Transition (`autoCompletePastLiveClasses`)**:
+  - Live classes automatically switch to `status = 'COMPLETED'` as soon as their scheduled end time (`liveScheduledAt + durationMinutes`) has passed.
+  - Runs automatically on live class listings, admin console, and student timetable queries.
+  - In addition, in runtime formatted responses, any class where `endMs <= nowMs && status !== 'CANCELLED'` is instantly surfaced as `COMPLETED`.
+
+### 25.4 Zero Attendance Tracking Penalty
+- **Guiding Rule**: *"Do not track attendance; recordings count the same as live attendance."*
+- Attendance is never penalized. Watching the recording or attending live both call `POST /api/progress` with `{ lessonId, classSessionId, completed: true }`, setting `LessonProgress.completed = true`.
+- Both portals inform students:
+  > *"Zero Attendance Penalty: Watching the recording counts identically to attending live. Completion and certificate are unlocked exclusively by scoring 70%+ on the Final Certification Exam."*
+
+

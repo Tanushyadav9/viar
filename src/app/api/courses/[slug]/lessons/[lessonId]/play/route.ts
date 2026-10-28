@@ -20,11 +20,15 @@ export async function GET(
     let lesson: {
       id: string;
       title: string;
+      type?: string;
       isFreePreview: boolean;
       videoProviderId?: string | null;
       videoDuration?: number | null;
+      durationMinutes?: number | null;
       isExternalVideo?: boolean;
       externalVideoUrl?: string | null;
+      recordingUrl?: string | null;
+      recordingStreamId?: string | null;
       module: {
         course: {
           slug: string;
@@ -135,21 +139,38 @@ export async function GET(
       );
     }
 
-    // 4. External Video or Secure Cloudflare Stream Playback
-    if (lesson.isExternalVideo && (lesson.externalVideoUrl || lesson.videoProviderId)) {
+    // 4. Recording Playback for Live Classes or Standard Video Lessons
+    const isLiveSession = lesson.type === 'LIVE_SESSION';
+    const effectiveStreamId = lesson.recordingStreamId || (!lesson.isExternalVideo ? lesson.videoProviderId : null);
+    const effectiveExternalUrl = lesson.externalVideoUrl || (isLiveSession ? lesson.recordingUrl : null) || (lesson.isExternalVideo ? lesson.videoProviderId : null);
+    const isExternal = Boolean(lesson.isExternalVideo || (effectiveExternalUrl && !effectiveStreamId));
+
+    if (isExternal && effectiveExternalUrl) {
       return NextResponse.json({
         success: true,
         lessonId: lesson.id,
         lessonTitle: lesson.title,
-        playbackUrl: lesson.externalVideoUrl || lesson.videoProviderId,
+        playbackUrl: effectiveExternalUrl,
         isExternal: true,
-        duration: lesson.videoDuration,
+        isLiveRecording: isLiveSession,
+        duration: lesson.videoDuration || (lesson.durationMinutes ? lesson.durationMinutes * 60 : 3600),
         provider: 'external',
         warning: 'Not protected: anyone with this link can share it',
       });
     }
 
-    const rawVideoId = lesson.videoProviderId || '';
+    const rawVideoId = effectiveStreamId || lesson.videoProviderId || '';
+    if (!rawVideoId && isLiveSession) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Recording for this live class is processing and will be available soon.',
+          code: 'RECORDING_PENDING',
+        },
+        { status: 404 }
+      );
+    }
+
     const isYouTube = rawVideoId.includes('youtube.com') || rawVideoId.includes('youtu.be');
 
     // Issue refreshed short-lived token (15 mins)
@@ -179,7 +200,8 @@ export async function GET(
       playbackUrl: securePlaybackUrl,
       signedToken,
       expiresAt,
-      duration: lesson.videoDuration,
+      isLiveRecording: isLiveSession,
+      duration: lesson.videoDuration || (lesson.durationMinutes ? lesson.durationMinutes * 60 : 3600),
       provider,
     });
   } catch (error) {

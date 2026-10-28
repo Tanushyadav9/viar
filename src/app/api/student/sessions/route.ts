@@ -7,7 +7,10 @@ import {
   computeLiveClassJoinWindow,
   gateMeetingLinkForStudent,
 } from '@/lib/courses/liveClassJoinWindow';
-import { getLiveClassRevealMinutes } from '@/lib/courses/liveClassesService';
+import {
+  getLiveClassRevealMinutes,
+  autoCompletePastLiveClasses,
+} from '@/lib/courses/liveClassesService';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -37,6 +40,9 @@ export async function GET(req: NextRequest) {
 
     const studentId = access.userId || auth.userId;
     const nowMs = Date.now();
+
+    // Auto-complete live classes whose end time has passed
+    await autoCompletePastLiveClasses().catch(() => 0);
 
     // Owner-adjustable reveal window (default 30 mins before start)
     const revealMinutes = await getLiveClassRevealMinutes();
@@ -134,6 +140,10 @@ export async function GET(req: NextRequest) {
         nowMs,
       });
 
+      const computedStatus = (window.hasEnded && l.status !== 'CANCELLED')
+        ? 'COMPLETED'
+        : (l.status === 'PUBLISHED' ? 'SCHEDULED' : l.status);
+
       return {
         id: l.id,
         title: l.title,
@@ -141,7 +151,7 @@ export async function GET(req: NextRequest) {
         duration: l.durationMinutes || 60,
         meetingLink: safeLink,
         meetingPlatform: l.meetingPlatform || 'GOOGLE_MEET',
-        status: l.status === 'PUBLISHED' ? 'SCHEDULED' : l.status,
+        status: computedStatus,
         sharedNotes: l.agenda || l.description || '',
         homework: null,
         recordingUrl: l.recordingUrl,

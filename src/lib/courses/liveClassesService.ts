@@ -20,6 +20,7 @@ export interface LiveClassInput {
   status: 'DRAFT' | 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
   recordingUrl?: string | null;
   recordingStreamId?: string | null;
+  isExternalVideo?: boolean;
 }
 
 export {
@@ -158,6 +159,48 @@ export async function checkLiveClassClash(params: {
 }
 
 /**
+ * Automatically transitions all past live classes whose end time has passed to COMPLETED.
+ * Invariant: Classes switch to Completed automatically after their end time.
+ */
+export async function autoCompletePastLiveClasses(): Promise<number> {
+  const now = new Date();
+  try {
+    const expiredLiveLessons = await prisma.lesson.findMany({
+      where: {
+        type: 'LIVE_SESSION',
+        status: { in: ['SCHEDULED', 'PUBLISHED'] },
+        liveScheduledAt: { not: null },
+      },
+      select: {
+        id: true,
+        liveScheduledAt: true,
+        durationMinutes: true,
+      },
+    });
+
+    const expiredIds: string[] = [];
+    for (const item of expiredLiveLessons) {
+      if (!item.liveScheduledAt) continue;
+      const endMs = new Date(item.liveScheduledAt).getTime() + (item.durationMinutes || 60) * 60 * 1000;
+      if (endMs <= now.getTime()) {
+        expiredIds.push(item.id);
+      }
+    }
+
+    if (expiredIds.length > 0) {
+      const updateRes = await prisma.lesson.updateMany({
+        where: { id: { in: expiredIds } },
+        data: { status: 'COMPLETED' },
+      });
+      return updateRes.count;
+    }
+  } catch (err) {
+    console.warn('[autoCompletePastLiveClasses] Error auto-completing classes:', err);
+  }
+  return 0;
+}
+
+/**
  * List all live classes segregated into upcoming and past.
  */
 export async function listLiveClasses(params?: {
@@ -165,6 +208,9 @@ export async function listLiveClasses(params?: {
   includePrivateNotes?: boolean;
 }) {
   const includePrivate = Boolean(params?.includePrivateNotes);
+
+  // Automatically transition any classes whose end time has passed to COMPLETED
+  await autoCompletePastLiveClasses().catch(() => 0);
 
   let lessons: Array<{
     id: string;
@@ -237,6 +283,8 @@ export async function listLiveClasses(params?: {
   const formatted = lessons.map((l) => {
     const istInfo = l.liveScheduledAt ? formatUtcToIst(l.liveScheduledAt) : null;
     const linkValidation = l.liveJoinLink ? isValidMeetingLink(l.liveJoinLink, l.meetingPlatform) : null;
+    const endMs = l.liveScheduledAt ? new Date(l.liveScheduledAt).getTime() + (l.durationMinutes || 60) * 60 * 1000 : null;
+    const computedStatus = (endMs && endMs <= nowMs && l.status !== 'CANCELLED') ? 'COMPLETED' : l.status;
     return {
       id: l.id,
       moduleId: l.moduleId,
@@ -260,7 +308,7 @@ export async function listLiveClasses(params?: {
       linkValidationError: linkValidation && !linkValidation.valid ? linkValidation.error : null,
       zoomPasscode: l.zoomPasscode || null,
       notesPdf: l.documentUrl || null,
-      status: l.status,
+      status: computedStatus,
       recordingUrl: l.recordingUrl || null,
       recordingStreamId: l.recordingStreamId || null,
       createdAt: l.createdAt.toISOString(),
@@ -533,9 +581,12 @@ export async function updateLiveClass(params: {
       zoomPasscode: data.zoomPasscode !== undefined ? data.zoomPasscode?.trim() || null : existing.zoomPasscode,
       privateHostNotes: data.privateHostNotes !== undefined ? data.privateHostNotes?.trim() || null : existing.privateHostNotes,
       documentUrl: data.notesPdf !== undefined ? data.notesPdf?.trim() || null : (data.documentUrl !== undefined ? data.documentUrl?.trim() || null : existing.documentUrl),
-      status: newStatus,
+      status: (data.recordingUrl || data.recordingStreamId) && newStatus === 'SCHEDULED' ? 'COMPLETED' : newStatus,
       recordingUrl: data.recordingUrl !== undefined ? data.recordingUrl?.trim() || null : existing.recordingUrl,
       recordingStreamId: data.recordingStreamId !== undefined ? data.recordingStreamId?.trim() || null : existing.recordingStreamId,
+      videoProviderId: data.recordingStreamId?.trim() || data.recordingUrl?.trim() || existing.videoProviderId,
+      externalVideoUrl: data.isExternalVideo ? (data.recordingUrl?.trim() || null) : existing.externalVideoUrl,
+      isExternalVideo: data.isExternalVideo !== undefined ? data.isExternalVideo : existing.isExternalVideo,
       ...(data.moduleId ? { moduleId: data.moduleId } : {}),
     },
     include: {

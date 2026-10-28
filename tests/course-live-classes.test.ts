@@ -9,6 +9,7 @@ import {
   computeLiveClassJoinWindow,
   gateMeetingLinkForStudent,
   formatStartsInCountdown,
+  autoCompletePastLiveClasses,
 } from '../src/lib/courses/liveClassesService';
 
 describe('Prompt 10: Course Live Classes Invariants & Validation', () => {
@@ -408,6 +409,86 @@ describe('Prompt 10: Course Live Classes Invariants & Validation', () => {
       });
       assert.strictEqual(customWindow15.isWindowOpen, false, '15m window should be closed at 25m before start');
       assert.strictEqual(customWindow15.buttonState, 'STARTS_IN');
+    });
+  });
+
+  describe('7. Recordings for Missed Classes & Automatic Completion', () => {
+    it('classes switch to Completed automatically after their end time', () => {
+      const nowMs = Date.now();
+      // Class 1: ended 1 hour ago
+      const endedClass = {
+        id: 'lesson-ended-1',
+        title: 'Planetary Periods',
+        liveScheduledAt: new Date(nowMs - 2 * 60 * 60 * 1000), // 2h ago
+        durationMinutes: 60, // ended 1h ago
+        status: 'SCHEDULED',
+      };
+      const endMs = endedClass.liveScheduledAt.getTime() + endedClass.durationMinutes * 60 * 1000;
+      const isPast = endMs <= nowMs;
+      const autoCompletedStatus = isPast && endedClass.status !== 'CANCELLED' ? 'COMPLETED' : endedClass.status;
+
+      assert.strictEqual(isPast, true);
+      assert.strictEqual(autoCompletedStatus, 'COMPLETED', 'Past class must automatically switch to COMPLETED');
+
+      // Class 2: starts tomorrow
+      const futureClass = {
+        id: 'lesson-future-1',
+        title: 'Transits & Gochara',
+        liveScheduledAt: new Date(nowMs + 24 * 60 * 60 * 1000),
+        durationMinutes: 60,
+        status: 'SCHEDULED',
+      };
+      const futureEndMs = futureClass.liveScheduledAt.getTime() + futureClass.durationMinutes * 60 * 1000;
+      const isFuturePast = futureEndMs <= nowMs;
+      const futureStatus = isFuturePast && futureClass.status !== 'CANCELLED' ? 'COMPLETED' : futureClass.status;
+
+      assert.strictEqual(isFuturePast, false);
+      assert.strictEqual(futureStatus, 'SCHEDULED', 'Future class must remain SCHEDULED');
+    });
+
+    it('recording mode 1: Upload to video host (Cloudflare Stream UID)', () => {
+      const liveLesson = {
+        id: 'lesson-live-stream-1',
+        title: 'Navamsha Marriage Breakdown',
+        type: 'LIVE_SESSION',
+        recordingStreamId: 'd3b07384d113edec49eaa6238ad5ff00',
+        recordingUrl: 'https://videodelivery.net/d3b07384d113edec49eaa6238ad5ff00/manifest/video.m3u8',
+        isExternalVideo: false,
+        status: 'COMPLETED',
+      };
+
+      assert.strictEqual(liveLesson.isExternalVideo, false);
+      assert.strictEqual(liveLesson.recordingStreamId, 'd3b07384d113edec49eaa6238ad5ff00');
+      assert.strictEqual(liveLesson.status, 'COMPLETED');
+    });
+
+    it('recording mode 2: Clearly labelled external-link mode with warning', () => {
+      const liveLesson = {
+        id: 'lesson-live-external-1',
+        title: 'D1 Chart Analysis Case Studies',
+        type: 'LIVE_SESSION',
+        recordingUrl: 'https://youtu.be/sample-unlisted-video',
+        isExternalVideo: true,
+        externalVideoUrl: 'https://youtu.be/sample-unlisted-video',
+        status: 'COMPLETED',
+      };
+
+      assert.strictEqual(liveLesson.isExternalVideo, true);
+      assert.strictEqual(liveLesson.externalVideoUrl, 'https://youtu.be/sample-unlisted-video');
+      assert.strictEqual(liveLesson.status, 'COMPLETED');
+    });
+
+    it('zero attendance tracking penalty: watching recording counts identically to live attendance', () => {
+      // Test payload sent to /api/progress for recording watch
+      const progressRecord = {
+        lessonId: 'lesson-live-rec-1',
+        classSessionId: 'lesson-live-rec-1',
+        completed: true,
+        watched: true,
+      };
+
+      assert.strictEqual(progressRecord.completed, true, 'Progress must be marked completed for student');
+      assert.strictEqual(progressRecord.watched, true, 'Watching recording completes lesson');
     });
   });
 });

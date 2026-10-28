@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
+  X,
 } from 'lucide-react';
 import {
   formatInTimezone,
@@ -68,6 +69,14 @@ export default function StudentPersonalSessions() {
   const [pastSessions, setPastSessions] = useState<StudentSessionItem[]>([]);
   const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null);
   const [watchedSessionIds, setWatchedSessionIds] = useState<Set<string>>(new Set());
+  const [activePlaybackSession, setActivePlaybackSession] = useState<StudentSessionItem | null>(null);
+  const [playbackData, setPlaybackData] = useState<{
+    playbackUrl: string;
+    isExternal?: boolean;
+    warning?: string;
+    provider?: string;
+  } | null>(null);
+  const [isLoadingPlayback, setIsLoadingPlayback] = useState(false);
 
   // Ticker for live countdown updates (every 15 seconds)
   const [, setTick] = useState(0);
@@ -118,16 +127,21 @@ export default function StudentPersonalSessions() {
     fetchSessions();
   }, [fetchSessions]);
 
-  // Mark session recording watched (watching recording counts the same as attending)
+  // Mark session recording watched & open protected playback modal
+  // Invariant: Do not track attendance; recordings count the same as live attendance.
   const handleWatchRecording = async (session: StudentSessionItem) => {
     if (!session.recordingUrl) return;
     setWatchedSessionIds((prev) => new Set(prev).add(session.id));
+    setActivePlaybackSession(session);
+    setIsLoadingPlayback(true);
 
+    // 1. Mark lesson progress (recording counts identically to attending live)
     try {
       await fetch('/api/progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          lessonId: session.id,
           classSessionId: session.id,
           completed: true,
           watched: true,
@@ -137,7 +151,35 @@ export default function StudentPersonalSessions() {
       console.warn('Could not record watch progress:', e);
     }
 
-    window.open(session.recordingUrl, '_blank', 'noopener,noreferrer');
+    // 2. Fetch protected stream from same play endpoint as other lessons
+    try {
+      const res = await fetch(`/api/courses/what-is-astrology/lessons/${session.id}/play`);
+      const data = await res.json();
+      if (res.ok && data.success && data.playbackUrl) {
+        setPlaybackData({
+          playbackUrl: data.playbackUrl,
+          isExternal: Boolean(data.isExternal),
+          warning: data.warning,
+          provider: data.provider,
+        });
+      } else {
+        setPlaybackData({
+          playbackUrl: session.recordingUrl,
+          isExternal: true,
+          warning: 'Direct video playback',
+          provider: 'external',
+        });
+      }
+    } catch {
+      setPlaybackData({
+        playbackUrl: session.recordingUrl,
+        isExternal: true,
+        warning: 'Direct video playback',
+        provider: 'external',
+      });
+    } finally {
+      setIsLoadingPlayback(false);
+    }
   };
 
   // Helper: Trigger native .ics download
@@ -648,6 +690,130 @@ export default function StudentPersonalSessions() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* 5. PROTECTED RECORDING PLAYBACK MODAL */}
+      {activePlaybackSession && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#0b0f17] border border-amber-500/40 rounded-3xl p-6 max-w-3xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                    Live Class Recording
+                  </span>
+                  {playbackData?.isExternal ? (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                      ⚠️ External Link Mode
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                      🔒 Protected Stream
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                  {activePlaybackSession.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setActivePlaybackSession(null);
+                  setPlaybackData(null);
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Video Player */}
+            {isLoadingPlayback ? (
+              <div className="aspect-video w-full rounded-2xl bg-slate-100 dark:bg-black/50 border border-slate-200 dark:border-white/10 flex items-center justify-center">
+                <div className="text-center space-y-2">
+                  <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Authorizing protected stream...</p>
+                </div>
+              </div>
+            ) : playbackData?.playbackUrl ? (
+              <div className="space-y-2">
+                <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black border border-slate-200 dark:border-white/10 shadow-lg">
+                  {playbackData.playbackUrl.includes('iframe') ||
+                  playbackData.playbackUrl.includes('youtube.com') ||
+                  playbackData.playbackUrl.includes('youtu.be') ||
+                  playbackData.playbackUrl.includes('vimeo.com') ? (
+                    <iframe
+                      src={
+                        playbackData.playbackUrl.includes('youtube.com/watch?v=')
+                          ? playbackData.playbackUrl.replace('watch?v=', 'embed/')
+                          : playbackData.playbackUrl.includes('youtu.be/')
+                          ? playbackData.playbackUrl.replace('youtu.be/', 'www.youtube.com/embed/')
+                          : playbackData.playbackUrl
+                      }
+                      title={activePlaybackSession.title}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video
+                      src={playbackData.playbackUrl}
+                      controls
+                      autoPlay
+                      className="w-full h-full"
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  )}
+                </div>
+
+                {playbackData.warning && (
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300 font-medium px-1">
+                    {playbackData.warning}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="p-8 rounded-2xl bg-slate-50 dark:bg-white/5 text-center text-xs text-slate-500 dark:text-slate-400">
+                Playback source could not be loaded. Please try again.
+              </div>
+            )}
+
+            {/* Attendance & Completion Policy Notice */}
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-2.5 text-xs text-emerald-800 dark:text-emerald-300">
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <strong className="block font-bold">Attendance Recorded (पूर्णता दर्ज):</strong>
+                <span>Watching this recording counts identically to live attendance. Your progress has been updated in your student record.</span>
+              </div>
+            </div>
+
+            {/* Handouts & Notes */}
+            {activePlaybackSession.sharedNotes && (
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                <span className="font-bold text-amber-800 dark:text-amber-300">Class Agenda &amp; Handouts:</span>
+                <p className="leading-relaxed whitespace-pre-line">{activePlaybackSession.sharedNotes}</p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-white/10">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                Duration: {activePlaybackSession.duration || 60} mins
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setActivePlaybackSession(null);
+                  setPlaybackData(null);
+                }}
+                className="gold-button px-5 py-2 rounded-xl text-xs font-bold"
+              >
+                Close Player
+              </button>
+            </div>
           </div>
         </div>
       )}

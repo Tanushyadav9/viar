@@ -105,8 +105,10 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
   // Conflict / Clash state
   const [clashError, setClashError] = useState<{ en: string; hi: string } | null>(null);
 
-  // Quick Recording Modal state
+  // Quick Recording Modal state (Video Host or Clearly Labelled External Mode)
   const [recordingModalClass, setRecordingModalClass] = useState<LiveClassRecord | null>(null);
+  const [recordingMode, setRecordingMode] = useState<'HOST' | 'EXTERNAL'>('HOST');
+  const [recordingStreamUid, setRecordingStreamUid] = useState('');
   const [recordingInputUrl, setRecordingInputUrl] = useState('');
 
   // Cancellation Modal state
@@ -408,28 +410,39 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
     }
   };
 
-  // Submit Recording URL
+  // Submit Recording URL (Video Host or Clearly Labelled External Mode)
   const handleSaveRecordingUrl = async () => {
     if (!recordingModalClass) return;
     setIsSubmitting(true);
     try {
+      const isExternal = recordingMode === 'EXTERNAL';
+      const streamId = recordingStreamUid.trim() || null;
+      const directUrl = recordingInputUrl.trim() || null;
+
+      const payload = {
+        data: {
+          recordingStreamId: !isExternal ? streamId : null,
+          recordingUrl: isExternal ? directUrl : (streamId ? `https://videodelivery.net/${streamId}/manifest/video.m3u8` : directUrl),
+          isExternalVideo: isExternal,
+          status: 'COMPLETED',
+        },
+      };
+
       const res = await fetch(`/api/admin/courses/live-classes/${recordingModalClass.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          data: {
-            recordingUrl: recordingInputUrl.trim() || null,
-            status: 'COMPLETED',
-          },
-        }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         setFeedbackMessage({
           type: 'success',
-          text: 'Class recording saved! Students can now watch this session.',
+          text: isExternal
+            ? 'External recording link saved! Labelled clearly as external mode.'
+            : 'Protected video host recording saved! Students can now stream this session.',
         });
         setRecordingModalClass(null);
         setRecordingInputUrl('');
+        setRecordingStreamUid('');
         loadLiveClasses();
       }
     } catch (e) {
@@ -851,9 +864,18 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {hasRecording ? (
                         <>
+                          {cls.recordingStreamId ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                              🔒 Video Host (Protected)
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                              ⚠️ External Mode
+                            </span>
+                          )}
                           <a
                             href={cls.recordingUrl!}
                             target="_blank"
@@ -861,17 +883,25 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
                             className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 transition"
                           >
                             <Play className="w-3.5 h-3.5" />
-                            <span>Watch Recording</span>
+                            <span>Preview</span>
                           </a>
                           <button
                             type="button"
                             onClick={() => {
                               setRecordingModalClass(cls);
-                              setRecordingInputUrl(cls.recordingUrl || '');
+                              if (cls.recordingStreamId) {
+                                setRecordingMode('HOST');
+                                setRecordingStreamUid(cls.recordingStreamId);
+                                setRecordingInputUrl('');
+                              } else {
+                                setRecordingMode('EXTERNAL');
+                                setRecordingInputUrl(cls.recordingUrl || '');
+                                setRecordingStreamUid('');
+                              }
                             }}
                             className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition"
                           >
-                            Update URL
+                            Update Recording
                           </button>
                         </>
                       ) : (
@@ -879,12 +909,14 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
                           type="button"
                           onClick={() => {
                             setRecordingModalClass(cls);
+                            setRecordingMode('HOST');
+                            setRecordingStreamUid('');
                             setRecordingInputUrl('');
                           }}
                           className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 flex items-center gap-1.5 transition shadow"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>+ Add Recording Link</span>
+                          <span>+ Add Recording</span>
                         </button>
                       )}
                     </div>
@@ -1245,14 +1277,14 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
         </div>
       )}
 
-      {/* QUICK RECORDING MODAL */}
+      {/* QUICK RECORDING MODAL: TWO MODES (VIDEO HOST vs EXTERNAL LINK) */}
       {recordingModalClass && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0b0f17] border border-amber-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+          <div className="bg-[#0b0f17] border border-amber-500/30 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Play className="w-4 h-4 text-amber-400" />
-                <span>Add Class Recording Link</span>
+                <span>Add Class Recording (कक्षा रिकॉर्डिंग जोड़ें)</span>
               </h3>
               <button
                 type="button"
@@ -1264,24 +1296,70 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
             </div>
 
             <p className="text-xs text-slate-300">
-              Paste the video URL for <strong>&quot;{recordingModalClass.title}&quot;</strong>. Students who missed this live class can watch the recording, which counts the same as attending.
+              Attach the recording for <strong>&quot;{recordingModalClass.title}&quot;</strong>. Students who missed this live class can watch the recording, which counts identically to attending live.
             </p>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Recording Video URL (Cloudflare Stream, YouTube unlisted, etc.)
-              </label>
-              <input
-                type="url"
-                value={recordingInputUrl}
-                onChange={(e) => setRecordingInputUrl(e.target.value)}
-                placeholder="https://customer-xxx.cloudflarestream.com/... or https://..."
-                required
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400 font-mono"
-              />
+            {/* Mode Switcher */}
+            <div className="grid grid-cols-2 gap-2 bg-white/5 p-1 rounded-xl border border-white/10">
+              <button
+                type="button"
+                onClick={() => setRecordingMode('HOST')}
+                className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  recordingMode === 'HOST'
+                    ? 'bg-amber-400 text-slate-950 shadow'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <span>🔒 Video Host (Protected)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRecordingMode('EXTERNAL')}
+                className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  recordingMode === 'EXTERNAL'
+                    ? 'bg-amber-400 text-slate-950 shadow'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <span>⚠️ External Link Mode</span>
+              </button>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+            {recordingMode === 'HOST' ? (
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-slate-200">
+                  Cloudflare Stream Video UID / Stream URL
+                </label>
+                <input
+                  type="text"
+                  value={recordingStreamUid}
+                  onChange={(e) => setRecordingStreamUid(e.target.value)}
+                  placeholder="e.g. 8f3a92b1e7c44e90a6d1c8f2 or Cloudflare Stream UID"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400 font-mono"
+                />
+                <p className="text-[11px] text-emerald-400 leading-relaxed">
+                  ✓ Protected academy DRM stream: Only approved enrolled students can stream using short-lived signed tokens.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-slate-200">
+                  External Video URL (YouTube Unlisted, Vimeo, etc.)
+                </label>
+                <input
+                  type="url"
+                  value={recordingInputUrl}
+                  onChange={(e) => setRecordingInputUrl(e.target.value)}
+                  placeholder="https://youtu.be/... or https://vimeo.com/..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400 font-mono"
+                />
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300 leading-relaxed">
+                  ⚠️ <strong>Clearly Labelled External Mode:</strong> This video is hosted on an external platform and is not protected by academy DRM. Anyone with the direct link can share it.
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
               <button
                 type="button"
                 onClick={() => setRecordingModalClass(null)}
@@ -1292,7 +1370,7 @@ export function CourseLiveClassesManager(props: CourseLiveClassesManagerProps = 
               <button
                 type="button"
                 onClick={handleSaveRecordingUrl}
-                disabled={isSubmitting || !recordingInputUrl.trim()}
+                disabled={isSubmitting || (recordingMode === 'HOST' ? !recordingStreamUid.trim() : !recordingInputUrl.trim())}
                 className="gold-button px-5 py-2 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50"
               >
                 {isSubmitting ? 'Saving...' : 'Save Recording'}

@@ -6,6 +6,41 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const auth = await getServerAuthUser();
+    if (!isAuthorizedForSection(auth, 'courses', 'VIEW')) {
+      return NextResponse.json({ error: 'Unauthorized: insufficient permissions' }, { status: 403 });
+    }
+
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: params.id },
+      include: {
+        module: {
+          select: {
+            id: true,
+            title: true,
+            order: true,
+            courseId: true,
+          },
+        },
+      },
+    });
+
+    if (!lesson) {
+      return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, lesson });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch live class';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -17,17 +52,19 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const result = await updateLiveClass({
+    const { data = {}, cancellationReason } = body;
+
+    const updated = await updateLiveClass({
       lessonId: params.id,
+      data,
       userId: auth.userId,
       userEmail: auth.email,
-      data: body.data || body,
-      cancellationReason: body.cancellationReason || body.data?.cancellationReason || null,
+      cancellationReason,
     });
 
     return NextResponse.json({
       success: true,
-      ...result,
+      lesson: updated,
     });
   } catch (err: unknown) {
     const errorObj = err as { status?: number; clash?: unknown; message?: string };
@@ -60,29 +97,26 @@ export async function DELETE(
     });
 
     if (!existing) {
-      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Live class not found' }, { status: 404 });
     }
 
-    // If draft with no progress, can delete, or archive
-    await prisma.lesson.delete({
-      where: { id: params.id },
+    if (existing.status === 'DRAFT') {
+      await prisma.lesson.delete({
+        where: { id: params.id },
+      });
+      return NextResponse.json({ success: true, deleted: true });
+    }
+
+    // Scheduled or completed classes are cancelled with audit trail
+    const updated = await updateLiveClass({
+      lessonId: params.id,
+      data: { status: 'CANCELLED' },
+      userId: auth.userId,
+      userEmail: auth.email,
+      cancellationReason: 'Class cancelled by administrative staff.',
     });
 
-    await prisma.activityLog.create({
-      data: {
-        userId: auth.userId || null,
-        userEmail: auth.email || null,
-        action: 'LIVE_CLASS_DELETED',
-        entityType: 'LESSON',
-        entityId: params.id,
-        reason: `Deleted live class "${existing.title}"`,
-      },
-    }).catch(() => null);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Live class deleted successfully',
-    });
+    return NextResponse.json({ success: true, cancelled: true, lesson: updated });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to delete live class';
     return NextResponse.json({ success: false, error: message }, { status: 500 });
