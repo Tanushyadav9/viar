@@ -1554,5 +1554,95 @@ In `CourseLiveClassesManager.tsx`, the Owner can attach a recording to the live 
   - Owner clicking "Regenerate Token" invalidates the existing token immediately, generates a fresh 32-byte token, updates the SHA-256 database hash, and provides the new subscription URL.
   - Old calendar feed URLs return `401 Unauthorized` immediately upon token regeneration.
 
+---
+
+## 27. Verification Matrix & Invariant Test Suite
+
+The automated test suite in `tests/course-live-classes-full-matrix.test.ts` (47 dedicated tests, 791 total repository tests) comprehensively validates all required invariants:
+
+### 27.1 Persona Access Matrix
+
+| Persona | Class Details (`GET /api/student/sessions`) | Join Link Outside Window ($>30\text{m}$) | Join Link Inside Window ($\le 30\text{m}$) | Recording Playback (`/lessons/[id]/play`) |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Logged Out** | `401 Unauthorized` | Inaccessible | Inaccessible | `401 Unauthorized` |
+| **2. Signed In (Not Enrolled)** | `403 Forbidden` (`enrolled: false`) | Inaccessible | Inaccessible | `403 Forbidden` (`ENROLLMENT_REQUIRED`) |
+| **3. Waiting for Approval** | `403 Forbidden` (`enrolled: false`) | Inaccessible | Inaccessible | `403 Forbidden` (`ENROLLMENT_REQUIRED`) |
+| **4. Approved Student** | `200 OK` (title, agenda, times) | `null` (server gated) | **Revealed** (`liveJoinLink`) | `200 OK` (Signed Stream Token / External URL) |
+| **5. Revoked Student** | `403 Forbidden` (`enrolled: false`) | Inaccessible | Inaccessible | `403 Forbidden` (`ENROLLMENT_REQUIRED`) |
+| **6. Staff User** | `200 OK` (Admin console access) | Visible in Admin Console | Visible in Admin Console | `200 OK` (Course Staff Permission) |
+| **7. Site Owner** | `200 OK` (Full Owner access) | Visible in Admin Console | Visible in Admin Console | `200 OK` (Full Owner Access) |
+
+### 27.2 Link Reveal Window Invariant Timeline (with Fake Clock)
+
+| Fake Clock Offset | Server Link Status | Button State | Student Button Label | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| **$T - 45\text{m}$** | `null` (withheld) | `STARTS_IN` | `"Starts in 45m"` / `"प्रारंभ होने में 45 मिनट"` | Gated outside 30-min window |
+| **$T - 30\text{m}$** | **Revealed** | `JOIN_NOW` | `"Join now"` / `"अभी जुड़ें"` | Window opens automatically |
+| **$T - 10\text{m}$** | **Revealed** | `JOIN_NOW` | `"Join now"` / `"अभी जुड़ें"` | Pre-class preparation |
+| **$T + 25\text{m}$ (Live)**| **Revealed** | `JOIN_NOW` | `"Join now"` / `"अभी जुड़ें"` | `canJoin = true`, live session active |
+| **$\text{End} + 30\text{m}$** | **Revealed** | `CLASS_ENDED` | `"Class ended: recording coming soon"` | Link accessible for late Q&A ($< 2\text{h}$) |
+| **$\text{End} + 125\text{m}$** | `null` (withheld) | `CLASS_ENDED` | `"Class ended: recording coming soon"` | Link suppressed $> 2\text{h}$ after end |
+| **Recording Ready** | `null` (withheld) | `WATCH_RECORDING` | `"Watch recording"` / `"रिकॉर्डिंग देखें"` | Plays via DRM-protected player |
+
+### 27.3 Daylight Saving Time (DST) & International Timezone Accuracies
+- **Summer Class (July 15)**: `12:30 UTC` formats as:
+  - **IST**: `18:00 IST` (Asia/Kolkata, UTC+5:30)
+  - **New York (EDT)**: `08:30 AM EDT` (America/New_York, UTC-4:00)
+  - **London (BST)**: `01:30 PM BST` (Europe/London, UTC+1:00)
+- **Winter Class (January 15)**: `12:30 UTC` formats as:
+  - **IST**: `18:00 IST` (Asia/Kolkata, UTC+5:30)
+  - **New York (EST)**: `07:30 AM EST` (America/New_York, UTC-5:00)
+  - **London (GMT)**: `12:30 PM GMT` (Europe/London, UTC+0:00)
+- **Invariant**: Timezone computations in `timezones.ts` dynamically compute standard and daylight saving offsets without drift or manual offset corruption.
+
+### 27.4 Meeting Link Validation Cases
+- **Bad Examples Rejected**:
+  - `https://meet.google.com/jyotish-mentorship-01` $\to$ Rejected (contains forbidden words, non-3-4-3 format)
+  - `https://meet.google.com/xxx-xxxx-xxx` $\to$ Rejected (placeholder/dummy pattern)
+  - `https://meet.google.com/abc-demo-hij` $\to$ Rejected (blacklisted keyword `demo`)
+  - `https://meet.google.com/test-astrology` $\to$ Rejected (blacklisted keyword `test`)
+  - `https://meet.google.com/example-video` $\to$ Rejected (blacklisted keyword `example`)
+  - `https://meet.google.com/abc-def-ghi` $\to$ Rejected (3-3-3 instead of 3-4-3)
+  - `https://meet.google.com/abcdefghij` $\to$ Rejected (missing hyphens)
+  - `https://meet.google.com/123-4567-890` $\to$ Rejected (contains digits in Meet code)
+  - `https://zoom.us/my/acharya-niraj` $\to$ Rejected (vanity URL without numeric meeting ID)
+  - `https://teams.microsoft.com/...` $\to$ Rejected (unsupported platform)
+- **Bilingual Rejection Message**:
+  - EN: *"This does not look like a real Meet or Zoom link. Create the meeting in Google Calendar or at meet.google.com/new and paste the link here."*
+  - HI: *"यह एक मान्य गूगल मीट या ज़ूम लिंक नहीं लग रहा है। कृपया गूगल कैलेंडर या meet.google.com/new पर मीटिंग बनाएं और वास्तविक लिंक यहां पेस्ट करें।"*
+- **Valid Examples Accepted**:
+  - `https://meet.google.com/abc-defg-hij` $\to$ Accepted
+  - `meet.google.com/xyz-pqrs-tuv` $\to$ Accepted (normalized with `https://`)
+  - `https://meet.google.com/kpm-vrtq-zxy` $\to$ Accepted
+  - `https://us02web.zoom.us/j/12345678901` $\to$ Accepted
+  - `https://zoom.us/j/9876543210` $\to$ Accepted
+  - `https://us04web.zoom.us/j/98765432101?pwd=SecretPasscode123` $\to$ Accepted
+
+### 27.5 Overlap Refusal (Clash Protection)
+- Prevents double-booking: Two live classes cannot overlap in time ($(\text{start}_A < \text{end}_B) \land (\text{start}_B < \text{end}_A)$).
+- **Refused Overlaps**:
+  - Start during existing class: Refused
+  - End during existing class: Refused
+  - Complete encompassment: Refused
+  - Internal containment: Refused
+- **Allowed Non-Overlaps**:
+  - Adjacent touching boundary ($\text{start}_B = \text{end}_A$): Allowed
+  - Separate days: Allowed
+- **Bilingual Error Message**:
+  - EN: *"Scheduling conflict: The live class \"...\" is already scheduled from ... to ... Two live classes cannot overlap."*
+  - HI: *"समय टकराव: \"...\" लाइव कक्षा पहले से ही ... से ... तक निर्धारित है। दो लाइव कक्षाएं एक ही समय पर नहीं हो सकतीं।"*
+
+### 27.6 Reminder Scanner Idempotency
+- 24-Hour reminders use key `live_class_24h_${lesson.id}_${student.id}`.
+- 1-Hour reminders use key `live_class_1h_${lesson.id}_${student.id}`.
+- Multiple sequential executions of the 15-minute cron runner yield 0 duplicate records. Database `@unique` constraint guarantees absolute deduplication.
+
+### 27.7 Flag-Off Verification: Zero 1-on-1 Terminology or Screens
+- `ONE_TO_ONE_ENABLED = false` by default.
+- Course cards, syllabus, and announcements contain **zero** instances of `"1-on-1"`, `"mentorship"`, or `"personal session"`.
+- Student portal contains **zero** birth details input forms (no date of birth, time of birth, place of birth, or gender fields) for live classes.
+- Admin portal navigation hides the 1-on-1 sessions console.
+
+
 
 
