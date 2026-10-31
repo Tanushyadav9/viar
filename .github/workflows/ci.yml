@@ -49,6 +49,9 @@ jobs:
 
       - name: Run complete unit & regression test suite
         run: npm test
+        env:
+          DATABASE_URL: 'postgresql://mock:mock@localhost:5432/mock_test_db'
+          DIRECT_URL: 'postgresql://mock:mock@localhost:5432/mock_test_db'
 
       - name: Build Next.js production bundle
         run: npm run build
