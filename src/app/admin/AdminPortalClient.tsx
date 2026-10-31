@@ -1460,8 +1460,8 @@ export default function AdminPortalClient({
             </button>
           )}
 
-          {/* 5. Sessions */}
-          {(isOwner || allowedSections.includes('sessions')) && (
+          {/* 5. Sessions (Only when 1-on-1 is enabled; otherwise Live Classes live under Course) */}
+          {(isOwner || allowedSections.includes('sessions')) && ONE_TO_ONE_ENABLED && (
             <button
               onClick={() => setActiveTab('sessions')}
               className={`px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition shrink-0 flex items-center gap-2 cursor-pointer ${
